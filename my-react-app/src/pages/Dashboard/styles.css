@@ -4,6 +4,7 @@
   display: flex;
   width: 100vw;
   gap: 20px;
+  background: #f2e7dc;
 }
 
 .dashboard-content {
@@ -16,12 +17,13 @@
 
 .side-dashboard {
   width: 450px;
-  background: #f5f5f5;
+  background: #027373;
   padding: 5px;
   display: flex;
+  justify-content: start;
   flex-direction: column;
-  justify-content: space-around;
   align-items: start;
+  gap: 10px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.147);
 }
 
@@ -41,23 +43,20 @@
 
 .name-side {
   font-size: 14px;
-  color: #7e7e7e;
-  font-weight: 500;
+  color: #F2E7DC;
+  font-weight: 600;
 }
 
 .card {
   display: flex;
   align-items: center;
   font-size: 12px;
-  padding: 10px 0;
-  gap: 10px;
   width: 100%;
   border-radius: 8px;
   text-align: center;
   cursor: pointer;
   text-decoration: none;
-  color: rgb(68, 68, 68);
-  background: #eee;
+  color: #F2E7DC;
 }
 
 .icon-side {

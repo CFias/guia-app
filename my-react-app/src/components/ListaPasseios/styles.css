@@ -15,17 +15,19 @@ h2 {
 .week-controls,
 .mode-toggle {
   display: flex;
+  justify-content: space-between;
   gap: 12px;
 }
 
 .week-controls button,
 .mode-toggle button {
-  background: #1cae54;
+  background: #027373;
   border: 1px solid #e5e7eb;
   color: rgb(240, 240, 240);
   padding: 10px 16px;
+  margin: 5px;
   border-radius: 10px;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 12px;
   cursor: pointer;
   transition: 250ms;
@@ -33,7 +35,7 @@ h2 {
 
 .week-controls button:hover,
 .mode-toggle button:hover {
-  background: #159f2e;
+  background: #055555;
   color: #ffffff;
 }
 
@@ -43,24 +45,22 @@ h2 {
   border-radius: 18px;
   padding: 10px 20px;
   margin-bottom: 22px;
-  width: 650px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
 }
 
 /* ===== CABEÇALHO DO DIA ===== */
 .day-card strong {
-  display: block;
-  font-size: 14px;
+  display: flex;
+  font-size: 12px;
   font-weight: 700;
-  margin-bottom: 14px;
+  padding:  10px 0;
   color: rgb(56, 56, 56);
 }
 
 /* ===== LISTA DE PASSEIOS ===== */
 .passeio-item,
 .passeio-extra {
-  display: grid;
-  grid-template-columns: 1fr 80px 140px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 12px;
   padding: 3px 0;
