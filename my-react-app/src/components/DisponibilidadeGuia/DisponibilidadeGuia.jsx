@@ -171,10 +171,7 @@ const DisponibilidadeGuia = () => {
 
             const dados = snap.data();
 
-            if (!Array.isArray(dados.disponibilidade)) {
-                console.error("Disponibilidade inválida:", dados.disponibilidade);
-                return;
-            }
+            if (!Array.isArray(dados.disponibilidade)) return;
 
             const novaDisponibilidade = dados.disponibilidade.filter(
                 d => d.date !== date
@@ -185,41 +182,23 @@ const DisponibilidadeGuia = () => {
                 updatedAt: Timestamp.now(),
             });
 
-            // Atualiza a tela
-            setDisponibilidadeSemana(prev => {
-                const existe = prev.find(g => g.guiaId === guiaSelecionado.id);
-
-                if (existe) {
-                    return prev.map(g =>
-                        g.guiaId === guiaSelecionado.id
-                            ? {
-                                ...g,
-                                dias: [
-                                    ...g.dias,
-                                    ...selecionados.filter(
-                                        d => !g.dias.some(x => x.date === d.date)
-                                    )
-                                ]
-                            }
-                            : g
-                    );
-                }
-
-                return [
-                    ...prev,
-                    {
-                        guiaId: guiaSelecionado.id,
-                        nome: guiaSelecionado.nome,
-                        dias: [...selecionados]
-                    }
-                ];
-            });
-
+            // 🔹 Atualiza a tela sem refresh
+            setDisponibilidadeSemana(prev =>
+                prev.map(g =>
+                    g.guiaId === guiaId
+                        ? {
+                            ...g,
+                            dias: g.dias.filter(d => d.date !== date)
+                        }
+                        : g
+                )
+            );
         } catch (err) {
             console.error("Erro ao remover data:", err);
             alert("Erro ao remover a data");
         }
     };
+
 
 
 
@@ -250,25 +229,81 @@ const DisponibilidadeGuia = () => {
         try {
             const ref = doc(db, "guide_availability", guiaSelecionado.id);
 
+            // 🔹 Busca disponibilidade atual (evita sobrescrever)
+            const snap = await getDoc(ref);
+
+            let disponibilidadeAtual = [];
+
+            if (snap.exists()) {
+                const data = snap.data();
+                if (Array.isArray(data.disponibilidade)) {
+                    disponibilidadeAtual = data.disponibilidade;
+                }
+            }
+
+            // 🔹 Junta sem duplicar
+            const novasDatas = selecionados.filter(
+                d => !disponibilidadeAtual.some(x => x.date === d.date)
+            );
+
+            const disponibilidadeFinal = [
+                ...disponibilidadeAtual,
+                ...novasDatas.map(d => ({
+                    day: d.day,
+                    date: d.date,
+                }))
+            ];
+
             await setDoc(
-                doc(db, "guide_availability", guiaSelecionado.id),
+                ref,
                 {
                     guideId: guiaSelecionado.id,
                     guideName: guiaSelecionado.nome,
-                    disponibilidade: selecionados.map(d => ({
-                        day: d.day,
-                        date: d.date,
-                    })),
+                    disponibilidade: disponibilidadeFinal,
                     updatedAt: Timestamp.now(),
                 },
                 { merge: true }
             );
 
+            // 🔹 Atualiza a tabela SEM refresh
+            setDisponibilidadeSemana(prev => {
+                const existe = prev.find(g => g.guiaId === guiaSelecionado.id);
+
+                if (existe) {
+                    return prev.map(g =>
+                        g.guiaId === guiaSelecionado.id
+                            ? {
+                                ...g,
+                                dias: [
+                                    ...g.dias,
+                                    ...novasDatas.filter(
+                                        d => !g.dias.some(x => x.date === d.date)
+                                    )
+                                ]
+                            }
+                            : g
+                    );
+                }
+
+                return [
+                    ...prev,
+                    {
+                        guiaId: guiaSelecionado.id,
+                        nome: guiaSelecionado.nome,
+                        dias: [...novasDatas]
+                    }
+                ];
+            });
+
             setSelecionados([]);
+        } catch (err) {
+            console.error("Erro ao salvar disponibilidade:", err);
+            alert("Erro ao salvar disponibilidade");
         } finally {
             setLoading(false);
         }
     };
+
 
 
     const guiasFiltrados = guias.filter(g =>
