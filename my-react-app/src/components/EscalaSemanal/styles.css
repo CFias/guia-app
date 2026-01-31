@@ -1,0 +1,169 @@
+/* ===== CONTAINER ===== */
+
+.page-container {
+    padding: 24px;
+}
+
+.page-container h2 {
+    margin-bottom: 16px;
+}
+
+/* ===== BOTÕES ===== */
+
+/* button {
+    margin-bottom: 20px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #4f46e5;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 500;
+} */
+
+/* button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.confirm-button {
+    margin-top: 24px;
+    width: 100%;
+    background: #10b981;
+    font-size: 16px;
+} */
+
+/* ===== INFO ===== */
+
+.info-text {
+    margin-top: 16px;
+    color: #666;
+}
+
+/* ===== DIA ===== */
+
+.day-block {
+    margin-top: 32px;
+}
+
+.day-block h3 {
+    margin-bottom: 12px;
+    color: #333;
+}
+
+/* ===== PASSEIO ===== */
+
+.passeio-card {
+    margin-top: 12px;
+    padding: 14px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.passeio-card strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* ===== OPÇÕES DE GUIA ===== */
+
+.opcoes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.radio-option input {
+    cursor: pointer;
+}
+
+/* ===== TABELA (caso reutilize) ===== */
+
+.table-wrapper {
+    margin-top: 24px;
+    overflow-x: auto;
+}
+
+.escala-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.escala-table th,
+.escala-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+}
+
+.escala-table th {
+    background: #f5f5f7;
+    font-weight: 600;
+}
+
+.escala-table tr:hover {
+    background: #fafafa;
+}
+
+/* ===== MOBILE ===== */
+
+@media (max-width: 768px) {
+    .radio-option {
+        font-size: 13px;
+    }
+
+    .confirm-button {
+        font-size: 15px;
+    }
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    font-weight: 500;
+}
+
+.escala-table td {
+    vertical-align: top;
+}
+
+.confirm-button {
+    margin-top: 24px;
+    width: 100%;
+    background: #10b981;
+    font-size: 16px;
+}
+
+.day-highlight {
+    font-weight: 600;
+    font-size: 14px;
+    color: #4f46e5;
+    display: flex;
+    flex-direction: column;
+}
+
+.day-highlight span {
+    font-size: 13px;
+    color: #555;
+}
+
+.passeio-name {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #333;
+}
