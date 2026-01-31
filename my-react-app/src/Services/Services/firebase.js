@@ -1,31 +1,22 @@
-// Firebase core
-import { initializeApp } from "firebase/app";
-
-// Firestore
+// firebase.js
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Analytics (opcional)
-import { getAnalytics, isSupported } from "firebase/analytics";
-
+// 🔥 CONFIG DO PROJETO NOVO (SSA)
 const firebaseConfig = {
-    apiKey: "AIzaSyA6OxCYURlBfbaiYMRZm9ZXaqfLw4UhewM",
-    authDomain: "guias-app-ec6c6.firebaseapp.com",
-    projectId: "guias-app-ec6c6",
-    storageBucket: "guias-app-ec6c6.firebasestorage.app",
-    messagingSenderId: "452844168636",
-    appId: "1:452844168636:web:9fbdd43be2501c297177b9",
-    measurementId: "G-X7L3NZCTG3"
+  apiKey: "AIzaSyAYNSrmUIfn1bKdtHmEvCPT1eYSTSO5Wkc",
+  authDomain: "ssa-guias-luck.firebaseapp.com",
+  projectId: "ssa-guias-luck",
+  storageBucket: "ssa-guias-luck.firebasestorage.app",
+  messagingSenderId: "875729865030",
+  appId: "1:875729865030:web:6c28711d6c49c3206abd47",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// ✅ Evita app duplicado no Vite / HMR
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Firestore instance
+// ✅ Firestore
 export const db = getFirestore(app);
 
-// Analytics (evita erro em localhost / SSR)
-isSupported().then((supported) => {
-    if (supported) {
-        getAnalytics(app);
-    }
-});
+// 🔎 DEBUG (IMPORTANTE AGORA)
+console.log("🔥 Firebase conectado ao projeto:", app.options.projectId);

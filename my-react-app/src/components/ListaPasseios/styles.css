@@ -1,146 +1,209 @@
 /* ===== BASE ===== */
 .page-container {
-    padding: 32px;
-    font-family: Inter, system-ui, -apple-system, sans-serif;
-    color: #111827;
+  padding: 32px;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: #111827;
 }
 
 h2 {
-    font-size: 16px;
-    font-weight: 700;
-    color: rgb(87, 87, 87);
+  font-size: 16px;
+  font-weight: 700;
+  color: rgb(87, 87, 87);
 }
 
 /* ===== CONTROLES ===== */
 .week-controls,
 .mode-toggle {
-    display: flex;
-    gap: 12px;
+  display: flex;
+  gap: 12px;
 }
 
 .week-controls button,
 .mode-toggle button {
-    background: #1cae54;
-    border: 1px solid #e5e7eb;
-    color: rgb(240, 240, 240);
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 12px;
-    cursor: pointer;
-    transition: 250ms;
+  background: #1cae54;
+  border: 1px solid #e5e7eb;
+  color: rgb(240, 240, 240);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 250ms;
 }
 
 .week-controls button:hover,
 .mode-toggle button:hover {
-    background: #159f2e;
-    color: #ffffff;
+  background: #159f2e;
+  color: #ffffff;
 }
 
 /* ===== CARD DO DIA ===== */
 .day-card {
-    background: #e1e1e1;
-    border-radius: 18px;
-    padding: 10px 20px;
-    margin-bottom: 22px;
-    width: 650px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .06);
+  background: #e1e1e1;
+  border-radius: 18px;
+  padding: 10px 20px;
+  margin-bottom: 22px;
+  width: 650px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
 }
 
 /* ===== CABEÇALHO DO DIA ===== */
 .day-card strong {
-    display: block;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    color: rgb(56, 56, 56);
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: rgb(56, 56, 56);
 }
 
 /* ===== LISTA DE PASSEIOS ===== */
 .passeio-item,
 .passeio-extra {
-    display: grid;
-    grid-template-columns: 1fr 80px 140px;
-    align-items: center;
-    gap: 12px;
-    padding: 3px 0;
-    border-bottom: 1px solid #f1f5f9;
+  display: grid;
+  grid-template-columns: 1fr 80px 140px;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .passeio-item:last-child,
 .passeio-extra:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 /* ===== NOME DO PASSEIO ===== */
 .passeio-item span:first-child,
 .passeio-extra span:first-child {
-    font-weight: 600;
-    font-size: 12px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 /* ===== PAX ===== */
 .passeio-item span:nth-child(2),
 .passeio-extra span:nth-child(2) {
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
 
 /* ===== STATUS ===== */
 .status {
-    justify-self: flex-start;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
+  justify-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .status.ok {
-    background: #dcfce7;
-    color: #166534;
-    font-size: 10px;
-    font-weight: 700;
-    width: 80px;
-    text-align: center; 
+  background: #dcfce7;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 700;
+  width: 80px;
+  text-align: center;
 }
 
 .status.alerta {
-    background: #fee2e2;
-    color: #991b1b;
-    font-size: 10px;
-    font-weight: 700;
-    width: 80px;
-    text-align: center;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 10px;
+  font-weight: 700;
+  width: 80px;
+  text-align: center;
 }
 
 /* ===== INPUT ===== */
 .passeio-item input {
-    width: 80px;
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
+  width: 80px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
 }
 
 /* ===== BOTÃO REMOVER ===== */
 .passeio-extra button {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
 }
 
 /* ===== MOBILE ===== */
 @media (max-width: 768px) {
+  .passeio-item,
+  .passeio-extra {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
 
-    .passeio-item,
-    .passeio-extra {
-        grid-template-columns: 1fr;
-        gap: 6px;
-    }
+  .status {
+    margin-top: 4px;
+  }
+}
 
-    .status {
-        margin-top: 4px;
-    }
+.loading-overlay {
+  position: fixed; /* 🔥 cobre a tela inteira */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  background: rgba(0, 0, 0, 0.45); /* fundo escuro com opacidade */
+  backdrop-filter: blur(2px); /* opcional, fica chique */
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 9999; /* 🔥 acima de tudo */
+  pointer-events: all; /* bloqueia cliques */
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top: 5px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay span {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.resumo-guias {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f7f7f7;
+  border-radius: 8px;
+  border-left: 4px solid #2e7d32;
+}
+
+.resumo-guias h3 {
+  margin-bottom: 10px;
+}
+
+.resumo-guias ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.resumo-guias li {
+  padding: 6px 0;
+  font-size: 14px;
 }
