@@ -366,7 +366,7 @@ Operacional - Luck Receptivo 🙌
       return;
     }
 
-    setLoading(true);
+    setLoading(true); 
     try {
       await addDoc(collection(db, "weekly_services"), {
         serviceName: dados.nome,
