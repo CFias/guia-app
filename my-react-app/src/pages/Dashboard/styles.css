@@ -5,6 +5,7 @@
   width: 100vw;
   gap: 20px;
   background: #f2e7dc;
+  overflow-x: hidden;
 }
 
 .dashboard-content {
@@ -15,10 +16,15 @@
   margin: 0;
 }
 
+.name-logo {
+  width: 250px;
+}
+
 .side-dashboard {
-  width: 450px;
   background: #027373;
-  padding: 5px;
+  height: 100vh;
+  position: fixed;
+  padding: 20px;
   display: flex;
   justify-content: start;
   flex-direction: column;
@@ -43,7 +49,7 @@
 
 .name-side {
   font-size: 14px;
-  color: #F2E7DC;
+  color: #f2e7dc;
   font-weight: 600;
 }
 
@@ -56,18 +62,17 @@
   text-align: center;
   cursor: pointer;
   text-decoration: none;
-  color: #F2E7DC;
+  color: #f2e7dc;
 }
 
 .icon-side {
-  color: #03a65a;
+  color: #f2e7dc;
   font-size: small;
   padding: 5px;
 }
 
 .dashboard-cards {
   position: relative;
-  min-height: 100vh;
 }
 
 /* Overlay apenas do conteúdo */

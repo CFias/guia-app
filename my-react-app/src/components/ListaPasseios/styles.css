@@ -1,7 +1,7 @@
 /* ===== BASE ===== */
 .page-container {
   padding: 32px;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: "montserrat", sans-serif;
   color: #111827;
 }
 
@@ -15,12 +15,10 @@ h2 {
 .week-controls,
 .mode-toggle {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: start;
 }
 
-.week-controls button,
-.mode-toggle button {
+.btn-list {
   background: #027373;
   border: 1px solid #e5e7eb;
   color: rgb(240, 240, 240);
@@ -33,6 +31,58 @@ h2 {
   transition: 250ms;
 }
 
+.btn-remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #b91c1c;
+}
+
+.btn-remove:hover {
+  color: #7f1d1d;
+  transform: scale(1.1);
+}
+
+
+.passeio-name {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-list-cld {
+  background: #b91c1c;
+  border: 1px solid #e5e7eb;
+  color: rgb(240, 240, 240);
+  padding: 10px 16px;
+  margin: 5px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 250ms;
+}
+
+.passeio-pax {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  width: 7vw;
+}
+
+.guia-name-aloc {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
 .week-controls button:hover,
 .mode-toggle button:hover {
   background: #055555;
@@ -41,30 +91,34 @@ h2 {
 
 /* ===== CARD DO DIA ===== */
 .day-card {
-  background: #e1e1e1;
-  border-radius: 18px;
-  padding: 10px 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0;
   margin-bottom: 22px;
+  border: 1px solid #d1d5db;
+  overflow: hidden;
 }
 
 /* ===== CABEÇALHO DO DIA ===== */
 .day-card strong {
-  display: flex;
+  display: block;
   font-size: 12px;
   font-weight: 700;
-  padding:  10px 0;
-  color: rgb(56, 56, 56);
+  padding: 10px 14px;
+  background: #f3f4f6;
+  color: #374151;
+  border-bottom: 1px solid #d1d5db;
 }
 
 /* ===== LISTA DE PASSEIOS ===== */
 .passeio-item,
 .passeio-extra {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 2fr 0.8fr 1fr 2fr;
   align-items: center;
-  gap: 12px;
-  padding: 3px 0;
-  border-bottom: 1px solid #f1f5f9;
+  min-height: 36px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0;
 }
 
 .passeio-item:last-child,

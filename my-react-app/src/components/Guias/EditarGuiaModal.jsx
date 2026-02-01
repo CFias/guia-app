@@ -118,7 +118,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     />
                 </div>
 
-                <label>Idiomas</label>
+                <label className="name-title">Idiomas</label>
                 <div className="tag-selector">
                     {idiomasDisponiveis.map(idioma => (
                         <span
@@ -134,7 +134,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     ))}
                 </div>
 
-                <label>Passeios Aptos</label>
+                <label className="name-title">Passeios Aptos</label>
                 <div className="tag-selector">
                     {passeiosDisponiveis.map(p => (
                         <span
@@ -169,10 +169,10 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                 </div>
 
                 <div className="modal-actions">
-                    <button onClick={salvar} disabled={loading}>
+                    <button className="btn-save-edit" onClick={salvar} disabled={loading}>
                         {loading ? "Salvando..." : "Salvar"}
                     </button>
-                    <button className="secondary" onClick={onClose}>
+                    <button className="btn-cancel-edit" onClick={onClose}>
                         Cancelar
                     </button>
                 </div>

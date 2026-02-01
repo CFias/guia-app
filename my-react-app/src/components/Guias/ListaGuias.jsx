@@ -161,6 +161,7 @@ const ListaGuias = () => {
 
                                 <td>
                                     <button
+                                    className="btn-edit"
                                         onClick={() => setGuiaEditando(guia)}
                                     >
                                         Editar

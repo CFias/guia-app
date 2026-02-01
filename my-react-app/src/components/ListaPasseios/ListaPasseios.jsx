@@ -10,6 +10,7 @@ import {
   query,
   where,
   updateDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
@@ -59,6 +60,7 @@ const ListaPasseiosSemana = () => {
   const [resumoGuias, setResumoGuias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [paxEditando, setPaxEditando] = useState({});
+  const [novoServico, setNovoServico] = useState({});
   const paxTimers = useRef({});
 
   useEffect(() => {
@@ -81,7 +83,7 @@ const ListaPasseiosSemana = () => {
       for (const dia of semanaAtual) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snap = await getDocs(q);
         mapa[dia.date] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -89,6 +91,31 @@ const ListaPasseiosSemana = () => {
       setExtras(mapa);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const criarServicoManual = async (dia) => {
+    const dados = novoServico[dia.date];
+
+    if (!dados?.serviceName || !dados?.passengers) return;
+
+    try {
+      await addDoc(collection(db, "extras"), {
+        date: dia.date,
+        serviceName: dados.serviceName,
+        passengers: Number(dados.passengers),
+        guiaId: dados.guiaId || null,
+        guiaNome: guias.find((g) => g.id === dados.guiaId)?.nome || "",
+        createdAt: new Date(),
+      });
+
+      // limpa os campos depois de salvar
+      setNovoServico((prev) => ({
+        ...prev,
+        [dia.date]: {},
+      }));
+    } catch (err) {
+      console.error("Erro ao criar serviço:", err);
     }
   };
 
@@ -107,7 +134,7 @@ const ListaPasseiosSemana = () => {
       const novo = { ...prev };
       Object.keys(novo).forEach((date) => {
         novo[date] = novo[date].map((r) =>
-          r.id === registroId ? { ...r, hidden: !oculto } : r
+          r.id === registroId ? { ...r, hidden: !oculto } : r,
         );
       });
       return novo;
@@ -173,14 +200,31 @@ const ListaPasseiosSemana = () => {
     };
   });
 
+  useEffect(() => {
+    const q = query(collection(db, "extras"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const dados = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setExtras(dados);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const statusGrupo = (pax) => {
-    if (!pax) return null;
+    if (pax === null || pax === undefined) return null;
+
     return pax >= 8 ? (
       <span className="status ok">Grupo Formado</span>
     ) : (
       <span className="status alerta">Formar Grupo</span>
     );
   };
+
   const enviarWhatsappGuiasSemana_FIRESTORE = async () => {
     if (!semana.length) return;
 
@@ -193,7 +237,7 @@ const ListaPasseiosSemana = () => {
     const q = query(
       collection(db, "weekly_services"),
       where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana)
+      where("date", "<=", fimSemana),
     );
 
     const snap = await getDocs(q);
@@ -220,7 +264,7 @@ const ListaPasseiosSemana = () => {
       const dia = mapaSemana[r.date];
 
       mapaGuias[r.guiaId].datas.add(
-        `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
+        `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`,
       );
     });
 
@@ -241,93 +285,15 @@ Operacional - Luck Receptivo 🙌
       window.open(
         `https://wa.me/55${guia.whatsapp.replace(
           /\D/g,
-          ""
+          "",
         )}?text=${encodeURIComponent(texto)}`,
-        "_blank"
+        "_blank",
       );
     });
   };
 
-  //   const enviarWhatsappGuiasSemana = async () => {
-  //     if (!semana.length || !guias.length || !services.length) return;
-
-  //     const inicioSemana = semana[0].date;
-  //     const fimSemana = semana[semana.length - 1].date;
-
-  //     // mapa da semana visível
-  //     const mapaSemana = {};
-  //     semana.forEach((d) => (mapaSemana[d.date] = d));
-
-  //     // 🔥 fonte única da verdade
-  //     const q = query(
-  //       collection(db, "weekly_services"),
-  //       where("date", ">=", inicioSemana),
-  //       where("date", "<=", fimSemana)
-  //     );
-
-  //     const snap = await getDocs(q);
-
-  //     const mapaGuias = {};
-
-  //     snap.docs.forEach((docSnap) => {
-  //       const r = docSnap.data();
-
-  //       // 🔒 validações obrigatórias
-  //       if (!r.guiaId || !r.serviceId || !r.date || !mapaSemana[r.date]) return;
-
-  //       const servico = services.find((s) => s.id === r.serviceId);
-  //       if (!servico) return;
-
-  //       // ✅ MESMA REGRA DO ROBÔ
-  //       if (!servico.frequencia?.includes(r.day)) return;
-
-  //       const guia = guias.find((g) => g.id === r.guiaId);
-  //       if (!guia || !guia.whatsapp) return;
-
-  //       if (!mapaGuias[r.guiaId]) {
-  //         mapaGuias[r.guiaId] = {
-  //           nome: guia.nome,
-  //           whatsapp: guia.whatsapp,
-  //           datas: [],
-  //         };
-  //       }
-
-  //       mapaGuias[r.guiaId].datas.push(r.date);
-  //     });
-
-  //     Object.values(mapaGuias).forEach((guia) => {
-  //       if (!guia.datas.length) return;
-
-  //       // ✅ ordenação correta (YYYY-MM-DD)
-  //       const datasOrdenadas = [...new Set(guia.datas)].sort();
-
-  //       const listaDatas = datasOrdenadas
-  //         .map((date) => {
-  //           const dia = mapaSemana[date];
-  //           return `• ${dia.day} (${dia.label.split("—")[1].trim()})`;
-  //         })
-  //         .join("\n");
-
-  //       const texto = `
-  // Olá, ${guia.nome}! 👋
-
-  // Segue sua escala da semana:
-
-  // ${listaDatas}
-
-  // Qualquer ajuste, por favor nos avise.
-  // Operacional - Luck Receptivo 🙌
-  //     `.trim();
-
-  //       const telefone = guia.whatsapp.replace(/\D/g, "");
-  //       const mensagem = encodeURIComponent(texto);
-
-  //       window.open(`https://wa.me/55${telefone}?text=${mensagem}`, "_blank");
-  //     });
-  //   };
-
   /* ===== GUIA MANUAL ===== */
-  const alterarGuiaManual = async (registroId, guia) => {
+  const alterarGuiaManual = async (registroId, guia, dia) => {
     if (!registroId) return;
 
     setLoading(true);
@@ -337,10 +303,11 @@ Operacional - Luck Receptivo 🙌
         {
           guiaId: guia?.id || null,
           guiaNome: guia?.nome || null,
-          day: semana.find((d) => d.date === registro.date)?.day,
+          day: dia.day,
+          date: dia.date,
           manual: true,
         },
-        { merge: true }
+        { merge: true },
       );
 
       await carregarDados();
@@ -372,7 +339,7 @@ Operacional - Luck Receptivo 🙌
           {
             passengers: Number(pax),
           },
-          { merge: true }
+          { merge: true },
         );
 
         // sincroniza extras sem reload geral
@@ -380,7 +347,7 @@ Operacional - Luck Receptivo 🙌
           const novo = { ...prev };
           Object.keys(novo).forEach((date) => {
             novo[date] = novo[date].map((r) =>
-              r.id === registroId ? { ...r, passengers: Number(pax) } : r
+              r.id === registroId ? { ...r, passengers: Number(pax) } : r,
             );
           });
           return novo;
@@ -391,6 +358,42 @@ Operacional - Luck Receptivo 🙌
     }, 500); // 👈 ajuste aqui (300–700ms)
   };
 
+  const adicionarPasseioManual = async (dia) => {
+    const dados = novoServico[dia.date];
+
+    if (!dados?.nome) {
+      alert("Informe o nome do serviço");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "weekly_services"), {
+        serviceName: dados.nome,
+        passengers: Number(dados.pax || 0),
+        guiaId: dados.guiaId || null,
+        guiaNome: dados.guiaNome || null,
+        date: dia.date,
+        day: dia.day,
+        manual: true,
+        createdAt: new Date(),
+      });
+
+      // 🔄 limpa o formulário daquele dia
+      setNovoServico((prev) => ({
+        ...prev,
+        [dia.date]: {},
+      }));
+
+      // 🔄 recarrega para exibir na tabela
+      await carregarDados();
+    } catch (err) {
+      console.error("Erro ao adicionar passeio manual:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const gerarResumoGuiasSemana = async () => {
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
@@ -399,7 +402,7 @@ Operacional - Luck Receptivo 🙌
     const qServicos = query(
       collection(db, "weekly_services"),
       where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana)
+      where("date", "<=", fimSemana),
     );
     const snapServicos = await getDocs(qServicos);
 
@@ -412,7 +415,7 @@ Operacional - Luck Receptivo 🙌
       if (!Array.isArray(d.disponibilidade)) return;
 
       const diasSemana = d.disponibilidade.filter(
-        (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
+        (ds) => ds.date >= inicioSemana && ds.date <= fimSemana,
       );
 
       disponibilidadePorGuia[d.guideId] = diasSemana.length;
@@ -467,8 +470,8 @@ Operacional - Luck Receptivo 🙌
           (d) =>
             Array.isArray(d.disponibilidade) &&
             d.disponibilidade.some(
-              (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
-            )
+              (ds) => ds.date >= inicioSemana && ds.date <= fimSemana,
+            ),
         );
 
       for (const dia of semana) {
@@ -476,19 +479,19 @@ Operacional - Luck Receptivo 🙌
           disponibilidades.some(
             (d) =>
               d.guideId === g.id &&
-              d.disponibilidade.some((ds) => ds.date === dia.date)
-          )
+              d.disponibilidade.some((ds) => ds.date === dia.date),
+          ),
         );
 
         if (!guiasDisponiveis.length) continue;
 
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day)
+          (s.frequencia || []).includes(dia.day),
         );
 
         const qReg = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snapReg = await getDocs(qReg);
 
@@ -526,17 +529,17 @@ Operacional - Luck Receptivo 🙌
           if (r.guiaId || r.manual) continue;
 
           const elegiveis = guiasDisponiveis.filter(
-            (g) => !usadosNoDia.has(g.id)
+            (g) => !usadosNoDia.has(g.id),
           );
 
           if (!elegiveis.length) break;
 
           const menorCarga = Math.min(
-            ...elegiveis.map((g) => contadorSemana[g.id])
+            ...elegiveis.map((g) => contadorSemana[g.id]),
           );
 
           const candidatos = elegiveis.filter(
-            (g) => contadorSemana[g.id] === menorCarga
+            (g) => contadorSemana[g.id] === menorCarga,
           );
 
           const guiaSelecionado =
@@ -548,7 +551,7 @@ Operacional - Luck Receptivo 🙌
               guiaId: guiaSelecionado.id,
               guiaNome: guiaSelecionado.nome,
             },
-            { merge: true }
+            { merge: true },
           );
 
           usadosNoDia.add(guiaSelecionado.id);
@@ -569,7 +572,7 @@ Operacional - Luck Receptivo 🙌
       for (const dia of semana) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snap = await getDocs(q);
 
@@ -603,7 +606,7 @@ Operacional - Luck Receptivo 🙌
 
       <div className="week-controls">
         <button
-          className="btn-list1"
+          className="btn-list"
           onClick={() => setSemanaOffset((o) => o - 1)}
         >
           ⬅ Semana anterior
@@ -612,7 +615,7 @@ Operacional - Luck Receptivo 🙌
           Semana atual
         </button>
         <button
-          className="btn-list1"
+          className="btn-list"
           onClick={() => setSemanaOffset((o) => o + 1)}
         >
           Semana seguinte ➡
@@ -629,7 +632,7 @@ Operacional - Luck Receptivo 🙌
         <button className="btn-list" onClick={alocarGuiasSemana}>
           Alocar guias da semana
         </button>
-        <button className="btn-list" onClick={removerGuiasSemana}>
+        <button className="btn-list-cld" onClick={removerGuiasSemana}>
           Remover guias
         </button>
         {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
@@ -659,8 +662,8 @@ Operacional - Luck Receptivo 🙌
                         g.ocupacao >= 90
                           ? "red"
                           : g.ocupacao >= 70
-                          ? "#e65100"
-                          : "#2e7d32",
+                            ? "#e65100"
+                            : "#2e7d32",
                     }}
                   >
                     ({g.ocupacao}%)
@@ -670,52 +673,76 @@ Operacional - Luck Receptivo 🙌
           </ul>
         </div>
       )}
-    
 
       {semana.map((dia) => {
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day)
+          (s.frequencia || []).includes(dia.day),
         );
 
         const registrosDia = extras[dia.date] || [];
+
+        // 🔹 une fixos + manuais
+        const passeiosDoDia = [
+          ...passeiosFixos.map((p) => ({
+            id: p.id,
+            nome: p.nome,
+            serviceId: p.id,
+            manual: false,
+          })),
+          ...registrosDia
+            .filter((r) => r.manual)
+            .map((r) => ({
+              id: r.id,
+              nome: r.serviceName,
+              serviceId: null,
+              manual: true,
+            })),
+        ];
 
         return (
           <div key={dia.date} className="day-card">
             <strong className="day-list">{dia.label}</strong>
 
-            {passeiosFixos.map((p) => {
-              const registro = registrosDia.find((r) => r.serviceId === p.id);
+            {passeiosDoDia.map((p) => {
+              const registro = registrosDia.find(
+                (r) =>
+                  (p.manual && r.id === p.id) ||
+                  (!p.manual && r.serviceId === p.serviceId),
+              );
 
               return (
                 <div key={p.id} className="passeio-item">
-                  <span>{p.nome}</span>
+                  {/* NOME */}
+                  <span className="passeio-name">{p.nome}</span>
 
                   {modoVisualizacao ? (
                     <>
-                      <span>{registro?.passengers || 0} pax</span>
+                      <span className="passeio-pax">
+                        {registro?.passengers || 0} pax
+                      </span>
                       {statusGrupo(registro?.passengers)}
-                      <span>{registro?.guiaNome || "-"}</span>
+                      <span className="guia-name-aloc">
+                        {registro?.guiaNome || "-"}
+                      </span>
                     </>
                   ) : (
                     <>
+                      {/* PAX */}
                       <input
                         type="number"
                         min="0"
-                        value={
-                          paxEditando[registro?.id] ??
-                          registro?.passengers ??
-                          ""
-                        }
+                        value={registro?.passengers ?? ""}
                         onChange={(e) =>
                           alterarPaxManual(registro.id, e.target.value)
                         }
                       />
 
+                      {/* GUIA */}
                       <select
                         value={registro?.guiaId || ""}
                         onChange={(e) => {
                           const guia = guias.find(
-                            (g) => g.id === e.target.value
+                            (g) => g.id === e.target.value,
                           );
                           alterarGuiaManual(registro.id, guia || null);
                         }}
@@ -727,11 +754,86 @@ Operacional - Luck Receptivo 🙌
                           </option>
                         ))}
                       </select>
+
+                      {/* 🗑️ REMOVER (SÓ MANUAL) */}
+                      {registro?.manual && (
+                        <button
+                          className="btn-remove"
+                          onClick={() => removerPasseio(registro.id)}
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
               );
             })}
+
+            {/* ➕ ADICIONAR PASSEIO MANUAL */}
+            {!modoVisualizacao && (
+              <div className="passeio-item passeio-add">
+                <input
+                  type="text"
+                  placeholder="Nome do serviço"
+                  value={novoServico[dia.date]?.nome || ""}
+                  onChange={(e) =>
+                    setNovoServico((prev) => ({
+                      ...prev,
+                      [dia.date]: {
+                        ...prev[dia.date],
+                        nome: e.target.value,
+                      },
+                    }))
+                  }
+                />
+
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Pax"
+                  value={novoServico[dia.date]?.pax || ""}
+                  onChange={(e) =>
+                    setNovoServico((prev) => ({
+                      ...prev,
+                      [dia.date]: {
+                        ...prev[dia.date],
+                        pax: e.target.value,
+                      },
+                    }))
+                  }
+                />
+
+                <select
+                  value={novoServico[dia.date]?.guiaId || ""}
+                  onChange={(e) => {
+                    const guia = guias.find((g) => g.id === e.target.value);
+                    setNovoServico((prev) => ({
+                      ...prev,
+                      [dia.date]: {
+                        ...prev[dia.date],
+                        guiaId: guia?.id || null,
+                        guiaNome: guia?.nome || null,
+                      },
+                    }));
+                  }}
+                >
+                  <option value="">Selecione o guia</option>
+                  {guias.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nome}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  className="btn-add"
+                  onClick={() => adicionarPasseioManual(dia)}
+                >
+                  ➕
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
