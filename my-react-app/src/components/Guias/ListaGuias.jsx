@@ -3,6 +3,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
 import "./styles.css";
+import LoadingBlock from "../LoadingOverlay/LoadingOverlay.jsx";
 
 const ListaGuias = () => {
     const [guias, setGuias] = useState([]);
@@ -25,10 +26,16 @@ const ListaGuias = () => {
             setLoading(true);
 
             const snap = await getDocs(collection(db, "guides"));
-            const data = snap.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
+            const data = snap.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }))
+                .sort((a, b) =>
+                    (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+                        sensitivity: "base",
+                    })
+                );
 
             setGuias(data);
 
@@ -36,7 +43,6 @@ const ListaGuias = () => {
                 ...new Set(data.flatMap(g => g.idiomas || [])),
             ];
             setIdiomasFiltro(idiomasUnicos);
-
         } catch (error) {
             console.error(error);
         } finally {
@@ -71,6 +77,8 @@ const ListaGuias = () => {
     return (
         <div className="page-container">
             <h2>Lista de Guias</h2>
+
+
 
             {/* ===== FILTROS ===== */}
             <div className="filters-grid">
@@ -110,68 +118,76 @@ const ListaGuias = () => {
                     <option value="ativo">Ativos</option>
                     <option value="inativo">Inativos</option>
                 </select>
+                {/* ===== CONTADOR ===== */}
+                <p className="counter-info">
+                    Guias cadastrados: <strong>{guias.length}</strong>
+                </p>
             </div>
 
-            {/* ===== TABELA ===== */}
-            {loading ? (
-                <p>Carregando...</p>
-            ) : (
-                <table className="escala-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>WhatsApp</th>
-                            <th>Idiomas</th>
-                            <th>Motoguia</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
+            {/* ===== TABELA (LOADING LOCAL) ===== */}
+            <div className="table-wrapper">
+                <LoadingBlock
+                    loading={loading}
+                    height={220}
+                    text="Carregando guias..."
+                />
 
-                    <tbody>
-                        {guiasFiltrados.map(guia => (
-                            <tr key={guia.id}>
-                                <td>{guia.nome}</td>
-                                <td>{guia.whatsapp}</td>
-
-                                <td>
-                                    <div className="tags-inline">
-                                        {(guia.idiomas || []).map(idioma => (
-                                            <span
-                                                key={idioma}
-                                                className="language-tag"
-                                            >
-                                                {idioma}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </td>
-
-                                <td>{guia.motoguia ? "Sim" : "Não"}</td>
-
-                                <td>
-                                    <span
-                                        className={
-                                            guia.ativo ? "ativo" : "inativo"
-                                        }
-                                    >
-                                        {guia.ativo ? "Ativo" : "Inativo"}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <button
-                                    className="btn-edit"
-                                        onClick={() => setGuiaEditando(guia)}
-                                    >
-                                        Editar
-                                    </button>
-                                </td>
+                {!loading && (
+                    <table className="escala-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>WhatsApp</th>
+                                <th>Idiomas</th>
+                                <th>Motoguia</th>
+                                <th>Status</th>
+                                <th>Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+                        </thead>
+
+                        <tbody>
+                            {guiasFiltrados.map(guia => (
+                                <tr key={guia.id}>
+                                    <td className="guia-name">{guia.nome}</td>
+                                    <td>{guia.whatsapp}</td>
+
+                                    <td>
+                                        <div className="tags-inline">
+                                            {(guia.idiomas || []).map(idioma => (
+                                                <span
+                                                    key={idioma}
+                                                    className="language-tag"
+                                                >
+                                                    {idioma}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </td>
+
+                                    <td>{guia.motoguia ? "Sim" : "Não"}</td>
+
+                                    <td>
+                                        <span
+                                            className={guia.ativo ? "ativo" : "inativo"}
+                                        >
+                                            {guia.ativo ? "Ativo" : "Inativo"}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <button
+                                            className="btn-edit"
+                                            onClick={() => setGuiaEditando(guia)}
+                                        >
+                                            Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
 
             {/* ===== MODAL ===== */}
             {guiaEditando && (

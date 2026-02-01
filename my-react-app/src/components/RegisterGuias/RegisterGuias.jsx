@@ -62,6 +62,20 @@ const CadastroGuia = () => {
         setPasseiosSelecionados(passeiosSelecionados.filter(p => p.id !== id));
     };
 
+    const formatarTelefone = (valor) => {
+        // remove tudo que não for número
+        const numeros = valor.replace(/\D/g, "").slice(0, 11);
+
+        if (numeros.length <= 2) return numeros;
+        if (numeros.length <= 7)
+            return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+        if (numeros.length <= 11)
+            return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
+
+        return valor;
+    };
+
+
     // ===== SALVAR =====
     const salvarGuia = async (e) => {
         e.preventDefault();
@@ -116,9 +130,12 @@ const CadastroGuia = () => {
                 <input
                     type="text"
                     placeholder="WhatsApp"
-                    value={whatsapp}
+                    value={formatarTelefone(whatsapp)}
                     onChange={(e) => setWhatsapp(e.target.value)}
+                    maxLength={15}
                 />
+
+
 
                 {/* ===== IDIOMAS ===== */}
                 <label>Idiomas</label>

@@ -8,37 +8,87 @@
   overflow-x: hidden;
 }
 
+/* ===== CONTEÚDO PRINCIPAL ===== */
 .dashboard-content {
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-left: 70px;
+  transition: margin-left 0.3s ease;
+}
+
+.side-dashboard:hover~.dashboard-content {
+  margin-left: 260px;
+}
+
+/* ===== LOGO ===== */
+.logo-dashboard {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin: 0;
+  padding: 0;
+  transition: justify-content 0.3s ease;
+}
+
+.side-dashboard:hover .logo-dashboard {
+  justify-content: start;
 }
 
 .name-logo {
-  width: 250px;
+  width: 100px;
+  display: flex;
+  justify-content: start;
+  margin: 0;
+  padding: 0;
+  transition: width 0.3s ease;
 }
 
+.side-dashboard:hover .name-logo {
+  width: 200px;
+}
+
+/* ===== SIDEBAR ===== */
 .side-dashboard {
   background: #027373;
   height: 100vh;
   position: fixed;
-  padding: 20px;
+  padding: 20px 10px;
   display: flex;
   justify-content: start;
   flex-direction: column;
-  align-items: start;
+  align-items: center;
   gap: 10px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.147);
+
+  width: 70px;
+  transition: width 0.3s ease;
+  overflow: hidden;
 }
 
-.h1-dashboard {
-  font-size: 24px;
-  color: #333;
-  width: 100%;
+.side-dashboard:hover {
+  width: 260px;
+  align-items: start;
 }
 
+/* ===== TÍTULOS ===== */
+.name-side {
+  font-size: 14px;
+  color: #f2e7dc;
+  font-weight: 600;
+  white-space: nowrap;
+
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.side-dashboard:hover .name-side {
+  opacity: 1;
+}
+
+/* ===== INPUT (se usar depois) ===== */
 .search-input {
   padding: 10px;
   margin: 0;
@@ -47,35 +97,46 @@
   border: 1px solid #ccc;
 }
 
-.name-side {
-  font-size: 14px;
-  color: #f2e7dc;
-  font-weight: 600;
-}
-
+/* ===== LINKS ===== */
 .card {
   display: flex;
   align-items: center;
+  gap: 10px;
   font-size: 12px;
   width: 100%;
   border-radius: 8px;
-  text-align: center;
   cursor: pointer;
   text-decoration: none;
   color: #f2e7dc;
+  white-space: nowrap;
 }
 
+/* ÍCONE */
 .icon-side {
   color: #f2e7dc;
   font-size: small;
   padding: 5px;
+  min-width: 24px;
+  display: flex;
+  justify-content: center;
 }
 
+/* TEXTO DO MENU */
+.card .label {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.side-dashboard:hover .card .label {
+  opacity: 1;
+}
+
+/* ===== ÁREA DE CARDS ===== */
 .dashboard-cards {
   position: relative;
 }
 
-/* Overlay apenas do conteúdo */
+/* ===== LOADING OVERLAY ===== */
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -87,7 +148,7 @@
   justify-content: center;
 }
 
-/* Spinner */
+/* ===== SPINNER ===== */
 .spinner {
   width: 48px;
   height: 48px;

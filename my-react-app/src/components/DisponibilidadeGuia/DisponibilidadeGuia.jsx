@@ -341,7 +341,7 @@ const DisponibilidadeGuia = () => {
                     </div>
 
                     {dropdownGuiasOpen && (
-                        <div className="dropdown-list">
+                        <div className="dropdown-list-1">
                             <input
                                 className="search-input"
                                 placeholder="Buscar guia..."
@@ -396,7 +396,9 @@ const DisponibilidadeGuia = () => {
                         </div>
                     </>
                 )}
-
+                <button className="disp-btn-save" onClick={salvarDisponibilidade} disabled={loading}>
+                    {loading ? "Salvando..." : "Salvar Disponibilidade"}
+                </button>
 
                 <div className="selected-languages">
                     {selecionados.map(d => (
@@ -405,50 +407,50 @@ const DisponibilidadeGuia = () => {
                             <span onClick={() => removerDia(d.date)}>×</span>
                         </div>
                     ))}
+
                 </div>
 
-                <button className="disp-btn-save" onClick={salvarDisponibilidade} disabled={loading}>
-                    {loading ? "Salvando..." : "Salvar Disponibilidade"}
-                </button>
-            </div>
+
+                <div className="disp-bottom">
 
 
-            <div className="disp-bottom">
-                <input
-                    className="search-input"
-                    placeholder="Buscar por guia ou data"
-                    value={busca}
-                    onChange={e => setBusca(e.target.value)}
-                />
+                    <div className="disp-btn">
+                        <button className="btn-disp" onClick={() => setSemanaOffset(o => o - 1)}>◀ Semana anterior</button>
+                        <button className="btn-disp" onClick={() => setSemanaOffset(0)}>Semana atual</button>
+                        <button className="btn-disp" onClick={() => setSemanaOffset(o => o + 1)}>Próxima semana ▶</button>
+                        <p className="disp-semana-intervalo">
+                            {formatarIntervaloSemana(diasSemana)}
+                        </p>
+                    </div>
+                    <input
+                        className="search-input"
+                        placeholder="Buscar por guia ou data"
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                    />
+                    {/* ===== FILTRO POR DIAS DA SEMANA ===== */}
+                    <div className="filtro-dias">
+                        {diasSemana.map(d => (
+                            <div
+                                key={d.date}
+                                className={`dia-filtro-tag ${filtroDias.includes(d.date) ? "ativo" : ""
+                                    }`}
+                                onClick={() => toggleFiltroDia(d.date)}
+                            >
+                                {DIA_ABREV[d.day]}
+                                <span>{d.date.split("-").reverse().join("/")}</span>
+                            </div>
+                        ))}
+                    </div>
 
-                <h3>Guias disponíveis nesta semana</h3>
-                <div className="disp-btn">
-                    <button className="btn-disp" onClick={() => setSemanaOffset(o => o - 1)}>◀ Semana anterior</button>
-                    <button className="btn-disp" onClick={() => setSemanaOffset(0)}>Semana atual</button>
-                    <button className="btn-disp" onClick={() => setSemanaOffset(o => o + 1)}>Próxima semana ▶</button>
-                </div>
-                <p className="disp-semana-intervalo">
-                    {formatarIntervaloSemana(diasSemana)}
-                </p>
-
-                {/* ===== FILTRO POR DIAS DA SEMANA ===== */}
-                <div className="filtro-dias">
-                    {diasSemana.map(d => (
-                        <div
-                            key={d.date}
-                            className={`dia-filtro-tag ${filtroDias.includes(d.date) ? "ativo" : ""
-                                }`}
-                            onClick={() => toggleFiltroDia(d.date)}
-                        >
-                            {DIA_ABREV[d.day]}
-                            <span>{d.date.split("-").reverse().join("/")}</span>
-                        </div>
-                    ))}
                 </div>
 
             </div>
+
 
             <div className="tabela-disponibilidade">
+                <h3 className="disp-title-3">Guias disponíveis nesta semana</h3>
+
                 {/* CABEÇALHO */}
                 <div className="linha header">
                     <div className="col guia">Guia</div>

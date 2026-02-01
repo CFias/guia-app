@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
+import { ManageAccounts, ModeEdit, Send, SendOutlined, SendRounded, Undo, Visibility } from "@mui/icons-material";
 
 const DIAS = [
   "Segunda",
@@ -148,7 +149,7 @@ const ListaPasseiosSemana = () => {
         try {
           await updateDoc(doc(db, "weekly_services", registroId), payload);
           return;
-        } catch (err) {}
+        } catch (err) { }
       }
 
       await addDoc(collection(db, "weekly_services"), {
@@ -366,7 +367,7 @@ Operacional - Luck Receptivo 🙌
       return;
     }
 
-    setLoading(true); 
+    setLoading(true);
     try {
       await addDoc(collection(db, "weekly_services"), {
         serviceName: dados.nome,
@@ -528,11 +529,18 @@ Operacional - Luck Receptivo 🙌
         for (const r of registrosDia) {
           if (r.guiaId || r.manual) continue;
 
-          const elegiveis = guiasDisponiveis.filter(
-            (g) => !usadosNoDia.has(g.id),
-          );
+          const elegiveis = guiasDisponiveis.filter((g) => {
+            if (usadosNoDia.has(g.id)) return false;
 
-          if (!elegiveis.length) break;
+            // 🔥 guia precisa ser apto ao passeio
+            const passeiosAptos = Array.isArray(g.passeios) ? g.passeios : [];
+
+            return passeiosAptos.some(p => p.id === r.serviceId);
+          });
+
+
+          if (!elegiveis.length) continue;
+
 
           const menorCarga = Math.min(
             ...elegiveis.map((g) => contadorSemana[g.id]),
@@ -609,31 +617,31 @@ Operacional - Luck Receptivo 🙌
           className="btn-list"
           onClick={() => setSemanaOffset((o) => o - 1)}
         >
-          ⬅ Semana anterior
+          ⬅ SEMANA ANTERIOR
         </button>
         <button className="btn-list" onClick={() => setSemanaOffset(0)}>
-          Semana atual
+          SEMANA ATUAL
         </button>
         <button
           className="btn-list"
           onClick={() => setSemanaOffset((o) => o + 1)}
         >
-          Semana seguinte ➡
+          SEMANA SEGUINTE ➡
         </button>
       </div>
 
       <div className="mode-toggle">
         <button className="btn-list" onClick={() => setModoVisualizacao(true)}>
-          Visualizar
+          VISUALIZAR <Visibility fontSize="10" />
         </button>
-        <button className="btn-list" onClick={() => setModoVisualizacao(false)}>
-          Editar
+        <button className="btn-list-edt" onClick={() => setModoVisualizacao(false)}>
+          EDITAR <ModeEdit fontSize="10" />
         </button>
         <button className="btn-list" onClick={alocarGuiasSemana}>
-          Alocar guias da semana
+          GERAR ESCALA DE GUIA <ManageAccounts fontSize="10" />
         </button>
         <button className="btn-list-cld" onClick={removerGuiasSemana}>
-          Remover guias
+          DESFAZER ESCALA DE GUIA <Undo fontSize="10" />
         </button>
         {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
           Enviar escala por WhatsApp
@@ -642,7 +650,7 @@ Operacional - Luck Receptivo 🙌
           className="btn-list"
           onClick={() => enviarWhatsappGuiasSemana_FIRESTORE()}
         >
-          Enviar WhatsApp
+          ENVIAR BLOQUEIOS <SendRounded fontSize="10" />
         </button>
       </div>
       {resumoGuias.length > 0 && (
@@ -676,7 +684,7 @@ Operacional - Luck Receptivo 🙌
 
       {semana.map((dia) => {
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day),
+          (s.frequencia || []).includes(dia.day)
         );
 
         const registrosDia = extras[dia.date] || [];
@@ -699,9 +707,39 @@ Operacional - Luck Receptivo 🙌
             })),
         ];
 
+        // 🔹 STATUS DO DIA
+        const totalPasseios = passeiosDoDia.length;
+
+        const passeiosComGuia = passeiosDoDia.filter((p) => {
+          const registro = registrosDia.find(
+            (r) =>
+              (p.manual && r.id === p.id) ||
+              (!p.manual && r.serviceId === p.serviceId)
+          );
+
+          return !!registro?.guiaId;
+        }).length;
+
+        let statusDia = "vazio";
+
+        if (passeiosComGuia === 0) {
+          statusDia = "vazio";
+        } else if (passeiosComGuia < totalPasseios) {
+          statusDia = "parcial";
+        } else {
+          statusDia = "completo";
+        }
+
+
         return (
           <div key={dia.date} className="day-card">
-            <strong className="day-list">{dia.label}</strong>
+            <strong className={`day-list ${statusDia}`}>
+              {dia.label}
+              <span className="day-status">
+                {passeiosComGuia}/{totalPasseios}
+              </span>
+            </strong>
+
 
             {passeiosDoDia.map((p) => {
               const registro = registrosDia.find(
@@ -744,7 +782,8 @@ Operacional - Luck Receptivo 🙌
                           const guia = guias.find(
                             (g) => g.id === e.target.value,
                           );
-                          alterarGuiaManual(registro.id, guia || null);
+                          alterarGuiaManual(registro.id, guia || null, dia);
+
                         }}
                       >
                         <option value="">Sem guia</option>

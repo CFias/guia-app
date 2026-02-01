@@ -1,45 +1,163 @@
+/* ===== CONTAINER ===== */
+.form-container {
+    width: 40vw;
+    margin: 40px auto;
+    padding: 24px;
+    height: 100vh;
+    font-family: "Montserrat", sans-serif;
+    overflow-x: hidden;
+}
+
+.form-container h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #575757;
+    margin-bottom: 20px;
+}
+
+/* ===== FORM CARD ===== */
+.form-container form {
+    background: #ffffff;
+    padding: 28px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* ===== INPUTS ===== */
+.form-container input,
+.form-container textarea {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    background: #fafafa;
+}
+
+.form-container textarea {
+    resize: none;
+    min-height: 90px;
+}
+
+.form-container input:focus,
+.form-container textarea:focus {
+    outline: none;
+    border-color: #027373;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(2, 115, 115, 0.15);
+}
+
+/* ===== LABEL ===== */
+.form-container label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* ===== DROPDOWN ===== */
 .dropdown {
     position: relative;
-    margin-bottom: 10px;
 }
 
 .dropdown-header {
-    border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 6px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #fafafa;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
-    background: #fff;
+    align-items: center;
+}
+
+.dropdown-header:hover {
+    background: #f3f4f6;
 }
 
 .dropdown-list {
     position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
     width: 100%;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    margin-top: 4px;
-    max-height: 200px;
-    overflow-y: auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     z-index: 10;
+    overflow: hidden;
 }
 
 .dropdown-item {
-    padding: 8px 10px;
+    padding: 12px 16px;
+    font-size: 14px;
     cursor: pointer;
 }
 
 .dropdown-item:hover {
-    background: #f1f5f9;
+    background: #f3f4f6;
+}
+
+/* ===== TAGS (DIAS SELECIONADOS) ===== */
+.selected-languages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .language-tag {
-    background: #16a34a;
-    color: white;
+    background: #e0f2f1;
+    color: #027373;
+    font-size: 12px;
+    font-weight: 600;
     padding: 6px 10px;
-    border-radius: 20px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+.language-tag span {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.language-tag span:hover {
+    color: #b91c1c;
+}
+
+/* ===== BOTÃO ===== */
+.form-container button {
+    align-self: flex-start;
+    background: #027373;
+    color: #ffffff;
+    padding: 14px 22px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.form-container button:hover {
+    background: #055555;
+}
+
+.form-container button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 640px) {
+    .form-container {
+        padding: 16px;
+    }
+
+    .form-container form {
+        padding: 20px;
+    }
 }
