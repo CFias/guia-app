@@ -14,7 +14,15 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
-import { ManageAccounts, ModeEdit, Send, SendOutlined, SendRounded, Undo, Visibility } from "@mui/icons-material";
+import {
+  ManageAccounts,
+  ModeEdit,
+  Send,
+  SendOutlined,
+  SendRounded,
+  Undo,
+  Visibility,
+} from "@mui/icons-material";
 
 const DIAS = [
   "Segunda",
@@ -149,7 +157,7 @@ const ListaPasseiosSemana = () => {
         try {
           await updateDoc(doc(db, "weekly_services", registroId), payload);
           return;
-        } catch (err) { }
+        } catch (err) {}
       }
 
       await addDoc(collection(db, "weekly_services"), {
@@ -535,12 +543,10 @@ Operacional - Luck Receptivo 🙌
             // 🔥 guia precisa ser apto ao passeio
             const passeiosAptos = Array.isArray(g.passeios) ? g.passeios : [];
 
-            return passeiosAptos.some(p => p.id === r.serviceId);
+            return passeiosAptos.some((p) => p.id === r.serviceId);
           });
 
-
           if (!elegiveis.length) continue;
-
 
           const menorCarga = Math.min(
             ...elegiveis.map((g) => contadorSemana[g.id]),
@@ -611,48 +617,55 @@ Operacional - Luck Receptivo 🙌
       )}
 
       <h2>Planejamento Semanal de Passeios</h2>
-
-      <div className="week-controls">
-        <button
-          className="btn-list"
-          onClick={() => setSemanaOffset((o) => o - 1)}
-        >
-          ⬅ SEMANA ANTERIOR
-        </button>
-        <button className="btn-list" onClick={() => setSemanaOffset(0)}>
-          SEMANA ATUAL
-        </button>
-        <button
-          className="btn-list"
-          onClick={() => setSemanaOffset((o) => o + 1)}
-        >
-          SEMANA SEGUINTE ➡
-        </button>
-      </div>
-
-      <div className="mode-toggle">
-        <button className="btn-list" onClick={() => setModoVisualizacao(true)}>
-          VISUALIZAR <Visibility fontSize="10" />
-        </button>
-        <button className="btn-list-edt" onClick={() => setModoVisualizacao(false)}>
-          EDITAR <ModeEdit fontSize="10" />
-        </button>
-        <button className="btn-list" onClick={alocarGuiasSemana}>
-          GERAR ESCALA DE GUIA <ManageAccounts fontSize="10" />
-        </button>
-        <button className="btn-list-cld" onClick={removerGuiasSemana}>
-          DESFAZER ESCALA DE GUIA <Undo fontSize="10" />
-        </button>
-        {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
+      <div className="header-tours">
+        <div className="week-controls">
+          <button
+            className="btn-list"
+            onClick={() => setSemanaOffset((o) => o - 1)}
+          >
+            ⬅ SEMANA ANTERIOR
+          </button>
+          <button className="btn-list" onClick={() => setSemanaOffset(0)}>
+            SEMANA ATUAL
+          </button>
+          <button
+            className="btn-list"
+            onClick={() => setSemanaOffset((o) => o + 1)}
+          >
+            SEMANA SEGUINTE ➡
+          </button>
+        </div>
+        <div className="mode-toggle">
+          <button
+            className="btn-list"
+            onClick={() => setModoVisualizacao(true)}
+          >
+            VISUALIZAR <Visibility fontSize="10" />
+          </button>
+          <button
+            className="btn-list-edt"
+            onClick={() => setModoVisualizacao(false)}
+          >
+            EDITAR <ModeEdit fontSize="10" />
+          </button>
+          <button className="btn-list" onClick={alocarGuiasSemana}>
+            GERAR ESCALA DE GUIAS <ManageAccounts fontSize="10" />
+          </button>
+          <button className="btn-list-cld" onClick={removerGuiasSemana}>
+            DESFAZER ESCALA DE GUIAS <Undo fontSize="10" />
+          </button>
+          {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
           Enviar escala por WhatsApp
-        </button> */}
-        <button
-          className="btn-list"
-          onClick={() => enviarWhatsappGuiasSemana_FIRESTORE()}
-        >
-          ENVIAR BLOQUEIOS <SendRounded fontSize="10" />
-        </button>
+          </button> */}
+          <button
+            className="btn-list"
+            onClick={() => enviarWhatsappGuiasSemana_FIRESTORE()}
+          >
+            ENVIAR BLOQUEIOS <SendRounded fontSize="10" />
+          </button>
+        </div>
       </div>
+
       {resumoGuias.length > 0 && (
         <div className="resumo-guias">
           <h3>Resumo da Alocação</h3>
@@ -684,7 +697,7 @@ Operacional - Luck Receptivo 🙌
 
       {semana.map((dia) => {
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day)
+          (s.frequencia || []).includes(dia.day),
         );
 
         const registrosDia = extras[dia.date] || [];
@@ -714,7 +727,7 @@ Operacional - Luck Receptivo 🙌
           const registro = registrosDia.find(
             (r) =>
               (p.manual && r.id === p.id) ||
-              (!p.manual && r.serviceId === p.serviceId)
+              (!p.manual && r.serviceId === p.serviceId),
           );
 
           return !!registro?.guiaId;
@@ -730,7 +743,6 @@ Operacional - Luck Receptivo 🙌
           statusDia = "completo";
         }
 
-
         return (
           <div key={dia.date} className="day-card">
             <strong className={`day-list ${statusDia}`}>
@@ -739,7 +751,6 @@ Operacional - Luck Receptivo 🙌
                 {passeiosComGuia}/{totalPasseios}
               </span>
             </strong>
-
 
             {passeiosDoDia.map((p) => {
               const registro = registrosDia.find(
@@ -783,7 +794,6 @@ Operacional - Luck Receptivo 🙌
                             (g) => g.id === e.target.value,
                           );
                           alterarGuiaManual(registro.id, guia || null, dia);
-
                         }}
                       >
                         <option value="">Sem guia</option>

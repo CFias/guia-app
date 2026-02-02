@@ -1,9 +1,5 @@
-/* ===== LAYOUT ===== */
-
 .page-container {
-  padding: 40px;
   box-sizing: border-box;
-  height: 100vh;
 }
 
 h2 {
@@ -17,7 +13,9 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  margin-bottom: 20px;
+  background: #f8f8f8;
+  padding: 10px;
+  border-radius: 7px;
 }
 
 .filters-grid input,

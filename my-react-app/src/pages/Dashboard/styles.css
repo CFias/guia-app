@@ -2,10 +2,7 @@
   font-family: "montserrat", sans-serif;
   margin: 0;
   display: flex;
-  width: 100vw;
-  gap: 20px;
   background: #f2e7dc;
-  overflow-x: hidden;
 }
 
 /* ===== CONTEÚDO PRINCIPAL ===== */
@@ -14,40 +11,32 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-left: 70px;
   transition: margin-left 0.3s ease;
-}
-
-.side-dashboard:hover~.dashboard-content {
-  margin-left: 260px;
 }
 
 /* ===== LOGO ===== */
 .logo-dashboard {
   width: 100%;
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin: 0;
-  padding: 0;
-  transition: justify-content 0.3s ease;
+  justify-content: flex-end; /* ancora na direita */
+  padding-right: 12px;
+  overflow: hidden;
 }
 
-.side-dashboard:hover .logo-dashboard {
-  justify-content: start;
-}
+.logo-dashboard img {
+  width: 90px; /* sidebar fechada */
+  height: auto;
 
-.name-logo {
-  width: 100px;
-  display: flex;
-  justify-content: start;
-  margin: 0;
-  padding: 0;
+  object-fit: cover;
+  flex-shrink: 0;
+
   transition: width 0.3s ease;
+  transform-origin: left; /* 🔥 cresce para ESQUERDA */
 }
 
-.side-dashboard:hover .name-logo {
-  width: 200px;
+.side-dashboard:hover .logo-dashboard img {
+  width: 320px;
 }
 
 /* ===== SIDEBAR ===== */
@@ -55,11 +44,11 @@
   background: #027373;
   height: 100vh;
   position: fixed;
-  padding: 20px 10px;
+  padding: 10px;
   display: flex;
   justify-content: start;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.147);
 

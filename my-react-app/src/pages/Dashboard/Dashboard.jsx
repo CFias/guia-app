@@ -7,9 +7,8 @@ import PlaylistAddCheckCircleRoundedIcon from "@mui/icons-material/PlaylistAddCh
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import TourIcon from "@mui/icons-material/Tour";
 import StyleIcon from "@mui/icons-material/Style";
-import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 
-import logo from "../../assets/logoop.png";
+import logo from "../../assets/logo1.png";
 
 const Dashboard = ({ loading }) => {
   return (
@@ -17,11 +16,10 @@ const Dashboard = ({ loading }) => {
       {/* ===== SIDEBAR ===== */}
       <aside className="side-dashboard">
         <NavLink to="/" className="logo-dashboard">
-          <img className="name-logo" src={logo} alt="Logo" />
+          <img src={logo} alt="Ferramenta Operacional SSA" />
         </NavLink>
 
         <h4 className="name-side">Serviços e Guias</h4>
-
         <NavLink to="guias" className="card">
           <AccountCircleIcon fontSize="small" className="icon-side" />
           <span className="label">Lista de Guias</span>
