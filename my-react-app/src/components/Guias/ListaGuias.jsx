@@ -76,7 +76,7 @@ const ListaGuias = () => {
 
     return (
         <div className="page-container">
-            <h2>Lista de Guias</h2>
+            <h2 className="page-h2">Lista de Guias</h2>
 
 
 

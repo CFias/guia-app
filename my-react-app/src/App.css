@@ -1,4 +1,15 @@
+:root {
+  /* Neutros */
+  --color-background: #f2e7dc;
+  --color-text-primary: #0d0d0d;
+
+  /* Tons de apoio */
+  --color-primary-light: #a9d9d0;
+  --color-primary: #038c7f;
+  --color-primary-dark: #027373;
+}
+
 * {
-    margin: 0;
-    padding: 0;
+  margin: 0;
+  padding: 0;
 }

@@ -8,7 +8,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import TourIcon from "@mui/icons-material/Tour";
 import StyleIcon from "@mui/icons-material/Style";
 
-import logo from "../../assets/logo1.png";
+import logo from "../../assets/logo4.png";
 
 const Dashboard = ({ loading }) => {
   return (

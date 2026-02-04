@@ -2,7 +2,8 @@
   font-family: "montserrat", sans-serif;
   margin: 0;
   display: flex;
-  background: #f2e7dc;
+  background: var(--color-background);
+  min-height: 100vh;
 }
 
 /* ===== CONTEÚDO PRINCIPAL ===== */
@@ -36,7 +37,8 @@
 }
 
 .side-dashboard:hover .logo-dashboard img {
-  width: 320px;
+  width: 220px;
+  margin-right: 48px;
 }
 
 /* ===== SIDEBAR ===== */

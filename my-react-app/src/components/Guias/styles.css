@@ -1,35 +1,38 @@
 .page-container {
   box-sizing: border-box;
+  font-family: "montserrat", sans-serif;
 }
 
-h2 {
+.page-h2 {
   margin-bottom: 20px;
-  color: #1f2937;
+  font-weight: 500;
+  color: var(--color-text-primary);
 }
-
-/* ===== FILTROS ===== */
 
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   background: #f8f8f8;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   padding: 10px;
   border-radius: 7px;
 }
 
 .filters-grid input,
 .filters-grid select {
-  padding: 10px;
+  padding: 7px;
   border-radius: 6px;
+  font-size: 12px;
   border: 1px solid #d1d5db;
+  font-family: "montserrat", sans-serif;
 }
 
 .counter-info {
   font-size: 12px;
-  color: #ececec;
-  background: #027373;
-  padding: 5px;
+  color: var(--color-primary-light);
+  border: 1px solid var(--color-primary-dark);
+  background: var(--color-primary);
   width: auto;
   text-align: center;
   display: flex;
@@ -39,13 +42,12 @@ h2 {
   font-family: "montserrat", sans-serif;
 }
 
-
 /* ===== TABELA ===== */
 
 .escala-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: #f8f8f8;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
@@ -54,7 +56,8 @@ h2 {
 .escala-table th {
   background: #f1f3f9;
   padding: 14px;
-  font-size: 13px;
+  font-size: 10px;
+  font-family: "montserrat", sans-serif;
   text-transform: uppercase;
 }
 
@@ -65,31 +68,42 @@ h2 {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 10px;
+  font-family: "montserrat", sans-serif;
 }
 
 .escala-table td {
-  padding: 12px;
+  padding: 15px;
   border-bottom: 1px solid #eef0f5;
-  font-size: 12px;
+  font-size: 10px;
   color: #374151;
   font-weight: 600;
 }
 
 .escala-table tr:hover {
-  background: #f9fafb;
+  background: #f0f0f0;
 }
 
 /* ===== STATUS ===== */
 
 .ativo {
-  color: #16a34a;
+  color: var(--color-primary-dark);
   font-weight: 600;
+  font-size: 10px;
+  padding: 5px;
+  border-radius: 6px;
+  background: var(--color-primary-light);
+  font-family: "montserrat", sans-serif;
 }
 
 .inativo {
   color: #dc2626;
+  background: rgb(248, 201, 201);
   font-weight: 600;
+  font-size: 10px;
+  padding: 5px;
+  border-radius: 6px;
+  font-family: "montserrat", sans-serif;
 }
 
 /* ===== TAGS INLINE (LISTA) ===== */
@@ -102,10 +116,11 @@ h2 {
 
 .language-tag {
   background: #eef2ff;
-  color: #4338ca;
+  color: #6e65cc;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 10px;
+  font-family: "montserrat", sans-serif;
 }
 
 /* ===== BOTÕES ===== */
@@ -224,7 +239,7 @@ button.secondary {
 
 .btn-cancel-edit {
   padding: 8px 14px;
-  background: #F2E7DC;
+  background: #f2e7dc;
   color: #027373;
   border: none;
   border-radius: 6px;

@@ -1,4 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+
+:root {
+  /* Neutros */
+  --color-background: #f2e7dc;
+  --color-text-primary: #0d0d0d;
+
+  /* Tons de apoio */
+  --color-primary-light: #a9d9d0;
+  --color-primary: #038c7f;
+  --color-primary-dark: #027373;
+}
 
 body {
   margin: 0;

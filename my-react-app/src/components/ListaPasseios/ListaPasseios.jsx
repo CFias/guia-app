@@ -623,16 +623,16 @@ Operacional - Luck Receptivo 🙌
             className="btn-list"
             onClick={() => setSemanaOffset((o) => o - 1)}
           >
-            ⬅ SEMANA ANTERIOR
+            ⬅ Semana anterior
           </button>
           <button className="btn-list" onClick={() => setSemanaOffset(0)}>
-            SEMANA ATUAL
+            Semana atual
           </button>
           <button
             className="btn-list"
             onClick={() => setSemanaOffset((o) => o + 1)}
           >
-            SEMANA SEGUINTE ➡
+            Semana seguinte ➡
           </button>
         </div>
         <div className="mode-toggle">
@@ -640,19 +640,19 @@ Operacional - Luck Receptivo 🙌
             className="btn-list"
             onClick={() => setModoVisualizacao(true)}
           >
-            VISUALIZAR <Visibility fontSize="10" />
+            Visualizar <Visibility fontSize="10" />
           </button>
           <button
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
           >
-            EDITAR <ModeEdit fontSize="10" />
+            Editar <ModeEdit fontSize="10" />
           </button>
           <button className="btn-list" onClick={alocarGuiasSemana}>
-            GERAR ESCALA DE GUIAS <ManageAccounts fontSize="10" />
+            Gerar escala de Guias <ManageAccounts fontSize="10" />
           </button>
           <button className="btn-list-cld" onClick={removerGuiasSemana}>
-            DESFAZER ESCALA DE GUIAS <Undo fontSize="10" />
+            Desfazer escala de Guias <Undo fontSize="10" />
           </button>
           {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
           Enviar escala por WhatsApp
@@ -661,14 +661,14 @@ Operacional - Luck Receptivo 🙌
             className="btn-list"
             onClick={() => enviarWhatsappGuiasSemana_FIRESTORE()}
           >
-            ENVIAR BLOQUEIOS <SendRounded fontSize="10" />
+            Enviar bloqueios <SendRounded fontSize="10" />
           </button>
         </div>
       </div>
 
       {resumoGuias.length > 0 && (
         <div className="resumo-guias">
-          <h3>Resumo da Alocação</h3>
+          <h3 className="resumo-h3">Resumo da Alocação</h3>
 
           <ul>
             {resumoGuias
