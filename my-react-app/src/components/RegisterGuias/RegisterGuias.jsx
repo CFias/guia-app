@@ -139,7 +139,7 @@ const CadastroGuia = () => {
 
                 {/* ===== IDIOMAS ===== */}
                 <label>Idiomas</label>
-                <div className="dropdown">
+                <div className="dropdown-cad">
                     <div
                         className="dropdown-header"
                         onClick={() => setDropdownIdiomasOpen(!dropdownIdiomasOpen)}
@@ -173,7 +173,7 @@ const CadastroGuia = () => {
 
                 {/* ===== PASSEIOS ===== */}
                 <label>Passeios Aptos</label>
-                <div className="dropdown">
+                <div className="dropdown-cad">
                     <div
                         className="dropdown-header"
                         onClick={() => setDropdownPasseiosOpen(!dropdownPasseiosOpen)}

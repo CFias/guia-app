@@ -82,7 +82,7 @@ const CadastroPasseio = () => {
 
                 <label>Frequência do Passeio</label>
 
-                <div className="dropdown">
+                <div className="dropdown-cad">
                     <div
                         className="dropdown-header"
                         onClick={() => setDropdownOpen(!dropdownOpen)}

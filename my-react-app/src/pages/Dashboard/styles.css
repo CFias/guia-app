@@ -20,25 +20,29 @@
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* ancora na direita */
+  justify-content: flex-end;
+  /* ancora na direita */
   padding-right: 12px;
   overflow: hidden;
 }
 
 .logo-dashboard img {
-  width: 90px; /* sidebar fechada */
+  width: 90px;
+  /* sidebar fechada */
   height: auto;
+  opacity: 0.7;
 
   object-fit: cover;
   flex-shrink: 0;
 
   transition: width 0.3s ease;
-  transform-origin: left; /* 🔥 cresce para ESQUERDA */
+  transform-origin: left;
+  /* 🔥 cresce para ESQUERDA */
 }
 
 .side-dashboard:hover .logo-dashboard img {
-  width: 220px;
-  margin-right: 48px;
+  width: 270px;
+  opacity: 0.7;
 }
 
 /* ===== SIDEBAR ===== */

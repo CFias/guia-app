@@ -13,6 +13,7 @@ import logo from "../../assets/logo4.png";
 const Dashboard = ({ loading }) => {
   return (
     <div className="dashboard-container">
+      
       {/* ===== SIDEBAR ===== */}
       <aside className="side-dashboard">
         <NavLink to="/" className="logo-dashboard">

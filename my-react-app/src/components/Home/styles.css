@@ -1,0 +1,12 @@
+.home-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.home-logo {
+    width: 550px;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}

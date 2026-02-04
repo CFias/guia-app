@@ -189,9 +189,9 @@ const DisponibilidadeGuia = () => {
         prev.map((g) =>
           g.guiaId === guiaId
             ? {
-                ...g,
-                dias: g.dias.filter((d) => d.date !== date),
-              }
+              ...g,
+              dias: g.dias.filter((d) => d.date !== date),
+            }
             : g,
         ),
       );
@@ -272,14 +272,14 @@ const DisponibilidadeGuia = () => {
           return prev.map((g) =>
             g.guiaId === guiaSelecionado.id
               ? {
-                  ...g,
-                  dias: [
-                    ...g.dias,
-                    ...novasDatas.filter(
-                      (d) => !g.dias.some((x) => x.date === d.date),
-                    ),
-                  ],
-                }
+                ...g,
+                dias: [
+                  ...g.dias,
+                  ...novasDatas.filter(
+                    (d) => !g.dias.some((x) => x.date === d.date),
+                  ),
+                ],
+              }
               : g,
           );
         }
@@ -325,42 +325,27 @@ const DisponibilidadeGuia = () => {
       <h2 className="disp-h2">Disponibilidade da Semana</h2>
       <div className="disp-content">
         {/* ===== FORMULÁRIO ===== */}
-        <label>Guia</label>
+        <label>Guia<span className="dropdown-car">*</span></label>
         <div className="dropdown">
-          <div
-            className="dropdown-header"
-            onClick={() => setDropdownGuiasOpen(!dropdownGuiasOpen)}
+          <select
+            className="select-guia"
+            value={guiaSelecionado ? guiaSelecionado.id : ""}
+            onChange={(e) => {
+              const guia = guias.find((g) => g.id === e.target.value);
+              selecionarGuia(guia);
+            }}
           >
-            {guiaSelecionado ? guiaSelecionado.nome : "Selecionar guia"}
-            <span>▾</span>
-          </div>
-          {dropdownGuiasOpen && (
-            <div className="dropdown-list-1">
-              <input
-                className="search-input"
-                placeholder="Buscar guia..."
-                value={buscaGuia}
-                onChange={(e) => setBuscaGuia(e.target.value)}
-              />
-              {guiasFiltrados.map((g) => (
-                <div
-                  key={g.id}
-                  className="dropdown-item"
-                  onClick={() => selecionarGuia(g)}
-                >
-                  {g.nome}
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            className="disp-btn-save"
-            onClick={salvarDisponibilidade}
-            disabled={loading}
-          >
-            {loading ? "Salvando..." : "Salvar Disponibilidade"}
-          </button>
+            <option value="">Selecionar guia</option>
+
+            {guias.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.nome}
+              </option>
+            ))}
+          </select>
+
         </div>
+
 
         {guiaSelecionado && (
           <>
@@ -411,6 +396,13 @@ const DisponibilidadeGuia = () => {
           ))}
         </div>
 
+        <button
+          className="disp-btn-save"
+          onClick={salvarDisponibilidade}
+          disabled={loading || !guiaSelecionado}
+        >
+          {loading ? "Salvando..." : "Salvar Disponibilidade"}
+        </button>
         <div className="disp-bottom">
           <div className="disp-btn">
             <button
@@ -451,9 +443,8 @@ const DisponibilidadeGuia = () => {
           {diasSemana.map((d) => (
             <div
               key={d.date}
-              className={`dia-filtro-tag ${
-                filtroDias.includes(d.date) ? "ativo" : ""
-              }`}
+              className={`dia-filtro-tag ${filtroDias.includes(d.date) ? "ativo" : ""
+                }`}
               onClick={() => toggleFiltroDia(d.date)}
             >
               {DIA_ABREV[d.day]}
