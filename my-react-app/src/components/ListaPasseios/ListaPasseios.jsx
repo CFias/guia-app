@@ -286,7 +286,6 @@ const ListaPasseiosSemana = () => {
     snap.docs.forEach((docSnap) => {
       const r = docSnap.data();
 
-      // ✅ só precisa guiaId e date
       if (!r.guiaId || !r.date) return;
       if (!mapaSemana[r.date]) return;
 
@@ -308,28 +307,31 @@ const ListaPasseiosSemana = () => {
       );
     });
 
-    Object.values(mapaGuias).forEach((guia) => {
-      if (!guia.datas.size) return;
+    const listaGuias = Object.values(mapaGuias).filter((g) => g.datas.size);
 
+    listaGuias.forEach((guia, index) => {
       const texto = `
-Olá, ${guia.nome}! 👋
+Olá, ${guia.nome}! 🍀
 
 Segue sua escala da semana:
 
 ${Array.from(guia.datas).join("\n")}
 
 Qualquer ajuste, por favor nos avise.
-Operacional - Luck Receptivo 🙌
+Operacional - Luck Receptivo 🍀
 `.trim();
 
-      window.open(
-        `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
-          texto
-        )}`,
-        "_blank"
-      );
+      setTimeout(() => {
+        window.open(
+          `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
+            texto
+          )}`,
+          "_blank"
+        );
+      }, index * 2000); // ⏱️ 2 segundos entre cada guia
     });
   };
+
 
 
   /* ===== GUIA MANUAL ===== */
@@ -345,9 +347,9 @@ Operacional - Luck Receptivo 🙌
           guiaNome: guia?.nome || null,
           day: dia.day,
           date: dia.date,
-          manual: true,
+          manual: false, // ✅ FIXO NÃO É MANUAL
         },
-        { merge: true },
+        { merge: true }
       );
 
       await carregarDados();
@@ -355,6 +357,7 @@ Operacional - Luck Receptivo 🙌
       setLoading(false);
     }
   };
+
 
   /* ===== PAX MANUAL ===== */
   const alterarPaxManual = (registroId, pax) => {
