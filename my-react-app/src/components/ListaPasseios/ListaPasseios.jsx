@@ -70,7 +70,9 @@ const ListaPasseiosSemana = () => {
   const [loading, setLoading] = useState(false);
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
+  const [resumoAberto, setResumoAberto] = useState(false);
   const paxTimers = useRef({});
+
 
   useEffect(() => {
     carregarDados();
@@ -102,6 +104,33 @@ const ListaPasseiosSemana = () => {
       setLoading(false);
     }
   };
+
+  const alterarStatusAlocacao = async (registroId, status) => {
+    if (!registroId) return;
+
+    try {
+      await setDoc(
+        doc(db, "weekly_services", registroId),
+        {
+          allocationStatus: status,
+        },
+        { merge: true }
+      );
+
+      setExtras((prev) => {
+        const novo = { ...prev };
+        Object.keys(novo).forEach((date) => {
+          novo[date] = novo[date].map((r) =>
+            r.id === registroId ? { ...r, allocationStatus: status } : r
+          );
+        });
+        return novo;
+      });
+    } catch (err) {
+      console.error("Erro ao alterar status:", err);
+    }
+  };
+
 
   const criarServicoManual = async (dia) => {
     const dados = novoServico[dia.date];
@@ -157,7 +186,7 @@ const ListaPasseiosSemana = () => {
         try {
           await updateDoc(doc(db, "weekly_services", registroId), payload);
           return;
-        } catch (err) {}
+        } catch (err) { }
       }
 
       await addDoc(collection(db, "weekly_services"), {
@@ -329,18 +358,15 @@ Operacional - Luck Receptivo 🙌
   const alterarPaxManual = (registroId, pax) => {
     if (!registroId) return;
 
-    // 1️⃣ atualiza local (UI imediata)
     setPaxEditando((prev) => ({
       ...prev,
       [registroId]: pax,
     }));
 
-    // 2️⃣ limpa debounce anterior
     if (paxTimers.current[registroId]) {
       clearTimeout(paxTimers.current[registroId]);
     }
 
-    // 3️⃣ salva no Firestore após parar de digitar
     paxTimers.current[registroId] = setTimeout(async () => {
       try {
         await setDoc(
@@ -348,15 +374,14 @@ Operacional - Luck Receptivo 🙌
           {
             passengers: Number(pax),
           },
-          { merge: true },
+          { merge: true }
         );
 
-        // sincroniza extras sem reload geral
         setExtras((prev) => {
           const novo = { ...prev };
           Object.keys(novo).forEach((date) => {
             novo[date] = novo[date].map((r) =>
-              r.id === registroId ? { ...r, passengers: Number(pax) } : r,
+              r.id === registroId ? { ...r, passengers: Number(pax) } : r
             );
           });
           return novo;
@@ -364,8 +389,9 @@ Operacional - Luck Receptivo 🙌
       } catch (err) {
         console.error("Erro ao salvar pax:", err);
       }
-    }, 500); // 👈 ajuste aqui (300–700ms)
+    }, 400);
   };
+
 
   const adicionarPasseioManual = async (dia) => {
     const dados = novoServico[dia.date];
@@ -386,7 +412,9 @@ Operacional - Luck Receptivo 🙌
         day: dia.day,
         manual: true,
         createdAt: new Date(),
+        allocationStatus: "OPEN", // ✅ novo
       });
+
 
       // 🔄 limpa o formulário daquele dia
       setNovoServico((prev) => ({
@@ -524,7 +552,9 @@ Operacional - Luck Receptivo 🙌
               date: dia.date,
               day: dia.day,
               createdAt: new Date(),
+              allocationStatus: "OPEN", // ✅ novo
             });
+
 
             registrosDia.push({
               id: docRef.id,
@@ -537,23 +567,21 @@ Operacional - Luck Receptivo 🙌
         for (const r of registrosDia) {
           if (r.guiaId || r.manual) continue;
 
+          // 🚫 se estiver fechado, não aloca
+          if (r.allocationStatus === "CLOSED") continue;
+
           const elegiveis = guiasDisponiveis.filter((g) => {
             if (usadosNoDia.has(g.id)) return false;
 
-            // 🔥 guia precisa ser apto ao passeio
             const passeiosAptos = Array.isArray(g.passeios) ? g.passeios : [];
-
             return passeiosAptos.some((p) => p.id === r.serviceId);
           });
 
           if (!elegiveis.length) continue;
 
-          const menorCarga = Math.min(
-            ...elegiveis.map((g) => contadorSemana[g.id]),
-          );
-
+          const menorCarga = Math.min(...elegiveis.map((g) => contadorSemana[g.id]));
           const candidatos = elegiveis.filter(
-            (g) => contadorSemana[g.id] === menorCarga,
+            (g) => contadorSemana[g.id] === menorCarga
           );
 
           const guiaSelecionado =
@@ -565,12 +593,13 @@ Operacional - Luck Receptivo 🙌
               guiaId: guiaSelecionado.id,
               guiaNome: guiaSelecionado.nome,
             },
-            { merge: true },
+            { merge: true }
           );
 
           usadosNoDia.add(guiaSelecionado.id);
           contadorSemana[guiaSelecionado.id]++;
         }
+
       }
 
       await carregarDados();
@@ -668,32 +697,44 @@ Operacional - Luck Receptivo 🙌
 
       {resumoGuias.length > 0 && (
         <div className="resumo-guias">
-          <h3 className="resumo-h3">Resumo da Alocação</h3>
+          <div className="resumo-header">
+            <h3 className="resumo-h3">Resumo da Escala de Guias</h3>
 
-          <ul>
-            {resumoGuias
-              .sort((a, b) => b.ocupacao - a.ocupacao)
-              .map((g) => (
-                <li key={g.guiaId}>
-                  <strong>{g.nome}</strong> — {g.totalServicos} serviço(s)
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      color:
-                        g.ocupacao >= 90
-                          ? "red"
-                          : g.ocupacao >= 70
-                            ? "#e65100"
-                            : "#2e7d32",
-                    }}
-                  >
-                    ({g.ocupacao}%)
-                  </span>
-                </li>
-              ))}
-          </ul>
+            <button
+              className="btn-resumo-toggle"
+              onClick={() => setResumoAberto((prev) => !prev)}
+            >
+              {resumoAberto ? "Reduzir ▲" : "Expandir ▼"}
+            </button>
+          </div>
+
+          {resumoAberto && (
+            <ul>
+              {resumoGuias
+                .sort((a, b) => b.ocupacao - a.ocupacao)
+                .map((g) => (
+                  <li key={g.guiaId}>
+                    <strong>{g.nome}</strong> — {g.totalServicos} serviço(s)
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        color:
+                          g.ocupacao >= 90
+                            ? "red"
+                            : g.ocupacao >= 70
+                              ? "#e65100"
+                              : "#2e7d32",
+                      }}
+                    >
+                      ({g.ocupacao}%)
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          )}
         </div>
       )}
+
 
       {semana.map((dia) => {
         const passeiosFixos = services.filter((s) =>
@@ -780,11 +821,23 @@ Operacional - Luck Receptivo 🙌
                       <input
                         type="number"
                         min="0"
-                        value={registro?.passengers ?? ""}
+                        value={paxEditando[registro.id] ?? registro?.passengers ?? ""}
+
                         onChange={(e) =>
                           alterarPaxManual(registro.id, e.target.value)
                         }
                       />
+
+                      {/* STATUS OPEN/CLOSED */}
+                      <select
+                        value={registro?.allocationStatus || "OPEN"}
+                        onChange={(e) =>
+                          alterarStatusAlocacao(registro.id, e.target.value)
+                        }
+                      >
+                        <option value="OPEN">OPEN</option>
+                        <option value="CLOSED">CLOSED</option>
+                      </select>
 
                       {/* GUIA */}
                       <select
