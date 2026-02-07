@@ -71,6 +71,7 @@ const ListaPasseiosSemana = () => {
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
   const [resumoAberto, setResumoAberto] = useState(false);
+  const [mostrarResumo, setMostrarResumo] = useState(false);
   const paxTimers = useRef({});
 
 
@@ -264,7 +265,7 @@ const ListaPasseiosSemana = () => {
   };
 
   const enviarWhatsappGuiasSemana_FIRESTORE = async () => {
-    if (!semana.length) return;
+    if (!semana.length || !guias.length) return;
 
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
@@ -275,7 +276,7 @@ const ListaPasseiosSemana = () => {
     const q = query(
       collection(db, "weekly_services"),
       where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana),
+      where("date", "<=", fimSemana)
     );
 
     const snap = await getDocs(q);
@@ -285,7 +286,8 @@ const ListaPasseiosSemana = () => {
     snap.docs.forEach((docSnap) => {
       const r = docSnap.data();
 
-      if (!r.guiaId || !r.guiaNome || !r.date) return;
+      // ✅ só precisa guiaId e date
+      if (!r.guiaId || !r.date) return;
       if (!mapaSemana[r.date]) return;
 
       const guia = guias.find((g) => g.id === r.guiaId);
@@ -293,7 +295,7 @@ const ListaPasseiosSemana = () => {
 
       if (!mapaGuias[r.guiaId]) {
         mapaGuias[r.guiaId] = {
-          nome: guia.nome,
+          nome: guia?.nome || r.guiaNome || "Guia",
           whatsapp: guia.whatsapp,
           datas: new Set(),
         };
@@ -302,7 +304,7 @@ const ListaPasseiosSemana = () => {
       const dia = mapaSemana[r.date];
 
       mapaGuias[r.guiaId].datas.add(
-        `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`,
+        `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
       );
     });
 
@@ -321,14 +323,14 @@ Operacional - Luck Receptivo 🙌
 `.trim();
 
       window.open(
-        `https://wa.me/55${guia.whatsapp.replace(
-          /\D/g,
-          "",
-        )}?text=${encodeURIComponent(texto)}`,
-        "_blank",
+        `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
+          texto
+        )}`,
+        "_blank"
       );
     });
   };
+
 
   /* ===== GUIA MANUAL ===== */
   const alterarGuiaManual = async (registroId, guia, dia) => {
@@ -604,6 +606,7 @@ Operacional - Luck Receptivo 🙌
 
       await carregarDados();
       await gerarResumoGuiasSemana();
+      setMostrarResumo(true);
     } finally {
       setLoading(false);
     }
@@ -695,7 +698,7 @@ Operacional - Luck Receptivo 🙌
         </div>
       </div>
 
-      {resumoGuias.length > 0 && (
+      {mostrarResumo && resumoGuias.length > 0 && (
         <div className="resumo-guias">
           <div className="resumo-header">
             <h3 className="resumo-h3">Resumo da Escala de Guias</h3>
