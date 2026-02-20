@@ -769,10 +769,31 @@ Operacional - Luck Receptivo 🍀
                             ? paxEditando[registro.id] ?? registro.passengers ?? ""
                             : ""
                         }
+                        onChange={async (e) => {
+                          const novoPax = e.target.value;
 
-                        onChange={(e) =>
-                          alterarPaxManual(registro.id, e.target.value)
-                        }
+                          // 🔹 Se ainda não existe registro, cria primeiro
+                          if (!registro) {
+                            const docRef = await addDoc(collection(db, "weekly_services"), {
+                              serviceId: p.serviceId || null,
+                              serviceName: p.nome,
+                              passengers: Number(novoPax),
+                              guiaId: null,
+                              guiaNome: null,
+                              date: dia.date,
+                              day: dia.day,
+                              manual: false,
+                              allocationStatus: "OPEN",
+                              createdAt: new Date(),
+                            });
+
+                            await carregarDados();
+                            return;
+                          }
+
+                          // 🔹 Se já existe, usa sua função normal
+                          alterarPaxManual(registro.id, novoPax);
+                        }}
                       />
 
                       {/* STATUS OPEN/CLOSED */}
