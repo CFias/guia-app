@@ -132,72 +132,9 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-
-  const criarServicoManual = async (dia) => {
-    const dados = novoServico[dia.date];
-
-    if (!dados?.serviceName || !dados?.passengers) return;
-
-    try {
-      await addDoc(collection(db, "extras"), {
-        date: dia.date,
-        serviceName: dados.serviceName,
-        passengers: Number(dados.passengers),
-        guiaId: dados.guiaId || null,
-        guiaNome: guias.find((g) => g.id === dados.guiaId)?.nome || "",
-        createdAt: new Date(),
-      });
-
-      // limpa os campos depois de salvar
-      setNovoServico((prev) => ({
-        ...prev,
-        [dia.date]: {},
-      }));
-    } catch (err) {
-      console.error("Erro ao criar serviço:", err);
-    }
-  };
-
   useEffect(() => {
     document.body.style.overflow = loading ? "hidden" : "auto";
   }, [loading]);
-
-  const alternarVisibilidade = async (registroId, oculto) => {
-    if (!registroId) return;
-
-    await updateDoc(doc(db, "weekly_services", registroId), {
-      hidden: !oculto,
-    });
-
-    setExtras((prev) => {
-      const novo = { ...prev };
-      Object.keys(novo).forEach((date) => {
-        novo[date] = novo[date].map((r) =>
-          r.id === registroId ? { ...r, hidden: !oculto } : r,
-        );
-      });
-      return novo;
-    });
-  };
-
-  const salvarOuCriarWeeklyService = async (registroId, payload) => {
-    setLoading(true);
-    try {
-      if (registroId) {
-        try {
-          await updateDoc(doc(db, "weekly_services", registroId), payload);
-          return;
-        } catch (err) { }
-      }
-
-      await addDoc(collection(db, "weekly_services"), {
-        ...payload,
-        createdAt: new Date(),
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const removerPasseio = async (id) => {
     setLoading(true);
@@ -827,7 +764,11 @@ Operacional - Luck Receptivo 🍀
                       <input
                         type="number"
                         min="0"
-                        value={paxEditando[registro.id] ?? registro?.passengers ?? ""}
+                        value={
+                          registro
+                            ? paxEditando[registro.id] ?? registro.passengers ?? ""
+                            : ""
+                        }
 
                         onChange={(e) =>
                           alterarPaxManual(registro.id, e.target.value)
@@ -841,17 +782,36 @@ Operacional - Luck Receptivo 🍀
                           alterarStatusAlocacao(registro.id, e.target.value)
                         }
                       >
-                        <option value="OPEN">OPEN</option>
-                        <option value="CLOSED">CLOSED</option>
+                        <option value="OPEN">Aberto</option>
+                        <option value="CLOSED">Fechado</option>
                       </select>
 
                       {/* GUIA */}
                       <select
                         value={registro?.guiaId || ""}
-                        onChange={(e) => {
-                          const guia = guias.find(
-                            (g) => g.id === e.target.value,
-                          );
+                        onChange={async (e) => {
+                          const guia = guias.find((g) => g.id === e.target.value);
+
+                          // 🔹 Se ainda não existe registro, cria primeiro
+                          if (!registro) {
+                            const docRef = await addDoc(collection(db, "weekly_services"), {
+                              serviceId: p.serviceId || null,
+                              serviceName: p.nome,
+                              passengers: 0,
+                              guiaId: guia?.id || null,
+                              guiaNome: guia?.nome || null,
+                              date: dia.date,
+                              day: dia.day,
+                              manual: false,
+                              allocationStatus: "OPEN",
+                              createdAt: new Date(),
+                            });
+
+                            await carregarDados();
+                            return;
+                          }
+
+                          // 🔹 Se já existe, apenas atualiza
                           alterarGuiaManual(registro.id, guia || null, dia);
                         }}
                       >

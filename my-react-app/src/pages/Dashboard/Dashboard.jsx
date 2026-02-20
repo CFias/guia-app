@@ -28,7 +28,7 @@ const Dashboard = ({ loading }) => {
 
         <NavLink to="passeios" className="card">
           <TourIcon fontSize="small" className="icon-side" />
-          <span className="label">Lista de Passeios</span>
+          <span className="label">Gerar Escala</span>
         </NavLink>
 
         <NavLink to="disponibilidade-guia" className="card">
