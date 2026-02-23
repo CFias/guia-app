@@ -155,7 +155,6 @@ const ListaPasseiosSemana = () => {
       const servico = services.find((s) => s.id === r.serviceId);
       if (!servico) return false;
 
-      // ✅ agora sim, depois de existir
       if (!servico.frequencia?.includes(r.day)) return false;
 
       return true;
@@ -263,9 +262,9 @@ Operacional - Luck Receptivo 🍀
           `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
             texto
           )}`,
-          "_blank"
+          "_blank"  
         );
-      }, index * 2000); // ⏱️ 2 segundos entre cada guia
+      }, index * 2500); // ⏱️ 2 segundos entre cada guia
     });
   };
 
