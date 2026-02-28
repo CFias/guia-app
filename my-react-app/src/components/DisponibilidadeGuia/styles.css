@@ -1,5 +1,5 @@
 .disp-content {
-  background: #f7f7f7;
+  background: var(--card);
   padding: 24px;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
@@ -7,14 +7,14 @@
 
 .disp-h2 {
   margin-bottom: 20px;
-  color: #535353;
+  color: var(--text);
 }
 
 label {
   display: block;
   margin: 16px 0 6px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text);
 }
 
 .search-block {
@@ -26,11 +26,10 @@ label {
 }
 
 .search-input {
-  width: 100%;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
-  background: #eee;
-  font-size: 12px;
+  background: var(--input);
+  font-size: 10px;
   outline: none;
   color: #111827;
 }
@@ -44,21 +43,22 @@ label {
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 15px;
+  border: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text);
   outline: none;
-  background: white;
+  background: var(--input);
   cursor: pointer;
 }
 
 .select-guia:focus {
-  border-color: #1f7a3f;
+  border-color: var(--border);
   box-shadow: 0px 0px 5px rgba(31, 122, 63, 0.4);
 }
 
 
 .search-input:focus {
-  border-color: #0f766e;
+  border-color: var(--border);
   box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
 }
 
@@ -93,11 +93,10 @@ label {
   top: calc(100% + 8px);
   left: 0;
   width: 100%;
-  background: #ffffff;
+  background: var(--card);
   border-radius: 12px;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
   z-index: 9999;
-  /* 🔥 ESSENCIAL */
   padding: 10px;
   max-height: 260px;
   overflow-y: auto;
@@ -121,11 +120,11 @@ label {
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
-  color: #111827;
+  color: var(--text);
 }
 
 .dropdown-item:hover {
-  background: #0f766e;
+  background: var(--primary);
   color: #ffffff;
 }
 
@@ -137,7 +136,7 @@ label {
 }
 
 .language-tag {
-  background: #ede9fe;
+  background: var(--primary);
   color: #5b21b6;
   padding: 6px 10px;
   border-radius: 999px;
@@ -153,8 +152,8 @@ label {
 }
 
 .btn-disp {
-  background: #e0f2f1;
-  color: #065f46;
+  background: var(--side);
+  color: var(--text-btn);
   border: none;
   padding: 8px 12px;
   border-radius: 8px;
@@ -163,15 +162,15 @@ label {
 }
 
 .btn-disp:hover {
-  background: #ccfbf1;
+  background: var(--btn-main);
 }
 
 .disp-btn-save {
   margin-top: 16px;
   width: 100%;
   padding: 12px;
-  background: #0f766e;
-  color: #ffffff;
+  background: var(--side);
+  color: var(--text-btn);
   border: none;
   border-radius: 12px;
   font-size: 12px;
@@ -190,50 +189,57 @@ label {
 .disp-semana-intervalo {
   margin: 8px 0;
   font-weight: 500;
-  color: #0f766e;
+  color: var(--text);
 }
 
 .h3-name {
-  color: #033a36;
+  color: var(--text);
   text-align: center;
   padding: 10px;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .filtro-dias {
   display: flex;
+  justify-content: center;
   margin: 5px;
   gap: 8px;
   flex-wrap: wrap;
 }
 
 .dia-filtro-tag {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   padding: 6px 10px;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 12px;
-  background: #ebebeb;
+  font-size: 10px;
+  background: var(--primary);
   display: flex;
+  color: var(--text-btn);
 }
 
 .dia-filtro-tag.ativo {
-  background: #0f766e;
-  color: #ffffff;
-  border-color: #0f766e;
+  color: var(--text-btn);
+  border-color: var(--border);
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 10px;
+  background: var(--text);
+  display: flex;
 }
 
 .tabela-disponibilidade {
   margin-top: 24px;
-  background: #ffffff;
+  background: var(--card);
   border-radius: 14px;
   overflow-x: auto;
 }
 
 .disp-title-3 {
   margin-bottom: 16px;
-  font-size: 14px;
-  color: #033a36;
+  font-size: 12px;
+  color: var(--text);
   display: flex;
   justify-content: center;
   padding: 5px;
@@ -242,11 +248,11 @@ label {
 .linha {
   display: grid;
   grid-template-columns: 180px repeat(7, 1fr);
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .linha.header {
-  background: #f1f5f9;
+  background: var(--card);
   font-weight: 600;
 }
 
@@ -258,12 +264,15 @@ label {
 
 .col.guia {
   text-align: left;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 10px;
 }
 
 .cell-dia {
-  background: #dcfce7;
-  border-radius: 8px;
+  background: var(--primary);
+  color: var(--text-dist);
+  font-size: 8px;
+  border-radius: 15px;
   padding: 4px 6px;
   display: flex;
   justify-content: space-between;
@@ -273,7 +282,8 @@ label {
 .remove-dia {
   background: transparent;
   border: none;
-  color: #b91c1c;
+  color: var(--text-btn);
   font-weight: bold;
+  font-size: 10px;
   cursor: pointer;
 }

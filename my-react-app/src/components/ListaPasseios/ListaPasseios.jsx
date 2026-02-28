@@ -33,6 +33,7 @@ const DIAS = [
   "Sábado",
   "Domingo",
 ];
+import LoadingBlock from "../../components/LoadingOverlay/LoadingOverlay";
 
 export const gerarSemana = (offset = 0) => {
   const hoje = new Date();
@@ -70,9 +71,10 @@ const ListaPasseiosSemana = () => {
   const [loading, setLoading] = useState(false);
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
-  const [resumoAberto, setResumoAberto] = useState(false);
   const [mostrarResumo, setMostrarResumo] = useState(false);
+
   const paxTimers = useRef({});
+
 
 
   useEffect(() => {
@@ -110,11 +112,19 @@ const ListaPasseiosSemana = () => {
     if (!registroId) return;
 
     try {
+      const dadosUpdate = {
+        allocationStatus: status,
+      };
+
+      // 🔴 Se fechar, remove guia automaticamente
+      if (status === "CLOSED") {
+        dadosUpdate.guiaId = null;
+        dadosUpdate.guiaNome = null;
+      }
+
       await setDoc(
         doc(db, "weekly_services", registroId),
-        {
-          allocationStatus: status,
-        },
+        dadosUpdate,
         { merge: true }
       );
 
@@ -122,7 +132,16 @@ const ListaPasseiosSemana = () => {
         const novo = { ...prev };
         Object.keys(novo).forEach((date) => {
           novo[date] = novo[date].map((r) =>
-            r.id === registroId ? { ...r, allocationStatus: status } : r
+            r.id === registroId
+              ? {
+                ...r,
+                allocationStatus: status,
+                ...(status === "CLOSED" && {
+                  guiaId: null,
+                  guiaNome: null,
+                }),
+              }
+              : r
           );
         });
         return novo;
@@ -175,21 +194,6 @@ const ListaPasseiosSemana = () => {
     };
   });
 
-  useEffect(() => {
-    const q = query(collection(db, "extras"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dados = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setExtras(dados);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   const statusGrupo = (pax) => {
     if (pax === null || pax === undefined) return null;
 
@@ -222,17 +226,26 @@ const ListaPasseiosSemana = () => {
     snap.docs.forEach((docSnap) => {
       const r = docSnap.data();
 
-      if (!r.guiaId || !r.date) return;
+      // 🔴 1️⃣ Registro precisa ser válido
+      if (!r || !r.date || !r.guiaId) return;
+
+      // 🔴 2️⃣ Ignora CLOSED
+      if (r.allocationStatus === "CLOSED") return;
+
+      // 🔴 3️⃣ Precisa estar dentro da semana atual
       if (!mapaSemana[r.date]) return;
+
+      // 🔴 4️⃣ Precisa ter serviço válido
+      if (!r.serviceId && !r.manual) return;
 
       const guia = guias.find((g) => g.id === r.guiaId);
       if (!guia?.whatsapp) return;
 
       if (!mapaGuias[r.guiaId]) {
         mapaGuias[r.guiaId] = {
-          nome: guia?.nome || r.guiaNome || "Guia",
+          nome: guia.nome || r.guiaNome || "Guia",
           whatsapp: guia.whatsapp,
-          datas: new Set(),
+          datas: new Set(), // 🔵 evita duplicidade automaticamente
         };
       }
 
@@ -243,17 +256,19 @@ const ListaPasseiosSemana = () => {
       );
     });
 
-    const listaGuias = Object.values(mapaGuias).filter((g) => g.datas.size);
+    const listaGuias = Object.values(mapaGuias).filter(
+      (g) => g.datas.size > 0
+    );
 
     listaGuias.forEach((guia, index) => {
       const texto = `
-Olá, ${guia.nome}! 🍀
+Olá, querido(a) ${guia.nome}! 🍀
 
 Segue sua escala da semana:
 
 ${Array.from(guia.datas).join("\n")}
 
-Qualquer ajuste, por favor nos avise.
+Gentilmente, confirme o recebimento.
 Operacional - Luck Receptivo 🍀
 `.trim();
 
@@ -262,13 +277,11 @@ Operacional - Luck Receptivo 🍀
           `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
             texto
           )}`,
-          "_blank"  
+          "_blank"
         );
-      }, index * 2500); // ⏱️ 2 segundos entre cada guia
+      }, index * 2500);
     });
   };
-
-
 
   /* ===== GUIA MANUAL ===== */
   const alterarGuiaManual = async (registroId, guia, dia) => {
@@ -373,33 +386,46 @@ Operacional - Luck Receptivo 🍀
   };
 
   const gerarResumoGuiasSemana = async () => {
+    if (!semana.length || !guias.length) {
+      setResumoGuias([]);
+      return;
+    }
+
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
 
-    // 🔹 1. Buscar serviços alocados na semana
+    // 🔹 1️⃣ Buscar serviços da semana
     const qServicos = query(
       collection(db, "weekly_services"),
       where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana),
+      where("date", "<=", fimSemana)
     );
+
     const snapServicos = await getDocs(qServicos);
 
-    // 🔹 2. Buscar disponibilidades
+    // 🔹 2️⃣ Buscar disponibilidades
     const snapDisp = await getDocs(collection(db, "guide_availability"));
 
-    const disponibilidadePorGuia = {};
+    const disponibilidadeMap = {};
+    const bloqueiosMap = {};
+
     snapDisp.docs.forEach((doc) => {
       const d = doc.data();
       if (!Array.isArray(d.disponibilidade)) return;
 
       const diasSemana = d.disponibilidade.filter(
-        (ds) => ds.date >= inicioSemana && ds.date <= fimSemana,
+        (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
       );
 
-      disponibilidadePorGuia[d.guideId] = diasSemana.length;
+      disponibilidadeMap[d.guideId] = diasSemana.length;
+
+      // 🔴 Capturar bloqueios reais
+      bloqueiosMap[d.guideId] = diasSemana
+        .filter((ds) => ds.status === "BLOCKED")
+        .map((ds) => ds.date);
     });
 
-    // 🔹 3. Contar serviços por guia
+    // 🔹 3️⃣ Contar serviços
     const contador = {};
 
     snapServicos.docs.forEach((docSnap) => {
@@ -408,27 +434,49 @@ Operacional - Luck Receptivo 🍀
 
       if (!contador[r.guiaId]) {
         const guia = guias.find((g) => g.id === r.guiaId);
+
         contador[r.guiaId] = {
           guiaId: r.guiaId,
           nome: guia?.nome || "Guia",
           totalServicos: 0,
-          diasDisponiveis: disponibilidadePorGuia[r.guiaId] || 0,
+          diasDisponiveis: disponibilidadeMap[r.guiaId] || 0,
+          bloqueios: bloqueiosMap[r.guiaId] || [],
           ocupacao: 0,
+          sobrecarga: false,
+          datas: new Set(), // 🔥 adiciona isso
         };
       }
 
       contador[r.guiaId].totalServicos++;
+      contador[r.guiaId].datas.add(r.date);
     });
 
-    // 🔹 4. Calcular porcentagem
-    Object.values(contador).forEach((g) => {
+    let resumo = Object.values(contador);
+
+    resumo.forEach((g) => {
       if (g.diasDisponiveis > 0) {
-        g.ocupacao = Math.round((g.totalServicos / g.diasDisponiveis) * 100);
+        g.ocupacao = Math.round(
+          (g.totalServicos / g.diasDisponiveis) * 100
+        );
       }
+
+      g.sobrecarga = g.ocupacao >= 90;
     });
 
-    setResumoGuias(Object.values(contador));
+    // 🏆 ordenar
+    resumo.sort((a, b) => b.ocupacao - a.ocupacao);
+    resumo = resumo.map((g) => ({
+      ...g,
+      datas: new Set(g.datas), // mantém Set funcional
+    }));
+    setResumoGuias(resumo);
   };
+
+  useEffect(() => {
+    if (semana.length && guias.length) {
+      gerarResumoGuiasSemana();
+    }
+  }, [extras, semana, guias]);
 
   const alocarGuiasSemana = async () => {
     setLoading(true);
@@ -580,12 +628,10 @@ Operacional - Luck Receptivo 🍀
 
   return (
     <div className="page-container">
-      {loading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-          <span>Carregando...</span>
-        </div>
-      )}
+      <LoadingBlock
+        loading={loading}
+        text="Processando escala..."
+      />
 
       <h2>Planejamento Semanal de Passeios</h2>
       <div className="header-tours">
@@ -628,54 +674,75 @@ Operacional - Luck Receptivo 🍀
           {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
           Enviar escala por WhatsApp
           </button> */}
-          <button
-            className="btn-list"
-            onClick={() => enviarWhatsappGuiasSemana_FIRESTORE()}
-          >
-            Enviar bloqueios <SendRounded fontSize="10" />
+          <button className="btn-list" onClick={enviarWhatsappGuiasSemana_FIRESTORE}>
+            Enviar Bloqueios <Send fontSize="10" />
           </button>
         </div>
       </div>
 
-      {mostrarResumo && resumoGuias.length > 0 && (
-        <div className="resumo-guias">
-          <div className="resumo-header">
-            <h3 className="resumo-h3">Resumo da Escala de Guias</h3>
+      <div className="resumo-container">
+        {resumoGuias.map((g, index) => (
+          <div key={g.guiaId} className="resumo-card">
 
-            <button
-              className="btn-resumo-toggle"
-              onClick={() => setResumoAberto((prev) => !prev)}
-            >
-              {resumoAberto ? "Reduzir ▲" : "Expandir ▼"}
-            </button>
+            <div className="resumo-header">
+              <h4>
+                {index === 0 && <span className="medalha">🏆</span>}
+                {g.nome}
+                {g.sobrecarga && <span className="indicador-alerta">●</span>}
+              </h4>
+
+              <span
+                className={`resumo-percent 
+            ${g.ocupacao >= 80 ? "alta" : ""}
+            ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+            ${g.ocupacao < 50 ? "baixa" : ""}
+          `}
+              >
+                {g.ocupacao}%
+              </span>
+            </div>
+
+            <div className="resumo-bar">
+              <div
+                className={`resumo-bar-fill 
+            ${g.ocupacao >= 80 ? "alta" : ""}
+            ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+            ${g.ocupacao < 50 ? "baixa" : ""}
+          `}
+                style={{ width: `${g.ocupacao}%` }}
+              />
+            </div>
+
+            {/* 📈 VARIAÇÃO */}
+            {g.variacao !== 0 && (
+              <div className={`variacao ${g.variacao > 0 ? "up" : "down"}`}>
+                {g.variacao > 0 ? "▲" : "▼"} {Math.abs(g.variacao)}%
+              </div>
+            )}
+
+            <p className="resumo-info">
+              {g.totalServicos} serviços
+            </p>
+
+            {/* 📊 Mini gráfico semanal */}
+            <div className="mini-chart">
+              {semana.map((dia) => (
+                <div
+                  key={dia.date}
+                  className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""
+                    }`}
+                />
+              ))}
+            </div>
+
+            {g.injusto && (
+              <span className="alerta-distribuicao">
+                ⚖️ Distribuição desigual
+              </span>
+            )}
           </div>
-
-          {resumoAberto && (
-            <ul>
-              {resumoGuias
-                .sort((a, b) => b.ocupacao - a.ocupacao)
-                .map((g) => (
-                  <li key={g.guiaId}>
-                    <strong>{g.nome}</strong> — {g.totalServicos} serviço(s)
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        color:
-                          g.ocupacao >= 90
-                            ? "red"
-                            : g.ocupacao >= 70
-                              ? "#e65100"
-                              : "#2e7d32",
-                      }}
-                    >
-                      ({g.ocupacao}%)
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </div>
-      )}
+        ))}
+      </div>
 
 
       {semana.map((dia) => {

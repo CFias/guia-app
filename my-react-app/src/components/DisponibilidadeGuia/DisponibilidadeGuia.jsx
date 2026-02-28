@@ -438,7 +438,7 @@ const DisponibilidadeGuia = () => {
           />
         </div>
         {/* ===== FILTRO POR DIAS DA SEMANA ===== */}
-        <h4 className="h3-name">Mostrar somente</h4>
+        <h4 className="h3-name">Filtrar por data</h4>
         <div className="filtro-dias">
           {diasSemana.map((d) => (
             <div

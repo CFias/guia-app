@@ -1,38 +1,165 @@
+/* =============================== */
+/* ===== OVERLAY ===== */
+/* =============================== */
+
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 }
 
+.loading-overlay.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.loading-overlay.inline {
+  position: relative;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+/* =============================== */
+/* ===== BOX ===== */
+/* =============================== */
+
 .loading-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
+  gap: 20px;
 }
 
-.spinner {
-  width: 42px;
-  height: 42px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
+/* =============================== */
+/* ===== TREVO ===== */
+/* =============================== */
+
+.clover-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =============================== */
+/* ===== SVG ===== */
+/* =============================== */
+
+.clover-svg {
+  width: 100px;
+  height: 100px;
+  animation: rotateClover 6s linear infinite;
+}
+
+/* Stroke animado */
+.draw {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: drawClover 3s ease-in-out infinite;
+}
+
+/* =============================== */
+/* ===== PARTÍCULAS ===== */
+/* =============================== */
+
+.particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--text-dist);
   border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+  opacity: 0.7;
 }
 
-@keyframes spin {
+.p1 {
+  animation: orbit 3s linear infinite;
+}
+
+.p2 {
+  animation: orbit 4s linear infinite reverse;
+}
+
+.p3 {
+  animation: orbit 5s linear infinite;
+}
+
+/* =============================== */
+/* ===== TEXTO ===== */
+/* =============================== */
+
+.loading-text {
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--text);
+  opacity: 0.9;
+}
+
+/* =============================== */
+/* ===== ANIMAÇÕES ===== */
+/* =============================== */
+
+@keyframes rotateClover {
+  from {
+    transform: rotate(0deg);
+  }
+
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes drawClover {
+  0% {
+    stroke-dashoffset: 300;
+  }
+
+  50% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: 300;
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg) translateX(60px) rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg) translateX(60px) rotate(-360deg);
+  }
+}
+
+.clover-svg {
+  width: 110px;
+  height: 110px;
+}
+
+.clover-outer,
+.clover-inner {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: drawClover 2.5s ease-in-out infinite;
+}
+
+@keyframes drawClover {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+
+  50% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -1200;
   }
 }

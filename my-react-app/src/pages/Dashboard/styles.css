@@ -21,23 +21,18 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  /* ancora na direita */
   padding-right: 12px;
   overflow: hidden;
 }
 
 .logo-dashboard img {
-  width: 90px;
-  /* sidebar fechada */
+  width: 80px;
   height: auto;
   opacity: 0.7;
-
   object-fit: cover;
   flex-shrink: 0;
-
   transition: width 0.3s ease;
   transform-origin: left;
-  /* 🔥 cresce para ESQUERDA */
 }
 
 .side-dashboard:hover .logo-dashboard img {
@@ -47,8 +42,8 @@
 
 /* ===== SIDEBAR ===== */
 .side-dashboard {
-  background: #027373;
-  height: 100vh;
+  background: var(--side);
+  height: 95vh;
   position: fixed;
   padding: 10px;
   display: flex;
@@ -57,10 +52,10 @@
   align-items: flex-start;
   gap: 10px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.147);
-
-  width: 70px;
+  width: 55px;
   transition: width 0.3s ease;
   overflow: hidden;
+  border-radius: 15px;
 }
 
 .side-dashboard:hover {
@@ -71,7 +66,7 @@
 /* ===== TÍTULOS ===== */
 .name-side {
   font-size: 14px;
-  color: #f2e7dc;
+  color: var(--text-side);
   font-weight: 600;
   white-space: nowrap;
 
@@ -89,7 +84,7 @@
   margin: 0;
   width: 240px;
   border-radius: 25px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
 }
 
 /* ===== LINKS ===== */
@@ -102,13 +97,13 @@
   border-radius: 8px;
   cursor: pointer;
   text-decoration: none;
-  color: #f2e7dc;
+  color: var(--text-side);
   white-space: nowrap;
 }
 
 /* ÍCONE */
 .icon-side {
-  color: #f2e7dc;
+  color: var(--text-side);
   font-size: small;
   padding: 5px;
   min-width: 24px;
@@ -137,7 +132,6 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
   z-index: 50;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -157,4 +151,67 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.theme-toggle-container {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch {
+  width: 50px;
+  height: 26px;
+  background: #ccc;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.slider {
+  width: 15px;
+  height: 15px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  transition: 0.3s;
+}
+
+.slider.active {
+  transform: translateX(24px);
+  background: var(--side);
+}
+
+.pro-btn {
+  background: var(--primary);
+  border: 1px solid var(--border);
+  border: none;
+  padding: 3px 6px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+/* Esconde toggle quando sidebar estiver fechada */
+.theme-toggle-container {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Mostra quando expandir */
+.side-dashboard:hover .theme-toggle-container {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--text-side);
 }

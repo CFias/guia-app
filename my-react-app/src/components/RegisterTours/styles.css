@@ -10,13 +10,13 @@
 .form-container h2 {
     font-size: 16px;
     font-weight: 700;
-    color: #575757;
+    color: var(--text);
     margin-bottom: 20px;
 }
 
 /* ===== FORM CARD ===== */
 .form-container form {
-    background: #ffffff;
+    background: var(--card);
     padding: 28px;
     border-radius: 16px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
@@ -30,9 +30,9 @@
 .form-container textarea {
     padding: 14px 16px;
     border-radius: 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border);
     font-size: 14px;
-    background: #fafafa;
+    background: var(--input);
 }
 
 .form-container textarea {
@@ -43,8 +43,8 @@
 .form-container input:focus,
 .form-container textarea:focus {
     outline: none;
-    border-color: #027373;
-    background: #ffffff;
+    border-color: var(--primary);
+    background: var(--card);
     box-shadow: 0 0 0 2px rgba(2, 115, 115, 0.15);
 }
 
@@ -52,7 +52,7 @@
 .form-container label {
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text);
 }
 
 /* ===== DROPDOWN ===== */
@@ -63,8 +63,9 @@
 .dropdown-header {
     padding: 14px 16px;
     border-radius: 12px;
-    background: #fafafa;
-    border: 1px solid #d1d5db;
+    background: var(--input);
+    border: 1px solid var(--border);
+    color: var(--text);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -73,16 +74,12 @@
     align-items: center;
 }
 
-.dropdown-header:hover {
-    background: #f3f4f6;
-}
-
 .dropdown-list {
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
     width: 100%;
-    background: #ffffff;
+    background: var(--card);
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     z-index: 10;
@@ -107,8 +104,8 @@
 }
 
 .language-tag {
-    background: #e0f2f1;
-    color: #027373;
+    background: var(--primary);
+    color: var(--text-dist);
     font-size: 12px;
     font-weight: 600;
     padding: 6px 10px;
@@ -130,8 +127,8 @@
 /* ===== BOTÃO ===== */
 .form-container button {
     align-self: flex-start;
-    background: #027373;
-    color: #ffffff;
+    background: var(--side);
+    color: var(--text-btn);
     padding: 14px 22px;
     border-radius: 12px;
     border: none;
@@ -139,10 +136,6 @@
     font-weight: 600;
     cursor: pointer;
     transition: 0.2s;
-}
-
-.form-container button:hover {
-    background: #055555;
 }
 
 .form-container button:disabled {
@@ -161,12 +154,20 @@
     }
 }
 
+.passeio-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
 .lista-passeios {
     margin-top: 30px;
 }
 
 .lista-passeios h3 {
     margin-bottom: 10px;
+    color: var(--text);
+    font-size: 12px;
 }
 
 .passeio-card {
@@ -174,17 +175,23 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 15px;
-    background: #f7f9fc;
-    border: 1px solid #e0e0e0;
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
     padding: 12px;
     border-radius: 10px;
     margin-bottom: 10px;
 }
 
+.p-name {
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
 .passeio-info p {
     margin: 6px 0;
-    color: #444;
-    font-size: 13px;
+    color: var(--text);
+    font-size: 10px;
 }
 
 .frequencia-tags {
@@ -194,31 +201,28 @@
 }
 
 .tag-dia {
-    background: #1976d2;
-    color: white;
+    background: var(--primary);
+    color: var(--text-dist);
     padding: 4px 8px;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: 8px;
 }
 
 .btn-editar {
-    background: #ff9800;
-    color: white;
+    background: var(--primary);
+    color: var(--text-dist);
     border: none;
-    padding: 8px 12px;
+    padding: 8px !important;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 10px !important;
     transition: 0.2s;
 }
 
-.btn-editar:hover {
-    background: #e68900;
-}
 
 .btn-cancelar {
-    background: #777;
-    color: white;
+    background: var(--secondary);
+    color: var(--text-dist);
     border: none;
     padding: 10px;
     border-radius: 8px;

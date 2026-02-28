@@ -1,15 +1,62 @@
-:root {
-  /* Neutros */
-  --color-background: #f2e7dc;
-  --color-text-primary: #0d0d0d;
-
-  /* Tons de apoio */
-  --color-primary-light: #a9d9d0;
-  --color-primary: #038c7f;
-  --color-primary-dark: #027373;
+/* ===== TRANSIÇÃO SUAVE GLOBAL ===== */
+* {
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-* {
-  margin: 0;
-  padding: 0;
+/* ===== LIGHT ===== */
+body.light {
+  --bg: #D9D9D9;
+  --card: #F2F2F2;
+  --side: #12443b;
+  --input: #dfdfdf;
+  --text-side: #e4e4e4;
+  --border: #dadada81;
+  --text: #1f1f1f;
+  --text-btn: #eeeeee;
+  --text-dist: #00c798;
+  --primary: #014034;
+  --btn-main: #005646;
+  --status-red: #c61414a2;
+  --status-red-btn: #febbbb;
+
+}
+
+/* ===== DARK PADRÃO ===== */
+body.dark {
+  --bg: #1F2024;
+  --card: #373737;
+  --side: #0a1d19;
+  --input: #434343;
+  --border: #dadada81;
+  --text: #d5d5d5;
+  --primary: #064d47;
+  --text-dist: #00c798;
+  --btn-main: #094439;
+  --text-btn: #c2c2c2;
+  --status-red: #c61414a2;
+  --status-red-btn: #febbbb;
+}
+
+
+
+/* ===== DARK PRO (mais premium) ===== */
+body.dark-pro {
+  --bg: #0f1115;
+  --card: #1a1d23;
+  --text-dist: #00c798;
+  --side: #002c22;
+  --input: #2a2a2a;
+  --border: #dadada81;
+
+  --text: #e4e4e4;
+  --primary: #08201d;
+  --btn-main: #027963;
+  --status-red: #c61414a2;
+  --status-red-btn: #febbbb;
+  --text-btn: #dbdbdb;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
 }

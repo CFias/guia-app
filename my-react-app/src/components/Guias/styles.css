@@ -6,14 +6,14 @@
 .page-h2 {
   margin-bottom: 20px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--text);
 }
 
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  background: #f8f8f8;
+  background: var(--card);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   padding: 10px;
   border-radius: 7px;
@@ -24,17 +24,21 @@
   padding: 7px;
   border-radius: 6px;
   font-size: 12px;
-  border: 1px solid #d1d5db;
+  color: var(--text);
+  background: var(--input);
+  border: 1px solid var(--border);
   font-family: "montserrat", sans-serif;
 }
 
 .counter-info {
   font-size: 12px;
-  color: var(--color-primary-light);
-  border: 1px solid var(--color-primary-dark);
-  background: var(--color-primary);
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--primary);
+  color: var(--text-dist);
   width: auto;
   text-align: center;
+  padding: 5px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -47,14 +51,15 @@
 .escala-table {
   width: 100%;
   border-collapse: collapse;
-  background: #f8f8f8;
+  background: var(--card);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
 }
 
 .escala-table th {
-  background: #f1f3f9;
+  background: var(--card);
+  color: var(--text);
   padding: 14px;
   font-size: 10px;
   font-family: "montserrat", sans-serif;
@@ -63,8 +68,8 @@
 
 .btn-edit {
   padding: 6px 12px;
-  background: #027373;
-  color: #fff;
+  background: var(--side);
+  color: var(--text-btn);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -74,35 +79,35 @@
 
 .escala-table td {
   padding: 15px;
-  border-bottom: 1px solid #eef0f5;
+  border-bottom: 1px solid var(--border);
   font-size: 10px;
-  color: #374151;
+  color: var(--text);
   font-weight: 600;
 }
 
 .escala-table tr:hover {
-  background: #f0f0f0;
+  background: var(--border);
 }
 
 /* ===== STATUS ===== */
 
 .ativo {
-  color: var(--color-primary-dark);
+  color: var(--text-dist);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 8px;
   padding: 5px;
-  border-radius: 6px;
-  background: var(--color-primary-light);
+  border-radius: 15px;
+  background: var(--primary);
   font-family: "montserrat", sans-serif;
 }
 
 .inativo {
-  color: #dc2626;
-  background: rgb(248, 201, 201);
+  color: var(--status-red-btn);
+  background: var(--status-red);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 8px;
   padding: 5px;
-  border-radius: 6px;
+  border-radius: 15px;
   font-family: "montserrat", sans-serif;
 }
 
@@ -115,11 +120,11 @@
 }
 
 .language-tag {
-  background: #eef2ff;
-  color: #6e65cc;
+  background: var(--primary);
+  color: var(--text-dist);
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 8px;
   font-family: "montserrat", sans-serif;
 }
 
@@ -153,7 +158,7 @@ button.secondary {
 /* ===== MODAL ===== */
 
 .modal {
-  background: #fff;
+  background: var(--card);
   width: 100%;
   max-width: 600px;
   border-radius: 12px;
@@ -173,7 +178,10 @@ button.secondary {
 .form-grid input {
   padding: 10px;
   border-radius: 6px;
-  border: 1px solid #d1d5db;
+  background: var(--input);
+  color: var(--text);
+  font-size: 10px;
+  border: 1px solid var(--border);
 }
 
 /* ===== TAG SELECTOR (MODAL) ===== */
@@ -188,26 +196,28 @@ button.secondary {
 .name-title {
   font-weight: 600;
   margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text);
   display: block;
 }
 
 .tag-option {
   padding: 6px 14px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 10px;
   cursor: pointer;
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--input);
+  color: var(--text);
   user-select: none;
 }
 
 .tag-option.active {
-  background: #027373;
-  color: #fff;
+  background: var(--primary);
+  color: var(--text-dist);
 }
 
 .tag-option.green.active {
-  background: #027373;
+  background: var(--primary);
 }
 
 /* ===== CHECKBOX ===== */
@@ -217,6 +227,8 @@ button.secondary {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  color: var(--text);
+  font-size: 10px;
 }
 
 /* ===== MODAL ACTIONS ===== */
@@ -230,8 +242,8 @@ button.secondary {
 
 .btn-save-edit {
   padding: 8px 14px;
-  background: #027373;
-  color: #fff;
+  background: var(--primary);
+  color: var(--text-btn);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -239,8 +251,8 @@ button.secondary {
 
 .btn-cancel-edit {
   padding: 8px 14px;
-  background: #f2e7dc;
-  color: #027373;
+  background: var(--status-red);
+  color: var(--text-btn);
   border: none;
   border-radius: 6px;
   cursor: pointer;

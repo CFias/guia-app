@@ -141,14 +141,14 @@ const CadastroGuia = () => {
                 <label>Idiomas</label>
                 <div className="dropdown-cad">
                     <div
-                        className="dropdown-header"
+                        className="dropdown-header-g"
                         onClick={() => setDropdownIdiomasOpen(!dropdownIdiomasOpen)}
                     >
                         Selecionar idiomas <span>▾</span>
                     </div>
 
                     {dropdownIdiomasOpen && (
-                        <div className="dropdown-list">
+                        <div className="dropdown-list-g">
                             {idiomasDisponiveis.map(idioma => (
                                 <div
                                     key={idioma.id}
@@ -175,14 +175,14 @@ const CadastroGuia = () => {
                 <label>Passeios Aptos</label>
                 <div className="dropdown-cad">
                     <div
-                        className="dropdown-header"
+                        className="dropdown-header-g"
                         onClick={() => setDropdownPasseiosOpen(!dropdownPasseiosOpen)}
                     >
                         Selecionar passeios <span>▾</span>
                     </div>
 
                     {dropdownPasseiosOpen && (
-                        <div className="dropdown-list">
+                        <div className="dropdown-list-g">
                             {passeiosDisponiveis.map(passeio => (
                                 <div
                                     key={passeio.id}

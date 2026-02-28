@@ -1,19 +1,24 @@
-import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import "./styles.css";
+import { useTheme } from "../../Context/ThemeContext";
 
 import PlaylistAddCircleRoundedIcon from "@mui/icons-material/PlaylistAddCircleRounded";
 import PlaylistAddCheckCircleRoundedIcon from "@mui/icons-material/PlaylistAddCheckCircleRounded";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import TourIcon from "@mui/icons-material/Tour";
 import StyleIcon from "@mui/icons-material/Style";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 
 import logo from "../../assets/logo4.png";
 
 const Dashboard = ({ loading }) => {
+
+  const { theme, toggleTheme, togglePro } = useTheme();
+
   return (
     <div className="dashboard-container">
-      
+
       {/* ===== SIDEBAR ===== */}
       <aside className="side-dashboard">
         <NavLink to="/" className="logo-dashboard">
@@ -21,6 +26,7 @@ const Dashboard = ({ loading }) => {
         </NavLink>
 
         <h4 className="name-side">Serviços e Guias</h4>
+
         <NavLink to="guias" className="card">
           <AccountCircleIcon fontSize="small" className="icon-side" />
           <span className="label">Lista de Guias</span>
@@ -32,18 +38,12 @@ const Dashboard = ({ loading }) => {
         </NavLink>
 
         <NavLink to="disponibilidade-guia" className="card">
-          <PlaylistAddCheckCircleRoundedIcon
-            fontSize="small"
-            className="icon-side"
-          />
+          <PlaylistAddCheckCircleRoundedIcon fontSize="small" className="icon-side" />
           <span className="label">Disponibilidade da Semana</span>
         </NavLink>
 
         <NavLink to="register-guias" className="card">
-          <PlaylistAddCircleRoundedIcon
-            fontSize="small"
-            className="icon-side"
-          />
+          <PlaylistAddCircleRoundedIcon fontSize="small" className="icon-side" />
           <span className="label">Cadastrar Guias</span>
         </NavLink>
 
@@ -52,12 +52,28 @@ const Dashboard = ({ loading }) => {
           <span className="label">Cadastrar Passeios</span>
         </NavLink>
 
-        {/* <h4 className="name-side">Relatórios</h4>
+        <div className="theme-toggle-container">
 
-        <NavLink to="relatorios-guias" className="card">
-          <WorkHistoryRoundedIcon fontSize="small" className="icon-side" />
-          <span className="label">Histórico de Guias</span>
-        </NavLink> */}
+          <div className="switch" onClick={toggleTheme}>
+            <div className={`slider ${theme !== "light" ? "active" : ""}`} />
+
+            <div className="icon-wrapper">
+              {theme === "light" ? (
+                <LightModeRoundedIcon className="theme-icon sun" />
+              ) : (
+                <DarkModeRoundedIcon className="theme-icon moon" />
+              )}
+            </div>
+          </div>
+
+          {theme !== "light" && (
+            <button className="pro-btn" onClick={togglePro}>
+              {theme === "dark" ? "Ativar Dark Pro" : "Voltar Dark"}
+            </button>
+          )}
+
+        </div>
+
       </aside>
 
       {/* ===== CONTEÚDO ===== */}
@@ -67,6 +83,7 @@ const Dashboard = ({ loading }) => {
           <Outlet />
         </main>
       </div>
+
     </div>
   );
 };

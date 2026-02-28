@@ -195,11 +195,11 @@ const CadastroPasseio = () => {
                 {passeios.length === 0 ? (
                     <p>Nenhum passeio cadastrado.</p>
                 ) : (
-                    <ul>
+                    <ul className="passeio-list">
                         {passeios.map((p) => (
                             <li key={p.id} className="passeio-card">
                                 <div className="passeio-info">
-                                    <strong>{p.nome}</strong>
+                                    <strong className="p-name">{p.nome}</strong>
                                     <p>{p.descricao}</p>
 
                                     <div className="frequencia-tags">

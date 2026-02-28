@@ -56,6 +56,7 @@ export default function Home() {
 
             {!loading && versiculo && (
                 <div
+                className="home-bible"
                     style={{
                         marginTop: 10,
                         padding: 20,
