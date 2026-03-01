@@ -1,6 +1,6 @@
 .page-container {
   font-family: "montserrat", sans-serif;
-  color: #111827;
+  width: 55vw;
 }
 
 h2 {
@@ -34,7 +34,7 @@ h2 {
 }
 
 .btn-list {
-  background: var(--side);
+  background: var(--btn-main);
   color: var(--text-btn);
   border: none;
   padding: 10px;
@@ -48,6 +48,20 @@ h2 {
   justify-content: center;
   align-items: center;
   gap: 2px;
+}
+
+.btn-list:hover {
+  background: var(--text);
+  color: var(--primary);
+}
+
+.week-indicator {
+  background: var(--input);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  margin: 8px;
 }
 
 .btn-list-edt {
@@ -65,6 +79,59 @@ h2 {
   justify-content: center;
   align-items: center;
   gap: 3px;
+}
+
+.whatsapp-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.resumo-tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background: var(--card);
+  color: var(--text);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 10px;
+  white-space: pre-wrap;
+  opacity: 0;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  transition: 0.2s ease;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.whatsapp-wrapper:hover .resumo-tooltip {
+  opacity: 1;
+}
+
+.resumo-tooltip pre {
+  margin: 0;
+  font-family: inherit;
+}
+
+.btn-whatsapp-guia {
+  padding: 5px 8px;
+  font-size: 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--text-dist);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  transition: 0.2s;
+}
+
+.btn-whatsapp-guia:hover {
+  opacity: 0.85;
 }
 
 .btn-remove {
@@ -138,7 +205,7 @@ h2 {
   font-size: 10px;
   font-weight: 700;
   padding: 10px 14px;
-  background: var(--card);
+  background: var(--side);
   color: var(--text);
   border-bottom: 1px solid var(--border);
 }
@@ -541,10 +608,10 @@ h2 {
 }
 
 .mini-bar {
-  width: 14px;
-  height: 3px;
+  width: 35px;
+  height: 12px;
   border-radius: 4px;
-  background: var(--border);
+  background: var(--bg);
   transition: 0.3s ease;
 }
 
@@ -602,4 +669,45 @@ h2 {
   .passeio-item.modo-edicao .btn-remove {
     width: 100%;
   }
+}
+
+/* INPUTS EDIÇÃO */
+.passeio-item input,
+.passeio-item select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  font-size: 10px;
+  background: var(--input);
+  color: var(--text);
+  transition: 0.2s ease;
+}
+
+.passeio-item input:focus,
+.passeio-item select:focus {
+  border-color: #1d3557;
+  box-shadow: 0 0 0 2px rgba(29, 53, 87, 0.15);
+  outline: none;
+}
+
+/* Input de nome maior */
+.passeio-add input[type="text"] {
+  min-width: 180px;
+}
+
+.btn-add {
+  background: var(--text);
+  width: 100%;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-size: 10px;
+}
+
+.btn-add:hover {
+  background: #16324f;
+  transform: scale(1.05);
 }

@@ -420,10 +420,10 @@ const DisponibilidadeGuia = () => {
             >
               Próxima semana ▶
             </button>
-            <p className="disp-semana-intervalo">
-              {formatarIntervaloSemana(diasSemana)}
-            </p>
           </div>
+          <p className="disp-semana-intervalo">
+            {formatarIntervaloSemana(diasSemana)}
+          </p>
         </div>
       </div>
 

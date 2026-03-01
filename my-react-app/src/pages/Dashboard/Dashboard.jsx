@@ -74,6 +74,8 @@ const Dashboard = ({ loading }) => {
 
         </div>
 
+
+        <span className="v-style">v1.1.0</span>
       </aside>
 
       {/* ===== CONTEÚDO ===== */}
