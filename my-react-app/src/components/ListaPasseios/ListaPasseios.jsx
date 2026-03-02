@@ -73,6 +73,7 @@ const ListaPasseiosSemana = () => {
   const [novoServico, setNovoServico] = useState({});
   const [mostrarResumo, setMostrarResumo] = useState(false);
   const [disponibilidades, setDisponibilidades] = useState([]);
+  
 
   const paxTimers = useRef({});
 
@@ -714,7 +715,6 @@ Operacional - Luck Receptivo 🍀
       }
 
       await carregarDados();
-      await gerarResumoGuiasSemana();
       setMostrarResumo(true);
     } finally {
       setLoading(false);
