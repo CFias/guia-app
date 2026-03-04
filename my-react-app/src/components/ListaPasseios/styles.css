@@ -16,7 +16,8 @@ h2 {
   align-items: center;
   flex-direction: column;
   background: var(--card);
-  border-radius: 7px;
+  border-radius: 15px;
+  border: 1px solid var(--border);
 }
 
 .week-controls {
@@ -206,7 +207,7 @@ h2 {
   font-weight: 700;
   padding: 10px 14px;
   background: var(--side);
-  color: var(--text);
+  color: var(--text-btn);
   border-bottom: 1px solid var(--border);
 }
 

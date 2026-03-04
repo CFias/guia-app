@@ -1,190 +1,166 @@
-/* ===== CONTAINER ===== */
-.form-container {
-    margin: 0 auto;
-    font-family: "Montserrat", sans-serif;
-    color: var(--text);
-    overflow-y: hidden;
+/* ============================= */
+/* CONTAINER PRINCIPAL */
+/* ============================= */
 
+.guide-form-container {
+    width: 55vw;
+    margin: 40px auto;
+    padding: 40px;
+    border-radius: 18px;
 }
 
-.select-idiomas {
-    width: 100%;
-    min-height: 120px;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    font-size: 15px;
-    outline: none;
+.guide-form-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: var(--text);
+}
+
+/* ============================= */
+/* FORM */
+/* ============================= */
+
+.guide-form {
     background: var(--card);
-}
-
-.select-idiomas:focus {
-    border-color: #1f7a3f;
-    box-shadow: 0px 0px 5px rgba(31, 122, 63, 0.4);
-}
-
-
-.form-container h2 {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 24px;
-    color: var(--text);
-}
-
-/* ===== CARD ===== */
-.form-content {
     border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
-/* ===== INPUTS ===== */
-.form-content input[type="text"],
-.form-content textarea {
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    font-size: 14px;
-    font-weight: 500;
-    background: var(--card);
-    transition: all 0.2s ease;
-}
+/* ============================= */
+/* INPUTS */
+/* ============================= */
 
-.form-content input:focus,
-.form-content textarea:focus {
-    outline: none;
+.guide-input,
+.guide-textarea {
     background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 10px;
     color: var(--text);
-    border-color: var(--border);
-    box-shadow: 0 0 0 2px rgba(2, 115, 115, 0.15);
+    outline: none;
 }
 
-.form-content textarea {
-    resize: none;
-    min-height: 100px;
+.guide-input:focus,
+.guide-textarea:focus {
+    border-color: var(--btn-main);
+    box-shadow: 0 0 0 2px rgba(0, 199, 152, 0.2);
 }
 
-/* ===== LABEL ===== */
-.form-content label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
+.guide-textarea {
+    min-height: 90px;
+    resize: vertical;
 }
 
-/* ===== DROPDOWN ===== */
-.dropdown-cad {
+/* ============================= */
+/* DROPDOWN */
+/* ============================= */
+
+.guide-dropdown {
     position: relative;
 }
 
-.dropdown-header-g {
-    padding: 14px 16px;
-    border-radius: 12px;
+.guide-dropdown-header {
+    background: var(--input);
     border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--text);
+    border-radius: 10px;
+    padding: 10px;
+    font-family: "montserrat", sans-serif;
     cursor: pointer;
-    font-size: 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.dropdown-list-g {
+.guide-dropdown-menu {
     position: absolute;
-    top: 110%;
-    left: 0;
-    color: var(--text);
-
-    right: 0;
+    width: 100%;
+    margin-top: 8px;
     background: var(--card);
-    border-radius: 14px;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    max-height: 260px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 200px;
     overflow-y: auto;
-    z-index: 20;
+    z-index: 10;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
-.dropdown-item {
-    padding: 14px 18px;
-    font-size: 14px;
+.guide-dropdown-item {
+    padding: 10px 14px;
     cursor: pointer;
-    transition: background 0.2s;
 }
 
-.dropdown-item:hover {
-    background: var(--input);
-    color: var(--text);
+.guide-dropdown-item:hover {
+    background: var(--btn-main);
+    color: var(--text-btn);
 }
 
-/* ===== TAGS ===== */
-.selected-languages {
+/* ============================= */
+/* TAGS SELECIONADAS */
+/* ============================= */
+
+.guide-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
 }
 
-.language-tag {
+.guide-tag {
     background: var(--primary);
-    color: var(--text-dist);
-    padding: 4px 10px;
-    border-radius: 999px;
+    color: var(--text-btn);
+    padding: 6px 12px;
+    border-radius: 30px;
     font-size: 10px;
-    font-family: "montserrat", sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-
-.language-tag span {
+.guide-tag span {
     cursor: pointer;
-    font-size: 14px;
-    opacity: 0.8;
+    font-weight: bold;
 }
 
-.language-tag span:hover {
-    opacity: 1;
+.guide-tag--service {
+    background: var(--text-dist);
+    color: #000;
 }
 
-/* ===== CHECKBOX ===== */
-.checkbox-line {
+/* ============================= */
+/* CHECKBOX */
+/* ============================= */
+
+.guide-checkbox {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 10px;
 }
 
-.checkbox-line input {
-    width: 16px;
-    height: 16px;
-}
+/* ============================= */
+/* BOTÃO */
+/* ============================= */
 
-/* ===== BOTÃO ===== */
-.form-content button {
-    margin-top: 10px;
-    background: var(--side);
+.guide-button {
+    background: var(--btn-main);
     color: var(--text-btn);
     border: none;
-    padding: 16px;
-    border-radius: 14px;
+    border-radius: 12px;
+    padding: 14px;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.form-content button:disabled {
+.guide-button:hover {
+    filter: brightness(1.1);
+}
+
+.guide-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-}
-
-/* ===== MOBILE ===== */
-@media (max-width: 768px) {
-    .form-container {
-        padding: 16px;
-    }
-
-    .form-content {
-        padding: 20px;
-    }
 }

@@ -135,7 +135,7 @@ const CadastroPasseio = () => {
                     onChange={(e) => setDescricao(e.target.value)}
                 />
 
-                <label>Frequência do Passeio</label>
+                <label>Frequência do Passeios</label>
 
                 <div className="dropdown-cad">
                     <div

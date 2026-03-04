@@ -367,7 +367,7 @@ const DisponibilidadeGuia = () => {
                 className="disp-btn"
                 onClick={() => setDropdownDiasOpen(!dropdownDiasOpen)}
               >
-                Selecionar dias <span>▾</span>
+                Selecionar dias ▾
               </div>
 
               {dropdownDiasOpen && (
@@ -427,8 +427,8 @@ const DisponibilidadeGuia = () => {
         </div>
       </div>
 
+      <h3 className="disp-title-3">Guias disponíveis nesta semana</h3>
       <div className="tabela-disponibilidade">
-        <h3 className="disp-title-3">Guias disponíveis nesta semana</h3>
         <div className="search-block">
           <input
             className="search-input"

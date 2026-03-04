@@ -88,6 +88,12 @@
 .p3 {
   animation: orbit 5s linear infinite;
 }
+.p4 {
+  animation: orbit 7s linear infinite;
+}
+.p5 {
+  animation: orbit 6s linear infinite;
+}
 
 /* =============================== */
 /* ===== TEXTO ===== */
@@ -161,5 +167,19 @@
 
   100% {
     stroke-dashoffset: -1200;
+  }
+}
+
+.clover-image {
+  width: 110px;
+  height: 110px;
+  animation: cloverSpin 2.5s linear infinite;
+
+}
+
+/* Rotação suave */
+@keyframes cloverSpin {
+  to {
+    transform: rotate(360deg);
   }
 }

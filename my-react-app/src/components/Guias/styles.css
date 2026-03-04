@@ -1,6 +1,7 @@
 .page-container {
   box-sizing: border-box;
   font-family: "montserrat", sans-serif;
+  width: 55vw;
 }
 
 .page-h2 {
@@ -55,6 +56,7 @@
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border);
 }
 
 .escala-table th {
@@ -64,6 +66,7 @@
   font-size: 10px;
   font-family: "montserrat", sans-serif;
   text-transform: uppercase;
+
 }
 
 .btn-edit {
