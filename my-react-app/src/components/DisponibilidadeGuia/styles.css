@@ -4,7 +4,6 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   width: 55vw;
   padding: 5px;
-  border: 1px solid var(--border);
 }
 
 .disp-h2 {
@@ -34,7 +33,6 @@ label {
 
 .search-input {
   border-radius: 8px;
-  border: 1px solid var(--border);
   background: var(--input);
   font-size: 10px;
   outline: none;
@@ -50,7 +48,6 @@ label {
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid var(--border);
   font-size: 8px;
   color: var(--text);
   outline: none;
@@ -104,7 +101,6 @@ label {
   background: var(--card);
   border-radius: 12px;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border);
   z-index: 9999;
   padding: 10px;
   max-height: 260px;

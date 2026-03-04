@@ -17,7 +17,6 @@ h2 {
   flex-direction: column;
   background: var(--card);
   border-radius: 15px;
-  border: 1px solid var(--border);
 }
 
 .week-controls {
