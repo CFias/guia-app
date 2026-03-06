@@ -73,7 +73,7 @@ const ListaPasseiosSemana = () => {
   const [novoServico, setNovoServico] = useState({});
   const [mostrarResumo, setMostrarResumo] = useState(false);
   const [disponibilidades, setDisponibilidades] = useState([]);
-  
+
 
   const paxTimers = useRef({});
 
@@ -215,7 +215,7 @@ const ListaPasseiosSemana = () => {
   });
 
   const statusGrupo = (pax) => {
-    if (pax === null || pax === undefined) return null;
+    if (pax === null || pax === undefined || pax === 0) return null;
 
     return pax >= 8 ? (
       <span className="status ok">Grupo Formado</span>
@@ -1000,13 +1000,12 @@ Operacional - Luck Receptivo 🍀
                         min="0"
                         value={
                           registro
-                            ? paxEditando[registro.id] ?? registro.passengers ?? ""
-                            : ""
+                            ? paxEditando[registro.id] ?? registro.passengers ?? 0
+                            : 0
                         }
                         onChange={async (e) => {
                           const novoPax = e.target.value;
 
-                          // 🔹 Se ainda não existe registro, cria primeiro
                           if (!registro) {
                             const docRef = await addDoc(collection(db, "weekly_services"), {
                               serviceId: p.serviceId || null,
@@ -1021,11 +1020,33 @@ Operacional - Luck Receptivo 🍀
                               createdAt: new Date(),
                             });
 
-                            await carregarDados();
+                            setExtras((prev) => {
+                              const novo = { ...prev };
+
+                              if (!novo[dia.date]) novo[dia.date] = [];
+
+                              novo[dia.date] = [
+                                ...novo[dia.date],
+                                {
+                                  id: docRef.id,
+                                  serviceId: p.serviceId || null,
+                                  serviceName: p.nome,
+                                  passengers: Number(novoPax),
+                                  guiaId: null,
+                                  guiaNome: null,
+                                  date: dia.date,
+                                  day: dia.day,
+                                  manual: false,
+                                  allocationStatus: "OPEN",
+                                },
+                              ];
+
+                              return novo;
+                            });
+
                             return;
                           }
 
-                          // 🔹 Se já existe, usa sua função normal
                           alterarPaxManual(registro.id, novoPax);
                         }}
                       />
