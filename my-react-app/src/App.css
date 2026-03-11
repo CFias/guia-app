@@ -14,10 +14,15 @@ body.light {
   --text: #1f1f1f;
   --text-btn: #eeeeee;
   --text-dist: #00c798;
+  --p1: #c70000;
+  --primary-2: #4d0606;
+  --p2: #f7db05;
+  --primary-1: #4d4206;
+  --p3: #00c798;
   --primary: #014034;
   --btn-main: #005646;
   --status-red: #c61414a2;
-  --status-red-btn: #febbbb;
+  --status-red-btn: #161200;
 
 }
 
@@ -34,7 +39,12 @@ body.dark {
   --btn-main: #094439;
   --text-btn: #c2c2c2;
   --status-red: #c61414a2;
-  --status-red-btn: #febbbb;
+  --status-red-btn: #161200;
+  --p1: #c70000;
+  --primary-2: #4d0606;
+  --p2: #f7db05;
+  --primary-1: #4d4206;
+  --p3: #00c798;
 }
 
 
@@ -52,8 +62,13 @@ body.dark-pro {
   --primary: #08201d;
   --btn-main: #027963;
   --status-red: #c61414a2;
-  --status-red-btn: #febbbb;
+  --status-red-btn: #161200;
   --text-btn: #dbdbdb;
+  --p1: #c70000;
+  --primary-2: #4d060648;
+  --p2: #f7db05;
+  --primary-1: #4d42063d;
+  --p3: #00c798;
 }
 
 body {

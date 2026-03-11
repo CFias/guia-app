@@ -1,0 +1,151 @@
+.config-page {
+    width: 100%;
+}
+
+.config-title-page {
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* LAYOUT */
+
+.config-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 20px;
+    width: 55vw;
+    align-items: start;
+}
+
+/* NAV */
+
+.config-nav {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.config-nav-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.config-nav-item:hover {
+    background: var(--input);
+}
+
+.config-nav-item.active {
+    background: var(--btn-main);
+    color: var(--text-btn);
+}
+
+/* CONTEÚDO */
+
+.config-content {
+    min-width: 0;
+}
+
+.config-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 22px;
+    border: 1px solid var(--border);
+}
+
+.config-card h3 {
+    margin-bottom: 18px;
+    font-size: 14px;
+}
+
+/* CAMPOS */
+
+.config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.config-field label {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text);
+}
+
+/* SELECT */
+
+.theme-select {
+    width: 100%;
+    max-width: 320px;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    padding: 0 10px;
+    font-size: 10px;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.theme-select:focus {
+    border-color: var(--text-dist);
+}
+
+/* TEXTO EXPLICATIVO */
+
+.config-help {
+    margin-top: 12px;
+    font-size: 10px;
+    opacity: 0.85;
+    max-width: 420px;
+    color: var(--text-dist);
+}
+
+/* STATUS */
+
+.config-saving {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-dist);
+    font-weight: 600;
+}
+
+/* RESPONSIVO */
+
+@media (max-width: 900px) {
+
+    .config-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .config-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .config-nav-item {
+        width: auto;
+    }
+
+}

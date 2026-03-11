@@ -19,6 +19,75 @@ h2 {
   border-radius: 15px;
 }
 
+.resumo-nome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resumo-nome-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resumo-modo {
+  margin: 4px 0 0;
+  font-size: 8px;
+  font-weight: 400;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.resumo-modo-global {
+  margin: 12px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dist);
+  text-align: center;
+}
+
+.priority-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 12px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 6px;
+  font-weight: 700;
+}
+
+.status.fechado {
+  background: var(--primary-2);
+  border: 1px solid var(--p1);
+  color: var(--text);
+  font-size: 8px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.priority-pill.p-1 {
+  background: var(--input);
+  color: var(--p1);
+  border: 1px solid var(--p1);
+}
+
+.priority-pill.p-2 {
+  background: var(--input);
+  color: var(--p2);
+  border: 1px solid var(--p2);
+
+}
+
+.priority-pill.p-3 {
+  background: var(--input);
+  color: var(--p3);
+  border: 1px solid var(--p3);
+
+}
+
 .week-controls {
   display: flex;
   justify-content: start;
@@ -256,17 +325,19 @@ h2 {
 
 .status.ok {
   background: var(--primary);
-  color: var(--text-dist);
+  border: 1px solid var(--p3);
+  color: var(--text);
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
 }
 
 .status.alerta {
-  background: var(--status-red);
-  color: var(--status-red-btn);
+  background: var(--primary-1);
+  border: 1px solid var(--p2);
+  color: var(--text);
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
 }
 
@@ -603,12 +674,13 @@ h2 {
 
 .mini-chart {
   display: flex;
+  align-items: center;
+  justify-content: space-around;
   gap: 6px;
-  margin-top: 6px;
 }
 
 .mini-bar {
-  width: 35px;
+  width: 10px;
   height: 12px;
   border-radius: 4px;
   background: var(--bg);
@@ -618,7 +690,10 @@ h2 {
 .mini-bar.ativo {
   background: var(--text-dist);
   width: 10px;
-  height: 1px;
+  height: 12px;
+  border: none;
+  padding: 0;
+    border-radius: 4px;
 }
 
 .alerta-distribuicao {

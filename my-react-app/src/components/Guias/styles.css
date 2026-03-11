@@ -1,59 +1,133 @@
 .page-container {
   box-sizing: border-box;
-  font-family: "montserrat", sans-serif;
+  font-family: "Montserrat", sans-serif;
   width: 55vw;
-}
-
-.page-h2 {
-  margin-bottom: 20px;
-  font-weight: 500;
   color: var(--text);
 }
 
+.page-h2 {
+  margin-bottom: 18px;
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--text);
+}
+
+/* ===== FILTROS ===== */
+
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(1, minmax(100px, 0.7fr)) auto;
+  gap: 5px;
+  align-items: center;
   background: var(--card);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  padding: 10px;
-  border-radius: 7px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 12px;
 }
 
 .filters-grid input,
 .filters-grid select {
-  padding: 7px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 10px;
   color: var(--text);
   background: var(--input);
   border: 1px solid var(--border);
-  font-family: "montserrat", sans-serif;
+  font-family: "Montserrat", sans-serif;
+  outline: none;
+}
+
+.filters-grid input::placeholder {
+  color: var(--text);
+  opacity: 0.65;
+}
+
+.filters-grid input:focus,
+.filters-grid select:focus,
+.input-select:focus,
+.form-grid input:focus {
+  border-color: var(--text-dist);
+  box-shadow: 0 0 0 3px rgba(0, 199, 152, 0.12);
 }
 
 .counter-info {
-  font-size: 12px;
-  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-btn);
   border: 1px solid var(--border);
   background: var(--primary);
-  color: var(--text-dist);
-  width: auto;
   text-align: center;
-  padding: 5px;
+  padding: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 5px;
-  font-family: "montserrat", sans-serif;
+  border-radius: 10px;
+  font-family: "Montserrat", sans-serif;
+  white-space: nowrap;
+}
+
+.counter-info strong {
+  color: var(--text-dist);
+  margin-left: 4px;
+}
+
+/* ===== PRIORIDADE ===== */
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+
+.priority-1 {
+  background: var(--primary-2);
+  color: var(--p1);
+  border: 1px solid var(--p1);
+}
+
+.priority-2 {
+  background: var(--primary-1);
+  color: var(--p2);
+  border: 1px solid var(--p2);
+}
+
+.priority-3 {
+  background: var(--primary);
+  color: var(--p3);
+  border: 1px solid var(--p3);
+}
+
+.input-select {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 10px;
+  margin-top: 6px;
+  margin-bottom: 14px;
+  font-family: "Montserrat", sans-serif;
+  outline: none;
 }
 
 /* ===== TABELA ===== */
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
 
 .escala-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--card);
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--border);
@@ -62,59 +136,86 @@
 .escala-table th {
   background: var(--card);
   color: var(--text);
-  padding: 14px;
+  padding: 14px 12px;
   font-size: 10px;
-  font-family: "montserrat", sans-serif;
+  font-family: "Montserrat", sans-serif;
   text-transform: uppercase;
-
-}
-
-.btn-edit {
-  padding: 6px 12px;
-  background: var(--side);
-  color: var(--text-btn);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 10px;
-  font-family: "montserrat", sans-serif;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
 }
 
 .escala-table td {
-  padding: 15px;
+  padding: 14px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 10px;
   color: var(--text);
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.escala-table tr:last-child td {
+  border-bottom: none;
+}
+
+.escala-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.guia-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ===== BOTÃO EDITAR ===== */
+
+.btn-edit {
+  padding: 8px 12px;
+  background: var(--side);
+  color: var(--text-btn);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: "Montserrat", sans-serif;
   font-weight: 600;
 }
 
-.escala-table tr:hover {
-  background: var(--border);
+.btn-edit:hover {
+  filter: brightness(1.06);
 }
 
 /* ===== STATUS ===== */
 
 .ativo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-dist);
-  font-weight: 600;
-  font-size: 8px;
-  padding: 5px;
-  border-radius: 15px;
+  font-weight: 400;
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
   background: var(--primary);
-  font-family: "montserrat", sans-serif;
+  font-family: "Montserrat", sans-serif;
+  border: 1px solid var(--border);
 }
 
 .inativo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--status-red-btn);
   background: var(--status-red);
-  font-weight: 600;
-  font-size: 8px;
-  padding: 5px;
-  border-radius: 15px;
-  font-family: "montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-family: "Montserrat", sans-serif;
+  border: 1px solid transparent;
 }
 
-/* ===== TAGS INLINE (LISTA) ===== */
+/* ===== TAGS INLINE ===== */
 
 .tags-inline {
   display: flex;
@@ -125,25 +226,12 @@
 .language-tag {
   background: var(--primary);
   color: var(--text-dist);
-  padding: 4px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
-  font-size: 8px;
-  font-family: "montserrat", sans-serif;
-}
-
-/* ===== BOTÕES ===== */
-
-/* button {
-    padding: 8px 14px;
-    background: #4f46e5;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-} */
-
-button.secondary {
-  background: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: "Montserrat", sans-serif;
+  border: 1px solid var(--border);
 }
 
 /* ===== MODAL OVERLAY ===== */
@@ -156,6 +244,7 @@ button.secondary {
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  padding: 16px;
 }
 
 /* ===== MODAL ===== */
@@ -164,9 +253,10 @@ button.secondary {
   background: var(--card);
   width: 100%;
   max-width: 600px;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
 }
 
 /* ===== FORM ===== */
@@ -179,15 +269,18 @@ button.secondary {
 }
 
 .form-grid input {
-  padding: 10px;
-  border-radius: 6px;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
   background: var(--input);
   color: var(--text);
-  font-size: 10px;
+  font-size: 13px;
   border: 1px solid var(--border);
+  font-family: "Montserrat", sans-serif;
+  outline: none;
 }
 
-/* ===== TAG SELECTOR (MODAL) ===== */
+/* ===== TAG SELECTOR ===== */
 
 .tag-selector {
   display: flex;
@@ -199,19 +292,21 @@ button.secondary {
 .name-title {
   font-weight: 600;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
   display: block;
 }
 
 .tag-option {
-  padding: 6px 14px;
+  padding: 7px 14px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   background: var(--input);
   color: var(--text);
   user-select: none;
+  border: 1px solid var(--border);
 }
 
 .tag-option.active {
@@ -231,7 +326,7 @@ button.secondary {
   gap: 8px;
   margin-bottom: 10px;
   color: var(--text);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 /* ===== MODAL ACTIONS ===== */
@@ -244,19 +339,73 @@ button.secondary {
 }
 
 .btn-save-edit {
-  padding: 8px 14px;
+  padding: 10px 14px;
   background: var(--primary);
   color: var(--text-btn);
-  border: none;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
+  font-family: "Montserrat", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn-save-edit:hover {
+  filter: brightness(1.06);
 }
 
 .btn-cancel-edit {
-  padding: 8px 14px;
+  padding: 10px 14px;
   background: var(--status-red);
   color: var(--text-btn);
-  border: none;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
+  font-family: "Montserrat", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn-cancel-edit:hover {
+  filter: brightness(1.04);
+}
+
+/* ===== RESPONSIVO ===== */
+
+@media (max-width: 1100px) {
+  .page-container {
+    width: 100%;
+  }
+
+  .filters-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .counter-info {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .counter-info {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal {
+    padding: 18px;
+  }
+
+  .escala-table {
+    min-width: 760px;
+  }
 }

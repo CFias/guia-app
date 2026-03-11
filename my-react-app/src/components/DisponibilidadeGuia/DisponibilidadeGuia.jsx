@@ -112,6 +112,7 @@ const DisponibilidadeGuia = () => {
                 mapaGuias[guia.id] = {
                   guiaId: guia.id,
                   nome: guia.nome,
+                  nivelPrioridade: guia.nivelPrioridade || 2,
                   dias: [],
                 };
               }
@@ -289,6 +290,7 @@ const DisponibilidadeGuia = () => {
           {
             guiaId: guiaSelecionado.id,
             nome: guiaSelecionado.nome,
+            nivelPrioridade: guiaSelecionado.nivelPrioridade || 2,
             dias: [...novasDatas],
           },
         ];
@@ -339,7 +341,7 @@ const DisponibilidadeGuia = () => {
 
             {guias.map((g) => (
               <option key={g.id} value={g.id}>
-                {g.nome}
+                {g.nome} • P{g.nivelPrioridade || 2}
               </option>
             ))}
           </select>
@@ -351,16 +353,7 @@ const DisponibilidadeGuia = () => {
           <>
             <label>Dias disponíveis</label>
 
-            {/* NOVA OPÇÃO */}
-            <button
-              type="button"
-              className="btn-disp"
-              onClick={selecionarTodosDias}
-            >
-              {selecionados.length === diasSemana.length
-                ? "Remover todos os dias"
-                : "Selecionar todos os dias"}
-            </button>
+
 
             <div className="disp-dropdown">
               <div
@@ -369,6 +362,15 @@ const DisponibilidadeGuia = () => {
               >
                 Selecionar dias ▾
               </div>
+              <button
+                type="button"
+                className="btn-disp"
+                onClick={selecionarTodosDias}
+              >
+                {selecionados.length === diasSemana.length
+                  ? "Remover todos os dias"
+                  : "Selecionar todos os dias"}
+              </button>
 
               {dropdownDiasOpen && (
                 <div className="dropdown-list">
@@ -383,6 +385,7 @@ const DisponibilidadeGuia = () => {
                   ))}
                 </div>
               )}
+              {/* NOVA OPÇÃO */}
             </div>
           </>
         )}
@@ -464,7 +467,14 @@ const DisponibilidadeGuia = () => {
         </div>
         {disponibilidadeFiltrada.map((g) => (
           <div key={g.guiaId} className="linha">
-            <div className="col guia">{g.nome}</div>
+            <div className="col guia">
+              <div className="guia-nome-wrap">
+                <span className={`priority-pill p-${g.nivelPrioridade || 2}`}>
+                  P{g.nivelPrioridade || 2}
+                </span>
+                <span>{g.nome}</span>
+              </div>
+            </div>
 
             {diasSemana.map((d) => {
               const diaGuia = g.dias.find((x) => x.date === d.date);

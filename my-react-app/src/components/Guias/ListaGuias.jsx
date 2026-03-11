@@ -139,9 +139,11 @@ const ListaGuias = () => {
                                 <th>Nome</th>
                                 <th>WhatsApp</th>
                                 <th>Idiomas</th>
+                                <th>Prioridade</th>
                                 <th>Motoguia</th>
                                 <th>Status</th>
                                 <th>Ações</th>
+
                             </tr>
                         </thead>
 
@@ -163,7 +165,11 @@ const ListaGuias = () => {
                                             ))}
                                         </div>
                                     </td>
-
+                                    <td>
+                                        <span className={`priority-badge priority-${guia.nivelPrioridade || 2}`}>
+                                            {guia.nivelPrioridade || 2}
+                                        </span>
+                                    </td>
                                     <td>{guia.motoguia ? "Sim" : "Não"}</td>
 
                                     <td>

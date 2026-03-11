@@ -10,6 +10,7 @@ import ListaGuias from "./components/Guias/ListaGuias";
 import ListaPasseios from "./components/ListaPasseios/ListaPasseios";
 import RelatoriosGuias from "./components/RelatoriosGuias/RelatoriosGuias";
 import Home from "./components/Home/Home";
+import Configuracoes from "./pages/Configuracoes/Configuracoes";
 
 function App() {
   return (
@@ -23,7 +24,7 @@ function App() {
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
         <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
         <Route path="/" element={<Home />} />
-
+        <Route path="configuracoes" element={<Configuracoes />} />
         {/* rotas futuras */}
         <Route path="guias" element={<ListaGuias />} />
         <Route path="passeios" element={<ListaPasseios />} />

@@ -12,7 +12,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
 
     const [idiomasDisponiveis, setIdiomasDisponiveis] = useState([]);
     const [idiomasSelecionados, setIdiomasSelecionados] = useState([]);
-
+    const [nivelPrioridade, setNivelPrioridade] = useState(2);
     const [passeiosDisponiveis, setPasseiosDisponiveis] = useState([]);
     const [passeiosSelecionados, setPasseiosSelecionados] = useState([]);
 
@@ -30,7 +30,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         setWhatsapp(guia.whatsapp || "");
         setMotoguia(!!guia.motoguia);
         setAtivo(guia.ativo !== false);
-
+        setNivelPrioridade(Number(guia.nivelPrioridade || 2));
         setIdiomasSelecionados(guia.idiomas || []);
         setPasseiosSelecionados((guia.passeios || []).map(p => p.id));
     }, [guia]);
@@ -105,6 +105,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
             await updateDoc(doc(db, "guides", guia.id), {
                 nome,
                 whatsapp,
+                nivelPrioridade,
                 idiomas: idiomasSelecionados,
                 passeios: passeiosDisponiveis.filter(p =>
                     passeiosSelecionados.includes(p.id)
@@ -207,6 +208,16 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     />
                     Guia ativo
                 </div>
+                <label className="name-title">Nível de prioridade</label>
+                <select
+                    className="input-select"
+                    value={nivelPrioridade}
+                    onChange={(e) => setNivelPrioridade(Number(e.target.value))}
+                >
+                    <option value={1}>1 - Baixa</option>
+                    <option value={2}>2 - Média</option>
+                    <option value={3}>3 - Alta</option>
+                </select>
 
                 <div className="modal-actions">
                     <button

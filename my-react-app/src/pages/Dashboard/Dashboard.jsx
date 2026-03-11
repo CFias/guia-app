@@ -9,6 +9,7 @@ import TourIcon from "@mui/icons-material/Tour";
 import StyleIcon from "@mui/icons-material/Style";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 
 import logo from "../../assets/logo4.png";
 
@@ -51,8 +52,12 @@ const Dashboard = ({ loading }) => {
           <StyleIcon fontSize="small" className="icon-side" />
           <span className="label">Cadastrar Passeios</span>
         </NavLink>
+        <NavLink to="configuracoes" className="card">
+          <SettingsRoundedIcon fontSize="small" className="icon-side" />
+          <span className="label">Configurações</span>
+        </NavLink>
 
-        <div className="theme-toggle-container">
+        {/* <div className="theme-toggle-container">
 
           <div className="switch" onClick={toggleTheme}>
             <div className={`slider ${theme !== "light" ? "active" : ""}`} />
@@ -72,7 +77,7 @@ const Dashboard = ({ loading }) => {
             </button>
           )}
 
-        </div>
+        </div> */}
 
 
         <span className="v-style">v1.1.0</span>

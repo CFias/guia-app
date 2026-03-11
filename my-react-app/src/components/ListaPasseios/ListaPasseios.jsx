@@ -73,6 +73,7 @@ const ListaPasseiosSemana = () => {
   const [novoServico, setNovoServico] = useState({});
   const [mostrarResumo, setMostrarResumo] = useState(false);
   const [disponibilidades, setDisponibilidades] = useState([]);
+  const [modoDistribuicaoGuias, setModoDistribuicaoGuias] = useState("equilibrado");
 
 
   const paxTimers = useRef({});
@@ -95,6 +96,16 @@ const ListaPasseiosSemana = () => {
       const guiasSnap = await getDocs(collection(db, "guides"));
       setGuias(guiasSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
+      const configSnap = await getDoc(doc(db, "settings", "scale"));
+      if (configSnap.exists()) {
+        const configData = configSnap.data();
+        setModoDistribuicaoGuias(
+          configData.modoDistribuicaoGuias || "equilibrado"
+        );
+      } else {
+        setModoDistribuicaoGuias("equilibrado");
+      }
+
       const mapa = {};
       for (const dia of semanaAtual) {
         const q = query(
@@ -108,8 +119,66 @@ const ListaPasseiosSemana = () => {
     } finally {
       setLoading(false);
     }
+
     const dispSnap = await getDocs(collection(db, "guide_availability"));
     setDisponibilidades(dispSnap.docs.map(d => d.data()));
+  };
+
+  const ordenarGuiasEquilibrado = (guiasElegiveis, contadorSemana) => {
+    return [...guiasElegiveis].sort((a, b) => {
+      const cargaA = contadorSemana[a.id] || 0;
+      const cargaB = contadorSemana[b.id] || 0;
+
+      if (cargaA !== cargaB) {
+        return cargaA - cargaB;
+      }
+
+      return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+        sensitivity: "base",
+      });
+    });
+  };
+
+  const ordenarGuiasPorPrioridade = (
+    guiasElegiveis,
+    contadorSemana,
+    guiasDisponiveisSemana
+  ) => {
+    return [...guiasElegiveis].sort((a, b) => {
+      const prioridadeA = Number(a.nivelPrioridade || 2);
+      const prioridadeB = Number(b.nivelPrioridade || 2);
+
+      const cargaA = Number(contadorSemana[a.id] || 0);
+      const cargaB = Number(contadorSemana[b.id] || 0);
+
+      // 1) primeiro garante que quem ainda não recebeu nada tenha prioridade
+      if (cargaA === 0 && cargaB > 0) return -1;
+      if (cargaB === 0 && cargaA > 0) return 1;
+
+      // 2) distribuição ponderada:
+      // compara carga em relação ao peso, e não carga bruta
+      const scoreA = cargaA / prioridadeA;
+      const scoreB = cargaB / prioridadeB;
+
+      if (scoreA !== scoreB) {
+        return scoreA - scoreB;
+      }
+
+      // 3) desempate por menor carga absoluta
+      if (cargaA !== cargaB) {
+        return cargaA - cargaB;
+      }
+
+      // 4) depois maior prioridade
+      if (prioridadeA !== prioridadeB) {
+        return prioridadeB - prioridadeA;
+      }
+
+      // 5) desempate final por nome
+      return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+        sensitivity: "base",
+      });
+    });
   };
 
   const guiasDisponiveisNoDia = (data) => {
@@ -214,7 +283,11 @@ const ListaPasseiosSemana = () => {
     };
   });
 
-  const statusGrupo = (pax) => {
+  const statusGrupo = (pax, allocationStatus) => {
+    if (allocationStatus === "CLOSED") {
+      return <span className="status fechado">Passeio Fechado</span>;
+    }
+
     if (pax === null || pax === undefined || pax === 0) return null;
 
     return pax >= 8 ? (
@@ -224,8 +297,47 @@ const ListaPasseiosSemana = () => {
     );
   };
 
+  const limparGuiasDeServicosFechados = async () => {
+    const inicioSemana = semana[0]?.date;
+    const fimSemana = semana[semana.length - 1]?.date;
+    if (!inicioSemana || !fimSemana) return;
+
+    const q = query(
+      collection(db, "weekly_services"),
+      where("date", ">=", inicioSemana),
+      where("date", "<=", fimSemana)
+    );
+
+    const snap = await getDocs(q);
+
+    for (const docSnap of snap.docs) {
+      const r = docSnap.data();
+
+      if (r.allocationStatus === "CLOSED" && (r.guiaId || r.guiaNome)) {
+        await updateDoc(docSnap.ref, {
+          guiaId: null,
+          guiaNome: null,
+        });
+      }
+    }
+  };
+
+  const statusPasseio = (status) => {
+    if (status === "CLOSED") {
+      return <span className="status fechado">Passeio Fechado</span>;
+    }
+
+    if (status === "OPEN") {
+      return <span className="status aberto">Passeio Aberto</span>;
+    }
+
+    return null;
+  };
+
   const enviarWhatsappGuiasSemana_FIRESTORE = async () => {
     if (!semana.length || !guias.length) return;
+
+    await limparGuiasDeServicosFechados();
 
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
@@ -246,17 +358,11 @@ const ListaPasseiosSemana = () => {
     snap.docs.forEach((docSnap) => {
       const r = docSnap.data();
 
-      // 🔴 1️⃣ Registro precisa ser válido
       if (!r || !r.date || !r.guiaId) return;
-
-      // 🔴 2️⃣ Ignora CLOSED
       if (r.allocationStatus === "CLOSED") return;
-
-      // 🔴 3️⃣ Precisa estar dentro da semana atual
       if (!mapaSemana[r.date]) return;
-
-      // 🔴 4️⃣ Precisa ter serviço válido
       if (!r.serviceId && !r.manual) return;
+      if (!r.guiaNome && !r.guiaId) return;
 
       const guia = guias.find((g) => g.id === r.guiaId);
       if (!guia?.whatsapp) return;
@@ -265,12 +371,11 @@ const ListaPasseiosSemana = () => {
         mapaGuias[r.guiaId] = {
           nome: guia.nome || r.guiaNome || "Guia",
           whatsapp: guia.whatsapp,
-          datas: new Set(), // 🔵 evita duplicidade automaticamente
+          datas: new Set(),
         };
       }
 
       const dia = mapaSemana[r.date];
-
       mapaGuias[r.guiaId].datas.add(
         `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
       );
@@ -304,8 +409,13 @@ Operacional - Luck Receptivo 🍀
   };
 
   /* ===== GUIA MANUAL ===== */
-  const alterarGuiaManual = async (registroId, guia, dia) => {
+  const alterarGuiaManual = async (registroId, guia, dia, registro) => {
     if (!registroId) return;
+
+    if (registro?.allocationStatus === "CLOSED") {
+      alert("Não é possível alocar guia em um serviço fechado.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -316,7 +426,7 @@ Operacional - Luck Receptivo 🍀
           guiaNome: guia?.nome || null,
           day: dia.day,
           date: dia.date,
-          manual: false, // ✅ FIXO NÃO É MANUAL
+          manual: false,
         },
         { merge: true }
       );
@@ -497,6 +607,7 @@ Operacional - Luck Receptivo 🍀
           contador[r.guiaId] = {
             guiaId: r.guiaId,
             nome: guia?.nome || "Guia",
+            nivelPrioridade: guia?.nivelPrioridade || 2,
             totalServicos: 0,
             diasDisponiveis: disponibilidadeMap[r.guiaId] || 0,
             bloqueios: bloqueiosMap[r.guiaId] || [],
@@ -507,6 +618,7 @@ Operacional - Luck Receptivo 🍀
             trabalhandoBloqueado: false,
             abaixoMedia: false,
             indiceEquilibrio: 0,
+            scorePrioridade: 0,
           };
         }
 
@@ -628,7 +740,9 @@ Operacional - Luck Receptivo 🍀
           disponibilidades.some(
             (d) =>
               d.guideId === g.id &&
-              d.disponibilidade.some((ds) => ds.date === dia.date),
+              d.disponibilidade.some(
+                (ds) => ds.date === dia.date && ds.status !== "BLOCKED"
+              ),
           ),
         );
 
@@ -679,7 +793,6 @@ Operacional - Luck Receptivo 🍀
         for (const r of registrosDia) {
           if (r.guiaId || r.manual) continue;
 
-          // 🚫 se estiver fechado, não aloca
           if (r.allocationStatus === "CLOSED") continue;
 
           const elegiveis = guiasDisponiveis.filter((g) => {
@@ -691,13 +804,23 @@ Operacional - Luck Receptivo 🍀
 
           if (!elegiveis.length) continue;
 
-          const menorCarga = Math.min(...elegiveis.map((g) => contadorSemana[g.id]));
-          const candidatos = elegiveis.filter(
-            (g) => contadorSemana[g.id] === menorCarga
-          );
+          let candidatosOrdenados = [];
 
-          const guiaSelecionado =
-            candidatos[Math.floor(Math.random() * candidatos.length)];
+          if (modoDistribuicaoGuias === "seguir_nivel_selecionado") {
+            candidatosOrdenados = ordenarGuiasPorPrioridade(
+              elegiveis,
+              contadorSemana,
+              guiasDisponiveis
+            );
+          } else {
+            candidatosOrdenados = ordenarGuiasEquilibrado(
+              elegiveis,
+              contadorSemana
+            );
+          }
+
+          const guiaSelecionado = candidatosOrdenados[0];
+          if (!guiaSelecionado) continue;
 
           await setDoc(
             doc(db, "weekly_services", r.id),
@@ -785,6 +908,14 @@ Operacional - Luck Receptivo 🍀
 
       <h2>Planejamento Semanal de Passeios</h2>
       <div className="header-tours">
+        <p className="counter-info">
+          Modo de distribuição:{" "}
+          <strong>
+            {modoDistribuicaoGuias === "seguir_nivel_selecionado"
+              ? "Prioridade"
+              : "Equilibrado"}
+          </strong>
+        </p>
         <div className="week-indicator">
           <span>{formatarPeriodoSemana()}</span>
         </div>
@@ -832,7 +963,11 @@ Operacional - Luck Receptivo 🍀
           </button>
         </div>
       </div>
-
+      <div className="resumo-modo-global">
+        {modoDistribuicaoGuias === "seguir_nivel_selecionado"
+          ? "Escala gerada com regra de prioridade"
+          : "Escala gerada com regra equilibrada"}
+      </div>
       <div className="resumo-container">
         {resumoGuias.map((g, index) => (
           <div key={g.guiaId} className="resumo-card">
@@ -841,22 +976,31 @@ Operacional - Luck Receptivo 🍀
             </div> */}
 
             <div className="resumo-header">
-              <h4>
-                {index === 0 && <span className="medalha">🏆</span>}
-                {g.nome}
+              <h4 className="resumo-nome">
+                <span className="resumo-nome-main">
+                  {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
+                    <span className={`priority-pill p-${g.nivelPrioridade || 2}`}>
+                      P{g.nivelPrioridade || 2}
+                    </span>
+                  )}
+                  {index === 0 && <span className="medalha">🏆</span>}
+                  {g.nome}
+                </span>
+
+
                 {g.sobrecarga && <span className="indicador-alerta">●</span>}
               </h4>
-
               <span
                 className={`resumo-percent 
-            ${g.ocupacao >= 80 ? "alta" : ""}
-            ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
-            ${g.ocupacao < 50 ? "baixa" : ""}
-          `}
+                  ${g.ocupacao >= 80 ? "alta" : ""}
+                  ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+                  ${g.ocupacao < 50 ? "baixa" : ""}
+                  `}
               >
                 {g.ocupacao}%
               </span>
             </div>
+
 
             <div className="resumo-bar">
               <div
@@ -870,7 +1014,7 @@ Operacional - Luck Receptivo 🍀
             </div>
 
             {/* 📈 VARIAÇÃO */}
-            {g.variacao !== 0 && (
+            {Number.isFinite(g.variacao) && g.variacao !== 0 && (
               <div className={`variacao ${g.variacao > 0 ? "up" : "down"}`}>
                 {g.variacao > 0 ? "▲" : "▼"} {Math.abs(g.variacao)}%
               </div>
@@ -966,7 +1110,7 @@ Operacional - Luck Receptivo 🍀
             <strong className={`day-list ${statusDia}`}>
               {dia.label}
               <span className="day-status">
-                {passeiosComGuia}/{totalPasseios}
+                 - Passeios com Guias:{passeiosComGuia} - Total de Passeios:{totalPasseios}
               </span>
             </strong>
 
@@ -987,7 +1131,7 @@ Operacional - Luck Receptivo 🍀
                       <span className="passeio-pax">
                         {registro?.passengers || 0} pax
                       </span>
-                      {statusGrupo(registro?.passengers)}
+                      {statusGrupo(registro?.passengers, registro?.allocationStatus)}
                       <span className="guia-name-aloc">
                         {registro?.guiaNome || "-"}
                       </span>
@@ -1086,7 +1230,7 @@ Operacional - Luck Receptivo 🍀
                             return;
                           }
 
-                          alterarGuiaManual(registro.id, guia || null, dia);
+                          alterarGuiaManual(registro.id, guia || null, dia, registro);
                         }}
                       >
                         <option value="">Sem guia</option>
