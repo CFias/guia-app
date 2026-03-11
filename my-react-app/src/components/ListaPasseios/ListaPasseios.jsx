@@ -10,7 +10,6 @@ import {
   query,
   where,
   updateDoc,
-  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
@@ -18,11 +17,10 @@ import {
   ManageAccounts,
   ModeEdit,
   Send,
-  SendOutlined,
-  SendRounded,
   Undo,
   Visibility,
 } from "@mui/icons-material";
+import LoadingBlock from "../../components/LoadingOverlay/LoadingOverlay";
 
 const DIAS = [
   "Segunda",
@@ -33,7 +31,6 @@ const DIAS = [
   "Sábado",
   "Domingo",
 ];
-import LoadingBlock from "../../components/LoadingOverlay/LoadingOverlay";
 
 export const gerarSemana = (offset = 0) => {
   const hoje = new Date();
@@ -71,18 +68,34 @@ const ListaPasseiosSemana = () => {
   const [loading, setLoading] = useState(false);
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
-  const [mostrarResumo, setMostrarResumo] = useState(false);
   const [disponibilidades, setDisponibilidades] = useState([]);
-  const [modoDistribuicaoGuias, setModoDistribuicaoGuias] = useState("equilibrado");
-
+  const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
+    useState("equilibrado");
 
   const paxTimers = useRef({});
-
-
 
   useEffect(() => {
     carregarDados();
   }, [semanaOffset]);
+
+  useEffect(() => {
+    document.body.style.overflow = loading ? "hidden" : "auto";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    if (semana.length && guias.length) {
+      gerarResumoGuiasSemana();
+    }
+  }, [extras, semana, guias]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(paxTimers.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   const carregarDados = async () => {
     setLoading(true);
@@ -90,13 +103,21 @@ const ListaPasseiosSemana = () => {
       const semanaAtual = gerarSemana(semanaOffset);
       setSemana(semanaAtual);
 
-      const servSnap = await getDocs(collection(db, "services"));
-      setServices(servSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const [servSnap, guiasSnap, configSnap, dispSnap] = await Promise.all([
+        getDocs(collection(db, "services")),
+        getDocs(collection(db, "guides")),
+        getDoc(doc(db, "settings", "scale")),
+        getDocs(collection(db, "guide_availability")),
+      ]);
 
-      const guiasSnap = await getDocs(collection(db, "guides"));
-      setGuias(guiasSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const servicesData = servSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const guiasData = guiasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const disponibilidadesData = dispSnap.docs.map((d) => d.data());
 
-      const configSnap = await getDoc(doc(db, "settings", "scale"));
+      setServices(servicesData);
+      setGuias(guiasData);
+      setDisponibilidades(disponibilidadesData);
+
       if (configSnap.exists()) {
         const configData = configSnap.data();
         setModoDistribuicaoGuias(
@@ -107,21 +128,87 @@ const ListaPasseiosSemana = () => {
       }
 
       const mapa = {};
+
       for (const dia of semanaAtual) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date),
+          where("date", "==", dia.date)
         );
         const snap = await getDocs(q);
         mapa[dia.date] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       }
+
       setExtras(mapa);
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
     } finally {
       setLoading(false);
     }
+  };
 
-    const dispSnap = await getDocs(collection(db, "guide_availability"));
-    setDisponibilidades(dispSnap.docs.map(d => d.data()));
+  const encontrarRegistroDoPasseio = (registrosDia, passeio) => {
+    return registrosDia.find(
+      (r) =>
+        (passeio.manual && r.id === passeio.id) ||
+        (!passeio.manual && r.serviceId === passeio.serviceId)
+    );
+  };
+
+  const criarRegistroBase = async ({
+    passeio,
+    dia,
+    passengers = 0,
+    guia = null,
+    allocationStatus = "OPEN",
+    manual = false,
+  }) => {
+    const docRef = await addDoc(collection(db, "weekly_services"), {
+      serviceId: passeio.serviceId || null,
+      serviceName: passeio.nome,
+      passengers: Number(passengers || 0),
+      guiaId: guia?.id || null,
+      guiaNome: guia?.nome || null,
+      date: dia.date,
+      day: dia.day,
+      manual,
+      allocationStatus,
+      createdAt: new Date(),
+    });
+
+    const novoRegistro = {
+      id: docRef.id,
+      serviceId: passeio.serviceId || null,
+      serviceName: passeio.nome,
+      passengers: Number(passengers || 0),
+      guiaId: guia?.id || null,
+      guiaNome: guia?.nome || null,
+      date: dia.date,
+      day: dia.day,
+      manual,
+      allocationStatus,
+    };
+
+    setExtras((prev) => {
+      const novo = { ...prev };
+
+      if (!novo[dia.date]) novo[dia.date] = [];
+
+      const jaExiste = novo[dia.date].some(
+        (r) =>
+          (!manual &&
+            r.serviceId &&
+            r.serviceId === (passeio.serviceId || null)) ||
+          (manual && r.id === docRef.id)
+      );
+
+      if (!jaExiste) {
+        novo[dia.date] = [...novo[dia.date], novoRegistro];
+      }
+
+      return novo;
+    });
+
+    return novoRegistro;
   };
 
   const ordenarGuiasEquilibrado = (guiasElegiveis, contadorSemana) => {
@@ -139,11 +226,7 @@ const ListaPasseiosSemana = () => {
     });
   };
 
-  const ordenarGuiasPorPrioridade = (
-    guiasElegiveis,
-    contadorSemana,
-    guiasDisponiveisSemana
-  ) => {
+  const ordenarGuiasPorPrioridade = (guiasElegiveis, contadorSemana) => {
     return [...guiasElegiveis].sort((a, b) => {
       const prioridadeA = Number(a.nivelPrioridade || 2);
       const prioridadeB = Number(b.nivelPrioridade || 2);
@@ -151,12 +234,9 @@ const ListaPasseiosSemana = () => {
       const cargaA = Number(contadorSemana[a.id] || 0);
       const cargaB = Number(contadorSemana[b.id] || 0);
 
-      // 1) primeiro garante que quem ainda não recebeu nada tenha prioridade
       if (cargaA === 0 && cargaB > 0) return -1;
       if (cargaB === 0 && cargaA > 0) return 1;
 
-      // 2) distribuição ponderada:
-      // compara carga em relação ao peso, e não carga bruta
       const scoreA = cargaA / prioridadeA;
       const scoreB = cargaB / prioridadeB;
 
@@ -164,36 +244,17 @@ const ListaPasseiosSemana = () => {
         return scoreA - scoreB;
       }
 
-      // 3) desempate por menor carga absoluta
       if (cargaA !== cargaB) {
         return cargaA - cargaB;
       }
 
-      // 4) depois maior prioridade
       if (prioridadeA !== prioridadeB) {
         return prioridadeB - prioridadeA;
       }
 
-      // 5) desempate final por nome
       return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
         sensitivity: "base",
       });
-    });
-  };
-
-  const guiasDisponiveisNoDia = (data) => {
-    return guias.filter((guia) => {
-      const registroDisp = disponibilidades.find(
-        (d) => d.guideId === guia.id
-      );
-
-      if (!registroDisp?.disponibilidade) return false;
-
-      return registroDisp.disponibilidade.some(
-        (d) =>
-          d.date === data &&
-          d.status !== "BLOCKED" // 🔴 impede bloqueados
-      );
     });
   };
 
@@ -205,20 +266,18 @@ const ListaPasseiosSemana = () => {
         allocationStatus: status,
       };
 
-      // 🔴 Se fechar, remove guia automaticamente
       if (status === "CLOSED") {
         dadosUpdate.guiaId = null;
         dadosUpdate.guiaNome = null;
       }
 
-      await setDoc(
-        doc(db, "weekly_services", registroId),
-        dadosUpdate,
-        { merge: true }
-      );
+      await setDoc(doc(db, "weekly_services", registroId), dadosUpdate, {
+        merge: true,
+      });
 
       setExtras((prev) => {
         const novo = { ...prev };
+
         Object.keys(novo).forEach((date) => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
@@ -233,6 +292,7 @@ const ListaPasseiosSemana = () => {
               : r
           );
         });
+
         return novo;
       });
     } catch (err) {
@@ -240,57 +300,26 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  useEffect(() => {
-    document.body.style.overflow = loading ? "hidden" : "auto";
-  }, [loading]);
-
   const removerPasseio = async (id) => {
     setLoading(true);
     try {
       await deleteDoc(doc(db, "weekly_services", id));
       await carregarDados();
+    } catch (err) {
+      console.error("Erro ao remover passeio:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  const weeklyServices = semana.map((dia) => {
-    const registros = extras[dia.date] || [];
-
-    const servicesValidos = registros.filter((r) => {
-      if (!r.guiaId || !r.serviceId) return false;
-
-      const servico = services.find((s) => s.id === r.serviceId);
-      if (!servico) return false;
-
-      if (!servico.frequencia?.includes(r.day)) return false;
-
-      return true;
-    });
-
-    return {
-      day: dia.day,
-      date: dia.date,
-      services: servicesValidos.map((r) => {
-        const guia = guias.find((g) => g.id === r.guiaId);
-
-        return {
-          guideId: r.guiaId,
-          guideName: r.guiaNome,
-          guideWhatsapp: guia?.whatsapp || null,
-        };
-      }),
-    };
-  });
 
   const statusGrupo = (pax, allocationStatus) => {
     if (allocationStatus === "CLOSED") {
       return <span className="status fechado">Passeio Fechado</span>;
     }
 
-    if (pax === null || pax === undefined || pax === 0) return null;
+    const totalPax = Number(pax || 0);
 
-    return pax >= 8 ? (
+    return totalPax >= 8 ? (
       <span className="status ok">Grupo Formado</span>
     ) : (
       <span className="status alerta">Formar Grupo</span>
@@ -302,36 +331,28 @@ const ListaPasseiosSemana = () => {
     const fimSemana = semana[semana.length - 1]?.date;
     if (!inicioSemana || !fimSemana) return;
 
-    const q = query(
-      collection(db, "weekly_services"),
-      where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana)
-    );
+    try {
+      const q = query(
+        collection(db, "weekly_services"),
+        where("date", ">=", inicioSemana),
+        where("date", "<=", fimSemana)
+      );
 
-    const snap = await getDocs(q);
+      const snap = await getDocs(q);
 
-    for (const docSnap of snap.docs) {
-      const r = docSnap.data();
+      for (const docSnap of snap.docs) {
+        const r = docSnap.data();
 
-      if (r.allocationStatus === "CLOSED" && (r.guiaId || r.guiaNome)) {
-        await updateDoc(docSnap.ref, {
-          guiaId: null,
-          guiaNome: null,
-        });
+        if (r.allocationStatus === "CLOSED" && (r.guiaId || r.guiaNome)) {
+          await updateDoc(docSnap.ref, {
+            guiaId: null,
+            guiaNome: null,
+          });
+        }
       }
+    } catch (err) {
+      console.error("Erro ao limpar guias de serviços fechados:", err);
     }
-  };
-
-  const statusPasseio = (status) => {
-    if (status === "CLOSED") {
-      return <span className="status fechado">Passeio Fechado</span>;
-    }
-
-    if (status === "OPEN") {
-      return <span className="status aberto">Passeio Aberto</span>;
-    }
-
-    return null;
   };
 
   const enviarWhatsappGuiasSemana_FIRESTORE = async () => {
@@ -343,50 +364,53 @@ const ListaPasseiosSemana = () => {
     const fimSemana = semana[semana.length - 1].date;
 
     const mapaSemana = {};
-    semana.forEach((d) => (mapaSemana[d.date] = d));
-
-    const q = query(
-      collection(db, "weekly_services"),
-      where("date", ">=", inicioSemana),
-      where("date", "<=", fimSemana)
-    );
-
-    const snap = await getDocs(q);
-
-    const mapaGuias = {};
-
-    snap.docs.forEach((docSnap) => {
-      const r = docSnap.data();
-
-      if (!r || !r.date || !r.guiaId) return;
-      if (r.allocationStatus === "CLOSED") return;
-      if (!mapaSemana[r.date]) return;
-      if (!r.serviceId && !r.manual) return;
-      if (!r.guiaNome && !r.guiaId) return;
-
-      const guia = guias.find((g) => g.id === r.guiaId);
-      if (!guia?.whatsapp) return;
-
-      if (!mapaGuias[r.guiaId]) {
-        mapaGuias[r.guiaId] = {
-          nome: guia.nome || r.guiaNome || "Guia",
-          whatsapp: guia.whatsapp,
-          datas: new Set(),
-        };
-      }
-
-      const dia = mapaSemana[r.date];
-      mapaGuias[r.guiaId].datas.add(
-        `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
-      );
+    semana.forEach((d) => {
+      mapaSemana[d.date] = d;
     });
 
-    const listaGuias = Object.values(mapaGuias).filter(
-      (g) => g.datas.size > 0
-    );
+    try {
+      const q = query(
+        collection(db, "weekly_services"),
+        where("date", ">=", inicioSemana),
+        where("date", "<=", fimSemana)
+      );
 
-    listaGuias.forEach((guia, index) => {
-      const texto = `
+      const snap = await getDocs(q);
+
+      const mapaGuias = {};
+
+      snap.docs.forEach((docSnap) => {
+        const r = docSnap.data();
+
+        if (!r || !r.date || !r.guiaId) return;
+        if (r.allocationStatus === "CLOSED") return;
+        if (!mapaSemana[r.date]) return;
+        if (!r.serviceId && !r.manual) return;
+        if (!r.guiaNome && !r.guiaId) return;
+
+        const guia = guias.find((g) => g.id === r.guiaId);
+        if (!guia?.whatsapp) return;
+
+        if (!mapaGuias[r.guiaId]) {
+          mapaGuias[r.guiaId] = {
+            nome: guia.nome || r.guiaNome || "Guia",
+            whatsapp: guia.whatsapp,
+            datas: new Set(),
+          };
+        }
+
+        const dia = mapaSemana[r.date];
+        mapaGuias[r.guiaId].datas.add(
+          `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
+        );
+      });
+
+      const listaGuias = Object.values(mapaGuias).filter(
+        (g) => g.datas.size > 0
+      );
+
+      listaGuias.forEach((guia, index) => {
+        const texto = `
 Olá, ${guia.nome}! 🍀
 
 Segue sua escala da semana:
@@ -397,18 +421,21 @@ Gentilmente, confirme o recebimento.
 Operacional - Luck Receptivo 🍀
 `.trim();
 
-      setTimeout(() => {
-        window.open(
-          `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
-            texto
-          )}`,
-          "_blank"
-        );
-      }, index * 2200);
-    });
+        setTimeout(() => {
+          window.open(
+            `https://wa.me/55${guia.whatsapp.replace(
+              /\D/g,
+              ""
+            )}?text=${encodeURIComponent(texto)}`,
+            "_blank"
+          );
+        }, index * 2200);
+      });
+    } catch (err) {
+      console.error("Erro ao enviar WhatsApp da semana:", err);
+    }
   };
 
-  /* ===== GUIA MANUAL ===== */
   const alterarGuiaManual = async (registroId, guia, dia, registro) => {
     if (!registroId) return;
 
@@ -432,13 +459,13 @@ Operacional - Luck Receptivo 🍀
       );
 
       await carregarDados();
+    } catch (err) {
+      console.error("Erro ao alterar guia manualmente:", err);
     } finally {
       setLoading(false);
     }
   };
 
-
-  /* ===== PAX MANUAL ===== */
   const alterarPaxManual = (registroId, pax) => {
     if (!registroId) return;
 
@@ -470,12 +497,17 @@ Operacional - Luck Receptivo 🍀
           });
           return novo;
         });
+
+        setPaxEditando((prev) => {
+          const novo = { ...prev };
+          delete novo[registroId];
+          return novo;
+        });
       } catch (err) {
         console.error("Erro ao salvar pax:", err);
       }
     }, 400);
   };
-
 
   const adicionarPasseioManual = async (dia) => {
     const dados = novoServico[dia.date];
@@ -496,17 +528,14 @@ Operacional - Luck Receptivo 🍀
         day: dia.day,
         manual: true,
         createdAt: new Date(),
-        allocationStatus: "OPEN", // ✅ novo
+        allocationStatus: "OPEN",
       });
 
-
-      // 🔄 limpa o formulário daquele dia
       setNovoServico((prev) => ({
         ...prev,
         [dia.date]: {},
       }));
 
-      // 🔄 recarrega para exibir na tabela
       await carregarDados();
     } catch (err) {
       console.error("Erro ao adicionar passeio manual:", err);
@@ -521,7 +550,7 @@ Operacional - Luck Receptivo 🍀
   };
 
   const enviarWhatsappGuiaIndividual = (guiaResumo) => {
-    const guia = guias.find(g => g.id === guiaResumo.guiaId);
+    const guia = guias.find((g) => g.id === guiaResumo.guiaId);
     if (!guia?.whatsapp) {
       alert("Guia sem WhatsApp cadastrado");
       return;
@@ -530,10 +559,14 @@ Operacional - Luck Receptivo 🍀
     const texto = gerarMensagemGuia(guiaResumo);
 
     window.open(
-      `https://wa.me/55${guia.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`,
+      `https://wa.me/55${guia.whatsapp.replace(
+        /\D/g,
+        ""
+      )}?text=${encodeURIComponent(texto)}`,
       "_blank"
     );
   };
+
   const gerarMensagemGuia = (guiaResumo) => {
     if (!guiaResumo?.datas || guiaResumo.datas.size === 0) return "";
 
@@ -570,127 +603,121 @@ Operacional - Luck Receptivo 🍀
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
 
-    // 🔹 Buscar disponibilidades
-    const snapDisp = await getDocs(collection(db, "guide_availability"));
+    try {
+      const snapDisp = await getDocs(collection(db, "guide_availability"));
 
-    const disponibilidadeMap = {};
-    const bloqueiosMap = {};
+      const disponibilidadeMap = {};
+      const bloqueiosMap = {};
 
-    snapDisp.docs.forEach((docSnap) => {
-      const d = docSnap.data();
-      if (!Array.isArray(d.disponibilidade)) return;
+      snapDisp.docs.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (!Array.isArray(d.disponibilidade)) return;
 
-      const diasSemana = d.disponibilidade.filter(
-        (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
-      );
+        const diasSemana = d.disponibilidade.filter(
+          (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
+        );
 
-      disponibilidadeMap[d.guideId] = diasSemana.length;
+        disponibilidadeMap[d.guideId] = diasSemana.length;
 
-      bloqueiosMap[d.guideId] = diasSemana
-        .filter((ds) => ds.status === "BLOCKED")
-        .map((ds) => ds.date);
-    });
+        bloqueiosMap[d.guideId] = diasSemana
+          .filter((ds) => ds.status === "BLOCKED")
+          .map((ds) => ds.date);
+      });
 
-    const contador = {};
+      const contador = {};
 
-    // 🔹 Contar serviços usando a planilha (extras)
-    semana.forEach((dia) => {
-      const registrosDia = extras[dia.date] || [];
+      semana.forEach((dia) => {
+        const registrosDia = extras[dia.date] || [];
 
-      registrosDia.forEach((r) => {
-        if (!r.guiaId) return;
-        if (r.allocationStatus === "CLOSED") return;
+        registrosDia.forEach((r) => {
+          if (!r.guiaId) return;
+          if (r.allocationStatus === "CLOSED") return;
 
-        if (!contador[r.guiaId]) {
-          const guia = guias.find((g) => g.id === r.guiaId);
+          if (!contador[r.guiaId]) {
+            const guia = guias.find((g) => g.id === r.guiaId);
 
-          contador[r.guiaId] = {
-            guiaId: r.guiaId,
-            nome: guia?.nome || "Guia",
-            nivelPrioridade: guia?.nivelPrioridade || 2,
-            totalServicos: 0,
-            diasDisponiveis: disponibilidadeMap[r.guiaId] || 0,
-            bloqueios: bloqueiosMap[r.guiaId] || [],
-            ocupacao: 0,
-            sobrecarga: false,
-            datas: new Set(),
-            realocados: 0,
-            trabalhandoBloqueado: false,
-            abaixoMedia: false,
-            indiceEquilibrio: 0,
-            scorePrioridade: 0,
-          };
+            contador[r.guiaId] = {
+              guiaId: r.guiaId,
+              nome: guia?.nome || "Guia",
+              nivelPrioridade: guia?.nivelPrioridade || 2,
+              totalServicos: 0,
+              diasDisponiveis: disponibilidadeMap[r.guiaId] || 0,
+              bloqueios: bloqueiosMap[r.guiaId] || [],
+              ocupacao: 0,
+              sobrecarga: false,
+              datas: new Set(),
+              realocados: 0,
+              trabalhandoBloqueado: false,
+              abaixoMedia: false,
+              indiceEquilibrio: 0,
+              scorePrioridade: 0,
+            };
+          }
+
+          const guiaResumo = contador[r.guiaId];
+
+          guiaResumo.totalServicos++;
+          guiaResumo.datas.add(r.date);
+
+          if (r.manual === true) {
+            guiaResumo.realocados++;
+          }
+
+          if (bloqueiosMap[r.guiaId]?.includes(r.date)) {
+            guiaResumo.trabalhandoBloqueado = true;
+          }
+        });
+      });
+
+      let resumo = Object.values(contador);
+
+      resumo.forEach((g) => {
+        const dias = Number(g.diasDisponiveis) || 0;
+        const total = Number(g.totalServicos) || 0;
+
+        if (dias > 0) {
+          g.ocupacao = Math.round((total / dias) * 100);
+        } else {
+          g.ocupacao = 0;
         }
 
-        const guiaResumo = contador[r.guiaId];
-
-        guiaResumo.totalServicos++;
-        guiaResumo.datas.add(r.date);
-
-        // 🔁 Detectar realocação manual
-        if (r.manual === true) {
-          guiaResumo.realocados++;
+        if (!Number.isFinite(g.ocupacao)) {
+          g.ocupacao = 0;
         }
 
-        // ⚠️ Trabalhando em dia bloqueado
-        if (bloqueiosMap[r.guiaId]?.includes(r.date)) {
-          guiaResumo.trabalhandoBloqueado = true;
+        g.sobrecarga = g.ocupacao >= 90;
+      });
+
+      const ocupacoesValidas = resumo
+        .map((g) => g.ocupacao)
+        .filter((o) => Number.isFinite(o));
+
+      const mediaEquipe =
+        ocupacoesValidas.length > 0
+          ? ocupacoesValidas.reduce((acc, o) => acc + o, 0) /
+          ocupacoesValidas.length
+          : 0;
+
+      resumo.forEach((g) => {
+        g.abaixoMedia = g.ocupacao < mediaEquipe - 15;
+        g.indiceEquilibrio = Math.abs(g.ocupacao - mediaEquipe);
+
+        if (!Number.isFinite(g.indiceEquilibrio)) {
+          g.indiceEquilibrio = 0;
         }
       });
-    });
 
-    let resumo = Object.values(contador);
+      resumo.sort((a, b) => b.ocupacao - a.ocupacao);
 
-    // 🔹 Calcular ocupação (blindado)
-    resumo.forEach((g) => {
-      const dias = Number(g.diasDisponiveis) || 0;
-      const total = Number(g.totalServicos) || 0;
+      resumo = resumo.map((g) => ({
+        ...g,
+        datas: new Set(g.datas),
+      }));
 
-      if (dias > 0) {
-        g.ocupacao = Math.round((total / dias) * 100);
-      } else {
-        g.ocupacao = 0;
-      }
-
-      if (!Number.isFinite(g.ocupacao)) {
-        g.ocupacao = 0;
-      }
-
-      g.sobrecarga = g.ocupacao >= 90;
-    });
-
-    // 🔹 Calcular média da equipe (somente valores válidos)
-    const ocupacoesValidas = resumo
-      .map((g) => g.ocupacao)
-      .filter((o) => Number.isFinite(o));
-
-    const mediaEquipe =
-      ocupacoesValidas.length > 0
-        ? ocupacoesValidas.reduce((acc, o) => acc + o, 0) /
-        ocupacoesValidas.length
-        : 0;
-
-    // 🔹 Ajustes finais
-    resumo.forEach((g) => {
-      g.abaixoMedia = g.ocupacao < mediaEquipe - 15;
-
-      g.indiceEquilibrio = Math.abs(g.ocupacao - mediaEquipe);
-
-      if (!Number.isFinite(g.indiceEquilibrio)) {
-        g.indiceEquilibrio = 0;
-      }
-    });
-
-    // 🏆 Ordenar por ocupação (maior primeiro)
-    resumo.sort((a, b) => b.ocupacao - a.ocupacao);
-
-    // 🔹 Garantir que datas continue sendo Set
-    resumo = resumo.map((g) => ({
-      ...g,
-      datas: new Set(g.datas),
-    }));
-
-    setResumoGuias(resumo);
+      setResumoGuias(resumo);
+    } catch (err) {
+      console.error("Erro ao gerar resumo dos guias:", err);
+    }
   };
 
   const formatarPeriodoSemana = () => {
@@ -707,12 +734,6 @@ Operacional - Luck Receptivo 🍀
     return `${formatar(inicio)} até ${formatar(fim)}`;
   };
 
-  useEffect(() => {
-    if (semana.length && guias.length) {
-      gerarResumoGuiasSemana();
-    }
-  }, [extras, semana, guias]);
-
   const alocarGuiasSemana = async () => {
     setLoading(true);
     try {
@@ -722,39 +743,41 @@ Operacional - Luck Receptivo 🍀
       const fimSemana = semana[semana.length - 1].date;
 
       const contadorSemana = {};
-      guias.forEach((g) => (contadorSemana[g.id] = 0));
+      guias.forEach((g) => {
+        contadorSemana[g.id] = 0;
+      });
 
       const snapDisp = await getDocs(collection(db, "guide_availability"));
-      const disponibilidades = snapDisp.docs
+      const disponibilidadesSemana = snapDisp.docs
         .map((d) => d.data())
         .filter(
           (d) =>
             Array.isArray(d.disponibilidade) &&
             d.disponibilidade.some(
-              (ds) => ds.date >= inicioSemana && ds.date <= fimSemana,
-            ),
+              (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
+            )
         );
 
       for (const dia of semana) {
         const guiasDisponiveis = guias.filter((g) =>
-          disponibilidades.some(
+          disponibilidadesSemana.some(
             (d) =>
               d.guideId === g.id &&
               d.disponibilidade.some(
                 (ds) => ds.date === dia.date && ds.status !== "BLOCKED"
-              ),
-          ),
+              )
+          )
         );
 
         if (!guiasDisponiveis.length) continue;
 
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day),
+          (s.frequencia || []).includes(dia.day)
         );
 
         const qReg = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date),
+          where("date", "==", dia.date)
         );
         const snapReg = await getDocs(qReg);
 
@@ -765,11 +788,15 @@ Operacional - Luck Receptivo 🍀
 
         const usadosNoDia = new Set();
         registrosDia.forEach((r) => {
-          if (r.guiaId) usadosNoDia.add(r.guiaId);
+          if (r.guiaId && r.allocationStatus !== "CLOSED") {
+            usadosNoDia.add(r.guiaId);
+          }
         });
 
         for (const p of passeiosFixos) {
-          if (!registrosDia.some((r) => r.serviceId === p.id)) {
+          const jaExiste = registrosDia.some((r) => r.serviceId === p.id);
+
+          if (!jaExiste) {
             const docRef = await addDoc(collection(db, "weekly_services"), {
               serviceId: p.id,
               serviceName: p.nome,
@@ -778,21 +805,27 @@ Operacional - Luck Receptivo 🍀
               date: dia.date,
               day: dia.day,
               createdAt: new Date(),
-              allocationStatus: "OPEN", // ✅ novo
+              allocationStatus: "OPEN",
             });
-
 
             registrosDia.push({
               id: docRef.id,
               serviceId: p.id,
+              serviceName: p.nome,
               guiaId: null,
+              guiaNome: null,
+              passengers: 0,
+              day: dia.day,
+              date: dia.date,
+              manual: false,
+              allocationStatus: "OPEN",
             });
           }
         }
 
         for (const r of registrosDia) {
+          if (!r?.id) continue;
           if (r.guiaId || r.manual) continue;
-
           if (r.allocationStatus === "CLOSED") continue;
 
           const elegiveis = guiasDisponiveis.filter((g) => {
@@ -809,8 +842,7 @@ Operacional - Luck Receptivo 🍀
           if (modoDistribuicaoGuias === "seguir_nivel_selecionado") {
             candidatosOrdenados = ordenarGuiasPorPrioridade(
               elegiveis,
-              contadorSemana,
-              guiasDisponiveis
+              contadorSemana
             );
           } else {
             candidatosOrdenados = ordenarGuiasEquilibrado(
@@ -834,37 +866,33 @@ Operacional - Luck Receptivo 🍀
           usadosNoDia.add(guiaSelecionado.id);
           contadorSemana[guiaSelecionado.id]++;
         }
-
       }
 
       await carregarDados();
-      setMostrarResumo(true);
+    } catch (err) {
+      console.error("Erro ao alocar guias da semana:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusGuiaNoDia = (guiaId, data, registrosDia) => {
-    const registroDisp = disponibilidades.find(
-      (d) => d.guideId === guiaId
-    );
+    const registroDisp = disponibilidades.find((d) => d.guideId === guiaId);
 
-    // ❌ Sem registro de disponibilidade
     if (!registroDisp?.disponibilidade) {
       return { status: "NO_DATA" };
     }
 
-    const dispDia = registroDisp.disponibilidade.find(
-      (d) => d.date === data
-    );
+    const dispDia = registroDisp.disponibilidade.find((d) => d.date === data);
 
-    // 🔴 Bloqueado
     if (dispDia?.status === "BLOCKED") {
       return { status: "BLOCKED" };
     }
 
-    // 🔒 Já usado no dia
-    const jaUsado = registrosDia.some((r) => r.guiaId === guiaId);
+    const jaUsado = registrosDia.some(
+      (r) => r.guiaId === guiaId && r.allocationStatus !== "CLOSED"
+    );
+
     if (jaUsado) {
       return { status: "USED" };
     }
@@ -878,7 +906,7 @@ Operacional - Luck Receptivo 🍀
       for (const dia of semana) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date),
+          where("date", "==", dia.date)
         );
         const snap = await getDocs(q);
 
@@ -893,7 +921,10 @@ Operacional - Luck Receptivo 🍀
           });
         }
       }
+
       await carregarDados();
+    } catch (err) {
+      console.error("Erro ao remover guias da semana:", err);
     } finally {
       setLoading(false);
     }
@@ -901,12 +932,10 @@ Operacional - Luck Receptivo 🍀
 
   return (
     <div className="page-container">
-      <LoadingBlock
-        loading={loading}
-        text="Processando escala..."
-      />
+      <LoadingBlock loading={loading} text="Processando escala..." />
 
       <h2>Planejamento Semanal de Passeios</h2>
+
       <div className="header-tours">
         <p className="counter-info">
           Modo de distribuição:{" "}
@@ -916,9 +945,11 @@ Operacional - Luck Receptivo 🍀
               : "Equilibrado"}
           </strong>
         </p>
+
         <div className="week-indicator">
           <span>{formatarPeriodoSemana()}</span>
         </div>
+
         <div className="week-controls">
           <button
             className="btn-list"
@@ -926,9 +957,11 @@ Operacional - Luck Receptivo 🍀
           >
             ⬅ Semana anterior
           </button>
+
           <button className="btn-list" onClick={() => setSemanaOffset(0)}>
             Semana atual
           </button>
+
           <button
             className="btn-list"
             onClick={() => setSemanaOffset((o) => o + 1)}
@@ -936,45 +969,45 @@ Operacional - Luck Receptivo 🍀
             Semana seguinte ➡
           </button>
         </div>
+
         <div className="mode-toggle">
-          <button
-            className="btn-list"
-            onClick={() => setModoVisualizacao(true)}
-          >
+          <button className="btn-list" onClick={() => setModoVisualizacao(true)}>
             Visualizar <Visibility fontSize="10" />
           </button>
+
           <button
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
           >
             Editar <ModeEdit fontSize="10" />
           </button>
+
           <button className="btn-list" onClick={alocarGuiasSemana}>
             Gerar escala de Guias <ManageAccounts fontSize="10" />
           </button>
+
           <button className="btn-list-cld" onClick={removerGuiasSemana}>
             Desfazer escala de Guias <Undo fontSize="10" />
           </button>
-          {/* <button className="btn-list" onClick={enviarWhatsappGuiasSemana}>
-          Enviar escala por WhatsApp
-          </button> */}
-          <button className="btn-list" onClick={enviarWhatsappGuiasSemana_FIRESTORE}>
+
+          <button
+            className="btn-list"
+            onClick={enviarWhatsappGuiasSemana_FIRESTORE}
+          >
             Enviar todos os Bloqueios <Send fontSize="10" />
           </button>
         </div>
       </div>
+
       <div className="resumo-modo-global">
         {modoDistribuicaoGuias === "seguir_nivel_selecionado"
           ? "Escala gerada com regra de prioridade"
           : "Escala gerada com regra equilibrada"}
       </div>
+
       <div className="resumo-container">
         {resumoGuias.map((g, index) => (
           <div key={g.guiaId} className="resumo-card">
-            {/* <div className="resumo-tooltip">
-              <pre>{gerarMensagemGuia(g)}</pre>
-            </div> */}
-
             <div className="resumo-header">
               <h4 className="resumo-nome">
                 <span className="resumo-nome-main">
@@ -987,52 +1020,47 @@ Operacional - Luck Receptivo 🍀
                   {g.nome}
                 </span>
 
-
                 {g.sobrecarga && <span className="indicador-alerta">●</span>}
               </h4>
+
               <span
                 className={`resumo-percent 
                   ${g.ocupacao >= 80 ? "alta" : ""}
                   ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
                   ${g.ocupacao < 50 ? "baixa" : ""}
-                  `}
+                `}
               >
                 {g.ocupacao}%
               </span>
             </div>
 
-
             <div className="resumo-bar">
               <div
                 className={`resumo-bar-fill 
-            ${g.ocupacao >= 80 ? "alta" : ""}
-            ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
-            ${g.ocupacao < 50 ? "baixa" : ""}
-          `}
+                  ${g.ocupacao >= 80 ? "alta" : ""}
+                  ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+                  ${g.ocupacao < 50 ? "baixa" : ""}
+                `}
                 style={{ width: `${g.ocupacao}%` }}
               />
             </div>
 
-            {/* 📈 VARIAÇÃO */}
             {Number.isFinite(g.variacao) && g.variacao !== 0 && (
               <div className={`variacao ${g.variacao > 0 ? "up" : "down"}`}>
                 {g.variacao > 0 ? "▲" : "▼"} {Math.abs(g.variacao)}%
               </div>
             )}
 
-            <p className="resumo-info">
-              {g.totalServicos} serviços
-            </p>
+            <p className="resumo-info">{g.totalServicos} serviços</p>
 
-            {/* 📊 Mini gráfico semanal */}
             <div className="mini-chart">
               {semana.map((dia) => (
                 <div
                   key={dia.date}
-                  className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""
-                    }`}
+                  className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""}`}
                 />
               ))}
+
               <div className="whatsapp-wrapper">
                 <button
                   className="btn-whatsapp-guia"
@@ -1048,23 +1076,19 @@ Operacional - Luck Receptivo 🍀
             </div>
 
             {g.injusto && (
-              <span className="alerta-distribuicao">
-                ⚖️ Distribuição desigual
-              </span>
+              <span className="alerta-distribuicao">⚖️ Distribuição desigual</span>
             )}
           </div>
         ))}
       </div>
 
-
       {semana.map((dia) => {
         const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day),
+          (s.frequencia || []).includes(dia.day)
         );
 
         const registrosDia = extras[dia.date] || [];
 
-        // 🔹 une fixos + manuais
         const passeiosDoDia = [
           ...passeiosFixos.map((p) => ({
             id: p.id,
@@ -1082,17 +1106,11 @@ Operacional - Luck Receptivo 🍀
             })),
         ];
 
-        // 🔹 STATUS DO DIA
         const totalPasseios = passeiosDoDia.length;
 
         const passeiosComGuia = passeiosDoDia.filter((p) => {
-          const registro = registrosDia.find(
-            (r) =>
-              (p.manual && r.id === p.id) ||
-              (!p.manual && r.serviceId === p.serviceId),
-          );
-
-          return !!registro?.guiaId;
+          const registro = encontrarRegistroDoPasseio(registrosDia, p);
+          return !!registro?.guiaId && registro?.allocationStatus !== "CLOSED";
         }).length;
 
         let statusDia = "vazio";
@@ -1110,20 +1128,16 @@ Operacional - Luck Receptivo 🍀
             <strong className={`day-list ${statusDia}`}>
               {dia.label}
               <span className="day-status">
-                 - Passeios com Guias:{passeiosComGuia} - Total de Passeios:{totalPasseios}
+                - Passeios com Guias:{passeiosComGuia} - Total de Passeios:
+                {totalPasseios}
               </span>
             </strong>
 
             {passeiosDoDia.map((p) => {
-              const registro = registrosDia.find(
-                (r) =>
-                  (p.manual && r.id === p.id) ||
-                  (!p.manual && r.serviceId === p.serviceId),
-              );
+              const registro = encontrarRegistroDoPasseio(registrosDia, p);
 
               return (
                 <div key={p.id} className="passeio-item">
-                  {/* NOME */}
                   <span className="passeio-name">{p.nome}</span>
 
                   {modoVisualizacao ? (
@@ -1131,63 +1145,38 @@ Operacional - Luck Receptivo 🍀
                       <span className="passeio-pax">
                         {registro?.passengers || 0} pax
                       </span>
-                      {statusGrupo(registro?.passengers, registro?.allocationStatus)}
+                      {statusGrupo(
+                        registro?.passengers,
+                        registro?.allocationStatus
+                      )}
                       <span className="guia-name-aloc">
                         {registro?.guiaNome || "-"}
                       </span>
                     </>
                   ) : (
                     <>
-                      {/* PAX */}
                       <input
                         type="number"
                         min="0"
                         value={
                           registro
-                            ? paxEditando[registro.id] ?? registro.passengers ?? 0
+                            ? paxEditando[registro.id] ??
+                            registro.passengers ??
+                            0
                             : 0
                         }
                         onChange={async (e) => {
                           const novoPax = e.target.value;
 
                           if (!registro) {
-                            const docRef = await addDoc(collection(db, "weekly_services"), {
-                              serviceId: p.serviceId || null,
-                              serviceName: p.nome,
+                            await criarRegistroBase({
+                              passeio: p,
+                              dia,
                               passengers: Number(novoPax),
-                              guiaId: null,
-                              guiaNome: null,
-                              date: dia.date,
-                              day: dia.day,
-                              manual: false,
+                              guia: null,
                               allocationStatus: "OPEN",
-                              createdAt: new Date(),
+                              manual: false,
                             });
-
-                            setExtras((prev) => {
-                              const novo = { ...prev };
-
-                              if (!novo[dia.date]) novo[dia.date] = [];
-
-                              novo[dia.date] = [
-                                ...novo[dia.date],
-                                {
-                                  id: docRef.id,
-                                  serviceId: p.serviceId || null,
-                                  serviceName: p.nome,
-                                  passengers: Number(novoPax),
-                                  guiaId: null,
-                                  guiaNome: null,
-                                  date: dia.date,
-                                  day: dia.day,
-                                  manual: false,
-                                  allocationStatus: "OPEN",
-                                },
-                              ];
-
-                              return novo;
-                            });
-
                             return;
                           }
 
@@ -1195,68 +1184,86 @@ Operacional - Luck Receptivo 🍀
                         }}
                       />
 
-                      {/* STATUS OPEN/CLOSED */}
                       <select
                         value={registro?.allocationStatus || "OPEN"}
-                        onChange={(e) =>
-                          alterarStatusAlocacao(registro.id, e.target.value)
-                        }
+                        onChange={async (e) => {
+                          const novoStatus = e.target.value;
+
+                          if (!registro) {
+                            await criarRegistroBase({
+                              passeio: p,
+                              dia,
+                              passengers: 0,
+                              guia: null,
+                              allocationStatus: novoStatus,
+                              manual: false,
+                            });
+                            return;
+                          }
+
+                          await alterarStatusAlocacao(registro.id, novoStatus);
+                        }}
                       >
                         <option value="OPEN">Aberto</option>
                         <option value="CLOSED">Fechado</option>
                       </select>
 
-                      {/* GUIA */}
                       <select
                         value={registro?.guiaId || ""}
                         onChange={async (e) => {
                           const guia = guias.find((g) => g.id === e.target.value);
 
-                          if (!registro) {
-                            await addDoc(collection(db, "weekly_services"), {
-                              serviceId: p.serviceId || null,
-                              serviceName: p.nome,
-                              passengers: 0,
-                              guiaId: guia?.id || null,
-                              guiaNome: guia?.nome || null,
-                              date: dia.date,
-                              day: dia.day,
-                              manual: false,
-                              allocationStatus: "OPEN",
-                              createdAt: new Date(),
-                            });
-
-                            await carregarDados();
+                          if (registro?.allocationStatus === "CLOSED") {
+                            alert(
+                              "Não é possível alocar guia em um serviço fechado."
+                            );
                             return;
                           }
 
-                          alterarGuiaManual(registro.id, guia || null, dia, registro);
+                          if (!registro) {
+                            await criarRegistroBase({
+                              passeio: p,
+                              dia,
+                              passengers: 0,
+                              guia: guia || null,
+                              allocationStatus: "OPEN",
+                              manual: false,
+                            });
+                            return;
+                          }
+
+                          await alterarGuiaManual(
+                            registro.id,
+                            guia || null,
+                            dia,
+                            registro
+                          );
                         }}
                       >
                         <option value="">Sem guia</option>
 
                         {guias.map((g) => {
-                          const status = getStatusGuiaNoDia(g.id, dia.date, registrosDia);
+                          const status = getStatusGuiaNoDia(
+                            g.id,
+                            dia.date,
+                            registrosDia
+                          );
                           const carga = getCargaSemanal(g.id);
 
                           let label = g.nome;
 
-                          // 🟢 Disponível
                           if (status.status === "AVAILABLE") {
                             label += ` 🟢 (${carga}%)`;
                           }
 
-                          // 🔒 Já usado
                           if (status.status === "USED") {
                             label += ` 🔒 (Já alocado)`;
                           }
 
-                          // 🔴 Bloqueado
                           if (status.status === "BLOCKED") {
                             label += ` 🔴 (Bloqueado)`;
                           }
 
-                          // ⚫ Sem info
                           if (status.status === "NO_DATA") {
                             label += ` ⚫ (Sem disponibilidade)`;
                           }
@@ -1274,7 +1281,6 @@ Operacional - Luck Receptivo 🍀
                         })}
                       </select>
 
-                      {/* 🗑️ REMOVER (SÓ MANUAL) */}
                       {registro?.manual && (
                         <button
                           className="btn-remove"
@@ -1289,7 +1295,6 @@ Operacional - Luck Receptivo 🍀
               );
             })}
 
-            {/* ➕ ADICIONAR PASSEIO MANUAL */}
             {!modoVisualizacao && (
               <div className="passeio-item passeio-add">
                 <input
