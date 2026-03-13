@@ -17,8 +17,12 @@ import {
   ManageAccounts,
   ModeEdit,
   Send,
+  WhatsApp,
   Undo,
   Visibility,
+  Warning,
+  Groups,
+  Lock,
 } from "@mui/icons-material";
 import LoadingBlock from "../../components/LoadingOverlay/LoadingOverlay";
 
@@ -69,6 +73,7 @@ const ListaPasseiosSemana = () => {
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
   const [disponibilidades, setDisponibilidades] = useState([]);
+  const [modoGeradoSemana, setModoGeradoSemana] = useState(null);
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
     useState("equilibrado");
 
@@ -97,11 +102,64 @@ const ListaPasseiosSemana = () => {
     };
   }, []);
 
+  const getSemanaKey = (semanaRef) => {
+    if (!semanaRef?.length) return null;
+    const inicio = semanaRef[0].date;
+    const fim = semanaRef[semanaRef.length - 1].date;
+    return `${inicio}_${fim}`;
+  };
+
+  const carregarModoGeradoSemana = async (semanaRef) => {
+    const semanaKey = getSemanaKey(semanaRef);
+    if (!semanaKey) {
+      setModoGeradoSemana(null);
+      return;
+    }
+
+    try {
+      const snap = await getDoc(doc(db, "weekly_scale_meta", semanaKey));
+
+      if (snap.exists()) {
+        const data = snap.data();
+        setModoGeradoSemana(data.modoDistribuicaoGerado || null);
+      } else {
+        setModoGeradoSemana(null);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar modo gerado da semana:", err);
+      setModoGeradoSemana(null);
+    }
+  };
+
+  const salvarModoGeradoSemana = async (semanaRef, modo) => {
+    const semanaKey = getSemanaKey(semanaRef);
+    if (!semanaKey) return;
+
+    try {
+      await setDoc(
+        doc(db, "weekly_scale_meta", semanaKey),
+        {
+          semanaInicio: semanaRef[0].date,
+          semanaFim: semanaRef[semanaRef.length - 1].date,
+          modoDistribuicaoGerado: modo,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      setModoGeradoSemana(modo);
+    } catch (err) {
+      console.error("Erro ao salvar modo gerado da semana:", err);
+    }
+  };
+
   const carregarDados = async () => {
     setLoading(true);
     try {
       const semanaAtual = gerarSemana(semanaOffset);
       setSemana(semanaAtual);
+
+      await carregarModoGeradoSemana(semanaAtual);
 
       const [servSnap, guiasSnap, configSnap, dispSnap] = await Promise.all([
         getDocs(collection(db, "services")),
@@ -211,6 +269,26 @@ const ListaPasseiosSemana = () => {
     return novoRegistro;
   };
 
+  const limparModoGeradoSemana = async (semanaRef) => {
+    const semanaKey = getSemanaKey(semanaRef);
+    if (!semanaKey) return;
+
+    try {
+      await setDoc(
+        doc(db, "weekly_scale_meta", semanaKey),
+        {
+          modoDistribuicaoGerado: null,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      setModoGeradoSemana(null);
+    } catch (err) {
+      console.error("Erro ao limpar modo gerado da semana:", err);
+    }
+  };
+
   const ordenarGuiasEquilibrado = (guiasElegiveis, contadorSemana) => {
     return [...guiasElegiveis].sort((a, b) => {
       const cargaA = contadorSemana[a.id] || 0;
@@ -314,15 +392,15 @@ const ListaPasseiosSemana = () => {
 
   const statusGrupo = (pax, allocationStatus) => {
     if (allocationStatus === "CLOSED") {
-      return <span className="status fechado">Passeio Fechado</span>;
+      return <span className="status fechado"><Lock fontSize="10" /> Passeio Fechado</span>;
     }
 
     const totalPax = Number(pax || 0);
 
     return totalPax >= 8 ? (
-      <span className="status ok">Grupo Formado</span>
+      <span className="status ok"><Groups fontSize="10" /> Grupo Formado </span>
     ) : (
-      <span className="status alerta">Formar Grupo</span>
+      <span className="status alerta"><Warning fontSize="10" /> Formar Grupo</span>
     );
   };
 
@@ -868,6 +946,7 @@ Operacional - Luck Receptivo 🍀
         }
       }
 
+      await salvarModoGeradoSemana(semana, modoDistribuicaoGuias);
       await carregarDados();
     } catch (err) {
       console.error("Erro ao alocar guias da semana:", err);
@@ -922,6 +1001,7 @@ Operacional - Luck Receptivo 🍀
         }
       }
 
+      await limparModoGeradoSemana(semana);
       await carregarDados();
     } catch (err) {
       console.error("Erro ao remover guias da semana:", err);
@@ -937,39 +1017,6 @@ Operacional - Luck Receptivo 🍀
       <h2>Planejamento Semanal de Passeios</h2>
 
       <div className="header-tours">
-        <p className="counter-info">
-          Modo de distribuição:{" "}
-          <strong>
-            {modoDistribuicaoGuias === "seguir_nivel_selecionado"
-              ? "Prioridade"
-              : "Equilibrado"}
-          </strong>
-        </p>
-
-        <div className="week-indicator">
-          <span>{formatarPeriodoSemana()}</span>
-        </div>
-
-        <div className="week-controls">
-          <button
-            className="btn-list"
-            onClick={() => setSemanaOffset((o) => o - 1)}
-          >
-            ⬅ Semana anterior
-          </button>
-
-          <button className="btn-list" onClick={() => setSemanaOffset(0)}>
-            Semana atual
-          </button>
-
-          <button
-            className="btn-list"
-            onClick={() => setSemanaOffset((o) => o + 1)}
-          >
-            Semana seguinte ➡
-          </button>
-        </div>
-
         <div className="mode-toggle">
           <button className="btn-list" onClick={() => setModoVisualizacao(true)}>
             Visualizar <Visibility fontSize="10" />
@@ -979,7 +1026,7 @@ Operacional - Luck Receptivo 🍀
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
           >
-            Editar <ModeEdit fontSize="10" />
+            Editar escala<ModeEdit fontSize="10" />
           </button>
 
           <button className="btn-list" onClick={alocarGuiasSemana}>
@@ -991,20 +1038,57 @@ Operacional - Luck Receptivo 🍀
           </button>
 
           <button
-            className="btn-list"
+            className="btn-list-send"
             onClick={enviarWhatsappGuiasSemana_FIRESTORE}
           >
-            Enviar todos os Bloqueios <Send fontSize="10" />
+            Enviar todos os Bloqueios <WhatsApp className="icon-zap" fontSize="10" />
           </button>
         </div>
+        <div className="topic">
+
+
+          <div className="week-controls">
+            <button
+              className="btn-list"
+              onClick={() => setSemanaOffset((o) => o - 1)}
+            >
+              ⬅ Semana anterior
+            </button>
+
+            <button className="btn-list" onClick={() => setSemanaOffset(0)}>
+              Semana atual
+            </button>
+
+            <button
+              className="btn-list"
+              onClick={() => setSemanaOffset((o) => o + 1)}
+            >
+              Semana seguinte ➡
+            </button>
+            <span className="counter-info">{formatarPeriodoSemana()}</span>
+          </div>
+          <p className="counter-info">
+            Modo de distribuição:{" "}
+            <strong>
+              {modoDistribuicaoGuias === "seguir_nivel_selecionado"
+                ? "Prioridade"
+                : "Equilibrado"}
+            </strong>
+          </p>
+
+        </div>
+
+
       </div>
 
       <div className="resumo-modo-global">
-        {modoDistribuicaoGuias === "seguir_nivel_selecionado"
-          ? "Escala gerada com regra de prioridade"
-          : "Escala gerada com regra equilibrada"}
+        {modoGeradoSemana
+          ? modoGeradoSemana === "seguir_nivel_selecionado"
+            ? "Essa escala foi gerada com regra de Prioridade"
+            : "Essa escala foi gerada com regra de Equilibrada"
+          : "Escala ainda não gerada para esta semana"}{" "}
+        <Warning fontSize="10" className="icon-warning" />
       </div>
-
       <div className="resumo-container">
         {resumoGuias.map((g, index) => (
           <div key={g.guiaId} className="resumo-card">
@@ -1128,7 +1212,7 @@ Operacional - Luck Receptivo 🍀
             <strong className={`day-list ${statusDia}`}>
               {dia.label}
               <span className="day-status">
-                - Passeios com Guias:{passeiosComGuia} - Total de Passeios:
+                - Passeios com Guia: {passeiosComGuia} - Total de Passeios:
                 {totalPasseios}
               </span>
             </strong>
