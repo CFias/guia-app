@@ -24,6 +24,7 @@ const CadastroPasseio = () => {
     const [nome, setNome] = useState("");
     const [descricao, setDescricao] = useState("");
     const [frequencia, setFrequencia] = useState([]);
+    const [externalServiceId, setExternalServiceId] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -62,6 +63,7 @@ const CadastroPasseio = () => {
         setNome("");
         setDescricao("");
         setFrequencia([]);
+        setExternalServiceId("");
         setEditandoId(null);
     };
 
@@ -70,6 +72,7 @@ const CadastroPasseio = () => {
         setNome(p.nome || "");
         setDescricao(p.descricao || "");
         setFrequencia(p.frequencia || []);
+        setExternalServiceId(p.externalServiceId || "");
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -84,22 +87,26 @@ const CadastroPasseio = () => {
         try {
             setLoading(true);
 
+            const payload = {
+                nome,
+                descricao,
+                frequencia,
+                externalName: nome,
+                externalServiceId: externalServiceId
+                    ? Number(externalServiceId)
+                    : null,
+            };
+
             if (editandoId) {
-                // ✏️ Atualizar passeio existente
                 await updateDoc(doc(db, "services", editandoId), {
-                    nome,
-                    descricao,
-                    frequencia,
+                    ...payload,
                     updatedAt: Timestamp.now(),
                 });
 
                 alert("Passeio atualizado com sucesso!");
             } else {
-                // ➕ Criar novo passeio
                 await addDoc(collection(db, "services"), {
-                    nome,
-                    descricao,
-                    frequencia,
+                    ...payload,
                     ativo: true,
                     createdAt: Timestamp.now(),
                 });
@@ -129,13 +136,20 @@ const CadastroPasseio = () => {
                     onChange={(e) => setNome(e.target.value)}
                 />
 
+                <input
+                    type="number"
+                    placeholder="ID externo do serviço"
+                    value={externalServiceId}
+                    onChange={(e) => setExternalServiceId(e.target.value)}
+                />
+
                 <textarea
                     placeholder="Descrição do passeio"
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
                 />
 
-                <label>Frequência do Passeios</label>
+                <label>Frequência do Passeio</label>
 
                 <div className="dropdown-cad">
                     <div
@@ -188,7 +202,6 @@ const CadastroPasseio = () => {
                 )}
             </form>
 
-            {/* 📌 LISTA DE PASSEIOS */}
             <div className="lista-passeios">
                 <h3>Passeios Cadastrados</h3>
 
@@ -201,6 +214,11 @@ const CadastroPasseio = () => {
                                 <div className="passeio-info">
                                     <strong className="p-name">{p.nome}</strong>
                                     <p>{p.descricao}</p>
+
+                                    <p>
+                                        <strong>ID externo:</strong>{" "}
+                                        {p.externalServiceId || "-"}
+                                    </p>
 
                                     <div className="frequencia-tags">
                                         {(p.frequencia || []).map((dia) => (

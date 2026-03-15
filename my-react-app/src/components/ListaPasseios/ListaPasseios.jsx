@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   getDocs,
@@ -36,6 +36,75 @@ const DIAS = [
   "Domingo",
 ];
 
+const API_BASE =
+  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
+
+const EXPAND =
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
+
+const SERVICOS_IGNORADOS = [
+  "01 PASSEIO A ESCOLHER NO DESTINO",
+  "CITY TOUR PANORAMICO",
+  "VOLTA FRADES COM ITAPARICA",
+  "STAFF MSC - PORTO SALVADOR",
+  "COORDENAÇÃO MSC - PORTO SALVADOR",
+  "PASSEIO PRAIA DO FORTE 4H (LTN-VOLTA)",
+  "COMBO FLEX 03 PASSEIOS",
+  "PRAIA DO FORTE E GUARAJUBA",
+  "PRAIAS DO LITORAL",
+  "CITY TOUR SAINDO DO LITORAL",
+  "CITY TOUR HISTÓRICO + PANORÂMICO",
+  "PASSEIO À PRAIA DO FORTE (SHUTTLE)"
+];
+
+const TERMOS_IGNORADOS = [
+  // "PANORAMICO",
+];
+
+const MAPA_NOMES_CANONICOS = {
+  "city tour historico e panoramico": "CITY TOUR HISTORICO E PANORAMICO",
+  "city tour historico panoramico": "CITY TOUR HISTORICO E PANORAMICO",
+
+  "tour de ilhas frades e itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+  "ilhas frades + itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+  "ilhas frades itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+
+  "volta frades com itaparica": "VOLTA FRADES COM ITAPARICA",
+
+  "city tour panoramico": "CITY TOUR PANORAMICO",
+  "city tour historico": "CITY TOUR HISTORICO",
+};
+
+const normalizarTexto = (texto = "") =>
+  String(texto)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[|]/g, " ")
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const obterNomeCanonico = (nome = "") => {
+  const normalizado = normalizarTexto(nome);
+  return MAPA_NOMES_CANONICOS[normalizado] || String(nome).trim().toUpperCase();
+};
+
+const deveIgnorarServico = (nome = "") => {
+  const nomeCanonico = obterNomeCanonico(nome);
+  const nomeNormalizado = normalizarTexto(nomeCanonico);
+
+  const ignoradoExato = SERVICOS_IGNORADOS.some(
+    (servico) => normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado
+  );
+
+  const ignoradoPorTrecho = TERMOS_IGNORADOS.some((termo) =>
+    nomeNormalizado.includes(normalizarTexto(termo))
+  );
+
+  return ignoradoExato || ignoradoPorTrecho;
+};
+
 export const gerarSemana = (offset = 0) => {
   const hoje = new Date();
   const base = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
@@ -59,6 +128,137 @@ export const gerarSemana = (offset = 0) => {
       label: `${dia} — ${dd}/${mm}/${yyyy}`,
     };
   });
+};
+
+const extrairListaResposta = (json) => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.results)) return json.results;
+  return [];
+};
+
+const extrairNomePasseio = (item) =>
+  item?.service?.name ||
+  item?.service?.nome ||
+  item?.reserveService?.service?.name ||
+  item?.name ||
+  "";
+
+const extrairServiceIdExterno = (item) =>
+  Number(item?.service_id || item?.service?.id || 0) || null;
+
+const extrairDataServico = (item) => {
+  const dataHora =
+    item?.presentation_hour ||
+    item?.presentation_hour_end ||
+    item?.date ||
+    item?.execution_date ||
+    "";
+
+  return dataHora ? String(dataHora).slice(0, 10) : "";
+};
+
+const extrairContagemPax = (item) => {
+  const adultos = Number(item?.is_adult_count || 0);
+  const criancas = Number(item?.is_child_count || 0);
+  const infants = Number(item?.is_infant_count || 0);
+
+  return {
+    adultos,
+    criancas,
+    infants,
+    total: adultos + criancas,
+  };
+};
+
+const montarUrlApi = (date) => {
+  const params = new URLSearchParams();
+  params.append("execution_date", date);
+  params.append("expand", EXPAND);
+  params.append("service_type[]", "3");
+  return `${API_BASE}?${params.toString()}`;
+};
+
+const agruparRegistrosPorServico = (registros) => {
+  const mapa = {};
+
+  registros.forEach((r) => {
+    if (!r?.date) return;
+
+    const nomeOriginal = r.serviceName || "";
+    const nomeCanonico = obterNomeCanonico(nomeOriginal);
+
+    if (deveIgnorarServico(nomeCanonico)) return;
+
+    const chave = `${r.date}_${nomeCanonico}`;
+
+    if (!mapa[chave]) {
+      mapa[chave] = {
+        id: r.id,
+        serviceId: r.serviceId || null,
+        externalServiceId: r.externalServiceId || null,
+        serviceName: nomeCanonico,
+        originalNames: new Set(),
+        passengers: 0,
+        adultCount: 0,
+        childCount: 0,
+        infantCount: 0,
+        guiaId: r.guiaId || null,
+        guiaNome: r.guiaNome || null,
+        date: r.date,
+        day: r.day,
+        manual: !!r.manual,
+        importedFromApi: !!r.importedFromApi,
+        allocationStatus: r.allocationStatus || "OPEN",
+      };
+    }
+
+    mapa[chave].originalNames.add(nomeOriginal);
+
+    const adultos = Number(r.adultCount ?? 0);
+    const criancas = Number(r.childCount ?? 0);
+    const infants = Number(r.infantCount ?? 0);
+
+    mapa[chave].adultCount += adultos;
+    mapa[chave].childCount += criancas;
+    mapa[chave].infantCount += infants;
+
+    // só usa passengers bruto quando não existe detalhamento
+    if (adultos === 0 && criancas === 0 && infants === 0) {
+      mapa[chave].passengers += Number(r.passengers ?? 0);
+    }
+
+    if (!mapa[chave].guiaId && r.guiaId) {
+      mapa[chave].guiaId = r.guiaId;
+      mapa[chave].guiaNome = r.guiaNome || null;
+      mapa[chave].id = r.id;
+    }
+
+    if (r.manual) mapa[chave].manual = true;
+
+    if (r.allocationStatus === "CLOSED") {
+      mapa[chave].allocationStatus = "CLOSED";
+    }
+  });
+
+  return Object.values(mapa)
+    .map((item) => {
+      const totalDetalhado =
+        Number(item.adultCount ?? 0) +
+        Number(item.childCount ?? 0) +
+        Number(item.infantCount ?? 0);
+
+      return {
+        ...item,
+        originalNames: Array.from(item.originalNames),
+        passengers: totalDetalhado > 0 ? totalDetalhado : Number(item.passengers ?? 0),
+      };
+    })
+    .sort((a, b) =>
+      (a.serviceName || "").localeCompare(b.serviceName || "", "pt-BR", {
+        sensitivity: "base",
+      })
+    );
 };
 
 const ListaPasseiosSemana = () => {
@@ -102,11 +302,17 @@ const ListaPasseiosSemana = () => {
     };
   }, []);
 
+  const semanaMap = useMemo(() => {
+    const mapa = {};
+    semana.forEach((d) => {
+      mapa[d.date] = d;
+    });
+    return mapa;
+  }, [semana]);
+
   const getSemanaKey = (semanaRef) => {
     if (!semanaRef?.length) return null;
-    const inicio = semanaRef[0].date;
-    const fim = semanaRef[semanaRef.length - 1].date;
-    return `${inicio}_${fim}`;
+    return `${semanaRef[0].date}_${semanaRef[semanaRef.length - 1].date}`;
   };
 
   const carregarModoGeradoSemana = async (semanaRef) => {
@@ -118,13 +324,9 @@ const ListaPasseiosSemana = () => {
 
     try {
       const snap = await getDoc(doc(db, "weekly_scale_meta", semanaKey));
-
-      if (snap.exists()) {
-        const data = snap.data();
-        setModoGeradoSemana(data.modoDistribuicaoGerado || null);
-      } else {
-        setModoGeradoSemana(null);
-      }
+      setModoGeradoSemana(
+        snap.exists() ? snap.data().modoDistribuicaoGerado || null : null
+      );
     } catch (err) {
       console.error("Erro ao carregar modo gerado da semana:", err);
       setModoGeradoSemana(null);
@@ -146,10 +348,176 @@ const ListaPasseiosSemana = () => {
         },
         { merge: true }
       );
-
       setModoGeradoSemana(modo);
     } catch (err) {
       console.error("Erro ao salvar modo gerado da semana:", err);
+    }
+  };
+
+  const limparModoGeradoSemana = async (semanaRef) => {
+    const semanaKey = getSemanaKey(semanaRef);
+    if (!semanaKey) return;
+
+    try {
+      await setDoc(
+        doc(db, "weekly_scale_meta", semanaKey),
+        {
+          modoDistribuicaoGerado: null,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+      setModoGeradoSemana(null);
+    } catch (err) {
+      console.error("Erro ao limpar modo gerado da semana:", err);
+    }
+  };
+
+  const encontrarServiceCatalogo = (serviceIdExterno, nomeApi, listaServices) => {
+    return (
+      listaServices.find(
+        (s) =>
+          Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0)
+      ) ||
+      listaServices.find(
+        (s) =>
+          normalizarTexto(s.externalName || s.nome || "") ===
+          normalizarTexto(nomeApi)
+      ) ||
+      null
+    );
+  };
+
+  const sincronizarPasseiosDaApiNaSemana = async (semanaAtual, servicesData) => {
+    for (const dia of semanaAtual) {
+      try {
+        const response = await fetch(montarUrlApi(dia.date), {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          console.error(`Erro API ${dia.date}: ${response.status}`);
+          continue;
+        }
+
+        const json = await response.json();
+        const lista = extrairListaResposta(json);
+
+        const agregados = {};
+
+        lista.forEach((item) => {
+          const serviceIdExterno = extrairServiceIdExterno(item);
+          const nome = extrairNomePasseio(item);
+          const dataServico = extrairDataServico(item);
+          const pax = extrairContagemPax(item);
+
+          if (!serviceIdExterno || !dataServico) return;
+          if (dataServico !== dia.date) return;
+
+          const nomeCanonico = obterNomeCanonico(nome);
+          if (deveIgnorarServico(nomeCanonico)) return;
+
+          const chave = `${dataServico}_${nomeCanonico}`;
+
+          if (!agregados[chave]) {
+            agregados[chave] = {
+              serviceIdExterno,
+              nome: nomeCanonico,
+              date: dataServico,
+              totalPax: 0,
+              totalAdultos: 0,
+              totalCriancas: 0,
+              totalInfants: 0,
+            };
+          }
+
+          agregados[chave].totalPax += pax.total;
+          agregados[chave].totalAdultos += pax.adultos;
+          agregados[chave].totalCriancas += pax.criancas;
+          agregados[chave].totalInfants += pax.infants;
+        });
+
+        const qDia = query(
+          collection(db, "weekly_services"),
+          where("date", "==", dia.date)
+        );
+        const snapDia = await getDocs(qDia);
+
+        const registrosExistentes = snapDia.docs.map((d) => ({
+          id: d.id,
+          ref: d.ref,
+          ...d.data(),
+        }));
+
+        const importadosDoDia = registrosExistentes.filter(
+          (r) => r.importedFromApi === true && r.manual !== true
+        );
+
+        for (const passeioApi of Object.values(agregados)) {
+          const serviceCatalogo = encontrarServiceCatalogo(
+            passeioApi.serviceIdExterno,
+            passeioApi.nome,
+            servicesData
+          );
+
+          const duplicados = importadosDoDia.filter(
+            (r) =>
+              Number(r.externalServiceId || 0) ===
+              Number(passeioApi.serviceIdExterno || 0)
+          );
+
+          const principal = duplicados[0] || null;
+          const duplicadosExtras = duplicados.slice(1);
+
+          for (const dup of duplicadosExtras) {
+            await deleteDoc(doc(db, "weekly_services", dup.id));
+          }
+
+          const payload = {
+            serviceId: serviceCatalogo?.id || null,
+            externalServiceId: passeioApi.serviceIdExterno,
+            serviceName: passeioApi.nome,
+            passengers: Number(passeioApi.totalPax || 0),
+            adultCount: Number(passeioApi.totalAdultos || 0),
+            childCount: Number(passeioApi.totalCriancas || 0),
+            infantCount: Number(passeioApi.totalInfants || 0),
+            date: passeioApi.date,
+            day: dia.day,
+            manual: false,
+            importedFromApi: true,
+            updatedAt: new Date(),
+          };
+
+          if (principal) {
+            await setDoc(doc(db, "weekly_services", principal.id), payload, {
+              merge: true,
+            });
+          } else {
+            await addDoc(collection(db, "weekly_services"), {
+              ...payload,
+              guiaId: null,
+              guiaNome: null,
+              allocationStatus: "OPEN",
+              createdAt: new Date(),
+            });
+          }
+        }
+
+        const idsVindosApi = Object.values(agregados).map((p) =>
+          Number(p.serviceIdExterno)
+        );
+
+        const obsoletos = importadosDoDia.filter(
+          (r) => !idsVindosApi.includes(Number(r.externalServiceId || 0))
+        );
+
+        for (const antigo of obsoletos) {
+          await deleteDoc(doc(db, "weekly_services", antigo.id));
+        }
+      } catch (err) {
+        console.error(`Erro ao sincronizar API no dia ${dia.date}:`, err);
+      }
     }
   };
 
@@ -176,14 +544,13 @@ const ListaPasseiosSemana = () => {
       setGuias(guiasData);
       setDisponibilidades(disponibilidadesData);
 
-      if (configSnap.exists()) {
-        const configData = configSnap.data();
-        setModoDistribuicaoGuias(
-          configData.modoDistribuicaoGuias || "equilibrado"
-        );
-      } else {
-        setModoDistribuicaoGuias("equilibrado");
-      }
+      setModoDistribuicaoGuias(
+        configSnap.exists()
+          ? configSnap.data().modoDistribuicaoGuias || "equilibrado"
+          : "equilibrado"
+      );
+
+      await sincronizarPasseiosDaApiNaSemana(semanaAtual, servicesData);
 
       const mapa = {};
 
@@ -193,7 +560,21 @@ const ListaPasseiosSemana = () => {
           where("date", "==", dia.date)
         );
         const snap = await getDocs(q);
-        mapa[dia.date] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        const listaDia = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        console.log(
+          "DUP CHECK",
+          dia.date,
+          listaDia.map((r) => ({
+            id: r.id,
+            nome: r.serviceName,
+            externalServiceId: r.externalServiceId,
+            pax: r.passengers,
+          }))
+        );
+
+        mapa[dia.date] = listaDia;
       }
 
       setExtras(mapa);
@@ -204,89 +585,35 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const encontrarRegistroDoPasseio = (registrosDia, passeio) => {
-    return registrosDia.find(
-      (r) =>
-        (passeio.manual && r.id === passeio.id) ||
-        (!passeio.manual && r.serviceId === passeio.serviceId)
-    );
-  };
-
-  const criarRegistroBase = async ({
-    passeio,
-    dia,
-    passengers = 0,
-    guia = null,
-    allocationStatus = "OPEN",
-    manual = false,
-  }) => {
-    const docRef = await addDoc(collection(db, "weekly_services"), {
-      serviceId: passeio.serviceId || null,
-      serviceName: passeio.nome,
-      passengers: Number(passengers || 0),
-      guiaId: guia?.id || null,
-      guiaNome: guia?.nome || null,
-      date: dia.date,
-      day: dia.day,
-      manual,
-      allocationStatus,
-      createdAt: new Date(),
-    });
-
-    const novoRegistro = {
-      id: docRef.id,
-      serviceId: passeio.serviceId || null,
-      serviceName: passeio.nome,
-      passengers: Number(passengers || 0),
-      guiaId: guia?.id || null,
-      guiaNome: guia?.nome || null,
-      date: dia.date,
-      day: dia.day,
-      manual,
-      allocationStatus,
-    };
-
-    setExtras((prev) => {
-      const novo = { ...prev };
-
-      if (!novo[dia.date]) novo[dia.date] = [];
-
-      const jaExiste = novo[dia.date].some(
-        (r) =>
-          (!manual &&
-            r.serviceId &&
-            r.serviceId === (passeio.serviceId || null)) ||
-          (manual && r.id === docRef.id)
+  const limparDuplicadosSemana = async () => {
+    for (const dia of semana) {
+      const q = query(
+        collection(db, "weekly_services"),
+        where("date", "==", dia.date)
       );
 
-      if (!jaExiste) {
-        novo[dia.date] = [...novo[dia.date], novoRegistro];
+      const snap = await getDocs(q);
+      const lista = snap.docs.map((d) => ({
+        id: d.id,
+        ref: d.ref,
+        ...d.data(),
+      }));
+
+      const mapa = {};
+
+      for (const item of lista) {
+        const nomeCanonico = obterNomeCanonico(item.serviceName || "");
+        const chave = `${item.date}_${nomeCanonico}`;
+
+        if (!mapa[chave]) {
+          mapa[chave] = item;
+        } else {
+          await deleteDoc(item.ref);
+        }
       }
-
-      return novo;
-    });
-
-    return novoRegistro;
-  };
-
-  const limparModoGeradoSemana = async (semanaRef) => {
-    const semanaKey = getSemanaKey(semanaRef);
-    if (!semanaKey) return;
-
-    try {
-      await setDoc(
-        doc(db, "weekly_scale_meta", semanaKey),
-        {
-          modoDistribuicaoGerado: null,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      setModoGeradoSemana(null);
-    } catch (err) {
-      console.error("Erro ao limpar modo gerado da semana:", err);
     }
+
+    await carregarDados();
   };
 
   const ordenarGuiasEquilibrado = (guiasElegiveis, contadorSemana) => {
@@ -294,9 +621,7 @@ const ListaPasseiosSemana = () => {
       const cargaA = contadorSemana[a.id] || 0;
       const cargaB = contadorSemana[b.id] || 0;
 
-      if (cargaA !== cargaB) {
-        return cargaA - cargaB;
-      }
+      if (cargaA !== cargaB) return cargaA - cargaB;
 
       return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
         sensitivity: "base",
@@ -318,17 +643,9 @@ const ListaPasseiosSemana = () => {
       const scoreA = cargaA / prioridadeA;
       const scoreB = cargaB / prioridadeB;
 
-      if (scoreA !== scoreB) {
-        return scoreA - scoreB;
-      }
-
-      if (cargaA !== cargaB) {
-        return cargaA - cargaB;
-      }
-
-      if (prioridadeA !== prioridadeB) {
-        return prioridadeB - prioridadeA;
-      }
+      if (scoreA !== scoreB) return scoreA - scoreB;
+      if (cargaA !== cargaB) return cargaA - cargaB;
+      if (prioridadeA !== prioridadeB) return prioridadeB - prioridadeA;
 
       return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
         sensitivity: "base",
@@ -340,9 +657,7 @@ const ListaPasseiosSemana = () => {
     if (!registroId) return;
 
     try {
-      const dadosUpdate = {
-        allocationStatus: status,
-      };
+      const dadosUpdate = { allocationStatus: status };
 
       if (status === "CLOSED") {
         dadosUpdate.guiaId = null;
@@ -378,6 +693,117 @@ const ListaPasseiosSemana = () => {
     }
   };
 
+  const alterarPaxManual = (registroId, pax) => {
+    if (!registroId) return;
+
+    setPaxEditando((prev) => ({
+      ...prev,
+      [registroId]: pax,
+    }));
+
+    if (paxTimers.current[registroId]) {
+      clearTimeout(paxTimers.current[registroId]);
+    }
+
+    paxTimers.current[registroId] = setTimeout(async () => {
+      try {
+        await setDoc(
+          doc(db, "weekly_services", registroId),
+          { passengers: Number(pax) },
+          { merge: true }
+        );
+
+        setExtras((prev) => {
+          const novo = { ...prev };
+          Object.keys(novo).forEach((date) => {
+            novo[date] = novo[date].map((r) =>
+              r.id === registroId ? { ...r, passengers: Number(pax) } : r
+            );
+          });
+          return novo;
+        });
+
+        setPaxEditando((prev) => {
+          const novo = { ...prev };
+          delete novo[registroId];
+          return novo;
+        });
+      } catch (err) {
+        console.error("Erro ao salvar pax:", err);
+      }
+    }, 400);
+  };
+
+  const alterarGuiaManual = async (registroId, guia, dia, registro) => {
+    if (!registroId) return;
+
+    if (registro?.allocationStatus === "CLOSED") {
+      alert("Não é possível alocar guia em um serviço fechado.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await setDoc(
+        doc(db, "weekly_services", registroId),
+        {
+          guiaId: guia?.id || null,
+          guiaNome: guia?.nome || null,
+          day: dia.day,
+          date: dia.date,
+          manual: false,
+        },
+        { merge: true }
+      );
+
+      await carregarDados();
+    } catch (err) {
+      console.error("Erro ao alterar guia manualmente:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const adicionarPasseioManual = async (dia) => {
+    const dados = novoServico[dia.date];
+
+    if (!dados?.nome) {
+      alert("Informe o nome do serviço");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "weekly_services"), {
+        serviceName: dados.nome,
+        serviceId: null,
+        externalServiceId: null,
+        passengers: Number(dados.pax || 0),
+        adultCount: 0,
+        childCount: 0,
+        infantCount: 0,
+        guiaId: dados.guiaId || null,
+        guiaNome: dados.guiaNome || null,
+        date: dia.date,
+        day: dia.day,
+        manual: true,
+        createdAt: new Date(),
+        allocationStatus: "OPEN",
+      });
+
+      setNovoServico((prev) => ({
+        ...prev,
+        [dia.date]: {},
+      }));
+
+      await carregarDados();
+    } catch (err) {
+      console.error("Erro ao adicionar passeio manual:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const removerPasseio = async (id) => {
     setLoading(true);
     try {
@@ -392,16 +818,45 @@ const ListaPasseiosSemana = () => {
 
   const statusGrupo = (pax, allocationStatus) => {
     if (allocationStatus === "CLOSED") {
-      return <span className="status fechado"><Lock fontSize="10" /> Passeio Fechado</span>;
+      return (
+        <span className="status fechado">
+          <Lock fontSize="10" /> Passeio Fechado
+        </span>
+      );
     }
 
-    const totalPax = Number(pax || 0);
-
-    return totalPax >= 8 ? (
-      <span className="status ok"><Groups fontSize="10" /> Grupo Formado </span>
+    return Number(pax || 0) >= 8 ? (
+      <span className="status ok">
+        <Groups fontSize="10" /> Grupo Formado
+      </span>
     ) : (
-      <span className="status alerta"><Warning fontSize="10" /> Formar Grupo</span>
+      <span className="status alerta">
+        <Warning fontSize="10" /> Formar Grupo
+      </span>
     );
+  };
+
+  const getCargaSemanal = (guiaId) => {
+    const guiaResumo = resumoGuias.find((g) => g.guiaId === guiaId);
+    return guiaResumo?.ocupacao || 0;
+  };
+
+  const getStatusGuiaNoDia = (guiaId, data, registrosDia) => {
+    const registroDisp = disponibilidades.find((d) => d.guideId === guiaId);
+
+    if (!registroDisp?.disponibilidade) return { status: "NO_DATA" };
+
+    const dispDia = registroDisp.disponibilidade.find((d) => d.date === data);
+
+    if (dispDia?.status === "BLOCKED") return { status: "BLOCKED" };
+
+    const jaUsado = registrosDia.some(
+      (r) => r.guiaId === guiaId && r.allocationStatus !== "CLOSED"
+    );
+
+    if (jaUsado) return { status: "USED" };
+
+    return { status: "AVAILABLE" };
   };
 
   const limparGuiasDeServicosFechados = async () => {
@@ -441,11 +896,6 @@ const ListaPasseiosSemana = () => {
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
 
-    const mapaSemana = {};
-    semana.forEach((d) => {
-      mapaSemana[d.date] = d;
-    });
-
     try {
       const q = query(
         collection(db, "weekly_services"),
@@ -462,9 +912,8 @@ const ListaPasseiosSemana = () => {
 
         if (!r || !r.date || !r.guiaId) return;
         if (r.allocationStatus === "CLOSED") return;
-        if (!mapaSemana[r.date]) return;
-        if (!r.serviceId && !r.manual) return;
-        if (!r.guiaNome && !r.guiaId) return;
+        if (!semanaMap[r.date]) return;
+        if (!r.serviceName) return;
 
         const guia = guias.find((g) => g.id === r.guiaId);
         if (!guia?.whatsapp) return;
@@ -477,18 +926,16 @@ const ListaPasseiosSemana = () => {
           };
         }
 
-        const dia = mapaSemana[r.date];
+        const dia = semanaMap[r.date];
         mapaGuias[r.guiaId].datas.add(
           `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
         );
       });
 
-      const listaGuias = Object.values(mapaGuias).filter(
-        (g) => g.datas.size > 0
-      );
-
-      listaGuias.forEach((guia, index) => {
-        const texto = `
+      Object.values(mapaGuias)
+        .filter((g) => g.datas.size > 0)
+        .forEach((guia, index) => {
+          const texto = `
 Olá, ${guia.nome}! 🍀
 
 Segue sua escala da semana:
@@ -499,132 +946,19 @@ Gentilmente, confirme o recebimento.
 Operacional - Luck Receptivo 🍀
 `.trim();
 
-        setTimeout(() => {
-          window.open(
-            `https://wa.me/55${guia.whatsapp.replace(
-              /\D/g,
-              ""
-            )}?text=${encodeURIComponent(texto)}`,
-            "_blank"
-          );
-        }, index * 2200);
-      });
+          setTimeout(() => {
+            window.open(
+              `https://wa.me/55${guia.whatsapp.replace(
+                /\D/g,
+                ""
+              )}?text=${encodeURIComponent(texto)}`,
+              "_blank"
+            );
+          }, index * 2200);
+        });
     } catch (err) {
       console.error("Erro ao enviar WhatsApp da semana:", err);
     }
-  };
-
-  const alterarGuiaManual = async (registroId, guia, dia, registro) => {
-    if (!registroId) return;
-
-    if (registro?.allocationStatus === "CLOSED") {
-      alert("Não é possível alocar guia em um serviço fechado.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await setDoc(
-        doc(db, "weekly_services", registroId),
-        {
-          guiaId: guia?.id || null,
-          guiaNome: guia?.nome || null,
-          day: dia.day,
-          date: dia.date,
-          manual: false,
-        },
-        { merge: true }
-      );
-
-      await carregarDados();
-    } catch (err) {
-      console.error("Erro ao alterar guia manualmente:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const alterarPaxManual = (registroId, pax) => {
-    if (!registroId) return;
-
-    setPaxEditando((prev) => ({
-      ...prev,
-      [registroId]: pax,
-    }));
-
-    if (paxTimers.current[registroId]) {
-      clearTimeout(paxTimers.current[registroId]);
-    }
-
-    paxTimers.current[registroId] = setTimeout(async () => {
-      try {
-        await setDoc(
-          doc(db, "weekly_services", registroId),
-          {
-            passengers: Number(pax),
-          },
-          { merge: true }
-        );
-
-        setExtras((prev) => {
-          const novo = { ...prev };
-          Object.keys(novo).forEach((date) => {
-            novo[date] = novo[date].map((r) =>
-              r.id === registroId ? { ...r, passengers: Number(pax) } : r
-            );
-          });
-          return novo;
-        });
-
-        setPaxEditando((prev) => {
-          const novo = { ...prev };
-          delete novo[registroId];
-          return novo;
-        });
-      } catch (err) {
-        console.error("Erro ao salvar pax:", err);
-      }
-    }, 400);
-  };
-
-  const adicionarPasseioManual = async (dia) => {
-    const dados = novoServico[dia.date];
-
-    if (!dados?.nome) {
-      alert("Informe o nome do serviço");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await addDoc(collection(db, "weekly_services"), {
-        serviceName: dados.nome,
-        passengers: Number(dados.pax || 0),
-        guiaId: dados.guiaId || null,
-        guiaNome: dados.guiaNome || null,
-        date: dia.date,
-        day: dia.day,
-        manual: true,
-        createdAt: new Date(),
-        allocationStatus: "OPEN",
-      });
-
-      setNovoServico((prev) => ({
-        ...prev,
-        [dia.date]: {},
-      }));
-
-      await carregarDados();
-    } catch (err) {
-      console.error("Erro ao adicionar passeio manual:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getCargaSemanal = (guiaId) => {
-    const guiaResumo = resumoGuias.find((g) => g.guiaId === guiaId);
-    return guiaResumo?.ocupacao || 0;
   };
 
   const enviarWhatsappGuiaIndividual = (guiaResumo) => {
@@ -654,7 +988,6 @@ Operacional - Luck Receptivo 🍀
       .map((data) => {
         const diaObj = semana.find((d) => d.date === data);
         if (!diaObj) return null;
-
         return `• ${diaObj.day} (${data.split("-").reverse().join("/")})`;
       })
       .filter(Boolean)
@@ -696,7 +1029,6 @@ Operacional - Luck Receptivo 🍀
         );
 
         disponibilidadeMap[d.guideId] = diasSemana.length;
-
         bloqueiosMap[d.guideId] = diasSemana
           .filter((ds) => ds.status === "BLOCKED")
           .map((ds) => ds.date);
@@ -705,7 +1037,7 @@ Operacional - Luck Receptivo 🍀
       const contador = {};
 
       semana.forEach((dia) => {
-        const registrosDia = extras[dia.date] || [];
+        const registrosDia = agruparRegistrosPorServico(extras[dia.date] || []);
 
         registrosDia.forEach((r) => {
           if (!r.guiaId) return;
@@ -724,26 +1056,11 @@ Operacional - Luck Receptivo 🍀
               ocupacao: 0,
               sobrecarga: false,
               datas: new Set(),
-              realocados: 0,
-              trabalhandoBloqueado: false,
-              abaixoMedia: false,
-              indiceEquilibrio: 0,
-              scorePrioridade: 0,
             };
           }
 
-          const guiaResumo = contador[r.guiaId];
-
-          guiaResumo.totalServicos++;
-          guiaResumo.datas.add(r.date);
-
-          if (r.manual === true) {
-            guiaResumo.realocados++;
-          }
-
-          if (bloqueiosMap[r.guiaId]?.includes(r.date)) {
-            guiaResumo.trabalhandoBloqueado = true;
-          }
+          contador[r.guiaId].totalServicos++;
+          contador[r.guiaId].datas.add(r.date);
         });
       });
 
@@ -752,47 +1069,19 @@ Operacional - Luck Receptivo 🍀
       resumo.forEach((g) => {
         const dias = Number(g.diasDisponiveis) || 0;
         const total = Number(g.totalServicos) || 0;
-
-        if (dias > 0) {
-          g.ocupacao = Math.round((total / dias) * 100);
-        } else {
-          g.ocupacao = 0;
-        }
-
-        if (!Number.isFinite(g.ocupacao)) {
-          g.ocupacao = 0;
-        }
-
+        g.ocupacao = dias > 0 ? Math.round((total / dias) * 100) : 0;
+        if (!Number.isFinite(g.ocupacao)) g.ocupacao = 0;
         g.sobrecarga = g.ocupacao >= 90;
-      });
-
-      const ocupacoesValidas = resumo
-        .map((g) => g.ocupacao)
-        .filter((o) => Number.isFinite(o));
-
-      const mediaEquipe =
-        ocupacoesValidas.length > 0
-          ? ocupacoesValidas.reduce((acc, o) => acc + o, 0) /
-          ocupacoesValidas.length
-          : 0;
-
-      resumo.forEach((g) => {
-        g.abaixoMedia = g.ocupacao < mediaEquipe - 15;
-        g.indiceEquilibrio = Math.abs(g.ocupacao - mediaEquipe);
-
-        if (!Number.isFinite(g.indiceEquilibrio)) {
-          g.indiceEquilibrio = 0;
-        }
       });
 
       resumo.sort((a, b) => b.ocupacao - a.ocupacao);
 
-      resumo = resumo.map((g) => ({
-        ...g,
-        datas: new Set(g.datas),
-      }));
-
-      setResumoGuias(resumo);
+      setResumoGuias(
+        resumo.map((g) => ({
+          ...g,
+          datas: new Set(g.datas),
+        }))
+      );
     } catch (err) {
       console.error("Erro ao gerar resumo dos guias:", err);
     }
@@ -801,21 +1090,19 @@ Operacional - Luck Receptivo 🍀
   const formatarPeriodoSemana = () => {
     if (!semana.length) return "";
 
-    const inicio = semana[0].date;
-    const fim = semana[6].date;
-
     const formatar = (data) => {
       const [ano, mes, dia] = data.split("-");
       return `${dia}/${mes}/${ano}`;
     };
 
-    return `${formatar(inicio)} até ${formatar(fim)}`;
+    return `${formatar(semana[0].date)} até ${formatar(semana[6].date)}`;
   };
 
   const alocarGuiasSemana = async () => {
     setLoading(true);
+
     try {
-      if (!guias.length || !services.length || !semana.length) return;
+      if (!guias.length || !semana.length) return;
 
       const inicioSemana = semana[0].date;
       const fimSemana = semana[semana.length - 1].date;
@@ -837,6 +1124,21 @@ Operacional - Luck Receptivo 🍀
         );
 
       for (const dia of semana) {
+        const qReg = query(
+          collection(db, "weekly_services"),
+          where("date", "==", dia.date)
+        );
+        const snapReg = await getDocs(qReg);
+
+        const registrosDia = snapReg.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+
+        const registrosAgrupados = agruparRegistrosPorServico(registrosDia);
+
+        if (!registrosAgrupados.length) continue;
+
         const guiasDisponiveis = guias.filter((g) =>
           disponibilidadesSemana.some(
             (d) =>
@@ -849,94 +1151,59 @@ Operacional - Luck Receptivo 🍀
 
         if (!guiasDisponiveis.length) continue;
 
-        const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day)
-        );
-
-        const qReg = query(
-          collection(db, "weekly_services"),
-          where("date", "==", dia.date)
-        );
-        const snapReg = await getDocs(qReg);
-
-        const registrosDia = snapReg.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-
         const usadosNoDia = new Set();
-        registrosDia.forEach((r) => {
+
+        registrosAgrupados.forEach((r) => {
           if (r.guiaId && r.allocationStatus !== "CLOSED") {
             usadosNoDia.add(r.guiaId);
           }
         });
 
-        for (const p of passeiosFixos) {
-          const jaExiste = registrosDia.some((r) => r.serviceId === p.id);
-
-          if (!jaExiste) {
-            const docRef = await addDoc(collection(db, "weekly_services"), {
-              serviceId: p.id,
-              serviceName: p.nome,
-              passengers: 0,
-              modalidade: "regular",
-              date: dia.date,
-              day: dia.day,
-              createdAt: new Date(),
-              allocationStatus: "OPEN",
-            });
-
-            registrosDia.push({
-              id: docRef.id,
-              serviceId: p.id,
-              serviceName: p.nome,
-              guiaId: null,
-              guiaNome: null,
-              passengers: 0,
-              day: dia.day,
-              date: dia.date,
-              manual: false,
-              allocationStatus: "OPEN",
-            });
-          }
-        }
-
-        for (const r of registrosDia) {
-          if (!r?.id) continue;
-          if (r.guiaId || r.manual) continue;
-          if (r.allocationStatus === "CLOSED") continue;
+        for (const item of registrosAgrupados) {
+          if (!item?.id) continue;
+          if (item.guiaId) continue;
+          if (item.allocationStatus === "CLOSED") continue;
 
           const elegiveis = guiasDisponiveis.filter((g) => {
             if (usadosNoDia.has(g.id)) return false;
 
             const passeiosAptos = Array.isArray(g.passeios) ? g.passeios : [];
-            return passeiosAptos.some((p) => p.id === r.serviceId);
+
+            return passeiosAptos.some((p) => {
+              const matchServiceId =
+                item.serviceId &&
+                p?.id &&
+                String(p.id) === String(item.serviceId);
+
+              const matchExternalServiceId =
+                item.externalServiceId &&
+                p?.externalServiceId &&
+                Number(p.externalServiceId) === Number(item.externalServiceId);
+
+              const matchNome =
+                normalizarTexto(p?.externalName || p?.nome || "") ===
+                normalizarTexto(item.serviceName || "");
+
+              return matchServiceId || matchExternalServiceId || matchNome;
+            });
           });
 
           if (!elegiveis.length) continue;
 
-          let candidatosOrdenados = [];
-
-          if (modoDistribuicaoGuias === "seguir_nivel_selecionado") {
-            candidatosOrdenados = ordenarGuiasPorPrioridade(
-              elegiveis,
-              contadorSemana
-            );
-          } else {
-            candidatosOrdenados = ordenarGuiasEquilibrado(
-              elegiveis,
-              contadorSemana
-            );
-          }
+          const candidatosOrdenados =
+            modoDistribuicaoGuias === "seguir_nivel_selecionado"
+              ? ordenarGuiasPorPrioridade(elegiveis, contadorSemana)
+              : ordenarGuiasEquilibrado(elegiveis, contadorSemana);
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
 
           await setDoc(
-            doc(db, "weekly_services", r.id),
+            doc(db, "weekly_services", item.id),
             {
               guiaId: guiaSelecionado.id,
               guiaNome: guiaSelecionado.nome,
+              updatedAt: new Date(),
             },
             { merge: true }
           );
@@ -953,30 +1220,6 @@ Operacional - Luck Receptivo 🍀
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusGuiaNoDia = (guiaId, data, registrosDia) => {
-    const registroDisp = disponibilidades.find((d) => d.guideId === guiaId);
-
-    if (!registroDisp?.disponibilidade) {
-      return { status: "NO_DATA" };
-    }
-
-    const dispDia = registroDisp.disponibilidade.find((d) => d.date === data);
-
-    if (dispDia?.status === "BLOCKED") {
-      return { status: "BLOCKED" };
-    }
-
-    const jaUsado = registrosDia.some(
-      (r) => r.guiaId === guiaId && r.allocationStatus !== "CLOSED"
-    );
-
-    if (jaUsado) {
-      return { status: "USED" };
-    }
-
-    return { status: "AVAILABLE" };
   };
 
   const removerGuiasSemana = async () => {
@@ -1026,7 +1269,7 @@ Operacional - Luck Receptivo 🍀
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
           >
-            Editar escala<ModeEdit fontSize="10" />
+            Editar escala <ModeEdit fontSize="10" />
           </button>
 
           <button className="btn-list" onClick={alocarGuiasSemana}>
@@ -1041,12 +1284,12 @@ Operacional - Luck Receptivo 🍀
             className="btn-list-send"
             onClick={enviarWhatsappGuiasSemana_FIRESTORE}
           >
-            Enviar todos os Bloqueios <WhatsApp className="icon-zap" fontSize="10" />
+            Enviar todos os Bloqueios{" "}
+            <WhatsApp className="icon-zap" fontSize="10" />
           </button>
         </div>
+
         <div className="topic">
-
-
           <div className="week-controls">
             <button
               className="btn-list"
@@ -1065,8 +1308,10 @@ Operacional - Luck Receptivo 🍀
             >
               Semana seguinte ➡
             </button>
+
             <span className="counter-info">{formatarPeriodoSemana()}</span>
           </div>
+
           <p className="counter-info">
             Modo de distribuição:{" "}
             <strong>
@@ -1075,10 +1320,7 @@ Operacional - Luck Receptivo 🍀
                 : "Equilibrado"}
             </strong>
           </p>
-
         </div>
-
-
       </div>
 
       <div className="resumo-modo-global">
@@ -1089,6 +1331,7 @@ Operacional - Luck Receptivo 🍀
           : "Escala ainda não gerada para esta semana"}{" "}
         <Warning fontSize="10" className="icon-warning" />
       </div>
+
       <div className="resumo-container">
         {resumoGuias.map((g, index) => (
           <div key={g.guiaId} className="resumo-card">
@@ -1129,12 +1372,6 @@ Operacional - Luck Receptivo 🍀
               />
             </div>
 
-            {Number.isFinite(g.variacao) && g.variacao !== 0 && (
-              <div className={`variacao ${g.variacao > 0 ? "up" : "down"}`}>
-                {g.variacao > 0 ? "▲" : "▼"} {Math.abs(g.variacao)}%
-              </div>
-            )}
-
             <p className="resumo-info">{g.totalServicos} serviços</p>
 
             <div className="mini-chart">
@@ -1158,226 +1395,128 @@ Operacional - Luck Receptivo 🍀
                 </div>
               </div>
             </div>
-
-            {g.injusto && (
-              <span className="alerta-distribuicao">⚖️ Distribuição desigual</span>
-            )}
           </div>
         ))}
       </div>
 
       {semana.map((dia) => {
-        const passeiosFixos = services.filter((s) =>
-          (s.frequencia || []).includes(dia.day)
+        const registrosOrdenados = agruparRegistrosPorServico(
+          extras[dia.date] || []
         );
 
-        const registrosDia = extras[dia.date] || [];
-
-        const passeiosDoDia = [
-          ...passeiosFixos.map((p) => ({
-            id: p.id,
-            nome: p.nome,
-            serviceId: p.id,
-            manual: false,
-          })),
-          ...registrosDia
-            .filter((r) => r.manual)
-            .map((r) => ({
-              id: r.id,
-              nome: r.serviceName,
-              serviceId: null,
-              manual: true,
-            })),
-        ];
-
-        const totalPasseios = passeiosDoDia.length;
-
-        const passeiosComGuia = passeiosDoDia.filter((p) => {
-          const registro = encontrarRegistroDoPasseio(registrosDia, p);
-          return !!registro?.guiaId && registro?.allocationStatus !== "CLOSED";
-        }).length;
+        const totalPasseios = registrosOrdenados.length;
+        const passeiosComGuia = registrosOrdenados.filter(
+          (r) => !!r.guiaId && r.allocationStatus !== "CLOSED"
+        ).length;
 
         let statusDia = "vazio";
-
-        if (passeiosComGuia === 0) {
-          statusDia = "vazio";
-        } else if (passeiosComGuia < totalPasseios) {
-          statusDia = "parcial";
-        } else {
-          statusDia = "completo";
-        }
+        if (passeiosComGuia === 0) statusDia = "vazio";
+        else if (passeiosComGuia < totalPasseios) statusDia = "parcial";
+        else statusDia = "completo";
 
         return (
           <div key={dia.date} className="day-card">
             <strong className={`day-list ${statusDia}`}>
               {dia.label}
               <span className="day-status">
-                - Passeios com Guia: {passeiosComGuia} - Total de Passeios:
+                {" "}
+                - Passeios com Guia: {passeiosComGuia} - Total de Passeios:{" "}
                 {totalPasseios}
               </span>
             </strong>
 
-            {passeiosDoDia.map((p) => {
-              const registro = encontrarRegistroDoPasseio(registrosDia, p);
+            {registrosOrdenados.map((item) => (
+              <div key={`${dia.date}-${item.externalServiceId || item.id}`} className="passeio-item">
+                <span className="passeio-name">{item.serviceName}</span>
 
-              return (
-                <div key={p.id} className="passeio-item">
-                  <span className="passeio-name">{p.nome}</span>
+                {modoVisualizacao ? (
+                  <>
+                    <span className="passeio-pax">
+                      {item.passengers || 0} pax
+                      <small>
+                        {" "}
+                        ({item.adultCount || 0} ADT / {item.childCount || 0} CHD / {item.infantCount || 0} INF)
+                      </small>
+                    </span>
+                    {statusGrupo(item.passengers, item.allocationStatus)}
+                    <span className="guia-name-aloc">{item.guiaNome || "-"}</span>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="number"
+                      min="0"
+                      value={paxEditando[item.id] ?? item.passengers ?? 0}
+                      onChange={(e) => alterarPaxManual(item.id, e.target.value)}
+                    />
 
-                  {modoVisualizacao ? (
-                    <>
-                      <span className="passeio-pax">
-                        {registro?.passengers || 0} pax
-                      </span>
-                      {statusGrupo(
-                        registro?.passengers,
-                        registro?.allocationStatus
-                      )}
-                      <span className="guia-name-aloc">
-                        {registro?.guiaNome || "-"}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        type="number"
-                        min="0"
-                        value={
-                          registro
-                            ? paxEditando[registro.id] ??
-                            registro.passengers ??
-                            0
-                            : 0
+                    <select
+                      value={item.allocationStatus || "OPEN"}
+                      onChange={(e) =>
+                        alterarStatusAlocacao(item.id, e.target.value)
+                      }
+                    >
+                      <option value="OPEN">Aberto</option>
+                      <option value="CLOSED">Fechado</option>
+                    </select>
+
+                    <select
+                      value={item.guiaId || ""}
+                      onChange={async (e) => {
+                        const guia = guias.find((g) => g.id === e.target.value);
+
+                        if (item.allocationStatus === "CLOSED") {
+                          alert(
+                            "Não é possível alocar guia em um serviço fechado."
+                          );
+                          return;
                         }
-                        onChange={async (e) => {
-                          const novoPax = e.target.value;
 
-                          if (!registro) {
-                            await criarRegistroBase({
-                              passeio: p,
-                              dia,
-                              passengers: Number(novoPax),
-                              guia: null,
-                              allocationStatus: "OPEN",
-                              manual: false,
-                            });
-                            return;
-                          }
+                        await alterarGuiaManual(item.id, guia || null, dia, item);
+                      }}
+                    >
+                      <option value="">Sem guia</option>
 
-                          alterarPaxManual(registro.id, novoPax);
-                        }}
-                      />
+                      {guias.map((g) => {
+                        const status = getStatusGuiaNoDia(
+                          g.id,
+                          dia.date,
+                          registrosOrdenados
+                        );
+                        const carga = getCargaSemanal(g.id);
 
-                      <select
-                        value={registro?.allocationStatus || "OPEN"}
-                        onChange={async (e) => {
-                          const novoStatus = e.target.value;
+                        let label = g.nome;
 
-                          if (!registro) {
-                            await criarRegistroBase({
-                              passeio: p,
-                              dia,
-                              passengers: 0,
-                              guia: null,
-                              allocationStatus: novoStatus,
-                              manual: false,
-                            });
-                            return;
-                          }
+                        if (status.status === "AVAILABLE") label += ` 🟢 (${carga}%)`;
+                        if (status.status === "USED") label += ` 🔒 (Já alocado)`;
+                        if (status.status === "BLOCKED") label += ` 🔴 (Bloqueado)`;
+                        if (status.status === "NO_DATA") label += ` ⚫ (Sem disponibilidade)`;
 
-                          await alterarStatusAlocacao(registro.id, novoStatus);
-                        }}
+                        const disabled =
+                          status.status === "BLOCKED" ||
+                          status.status === "USED" ||
+                          status.status === "NO_DATA";
+
+                        return (
+                          <option key={g.id} value={g.id} disabled={disabled}>
+                            {label}
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    {item.manual && (
+                      <button
+                        className="btn-remove"
+                        onClick={() => removerPasseio(item.id)}
                       >
-                        <option value="OPEN">Aberto</option>
-                        <option value="CLOSED">Fechado</option>
-                      </select>
-
-                      <select
-                        value={registro?.guiaId || ""}
-                        onChange={async (e) => {
-                          const guia = guias.find((g) => g.id === e.target.value);
-
-                          if (registro?.allocationStatus === "CLOSED") {
-                            alert(
-                              "Não é possível alocar guia em um serviço fechado."
-                            );
-                            return;
-                          }
-
-                          if (!registro) {
-                            await criarRegistroBase({
-                              passeio: p,
-                              dia,
-                              passengers: 0,
-                              guia: guia || null,
-                              allocationStatus: "OPEN",
-                              manual: false,
-                            });
-                            return;
-                          }
-
-                          await alterarGuiaManual(
-                            registro.id,
-                            guia || null,
-                            dia,
-                            registro
-                          );
-                        }}
-                      >
-                        <option value="">Sem guia</option>
-
-                        {guias.map((g) => {
-                          const status = getStatusGuiaNoDia(
-                            g.id,
-                            dia.date,
-                            registrosDia
-                          );
-                          const carga = getCargaSemanal(g.id);
-
-                          let label = g.nome;
-
-                          if (status.status === "AVAILABLE") {
-                            label += ` 🟢 (${carga}%)`;
-                          }
-
-                          if (status.status === "USED") {
-                            label += ` 🔒 (Já alocado)`;
-                          }
-
-                          if (status.status === "BLOCKED") {
-                            label += ` 🔴 (Bloqueado)`;
-                          }
-
-                          if (status.status === "NO_DATA") {
-                            label += ` ⚫ (Sem disponibilidade)`;
-                          }
-
-                          const disabled =
-                            status.status === "BLOCKED" ||
-                            status.status === "USED" ||
-                            status.status === "NO_DATA";
-
-                          return (
-                            <option key={g.id} value={g.id} disabled={disabled}>
-                              {label}
-                            </option>
-                          );
-                        })}
-                      </select>
-
-                      {registro?.manual && (
-                        <button
-                          className="btn-remove"
-                          onClick={() => removerPasseio(registro.id)}
-                        >
-                          🗑️
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                        🗑️
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
 
             {!modoVisualizacao && (
               <div className="passeio-item passeio-add">

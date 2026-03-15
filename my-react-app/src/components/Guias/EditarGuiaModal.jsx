@@ -5,7 +5,6 @@ import { getLanguages } from "../../Services/Services/languages.service";
 import "./styles.css";
 import LoadingBlock from "../LoadingOverlay/LoadingOverlay.jsx";
 
-
 const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     const [nome, setNome] = useState("");
     const [whatsapp, setWhatsapp] = useState("");
@@ -22,7 +21,6 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     const [loadingDados, setLoadingDados] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
 
-    /* ===== CARREGAR GUIA ===== */
     useEffect(() => {
         if (!guia) return;
 
@@ -32,23 +30,25 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         setAtivo(guia.ativo !== false);
         setNivelPrioridade(Number(guia.nivelPrioridade || 2));
         setIdiomasSelecionados(guia.idiomas || []);
-        setPasseiosSelecionados((guia.passeios || []).map(p => p.id));
+        setPasseiosSelecionados((guia.passeios || []).map((p) => p.id));
     }, [guia]);
 
-    /* ===== CARREGAR LISTAS ===== */
     useEffect(() => {
         const carregarDados = async () => {
             try {
                 setLoadingDados(true);
 
                 const langs = await getLanguages();
-                setIdiomasDisponiveis(langs.map(l => l.label));
+                setIdiomasDisponiveis(langs.map((l) => l.label));
 
                 const snap = await getDocs(collection(db, "services"));
                 setPasseiosDisponiveis(
-                    snap.docs.map(doc => ({
-                        id: doc.id,
-                        nome: doc.data().nome,
+                    snap.docs.map((docSnap) => ({
+                        id: docSnap.id,
+                        nome: docSnap.data().nome || "",
+                        externalName:
+                            docSnap.data().externalName || docSnap.data().nome || "",
+                        externalServiceId: docSnap.data().externalServiceId || null,
                     }))
                 );
             } catch (err) {
@@ -61,26 +61,21 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         carregarDados();
     }, []);
 
-    /* ===== TOGGLE IDIOMA ===== */
-    const toggleIdioma = idioma => {
-        setIdiomasSelecionados(prev =>
+    const toggleIdioma = (idioma) => {
+        setIdiomasSelecionados((prev) =>
             prev.includes(idioma)
-                ? prev.filter(i => i !== idioma)
+                ? prev.filter((i) => i !== idioma)
                 : [...prev, idioma]
         );
     };
 
-    /* ===== TOGGLE PASSEIO ===== */
-    const togglePasseio = id => {
-        setPasseiosSelecionados(prev =>
-            prev.includes(id)
-                ? prev.filter(p => p !== id)
-                : [...prev, id]
+    const togglePasseio = (id) => {
+        setPasseiosSelecionados((prev) =>
+            prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
         );
     };
 
     const formatarTelefone = (valor) => {
-        // remove tudo que não for número
         const numeros = valor.replace(/\D/g, "").slice(0, 11);
 
         if (numeros.length <= 2) return numeros;
@@ -92,7 +87,6 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         return valor;
     };
 
-    /* ===== SALVAR ===== */
     const salvar = async () => {
         if (!nome || !whatsapp) {
             alert("Nome e WhatsApp são obrigatórios");
@@ -102,14 +96,16 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         try {
             setLoadingSalvar(true);
 
+            const passeiosSalvos = passeiosDisponiveis.filter((p) =>
+                passeiosSelecionados.includes(p.id)
+            );
+
             await updateDoc(doc(db, "guides", guia.id), {
                 nome,
                 whatsapp,
                 nivelPrioridade,
                 idiomas: idiomasSelecionados,
-                passeios: passeiosDisponiveis.filter(p =>
-                    passeiosSelecionados.includes(p.id)
-                ),
+                passeios: passeiosSalvos,
                 motoguia,
                 ativo,
                 updatedAt: new Date(),
@@ -134,7 +130,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     <input
                         placeholder="Nome"
                         value={nome}
-                        onChange={e => setNome(e.target.value)}
+                        onChange={(e) => setNome(e.target.value)}
                     />
 
                     <input
@@ -144,10 +140,8 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                         onChange={(e) => setWhatsapp(e.target.value)}
                         maxLength={15}
                     />
-
                 </div>
 
-                {/* ===== IDIOMAS ===== */}
                 <label className="name-title">Idiomas</label>
                 <div className="tag-selector">
                     <LoadingBlock
@@ -157,7 +151,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     />
 
                     {!loadingDados &&
-                        idiomasDisponiveis.map(idioma => (
+                        idiomasDisponiveis.map((idioma) => (
                             <span
                                 key={idioma}
                                 className={`tag-option ${idiomasSelecionados.includes(idioma) ? "active" : ""
@@ -169,7 +163,6 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                         ))}
                 </div>
 
-                {/* ===== PASSEIOS ===== */}
                 <label className="name-title">Passeios Aptos</label>
                 <div className="tag-selector">
                     <LoadingBlock
@@ -179,7 +172,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     />
 
                     {!loadingDados &&
-                        passeiosDisponiveis.map(p => (
+                        passeiosDisponiveis.map((p) => (
                             <span
                                 key={p.id}
                                 className={`tag-option green ${passeiosSelecionados.includes(p.id) ? "active" : ""
@@ -195,7 +188,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     <input
                         type="checkbox"
                         checked={motoguia}
-                        onChange={e => setMotoguia(e.target.checked)}
+                        onChange={(e) => setMotoguia(e.target.checked)}
                     />
                     Atua como motoguia
                 </div>
@@ -204,10 +197,11 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                     <input
                         type="checkbox"
                         checked={ativo}
-                        onChange={e => setAtivo(e.target.checked)}
+                        onChange={(e) => setAtivo(e.target.checked)}
                     />
                     Guia ativo
                 </div>
+
                 <label className="name-title">Nível de prioridade</label>
                 <select
                     className="input-select"
