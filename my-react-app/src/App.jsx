@@ -11,6 +11,7 @@ import ListaPasseios from "./components/ListaPasseios/ListaPasseios";
 import RelatoriosGuias from "./components/RelatoriosGuias/RelatoriosGuias";
 import Home from "./components/Home/Home";
 import Configuracoes from "./pages/Configuracoes/Configuracoes";
+import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGuias";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route path="/" element={<Dashboard />}>
 
         {/* ROTAS INTERNAS (renderizam no <Outlet />) */}
+        <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
         <Route path="register-guias" element={<RegisterGuias />} />
         <Route path="register-tours" element={<RegisterTours />} />
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />

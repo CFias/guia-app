@@ -6,205 +6,196 @@ import "./styles.css";
 import LoadingBlock from "../LoadingOverlay/LoadingOverlay.jsx";
 
 const ListaGuias = () => {
-    const [guias, setGuias] = useState([]);
-    const [idiomasFiltro, setIdiomasFiltro] = useState([]);
+  const [guias, setGuias] = useState([]);
+  const [idiomasFiltro, setIdiomasFiltro] = useState([]);
 
-    const [busca, setBusca] = useState("");
-    const [idiomaSelecionado, setIdiomaSelecionado] = useState("");
-    const [filtroMotoguia, setFiltroMotoguia] = useState("todos");
-    const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [busca, setBusca] = useState("");
+  const [idiomaSelecionado, setIdiomaSelecionado] = useState("");
+  const [filtroMotoguia, setFiltroMotoguia] = useState("todos");
+  const [filtroStatus, setFiltroStatus] = useState("todos");
 
-    const [guiaEditando, setGuiaEditando] = useState(null);
-    const [loading, setLoading] = useState(false);
+  const [guiaEditando, setGuiaEditando] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        carregarGuias();
-    }, []);
+  useEffect(() => {
+    carregarGuias();
+  }, []);
 
-    const carregarGuias = async () => {
-        try {
-            setLoading(true);
+  const carregarGuias = async () => {
+    try {
+      setLoading(true);
 
-            const snap = await getDocs(collection(db, "guides"));
-            const data = snap.docs
-                .map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }))
-                .sort((a, b) =>
-                    (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
-                        sensitivity: "base",
-                    })
-                );
+      const snap = await getDocs(collection(db, "guides"));
+      const data = snap.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .sort((a, b) =>
+          (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+            sensitivity: "base",
+          }),
+        );
 
-            setGuias(data);
+      setGuias(data);
 
-            const idiomasUnicos = [
-                ...new Set(data.flatMap(g => g.idiomas || [])),
-            ];
-            setIdiomasFiltro(idiomasUnicos);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
+      const idiomasUnicos = [...new Set(data.flatMap((g) => g.idiomas || []))];
+      setIdiomasFiltro(idiomasUnicos);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // ===== FILTRO COMPLETO =====
-    const guiasFiltrados = guias.filter(guia => {
-        const texto =
-            `${guia.nome} ${guia.whatsapp} ${(guia.idiomas || []).join(" ")}`.toLowerCase();
+  // ===== FILTRO COMPLETO =====
+  const guiasFiltrados = guias.filter((guia) => {
+    const texto =
+      `${guia.nome} ${guia.whatsapp} ${(guia.idiomas || []).join(" ")}`.toLowerCase();
 
-        const buscaOk = texto.includes(busca.toLowerCase());
+    const buscaOk = texto.includes(busca.toLowerCase());
 
-        const idiomaOk =
-            !idiomaSelecionado ||
-            (guia.idiomas || []).includes(idiomaSelecionado);
+    const idiomaOk =
+      !idiomaSelecionado || (guia.idiomas || []).includes(idiomaSelecionado);
 
-        const motoguiaOk =
-            filtroMotoguia === "todos" ||
-            (filtroMotoguia === "sim" && guia.motoguia) ||
-            (filtroMotoguia === "nao" && !guia.motoguia);
+    const motoguiaOk =
+      filtroMotoguia === "todos" ||
+      (filtroMotoguia === "sim" && guia.motoguia) ||
+      (filtroMotoguia === "nao" && !guia.motoguia);
 
-        const statusOk =
-            filtroStatus === "todos" ||
-            (filtroStatus === "ativo" && guia.ativo) ||
-            (filtroStatus === "inativo" && !guia.ativo);
+    const statusOk =
+      filtroStatus === "todos" ||
+      (filtroStatus === "ativo" && guia.ativo) ||
+      (filtroStatus === "inativo" && !guia.ativo);
 
-        return buscaOk && idiomaOk && motoguiaOk && statusOk;
-    });
+    return buscaOk && idiomaOk && motoguiaOk && statusOk;
+  });
 
-    return (
-        <div className="page-container">
-            <h2 className="page-h2">Lista de Guias</h2>
+  return (
+    <div className="page-container">
+      <h2 className="page-h2">Lista de Guias</h2>
 
+      {/* ===== FILTROS ===== */}
+      <div className="filters-grid">
+        <input
+          type="text"
+          placeholder="Buscar por nome, idioma ou WhatsApp"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
 
+        <select
+          value={idiomaSelecionado}
+          onChange={(e) => setIdiomaSelecionado(e.target.value)}
+        >
+          <option value="">Todos os idiomas</option>
+          {idiomasFiltro.map((idioma) => (
+            <option key={idioma} value={idioma}>
+              {idioma}
+            </option>
+          ))}
+        </select>
 
-            {/* ===== FILTROS ===== */}
-            <div className="filters-grid">
-                <input
-                    type="text"
-                    placeholder="Buscar por nome, idioma ou WhatsApp"
-                    value={busca}
-                    onChange={e => setBusca(e.target.value)}
-                />
+        <select
+          value={filtroMotoguia}
+          onChange={(e) => setFiltroMotoguia(e.target.value)}
+        >
+          <option value="todos">Filtro de Motoguia</option>
+          <option value="sim">Motoguia</option>
+          <option value="nao">Não motoguia</option>
+        </select>
 
-                <select
-                    value={idiomaSelecionado}
-                    onChange={e => setIdiomaSelecionado(e.target.value)}
-                >
-                    <option value="">Todos os idiomas</option>
-                    {idiomasFiltro.map(idioma => (
-                        <option key={idioma} value={idioma}>
-                            {idioma}
-                        </option>
-                    ))}
-                </select>
+        <select
+          value={filtroStatus}
+          onChange={(e) => setFiltroStatus(e.target.value)}
+        >
+          <option value="todos">Filtro de Status</option>
+          <option value="ativo">Ativos</option>
+          <option value="inativo">Inativos</option>
+        </select>
+        {/* ===== CONTADOR ===== */}
+        <p className="counter-info-1">
+          Guias cadastrados: <strong>{guias.length}</strong>
+        </p>
+      </div>
 
-                <select
-                    value={filtroMotoguia}
-                    onChange={e => setFiltroMotoguia(e.target.value)}
-                >
-                    <option value="todos">Todos</option>
-                    <option value="sim">Motoguia</option>
-                    <option value="nao">Não motoguia</option>
-                </select>
+      {/* ===== TABELA (LOADING LOCAL) ===== */}
+      <div className="table-wrapper">
+        <LoadingBlock
+          loading={loading}
+          height={220}
+          text="Carregando guias..."
+        />
 
-                <select
-                    value={filtroStatus}
-                    onChange={e => setFiltroStatus(e.target.value)}
-                >
-                    <option value="todos">Todos</option>
-                    <option value="ativo">Ativos</option>
-                    <option value="inativo">Inativos</option>
-                </select>
-                {/* ===== CONTADOR ===== */}
-                <p className="counter-info">
-                    Guias cadastrados: <strong>{guias.length}</strong>
-                </p>
-            </div>
+        {!loading && (
+          <table className="escala-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>Idiomas</th>
+                <th>Prioridade</th>
+                <th>Motoguia</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
 
-            {/* ===== TABELA (LOADING LOCAL) ===== */}
-            <div className="table-wrapper">
-                <LoadingBlock
-                    loading={loading}
-                    height={220}
-                    text="Carregando guias..."
-                />
+            <tbody>
+              {guiasFiltrados.map((guia) => (
+                <tr key={guia.id}>
+                  <td className="guia-name">{guia.nome}</td>
+                  <td>{guia.whatsapp}</td>
 
-                {!loading && (
-                    <table className="escala-table">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>WhatsApp</th>
-                                <th>Idiomas</th>
-                                <th>Prioridade</th>
-                                <th>Motoguia</th>
-                                <th>Status</th>
-                                <th>Ações</th>
+                  <td>
+                    <div className="tags-inline">
+                      {(guia.idiomas || []).map((idioma) => (
+                        <span key={idioma} className="language-tag">
+                          {idioma}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <span
+                      className={`priority-badge priority-${guia.nivelPrioridade || 2}`}
+                    >
+                      {guia.nivelPrioridade || 2}
+                    </span>
+                  </td>
+                  <td>{guia.motoguia ? "Sim" : "Não"}</td>
 
-                            </tr>
-                        </thead>
+                  <td>
+                    <span className={guia.ativo ? "ativo" : "inativo"}>
+                      {guia.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
 
-                        <tbody>
-                            {guiasFiltrados.map(guia => (
-                                <tr key={guia.id}>
-                                    <td className="guia-name">{guia.nome}</td>
-                                    <td>{guia.whatsapp}</td>
+                  <td>
+                    <button
+                      className="btn-edit"
+                      onClick={() => setGuiaEditando(guia)}
+                    >
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-                                    <td>
-                                        <div className="tags-inline">
-                                            {(guia.idiomas || []).map(idioma => (
-                                                <span
-                                                    key={idioma}
-                                                    className="language-tag"
-                                                >
-                                                    {idioma}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`priority-badge priority-${guia.nivelPrioridade || 2}`}>
-                                            {guia.nivelPrioridade || 2}
-                                        </span>
-                                    </td>
-                                    <td>{guia.motoguia ? "Sim" : "Não"}</td>
-
-                                    <td>
-                                        <span
-                                            className={guia.ativo ? "ativo" : "inativo"}
-                                        >
-                                            {guia.ativo ? "Ativo" : "Inativo"}
-                                        </span>
-                                    </td>
-
-                                    <td>
-                                        <button
-                                            className="btn-edit"
-                                            onClick={() => setGuiaEditando(guia)}
-                                        >
-                                            Editar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            {/* ===== MODAL ===== */}
-            {guiaEditando && (
-                <EditarGuiaModal
-                    guia={guiaEditando}
-                    onClose={() => setGuiaEditando(null)}
-                    onSaved={carregarGuias}
-                />
-            )}
-        </div>
-    );
+      {/* ===== MODAL ===== */}
+      {guiaEditando && (
+        <EditarGuiaModal
+          guia={guiaEditando}
+          onClose={() => setGuiaEditando(null)}
+          onSaved={carregarGuias}
+        />
+      )}
+    </div>
+  );
 };
 
 export default ListaGuias;

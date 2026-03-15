@@ -190,9 +190,9 @@ const DisponibilidadeGuia = () => {
         prev.map((g) =>
           g.guiaId === guiaId
             ? {
-              ...g,
-              dias: g.dias.filter((d) => d.date !== date),
-            }
+                ...g,
+                dias: g.dias.filter((d) => d.date !== date),
+              }
             : g,
         ),
       );
@@ -273,14 +273,14 @@ const DisponibilidadeGuia = () => {
           return prev.map((g) =>
             g.guiaId === guiaSelecionado.id
               ? {
-                ...g,
-                dias: [
-                  ...g.dias,
-                  ...novasDatas.filter(
-                    (d) => !g.dias.some((x) => x.date === d.date),
-                  ),
-                ],
-              }
+                  ...g,
+                  dias: [
+                    ...g.dias,
+                    ...novasDatas.filter(
+                      (d) => !g.dias.some((x) => x.date === d.date),
+                    ),
+                  ],
+                }
               : g,
           );
         }
@@ -327,7 +327,9 @@ const DisponibilidadeGuia = () => {
       <h2 className="disp-h2">Disponibilidade da Semana</h2>
       <div className="disp-content">
         {/* ===== FORMULÁRIO ===== */}
-        <label>Guia<span className="dropdown-car">*</span></label>
+        <label>
+          Guia<span className="dropdown-car">*</span>
+        </label>
         <div className="dropdown">
           <select
             className="select-guia"
@@ -345,15 +347,11 @@ const DisponibilidadeGuia = () => {
               </option>
             ))}
           </select>
-
         </div>
-
 
         {guiaSelecionado && (
           <>
             <label>Dias disponíveis</label>
-
-
 
             <div className="disp-dropdown">
               <div
@@ -402,7 +400,7 @@ const DisponibilidadeGuia = () => {
         <button
           className="disp-btn-save"
           onClick={salvarDisponibilidade}
-          disabled={loading || !guiaSelecionado}
+          disabled={loading || !guiaSelecionado || !selecionados.length}
         >
           {loading ? "Salvando..." : "Salvar Disponibilidade"}
         </button>
@@ -446,8 +444,9 @@ const DisponibilidadeGuia = () => {
           {diasSemana.map((d) => (
             <div
               key={d.date}
-              className={`dia-filtro-tag ${filtroDias.includes(d.date) ? "ativo" : ""
-                }`}
+              className={`dia-filtro-tag ${
+                filtroDias.includes(d.date) ? "ativo" : ""
+              }`}
               onClick={() => toggleFiltroDia(d.date)}
             >
               {DIA_ABREV[d.day]}

@@ -1,5 +1,4 @@
 .disp-container {
-  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -14,12 +13,10 @@
 
 .disp-content {
   width: 100%;
-  max-width: 760px;
   background: var(--card);
-  border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 20px;
   display: flex;
+  padding: 10px;
   flex-direction: column;
   gap: 12px;
 }
@@ -182,10 +179,10 @@
 
 .disp-btn-save {
   width: 100%;
-  min-height: 42px;
   border: none;
   border-radius: 10px;
-  background: var(--side);
+  padding: 10px;
+  background: var(--btn-main);
   color: var(--text-btn);
   font-size: 10px;
   font-weight: 400;
@@ -193,8 +190,9 @@
 }
 
 .disp-btn-save:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: var(--side);
 }
 
 .disp-bottom {
@@ -234,16 +232,17 @@
 .tabela-disponibilidade {
   width: 100%;
   background: var(--card);
-  border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 16px;
-  overflow-x: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .search-block {
-  width: 100%;
-  max-width: 360px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+  font-size: 12px;
 }
 
 .h3-name {
@@ -294,10 +293,11 @@
 }
 
 .col {
-  padding: 12px 8px;
+  display: flex;
   text-align: center;
-  font-size: 12px;
   color: var(--text);
+  font-size: 12px;
+  padding: 7px 0;
 }
 
 .col.guia {
@@ -313,8 +313,8 @@
   color: var(--text-dist);
   border-radius: 999px;
   padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 400;
 }
 
 .remove-dia {
@@ -322,13 +322,12 @@
   border: none;
   color: var(--text-btn);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   padding: 0;
 }
 
 @media (max-width: 768px) {
-
   .disp-content,
   .tabela-disponibilidade {
     padding: 14px;

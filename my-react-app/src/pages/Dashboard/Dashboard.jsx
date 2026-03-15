@@ -12,6 +12,7 @@ import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 
 import logo from "../../assets/logo4.png";
+import { AnalyticsRounded, AssignmentIndRounded, ContactMailRounded, DnsRounded, FactCheckRounded, MapRounded, PlaylistAddCheckCircleRounded, PlaylistAddCheckRounded } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
 
@@ -29,27 +30,31 @@ const Dashboard = ({ loading }) => {
         <h4 className="name-side">Serviços e Guias</h4>
 
         <NavLink to="guias" className="card">
-          <AccountCircleIcon fontSize="small" className="icon-side" />
+          <DnsRounded fontSize="small" className="icon-side" />
           <span className="label">Lista de Guias</span>
+        </NavLink>
+        <NavLink to="mapear-guias" className="card">
+          <MapRounded fontSize="small" className="icon-side" />
+          <span className="label">Mapear Guias</span>
         </NavLink>
 
         <NavLink to="passeios" className="card">
-          <TourIcon fontSize="small" className="icon-side" />
+          <AnalyticsRounded fontSize="small" className="icon-side" />
           <span className="label">Gerar Escala</span>
         </NavLink>
 
         <NavLink to="disponibilidade-guia" className="card">
-          <PlaylistAddCheckCircleRoundedIcon fontSize="small" className="icon-side" />
+          <FactCheckRounded fontSize="small" className="icon-side" />
           <span className="label">Disponibilidade da Semana</span>
         </NavLink>
 
         <NavLink to="register-guias" className="card">
-          <PlaylistAddCircleRoundedIcon fontSize="small" className="icon-side" />
+          <AssignmentIndRounded fontSize="small" className="icon-side" />
           <span className="label">Cadastrar Guias</span>
         </NavLink>
 
         <NavLink to="register-tours" className="card">
-          <StyleIcon fontSize="small" className="icon-side" />
+          <PlaylistAddCheckCircleRounded fontSize="small" className="icon-side" />
           <span className="label">Cadastrar Passeios</span>
         </NavLink>
         <NavLink to="configuracoes" className="card">

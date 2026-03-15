@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
+import * as XLSX from "xlsx";
 import {
   ManageAccounts,
   ModeEdit,
@@ -54,7 +55,7 @@ const SERVICOS_IGNORADOS = [
   "PRAIAS DO LITORAL",
   "CITY TOUR SAINDO DO LITORAL",
   "CITY TOUR HISTÓRICO + PANORÂMICO",
-  "PASSEIO À PRAIA DO FORTE (SHUTTLE)"
+  "PASSEIO À PRAIA DO FORTE (SHUTTLE)",
 ];
 
 const TERMOS_IGNORADOS = [
@@ -95,11 +96,12 @@ const deveIgnorarServico = (nome = "") => {
   const nomeNormalizado = normalizarTexto(nomeCanonico);
 
   const ignoradoExato = SERVICOS_IGNORADOS.some(
-    (servico) => normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado
+    (servico) =>
+      normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado,
   );
 
   const ignoradoPorTrecho = TERMOS_IGNORADOS.some((termo) =>
-    nomeNormalizado.includes(normalizarTexto(termo))
+    nomeNormalizado.includes(normalizarTexto(termo)),
   );
 
   return ignoradoExato || ignoradoPorTrecho;
@@ -223,7 +225,6 @@ const agruparRegistrosPorServico = (registros) => {
     mapa[chave].childCount += criancas;
     mapa[chave].infantCount += infants;
 
-    // só usa passengers bruto quando não existe detalhamento
     if (adultos === 0 && criancas === 0 && infants === 0) {
       mapa[chave].passengers += Number(r.passengers ?? 0);
     }
@@ -251,14 +252,491 @@ const agruparRegistrosPorServico = (registros) => {
       return {
         ...item,
         originalNames: Array.from(item.originalNames),
-        passengers: totalDetalhado > 0 ? totalDetalhado : Number(item.passengers ?? 0),
+        passengers:
+          totalDetalhado > 0 ? totalDetalhado : Number(item.passengers ?? 0),
       };
     })
     .sort((a, b) =>
       (a.serviceName || "").localeCompare(b.serviceName || "", "pt-BR", {
         sensitivity: "base",
-      })
+      }),
     );
+};
+
+const getFaixaAfinidade = (nivel) => {
+  if (nivel >= 81) return 5;
+  if (nivel >= 61) return 4;
+  if (nivel >= 41) return 3;
+  if (nivel >= 1) return 2;
+  return 0;
+};
+
+const construirMapaDisponibilidade = (docsDisponibilidade) => {
+  const mapa = {};
+  docsDisponibilidade.forEach((d) => {
+    mapa[d.guideId] = Array.isArray(d.disponibilidade) ? d.disponibilidade : [];
+  });
+  return mapa;
+};
+
+const guiaDisponivelNoDia = (mapaDisponibilidade, guiaId, date) => {
+  const lista = mapaDisponibilidade[guiaId];
+  if (!Array.isArray(lista)) return false;
+
+  const info = lista.find((d) => d.date === date);
+  if (!info) return false;
+
+  return info.status !== "BLOCKED";
+};
+
+const getDiasDisponiveisSemana = (mapaDisponibilidade, guiaId, semanaRef) => {
+  const lista = mapaDisponibilidade[guiaId];
+  if (!Array.isArray(lista)) return 0;
+
+  const datasSemana = new Set((semanaRef || []).map((d) => d.date));
+
+  return lista.filter(
+    (item) => datasSemana.has(item.date) && item.status !== "BLOCKED",
+  ).length;
+};
+
+const getOcupacaoProporcional = (
+  contadorSemana,
+  mapaDisponibilidade,
+  guiaId,
+  semanaRef,
+) => {
+  const servicos = Number(contadorSemana[guiaId] || 0);
+  const diasDisponiveis = getDiasDisponiveisSemana(
+    mapaDisponibilidade,
+    guiaId,
+    semanaRef,
+  );
+
+  if (!diasDisponiveis) return Number.POSITIVE_INFINITY;
+  return servicos / diasDisponiveis;
+};
+
+const getDiasTrabalhadosCount = (diasTrabalhadosSemana, guiaId) => {
+  return diasTrabalhadosSemana[guiaId]?.size || 0;
+};
+
+const getScoreEquilibrio = ({
+  guia,
+  contadorSemana,
+  diasTrabalhadosSemana,
+  mapaDisponibilidade,
+  semanaRef,
+}) => {
+  const diasDisponiveis = getDiasDisponiveisSemana(
+    mapaDisponibilidade,
+    guia.id,
+    semanaRef,
+  );
+
+  const diasTrabalhados = getDiasTrabalhadosCount(
+    diasTrabalhadosSemana,
+    guia.id,
+  );
+  const servicos = Number(contadorSemana[guia.id] || 0);
+
+  const ocupacao = diasDisponiveis > 0 ? servicos / diasDisponiveis : 999;
+  const frequenciaDias =
+    diasDisponiveis > 0 ? diasTrabalhados / diasDisponiveis : 999;
+
+  return {
+    diasDisponiveis,
+    diasTrabalhados,
+    servicos,
+    ocupacao,
+    frequenciaDias,
+  };
+};
+
+const ordenarServicosPorEscassez = (
+  itens,
+  guiasDisponiveis,
+  usadosNoDia,
+  mapaAfinidade,
+  servicesData,
+) => {
+  const itensComEscassez = itens.map((item) => {
+    const aptos = guiasDisponiveis.filter((g) => {
+      if (usadosNoDia.has(g.id)) return false;
+
+      const nivel = obterNivelAfinidade(
+        mapaAfinidade,
+        g.id,
+        item,
+        servicesData,
+      );
+      return nivel > 0;
+    });
+
+    const maiorNivel = aptos.length
+      ? Math.max(
+          ...aptos.map((g) =>
+            Number(
+              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
+            ),
+          ),
+        )
+      : 0;
+
+    return {
+      ...item,
+      _quantidadeAptos: aptos.length,
+      _maiorNivel: maiorNivel,
+    };
+  });
+
+  return itensComEscassez.sort((a, b) => {
+    if (a._quantidadeAptos !== b._quantidadeAptos) {
+      return a._quantidadeAptos - b._quantidadeAptos;
+    }
+
+    if (b._maiorNivel !== a._maiorNivel) {
+      return b._maiorNivel - a._maiorNivel;
+    }
+
+    return (a.serviceName || "").localeCompare(b.serviceName || "", "pt-BR", {
+      sensitivity: "base",
+    });
+  });
+};
+
+const resolverServiceIdDoItem = (item, servicesData) => {
+  if (item?.serviceId) return String(item.serviceId);
+
+  if (item?.externalServiceId) {
+    const byExternal = servicesData.find(
+      (s) =>
+        Number(s.externalServiceId || 0) ===
+        Number(item.externalServiceId || 0),
+    );
+    if (byExternal?.id) return String(byExternal.id);
+  }
+
+  const nomeItem = normalizarTexto(item?.serviceName || "");
+  if (!nomeItem) return "";
+
+  const byName = servicesData.find(
+    (s) => normalizarTexto(s.externalName || s.nome || "") === nomeItem,
+  );
+
+  return byName?.id ? String(byName.id) : "";
+};
+
+const obterNivelAfinidade = (mapaAfinidade, guiaId, item, servicesData) => {
+  const tours = mapaAfinidade?.[guiaId]?.tours || {};
+  const chaveService = resolverServiceIdDoItem(item, servicesData);
+
+  if (chaveService && tours[chaveService] !== undefined) {
+    return Number(tours[chaveService]) || 0;
+  }
+
+  return 0;
+};
+
+const guiaCompativelPorPasseio = (guia, item) => {
+  const passeiosAptos = Array.isArray(guia.passeios) ? guia.passeios : [];
+
+  return passeiosAptos.some((p) => {
+    const matchServiceId =
+      item.serviceId && p?.id && String(p.id) === String(item.serviceId);
+
+    const matchExternalServiceId =
+      item.externalServiceId &&
+      p?.externalServiceId &&
+      Number(p.externalServiceId) === Number(item.externalServiceId);
+
+    const matchNome =
+      normalizarTexto(p?.externalName || p?.nome || "") ===
+      normalizarTexto(item.serviceName || "");
+
+    return matchServiceId || matchExternalServiceId || matchNome;
+  });
+};
+
+const getElegiveisParaItem = ({
+  item,
+  guias,
+  usedByDate,
+  mapaDisponibilidade,
+  usarAfinidadeGuiaPasseio,
+  mapaAfinidade,
+  servicesData,
+}) => {
+  return guias.filter((g) => {
+    if (usedByDate[item.date]?.has(g.id)) return false;
+    if (!guiaDisponivelNoDia(mapaDisponibilidade, g.id, item.date)) {
+      return false;
+    }
+
+    if (usarAfinidadeGuiaPasseio) {
+      const nivel = obterNivelAfinidade(
+        mapaAfinidade,
+        g.id,
+        item,
+        servicesData,
+      );
+      return nivel > 0;
+    }
+
+    return guiaCompativelPorPasseio(g, item);
+  });
+};
+
+const escolherProximoServico = ({
+  pendentes,
+  guias,
+  usedByDate,
+  mapaDisponibilidade,
+  usarAfinidadeGuiaPasseio,
+  mapaAfinidade,
+  servicesData,
+}) => {
+  const avaliados = pendentes.map((item) => {
+    const elegiveis = getElegiveisParaItem({
+      item,
+      guias,
+      usedByDate,
+      mapaDisponibilidade,
+      usarAfinidadeGuiaPasseio,
+      mapaAfinidade,
+      servicesData,
+    });
+
+    const maiorNivel = usarAfinidadeGuiaPasseio
+      ? elegiveis.length
+        ? Math.max(
+            ...elegiveis.map((g) =>
+              Number(
+                obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
+                  0,
+              ),
+            ),
+          )
+        : 0
+      : 0;
+
+    return {
+      item,
+      elegiveis,
+      quantidadeAptos: elegiveis.length,
+      maiorNivel,
+    };
+  });
+
+  const comCandidatos = avaliados.filter((x) => x.quantidadeAptos > 0);
+  if (!comCandidatos.length) return null;
+
+  comCandidatos.sort((a, b) => {
+    if (a.quantidadeAptos !== b.quantidadeAptos) {
+      return a.quantidadeAptos - b.quantidadeAptos;
+    }
+
+    if (usarAfinidadeGuiaPasseio && b.maiorNivel !== a.maiorNivel) {
+      return b.maiorNivel - a.maiorNivel;
+    }
+
+    const paxA = Number(a.item.passengers || 0);
+    const paxB = Number(b.item.passengers || 0);
+    if (paxB !== paxA) return paxB - paxA;
+
+    return (a.item.serviceName || "").localeCompare(
+      b.item.serviceName || "",
+      "pt-BR",
+      { sensitivity: "base" },
+    );
+  });
+
+  return comCandidatos[0];
+};
+
+const ordenarGuiasComAfinidade = (
+  elegiveis,
+  contadorSemana,
+  workedInWeek,
+  diasTrabalhadosSemana,
+  item,
+  mapaAfinidade,
+  servicesData,
+  modoDistribuicaoGuias,
+  mapaDisponibilidade,
+  semanaRef,
+) => {
+  return [...elegiveis].sort((a, b) => {
+    const nivelA = Number(
+      obterNivelAfinidade(mapaAfinidade, a.id, item, servicesData) || 0,
+    );
+    const nivelB = Number(
+      obterNivelAfinidade(mapaAfinidade, b.id, item, servicesData) || 0,
+    );
+
+    const faixaA = getFaixaAfinidade(nivelA);
+    const faixaB = getFaixaAfinidade(nivelB);
+
+    const eqA = getScoreEquilibrio({
+      guia: a,
+      contadorSemana,
+      diasTrabalhadosSemana,
+      mapaDisponibilidade,
+      semanaRef,
+    });
+
+    const eqB = getScoreEquilibrio({
+      guia: b,
+      contadorSemana,
+      diasTrabalhadosSemana,
+      mapaDisponibilidade,
+      semanaRef,
+    });
+
+    const prioridadeA = Number(a.nivelPrioridade || 2);
+    const prioridadeB = Number(b.nivelPrioridade || 2);
+
+    const workedA = workedInWeek.has(a.id) ? 1 : 0;
+    const workedB = workedInWeek.has(b.id) ? 1 : 0;
+
+    if (modoDistribuicaoGuias === "equilibrado") {
+      // 1. menos dias trabalhados proporcionalmente à disponibilidade
+      if (eqA.frequenciaDias !== eqB.frequenciaDias) {
+        return eqA.frequenciaDias - eqB.frequenciaDias;
+      }
+
+      // 2. menor ocupação proporcional de serviços
+      if (eqA.ocupacao !== eqB.ocupacao) {
+        return eqA.ocupacao - eqB.ocupacao;
+      }
+
+      // 3. menos dias absolutos trabalhados
+      if (eqA.diasTrabalhados !== eqB.diasTrabalhados) {
+        return eqA.diasTrabalhados - eqB.diasTrabalhados;
+      }
+
+      // 4. menos serviços absolutos
+      if (eqA.servicos !== eqB.servicos) {
+        return eqA.servicos - eqB.servicos;
+      }
+
+      // 5. afinidade entra como desempate, não como regra principal
+      if (faixaB !== faixaA) return faixaB - faixaA;
+      if (nivelB !== nivelA) return nivelB - nivelA;
+
+      // 6. quem ainda não trabalhou leva pequena vantagem
+      if (workedA !== workedB) return workedA - workedB;
+    } else {
+      // modo prioridade
+      // 1. prioridade do guia
+      if (prioridadeB !== prioridadeA) return prioridadeB - prioridadeA;
+
+      // 2. ainda equilibrar pelos dias usados
+      if (eqA.frequenciaDias !== eqB.frequenciaDias) {
+        return eqA.frequenciaDias - eqB.frequenciaDias;
+      }
+
+      if (eqA.ocupacao !== eqB.ocupacao) {
+        return eqA.ocupacao - eqB.ocupacao;
+      }
+
+      if (eqA.diasTrabalhados !== eqB.diasTrabalhados) {
+        return eqA.diasTrabalhados - eqB.diasTrabalhados;
+      }
+
+      if (eqA.servicos !== eqB.servicos) {
+        return eqA.servicos - eqB.servicos;
+      }
+
+      // 3. afinidade ainda conta, mas depois da prioridade e equilíbrio
+      if (faixaB !== faixaA) return faixaB - faixaA;
+      if (nivelB !== nivelA) return nivelB - nivelA;
+
+      if (workedA !== workedB) return workedA - workedB;
+    }
+
+    return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+      sensitivity: "base",
+    });
+  });
+};
+
+const ordenarGuiasSemAfinidade = (
+  elegiveis,
+  contadorSemana,
+  workedInWeek,
+  diasTrabalhadosSemana,
+  modoDistribuicaoGuias,
+  mapaDisponibilidade,
+  semanaRef,
+) => {
+  return [...elegiveis].sort((a, b) => {
+    const eqA = getScoreEquilibrio({
+      guia: a,
+      contadorSemana,
+      diasTrabalhadosSemana,
+      mapaDisponibilidade,
+      semanaRef,
+    });
+
+    const eqB = getScoreEquilibrio({
+      guia: b,
+      contadorSemana,
+      diasTrabalhadosSemana,
+      mapaDisponibilidade,
+      semanaRef,
+    });
+
+    const prioridadeA = Number(a.nivelPrioridade || 2);
+    const prioridadeB = Number(b.nivelPrioridade || 2);
+
+    const workedA = workedInWeek.has(a.id) ? 1 : 0;
+    const workedB = workedInWeek.has(b.id) ? 1 : 0;
+
+    if (modoDistribuicaoGuias === "equilibrado") {
+      if (eqA.frequenciaDias !== eqB.frequenciaDias) {
+        return eqA.frequenciaDias - eqB.frequenciaDias;
+      }
+
+      if (eqA.ocupacao !== eqB.ocupacao) {
+        return eqA.ocupacao - eqB.ocupacao;
+      }
+
+      if (eqA.diasTrabalhados !== eqB.diasTrabalhados) {
+        return eqA.diasTrabalhados - eqB.diasTrabalhados;
+      }
+
+      if (eqA.servicos !== eqB.servicos) {
+        return eqA.servicos - eqB.servicos;
+      }
+
+      if (workedA !== workedB) return workedA - workedB;
+    } else {
+      if (prioridadeB !== prioridadeA) return prioridadeB - prioridadeA;
+
+      if (eqA.frequenciaDias !== eqB.frequenciaDias) {
+        return eqA.frequenciaDias - eqB.frequenciaDias;
+      }
+
+      if (eqA.ocupacao !== eqB.ocupacao) {
+        return eqA.ocupacao - eqB.ocupacao;
+      }
+
+      if (eqA.diasTrabalhados !== eqB.diasTrabalhados) {
+        return eqA.diasTrabalhados - eqB.diasTrabalhados;
+      }
+
+      if (eqA.servicos !== eqB.servicos) {
+        return eqA.servicos - eqB.servicos;
+      }
+
+      if (workedA !== workedB) return workedA - workedB;
+    }
+
+    return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+      sensitivity: "base",
+    });
+  });
 };
 
 const ListaPasseiosSemana = () => {
@@ -302,6 +780,301 @@ const ListaPasseiosSemana = () => {
     };
   }, []);
 
+  const abrirEscalaEmNovaAba = () => {
+    try {
+      const novaAba = window.open("", "_blank");
+
+      if (!novaAba) {
+        alert("O navegador bloqueou a abertura da nova aba.");
+        return;
+      }
+
+      const dadosEscala = [];
+
+      semana.forEach((dia) => {
+        const registrosOrdenados = agruparRegistrosPorServico(
+          extras[dia.date] || [],
+        );
+
+        if (!registrosOrdenados.length) {
+          dadosEscala.push({
+            data: dia.label,
+            passeio: "-",
+            guia: "-",
+            pax: "-",
+            status: "-",
+          });
+          return;
+        }
+
+        registrosOrdenados.forEach((item) => {
+          let status = "Sem status";
+          let statusClass = "";
+
+          if (item.allocationStatus === "CLOSED") {
+            status = "Passeio Fechado";
+            statusClass = "status-fechado";
+          } else if (Number(item.passengers || 0) >= 8) {
+            status = "Grupo Formado";
+            statusClass = "status-formado";
+          } else {
+            status = "Formar Grupo";
+            statusClass = "status-alerta";
+          }
+
+          dadosEscala.push({
+            data: dia.label,
+            passeio: item.serviceName || "-",
+            guia: item.guiaNome || "-",
+            pax: Number(item.passengers || 0),
+            status,
+            statusClass,
+          });
+        });
+      });
+
+      let htmlLinhas = "";
+      let i = 0;
+
+      while (i < dadosEscala.length) {
+        const dataAtual = dadosEscala[i].data;
+        let grupo = [];
+
+        while (i < dadosEscala.length && dadosEscala[i].data === dataAtual) {
+          grupo.push(dadosEscala[i]);
+          i++;
+        }
+
+        grupo.forEach((linha, index) => {
+          htmlLinhas += `
+          <tr>
+            ${
+              index === 0
+                ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
+                : ""
+            }
+            <td>${linha.passeio}</td>
+            <td>${linha.guia}</td>
+            <td>${linha.pax}</td>
+            <td class="${linha.statusClass || ""}">${linha.status}</td>
+          </tr>
+        `;
+        });
+      }
+
+      const dadosJson = JSON.stringify(dadosEscala);
+
+      novaAba.document.write(`
+      <html>
+        <head>
+          <title>Escala Semanal de Passeios</title>
+          <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 24px;
+              background: #f5f6f8;
+              color: #222;
+            }
+
+            h1 {
+              margin-bottom: 18px;
+              font-size: 16px;
+            }
+
+            .toolbar {
+              margin-bottom: 18px;
+              display: flex;
+              gap: 12px;
+              flex-wrap: wrap;
+            }
+
+            button {
+              background: #107c41;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 12px 18px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 600;
+            }
+
+            button:hover {
+              opacity: 0.92;
+            }
+
+            .table-wrap {
+              overflow-x: auto;
+              background: #fff;
+              border: 1px solid #dcdcdc;
+              border-radius: 12px;
+              box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              min-width: 980px;
+            }
+
+            thead {
+              background: #107c41;
+              color: white;
+            }
+
+            th {
+              border: 1px solid #d9d9d9;
+              padding: 14px 14px;
+              text-align: left;
+              font-size: 12px;
+              letter-spacing: 0.02em;
+            }
+
+            td {
+              border: 1px solid #d9d9d9;
+              padding: 14px 14px;
+              text-align: left;
+              font-size: 12px;
+              line-height: 1.5;
+              vertical-align: top;
+            }
+
+            .data-cell {
+              font-weight: 700;
+              font-size: 18px;
+              background: #f1f7f2;
+              white-space: nowrap;
+            }
+
+            tbody tr:nth-child(even) {
+              background: #fafafa;
+            }
+
+            tbody tr:hover {
+              background: #eef7ee;
+            }
+
+            .status-fechado {
+              color: #b42318;
+              background: #fcd9d6;
+              font-weight: 700;
+            }
+
+            .status-formado {
+              color: #027a48;
+              background: #d1fae5;
+              font-weight: 700;
+            }
+
+            .status-alerta {
+              color: #b54708;
+              font-weight: 700;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Escala Semanal de Passeios</h1>
+
+          <div class="toolbar">
+            <button onclick="window.print()">Imprimir / Salvar em PDF</button>
+          
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>DATA</th>
+                  <th>PASSEIOS</th>
+                  <th>GUIAS</th>
+                  <th>QUANTIDADE DE PAX</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${htmlLinhas}
+              </tbody>
+            </table>
+          </div>
+
+          <script>
+            const dadosEscala = ${dadosJson};
+
+            function exportarExcel() {
+              try {
+                const linhas = [
+                  ["DATA", "PASSEIOS", "GUIAS", "QUANTIDADE DE PAX", "STATUS"]
+                ];
+
+                const merges = [];
+                let rowIndex = 1;
+                let i = 0;
+
+                while (i < dadosEscala.length) {
+                  const dataAtual = dadosEscala[i].data;
+                  let grupo = [];
+
+                  while (i < dadosEscala.length && dadosEscala[i].data === dataAtual) {
+                    grupo.push(dadosEscala[i]);
+                    i++;
+                  }
+
+                  const inicioBloco = rowIndex;
+
+                  grupo.forEach((item, index) => {
+                    linhas.push([
+                      index === 0 ? item.data : "",
+                      item.passeio,
+                      item.guia,
+                      item.pax,
+                      item.status
+                    ]);
+                    rowIndex++;
+                  });
+
+                  const fimBloco = rowIndex - 1;
+
+                  if (fimBloco > inicioBloco) {
+                    merges.push({
+                      s: { r: inicioBloco, c: 0 },
+                      e: { r: fimBloco, c: 0 }
+                    });
+                  }
+                }
+
+                const worksheet = XLSX.utils.aoa_to_sheet(linhas);
+
+                worksheet["!cols"] = [
+                  { wch: 24 },
+                  { wch: 42 },
+                  { wch: 24 },
+                  { wch: 20 },
+                  { wch: 20 }
+                ];
+
+                worksheet["!merges"] = merges;
+
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Escala Semanal");
+
+                XLSX.writeFile(workbook, "escala_semanal.xlsx");
+              } catch (err) {
+                console.error("Erro ao exportar Excel:", err);
+                alert("Erro ao exportar Excel.");
+              }
+            }
+          </script>
+        </body>
+      </html>
+    `);
+
+      novaAba.document.close();
+    } catch (err) {
+      console.error("Erro ao abrir escala em nova aba:", err);
+    }
+  };
+
   const semanaMap = useMemo(() => {
     const mapa = {};
     semana.forEach((d) => {
@@ -325,7 +1098,7 @@ const ListaPasseiosSemana = () => {
     try {
       const snap = await getDoc(doc(db, "weekly_scale_meta", semanaKey));
       setModoGeradoSemana(
-        snap.exists() ? snap.data().modoDistribuicaoGerado || null : null
+        snap.exists() ? snap.data().modoDistribuicaoGerado || null : null,
       );
     } catch (err) {
       console.error("Erro ao carregar modo gerado da semana:", err);
@@ -346,7 +1119,7 @@ const ListaPasseiosSemana = () => {
           modoDistribuicaoGerado: modo,
           updatedAt: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
       setModoGeradoSemana(modo);
     } catch (err) {
@@ -365,7 +1138,7 @@ const ListaPasseiosSemana = () => {
           modoDistribuicaoGerado: null,
           updatedAt: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
       setModoGeradoSemana(null);
     } catch (err) {
@@ -373,22 +1146,29 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const encontrarServiceCatalogo = (serviceIdExterno, nomeApi, listaServices) => {
+  const encontrarServiceCatalogo = (
+    serviceIdExterno,
+    nomeApi,
+    listaServices,
+  ) => {
     return (
       listaServices.find(
         (s) =>
-          Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0)
+          Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
       ) ||
       listaServices.find(
         (s) =>
           normalizarTexto(s.externalName || s.nome || "") ===
-          normalizarTexto(nomeApi)
+          normalizarTexto(nomeApi),
       ) ||
       null
     );
   };
 
-  const sincronizarPasseiosDaApiNaSemana = async (semanaAtual, servicesData) => {
+  const sincronizarPasseiosDaApiNaSemana = async (
+    semanaAtual,
+    servicesData,
+  ) => {
     for (const dia of semanaAtual) {
       try {
         const response = await fetch(montarUrlApi(dia.date), {
@@ -440,7 +1220,7 @@ const ListaPasseiosSemana = () => {
 
         const qDia = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snapDia = await getDocs(qDia);
 
@@ -451,20 +1231,20 @@ const ListaPasseiosSemana = () => {
         }));
 
         const importadosDoDia = registrosExistentes.filter(
-          (r) => r.importedFromApi === true && r.manual !== true
+          (r) => r.importedFromApi === true && r.manual !== true,
         );
 
         for (const passeioApi of Object.values(agregados)) {
           const serviceCatalogo = encontrarServiceCatalogo(
             passeioApi.serviceIdExterno,
             passeioApi.nome,
-            servicesData
+            servicesData,
           );
 
           const duplicados = importadosDoDia.filter(
             (r) =>
               Number(r.externalServiceId || 0) ===
-              Number(passeioApi.serviceIdExterno || 0)
+              Number(passeioApi.serviceIdExterno || 0),
           );
 
           const principal = duplicados[0] || null;
@@ -505,11 +1285,11 @@ const ListaPasseiosSemana = () => {
         }
 
         const idsVindosApi = Object.values(agregados).map((p) =>
-          Number(p.serviceIdExterno)
+          Number(p.serviceIdExterno),
         );
 
         const obsoletos = importadosDoDia.filter(
-          (r) => !idsVindosApi.includes(Number(r.externalServiceId || 0))
+          (r) => !idsVindosApi.includes(Number(r.externalServiceId || 0)),
         );
 
         for (const antigo of obsoletos) {
@@ -536,7 +1316,10 @@ const ListaPasseiosSemana = () => {
         getDocs(collection(db, "guide_availability")),
       ]);
 
-      const servicesData = servSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const servicesData = servSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
       const guiasData = guiasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       const disponibilidadesData = dispSnap.docs.map((d) => d.data());
 
@@ -547,7 +1330,7 @@ const ListaPasseiosSemana = () => {
       setModoDistribuicaoGuias(
         configSnap.exists()
           ? configSnap.data().modoDistribuicaoGuias || "equilibrado"
-          : "equilibrado"
+          : "equilibrado",
       );
 
       await sincronizarPasseiosDaApiNaSemana(semanaAtual, servicesData);
@@ -557,22 +1340,11 @@ const ListaPasseiosSemana = () => {
       for (const dia of semanaAtual) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snap = await getDocs(q);
 
         const listaDia = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        console.log(
-          "DUP CHECK",
-          dia.date,
-          listaDia.map((r) => ({
-            id: r.id,
-            nome: r.serviceName,
-            externalServiceId: r.externalServiceId,
-            pax: r.passengers,
-          }))
-        );
 
         mapa[dia.date] = listaDia;
       }
@@ -589,7 +1361,7 @@ const ListaPasseiosSemana = () => {
     for (const dia of semana) {
       const q = query(
         collection(db, "weekly_services"),
-        where("date", "==", dia.date)
+        where("date", "==", dia.date),
       );
 
       const snap = await getDocs(q);
@@ -616,43 +1388,6 @@ const ListaPasseiosSemana = () => {
     await carregarDados();
   };
 
-  const ordenarGuiasEquilibrado = (guiasElegiveis, contadorSemana) => {
-    return [...guiasElegiveis].sort((a, b) => {
-      const cargaA = contadorSemana[a.id] || 0;
-      const cargaB = contadorSemana[b.id] || 0;
-
-      if (cargaA !== cargaB) return cargaA - cargaB;
-
-      return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
-        sensitivity: "base",
-      });
-    });
-  };
-
-  const ordenarGuiasPorPrioridade = (guiasElegiveis, contadorSemana) => {
-    return [...guiasElegiveis].sort((a, b) => {
-      const prioridadeA = Number(a.nivelPrioridade || 2);
-      const prioridadeB = Number(b.nivelPrioridade || 2);
-
-      const cargaA = Number(contadorSemana[a.id] || 0);
-      const cargaB = Number(contadorSemana[b.id] || 0);
-
-      if (cargaA === 0 && cargaB > 0) return -1;
-      if (cargaB === 0 && cargaA > 0) return 1;
-
-      const scoreA = cargaA / prioridadeA;
-      const scoreB = cargaB / prioridadeB;
-
-      if (scoreA !== scoreB) return scoreA - scoreB;
-      if (cargaA !== cargaB) return cargaA - cargaB;
-      if (prioridadeA !== prioridadeB) return prioridadeB - prioridadeA;
-
-      return (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
-        sensitivity: "base",
-      });
-    });
-  };
-
   const alterarStatusAlocacao = async (registroId, status) => {
     if (!registroId) return;
 
@@ -675,14 +1410,14 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                ...r,
-                allocationStatus: status,
-                ...(status === "CLOSED" && {
-                  guiaId: null,
-                  guiaNome: null,
-                }),
-              }
-              : r
+                  ...r,
+                  allocationStatus: status,
+                  ...(status === "CLOSED" && {
+                    guiaId: null,
+                    guiaNome: null,
+                  }),
+                }
+              : r,
           );
         });
 
@@ -710,14 +1445,14 @@ const ListaPasseiosSemana = () => {
         await setDoc(
           doc(db, "weekly_services", registroId),
           { passengers: Number(pax) },
-          { merge: true }
+          { merge: true },
         );
 
         setExtras((prev) => {
           const novo = { ...prev };
           Object.keys(novo).forEach((date) => {
             novo[date] = novo[date].map((r) =>
-              r.id === registroId ? { ...r, passengers: Number(pax) } : r
+              r.id === registroId ? { ...r, passengers: Number(pax) } : r,
             );
           });
           return novo;
@@ -752,8 +1487,9 @@ const ListaPasseiosSemana = () => {
           day: dia.day,
           date: dia.date,
           manual: false,
+          updatedAt: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       await carregarDados();
@@ -851,7 +1587,7 @@ const ListaPasseiosSemana = () => {
     if (dispDia?.status === "BLOCKED") return { status: "BLOCKED" };
 
     const jaUsado = registrosDia.some(
-      (r) => r.guiaId === guiaId && r.allocationStatus !== "CLOSED"
+      (r) => r.guiaId === guiaId && r.allocationStatus !== "CLOSED",
     );
 
     if (jaUsado) return { status: "USED" };
@@ -868,7 +1604,7 @@ const ListaPasseiosSemana = () => {
       const q = query(
         collection(db, "weekly_services"),
         where("date", ">=", inicioSemana),
-        where("date", "<=", fimSemana)
+        where("date", "<=", fimSemana),
       );
 
       const snap = await getDocs(q);
@@ -900,7 +1636,7 @@ const ListaPasseiosSemana = () => {
       const q = query(
         collection(db, "weekly_services"),
         where("date", ">=", inicioSemana),
-        where("date", "<=", fimSemana)
+        where("date", "<=", fimSemana),
       );
 
       const snap = await getDocs(q);
@@ -928,7 +1664,7 @@ const ListaPasseiosSemana = () => {
 
         const dia = semanaMap[r.date];
         mapaGuias[r.guiaId].datas.add(
-          `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`
+          `• ${dia.day} (${dia.date.split("-").reverse().join("/")})`,
         );
       });
 
@@ -950,9 +1686,9 @@ Operacional - Luck Receptivo 🍀
             window.open(
               `https://wa.me/55${guia.whatsapp.replace(
                 /\D/g,
-                ""
+                "",
               )}?text=${encodeURIComponent(texto)}`,
-              "_blank"
+              "_blank",
             );
           }, index * 2200);
         });
@@ -973,9 +1709,9 @@ Operacional - Luck Receptivo 🍀
     window.open(
       `https://wa.me/55${guia.whatsapp.replace(
         /\D/g,
-        ""
+        "",
       )}?text=${encodeURIComponent(texto)}`,
-      "_blank"
+      "_blank",
     );
   };
 
@@ -1025,7 +1761,7 @@ Operacional - Luck Receptivo 🍀
         if (!Array.isArray(d.disponibilidade)) return;
 
         const diasSemana = d.disponibilidade.filter(
-          (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
+          (ds) => ds.date >= inicioSemana && ds.date <= fimSemana,
         );
 
         disponibilidadeMap[d.guideId] = diasSemana.length;
@@ -1080,7 +1816,7 @@ Operacional - Luck Receptivo 🍀
         resumo.map((g) => ({
           ...g,
           datas: new Set(g.datas),
-        }))
+        })),
       );
     } catch (err) {
       console.error("Erro ao gerar resumo dos guias:", err);
@@ -1107,26 +1843,70 @@ Operacional - Luck Receptivo 🍀
       const inicioSemana = semana[0].date;
       const fimSemana = semana[semana.length - 1].date;
 
-      const contadorSemana = {};
-      guias.forEach((g) => {
-        contadorSemana[g.id] = 0;
+      const snapSettings = await getDoc(doc(db, "settings", "scale"));
+      const settings = snapSettings.exists() ? snapSettings.data() : {};
+
+      const usarAfinidadeGuiaPasseio =
+        settings.usarAfinidadeGuiaPasseio || false;
+
+      const [snapAfinidade, snapDisp, snapSemana] = await Promise.all([
+        getDocs(collection(db, "guide_tour_levels")),
+        getDocs(collection(db, "guide_availability")),
+        getDocs(
+          query(
+            collection(db, "weekly_services"),
+            where("date", ">=", inicioSemana),
+            where("date", "<=", fimSemana),
+          ),
+        ),
+      ]);
+
+      const mapaAfinidade = {};
+      snapAfinidade.docs.forEach((d) => {
+        mapaAfinidade[d.id] = d.data();
       });
 
-      const snapDisp = await getDocs(collection(db, "guide_availability"));
-      const disponibilidadesSemana = snapDisp.docs
-        .map((d) => d.data())
-        .filter(
-          (d) =>
-            Array.isArray(d.disponibilidade) &&
-            d.disponibilidade.some(
-              (ds) => ds.date >= inicioSemana && ds.date <= fimSemana
-            )
-        );
+      const disponibilidadeDocs = snapDisp.docs.map((d) => d.data());
+      const mapaDisponibilidade =
+        construirMapaDisponibilidade(disponibilidadeDocs);
+
+      const registrosSemana = snapSemana.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      const contadorSemana = {};
+      const diasTrabalhadosSemana = {};
+      guias.forEach((g) => {
+        contadorSemana[g.id] = 0;
+        diasTrabalhadosSemana[g.id] = new Set();
+      });
+
+      const workedInWeek = new Set();
+      const usedByDate = {};
+      semana.forEach((d) => {
+        usedByDate[d.date] = new Set();
+      });
+
+      registrosSemana.forEach((r) => {
+        if (!r.guiaId || r.allocationStatus === "CLOSED" || !r.date) return;
+
+        if (!usedByDate[r.date]) usedByDate[r.date] = new Set();
+        usedByDate[r.date].add(r.guiaId);
+
+        workedInWeek.add(r.guiaId);
+        contadorSemana[r.guiaId] = Number(contadorSemana[r.guiaId] || 0) + 1;
+
+        if (!diasTrabalhadosSemana[r.guiaId]) {
+          diasTrabalhadosSemana[r.guiaId] = new Set();
+        }
+        diasTrabalhadosSemana[r.guiaId].add(r.date);
+      });
 
       for (const dia of semana) {
         const qReg = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snapReg = await getDocs(qReg);
 
@@ -1136,64 +1916,76 @@ Operacional - Luck Receptivo 🍀
         }));
 
         const registrosAgrupados = agruparRegistrosPorServico(registrosDia);
-
         if (!registrosAgrupados.length) continue;
 
         const guiasDisponiveis = guias.filter((g) =>
-          disponibilidadesSemana.some(
-            (d) =>
-              d.guideId === g.id &&
-              d.disponibilidade.some(
-                (ds) => ds.date === dia.date && ds.status !== "BLOCKED"
-              )
-          )
+          guiaDisponivelNoDia(mapaDisponibilidade, g.id, dia.date),
         );
 
         if (!guiasDisponiveis.length) continue;
 
-        const usadosNoDia = new Set();
+        const usadosNoDia = new Set(usedByDate[dia.date] || []);
 
-        registrosAgrupados.forEach((r) => {
-          if (r.guiaId && r.allocationStatus !== "CLOSED") {
-            usadosNoDia.add(r.guiaId);
-          }
+        const itensPendentes = registrosAgrupados.filter((item) => {
+          if (!item?.id) return false;
+          if (item.guiaId) return false;
+          if (item.allocationStatus === "CLOSED") return false;
+          return true;
         });
 
-        for (const item of registrosAgrupados) {
-          if (!item?.id) continue;
-          if (item.guiaId) continue;
-          if (item.allocationStatus === "CLOSED") continue;
+        const itensOrdenados = usarAfinidadeGuiaPasseio
+          ? ordenarServicosPorEscassez(
+              itensPendentes,
+              guiasDisponiveis,
+              usadosNoDia,
+              mapaAfinidade,
+              services,
+            )
+          : itensPendentes;
 
-          const elegiveis = guiasDisponiveis.filter((g) => {
+        for (const item of itensOrdenados) {
+          if (usadosNoDia.size >= guiasDisponiveis.length) break;
+
+          let elegiveis = guiasDisponiveis.filter((g) => {
             if (usadosNoDia.has(g.id)) return false;
 
-            const passeiosAptos = Array.isArray(g.passeios) ? g.passeios : [];
+            if (usarAfinidadeGuiaPasseio) {
+              const nivel = obterNivelAfinidade(
+                mapaAfinidade,
+                g.id,
+                item,
+                services,
+              );
+              return nivel > 0;
+            }
 
-            return passeiosAptos.some((p) => {
-              const matchServiceId =
-                item.serviceId &&
-                p?.id &&
-                String(p.id) === String(item.serviceId);
-
-              const matchExternalServiceId =
-                item.externalServiceId &&
-                p?.externalServiceId &&
-                Number(p.externalServiceId) === Number(item.externalServiceId);
-
-              const matchNome =
-                normalizarTexto(p?.externalName || p?.nome || "") ===
-                normalizarTexto(item.serviceName || "");
-
-              return matchServiceId || matchExternalServiceId || matchNome;
-            });
+            return guiaCompativelPorPasseio(g, item);
           });
 
           if (!elegiveis.length) continue;
 
-          const candidatosOrdenados =
-            modoDistribuicaoGuias === "seguir_nivel_selecionado"
-              ? ordenarGuiasPorPrioridade(elegiveis, contadorSemana)
-              : ordenarGuiasEquilibrado(elegiveis, contadorSemana);
+          const candidatosOrdenados = usarAfinidadeGuiaPasseio
+            ? ordenarGuiasComAfinidade(
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                item,
+                mapaAfinidade,
+                services,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              )
+            : ordenarGuiasSemAfinidade(
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              );
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
@@ -1205,11 +1997,19 @@ Operacional - Luck Receptivo 🍀
               guiaNome: guiaSelecionado.nome,
               updatedAt: new Date(),
             },
-            { merge: true }
+            { merge: true },
           );
 
           usadosNoDia.add(guiaSelecionado.id);
-          contadorSemana[guiaSelecionado.id]++;
+          usedByDate[dia.date].add(guiaSelecionado.id);
+          workedInWeek.add(guiaSelecionado.id);
+          contadorSemana[guiaSelecionado.id] =
+            Number(contadorSemana[guiaSelecionado.id] || 0) + 1;
+
+          if (!diasTrabalhadosSemana[guiaSelecionado.id]) {
+            diasTrabalhadosSemana[guiaSelecionado.id] = new Set();
+          }
+          diasTrabalhadosSemana[guiaSelecionado.id].add(dia.date);
         }
       }
 
@@ -1228,18 +2028,19 @@ Operacional - Luck Receptivo 🍀
       for (const dia of semana) {
         const q = query(
           collection(db, "weekly_services"),
-          where("date", "==", dia.date)
+          where("date", "==", dia.date),
         );
         const snap = await getDocs(q);
 
         for (const docSnap of snap.docs) {
           const data = docSnap.data();
-          if (!data.guiaId) continue;
+          if (!data.guiaId && !data.guiaNome) continue;
 
           await updateDoc(docSnap.ref, {
             guiaId: null,
             guiaNome: null,
             manual: false,
+            updatedAt: new Date(),
           });
         }
       }
@@ -1261,7 +2062,10 @@ Operacional - Luck Receptivo 🍀
 
       <div className="header-tours">
         <div className="mode-toggle">
-          <button className="btn-list" onClick={() => setModoVisualizacao(true)}>
+          <button
+            className="btn-list"
+            onClick={() => setModoVisualizacao(true)}
+          >
             Visualizar <Visibility fontSize="10" />
           </button>
 
@@ -1279,7 +2083,9 @@ Operacional - Luck Receptivo 🍀
           <button className="btn-list-cld" onClick={removerGuiasSemana}>
             Desfazer escala de Guias <Undo fontSize="10" />
           </button>
-
+          <button className="btn-list" onClick={abrirEscalaEmNovaAba}>
+            Abrir planilha
+          </button>
           <button
             className="btn-list-send"
             onClick={enviarWhatsappGuiasSemana_FIRESTORE}
@@ -1326,8 +2132,8 @@ Operacional - Luck Receptivo 🍀
       <div className="resumo-modo-global">
         {modoGeradoSemana
           ? modoGeradoSemana === "seguir_nivel_selecionado"
-            ? "Essa escala foi gerada com regra de Prioridade"
-            : "Essa escala foi gerada com regra de Equilibrada"
+            ? "Essa escala foi gerada com a regra: Prioridade"
+            : "Essa escala foi gerada com a regra: Equilibrada"
           : "Escala ainda não gerada para esta semana"}{" "}
         <Warning fontSize="10" className="icon-warning" />
       </div>
@@ -1339,7 +2145,9 @@ Operacional - Luck Receptivo 🍀
               <h4 className="resumo-nome">
                 <span className="resumo-nome-main">
                   {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
-                    <span className={`priority-pill p-${g.nivelPrioridade || 2}`}>
+                    <span
+                      className={`priority-pill p-${g.nivelPrioridade || 2}`}
+                    >
                       P{g.nivelPrioridade || 2}
                     </span>
                   )}
@@ -1401,12 +2209,12 @@ Operacional - Luck Receptivo 🍀
 
       {semana.map((dia) => {
         const registrosOrdenados = agruparRegistrosPorServico(
-          extras[dia.date] || []
+          extras[dia.date] || [],
         );
 
         const totalPasseios = registrosOrdenados.length;
         const passeiosComGuia = registrosOrdenados.filter(
-          (r) => !!r.guiaId && r.allocationStatus !== "CLOSED"
+          (r) => !!r.guiaId && r.allocationStatus !== "CLOSED",
         ).length;
 
         let statusDia = "vazio";
@@ -1426,7 +2234,10 @@ Operacional - Luck Receptivo 🍀
             </strong>
 
             {registrosOrdenados.map((item) => (
-              <div key={`${dia.date}-${item.externalServiceId || item.id}`} className="passeio-item">
+              <div
+                key={`${dia.date}-${item.externalServiceId || item.id}`}
+                className="passeio-item"
+              >
                 <span className="passeio-name">{item.serviceName}</span>
 
                 {modoVisualizacao ? (
@@ -1435,11 +2246,14 @@ Operacional - Luck Receptivo 🍀
                       {item.passengers || 0} pax
                       <small>
                         {" "}
-                        ({item.adultCount || 0} ADT / {item.childCount || 0} CHD / {item.infantCount || 0} INF)
+                        ({item.adultCount || 0} ADT / {item.childCount || 0} CHD
+                        / {item.infantCount || 0} INF)
                       </small>
                     </span>
                     {statusGrupo(item.passengers, item.allocationStatus)}
-                    <span className="guia-name-aloc">{item.guiaNome || "-"}</span>
+                    <span className="guia-name-aloc">
+                      {item.guiaNome || "-"}
+                    </span>
                   </>
                 ) : (
                   <>
@@ -1447,7 +2261,9 @@ Operacional - Luck Receptivo 🍀
                       type="number"
                       min="0"
                       value={paxEditando[item.id] ?? item.passengers ?? 0}
-                      onChange={(e) => alterarPaxManual(item.id, e.target.value)}
+                      onChange={(e) =>
+                        alterarPaxManual(item.id, e.target.value)
+                      }
                     />
 
                     <select
@@ -1467,12 +2283,17 @@ Operacional - Luck Receptivo 🍀
 
                         if (item.allocationStatus === "CLOSED") {
                           alert(
-                            "Não é possível alocar guia em um serviço fechado."
+                            "Não é possível alocar guia em um serviço fechado.",
                           );
                           return;
                         }
 
-                        await alterarGuiaManual(item.id, guia || null, dia, item);
+                        await alterarGuiaManual(
+                          item.id,
+                          guia || null,
+                          dia,
+                          item,
+                        );
                       }}
                     >
                       <option value="">Sem guia</option>
@@ -1481,16 +2302,20 @@ Operacional - Luck Receptivo 🍀
                         const status = getStatusGuiaNoDia(
                           g.id,
                           dia.date,
-                          registrosOrdenados
+                          registrosOrdenados,
                         );
                         const carga = getCargaSemanal(g.id);
 
                         let label = g.nome;
 
-                        if (status.status === "AVAILABLE") label += ` 🟢 (${carga}%)`;
-                        if (status.status === "USED") label += ` 🔒 (Já alocado)`;
-                        if (status.status === "BLOCKED") label += ` 🔴 (Bloqueado)`;
-                        if (status.status === "NO_DATA") label += ` ⚫ (Sem disponibilidade)`;
+                        if (status.status === "AVAILABLE")
+                          label += ` 🟢 (${carga}%)`;
+                        if (status.status === "USED")
+                          label += ` 🔒 (Já alocado)`;
+                        if (status.status === "BLOCKED")
+                          label += ` 🔴 (Bloqueado)`;
+                        if (status.status === "NO_DATA")
+                          label += ` ⚫ (Sem disponibilidade)`;
 
                         const disabled =
                           status.status === "BLOCKED" ||

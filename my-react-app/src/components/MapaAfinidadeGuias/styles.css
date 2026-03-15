@@ -1,0 +1,152 @@
+.mapa-page {
+  width: 55vw;
+}
+
+.mapa-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mapa-resumo-guia {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.mapa-vazio {
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-dist);
+  font-size: 12px;
+  background: var(--input);
+}
+
+.mapa-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mapa-item {
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.mapa-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.mapa-titulo-relacao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mapa-guia {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mapa-separador {
+  font-size: 13px;
+  color: var(--text-dist);
+}
+
+.mapa-passeio {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dist);
+}
+
+.mapa-valor {
+  font-size: 11px;
+  color: var(--text-dist);
+  white-space: nowrap;
+}
+
+.mapa-range {
+  width: 100%;
+}
+
+.mapa-escala-labels {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dist);
+  opacity: 0.9;
+}
+
+@media (max-width: 900px) {
+  .mapa-page {
+    width: 100%;
+  }
+
+  .mapa-topo {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.mapa-alerta {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  padding: 18px 26px;
+  min-width: 280px;
+
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+
+  z-index: 99999;
+
+  animation: alertaFade 0.25s ease;
+
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* SUCESSO */
+
+.mapa-alerta.sucesso {
+  background: var(--primary);
+  color: var(--text-dist);
+}
+
+/* ERRO */
+
+.mapa-alerta.erro {
+  background: var(--status-red);
+  color: var(--text-btn);
+}
+
+/* animação */
+
+@keyframes alertaFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
