@@ -873,8 +873,12 @@ const ListaPasseiosSemana = () => {
             body {
               font-family: Arial, sans-serif;
               margin: 24px;
-              background: #f5f6f8;
+              background: #ebebeb;
               color: #222;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-direction: column;
             }
 
             h1 {
@@ -906,16 +910,17 @@ const ListaPasseiosSemana = () => {
 
             .table-wrap {
               overflow-x: auto;
-              background: #fff;
-              border: 1px solid #dcdcdc;
               border-radius: 12px;
-              box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            
             }
 
             table {
-              width: 100%;
               border-collapse: collapse;
-              min-width: 980px;
+            }
+
+            tr {
+              transition: background-color 0.2s;
+              padding: 0;
             }
 
             thead {
@@ -925,7 +930,7 @@ const ListaPasseiosSemana = () => {
 
             th {
               border: 1px solid #d9d9d9;
-              padding: 14px 14px;
+              padding: 6px 6px;
               text-align: left;
               font-size: 12px;
               letter-spacing: 0.02em;
@@ -933,7 +938,7 @@ const ListaPasseiosSemana = () => {
 
             td {
               border: 1px solid #d9d9d9;
-              padding: 14px 14px;
+              padding: 6px 6px;
               text-align: left;
               font-size: 12px;
               line-height: 1.5;

@@ -522,7 +522,7 @@ const CadastroPasseio = () => {
       </form>
 
       <div className="importacao-api-box">
-        <h3>Importar passeios da API</h3>
+        <h3>Importar passeios do Phoenix</h3>
         <p>
           Busca os passeios dos próximos 30 dias na API e define a frequência
           automaticamente com base nos dias em que cada passeio aparece.
@@ -534,7 +534,7 @@ const CadastroPasseio = () => {
           onClick={importarPasseiosDaApi}
           disabled={importandoApi}
         >
-          {importandoApi ? "Importando..." : "Importar passeios da API"}
+          {importandoApi ? "Importando..." : "Puxar dados do Phoenix"}
         </button>
       </div>
 
