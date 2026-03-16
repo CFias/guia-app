@@ -2245,9 +2245,10 @@ Operacional - Luck Receptivo 🍀
               >
                 <span className="passeio-name">{item.serviceName}</span>
 
+                <span className="guia-name-aloc">{item.guiaNome || "-"}</span>
                 {modoVisualizacao ? (
                   <>
-                    <span className="passeio-pax">
+                    <span className="passeio-pax-1">
                       {item.passengers || 0} pax
                       <small>
                         {" "}
@@ -2256,9 +2257,6 @@ Operacional - Luck Receptivo 🍀
                       </small>
                     </span>
                     {statusGrupo(item.passengers, item.allocationStatus)}
-                    <span className="guia-name-aloc">
-                      {item.guiaNome || "-"}
-                    </span>
                   </>
                 ) : (
                   <>

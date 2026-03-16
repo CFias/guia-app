@@ -263,7 +263,7 @@ h2 {
 
 .passeio-name {
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 10px !important;
   font-weight: 600;
   color: var(--text);
   border-right: 1px solid var(--border);
@@ -293,17 +293,27 @@ h2 {
   color: rgb(255, 255, 255);
 }
 
-.passeio-pax {
-  font-size: 8px;
-  font-weight: 600;
+.passeio-pax-1 {
+  font-size: 12px !important;
+  font-weight: 400 !important;
   color: var(--text);
-  text-align: center;
+  text-align: start;
+
+}
+
+.passeio-pax-1 small {
+  font-size: 8px;
+  font-weight: 200;
+  color: var(--text);
+  opacity: 0.8;
 }
 
 .guia-name-aloc {
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 400;
   color: var(--text);
+  text-align: start;
+  padding-left: 10px;
 }
 
 /* ===== CARD DO DIA ===== */
@@ -314,13 +324,15 @@ h2 {
   margin-bottom: 10px;
   border: 1px solid var(--border);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===== CABEÇALHO DO DIA ===== */
 .day-card strong {
   display: block;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   padding: 10px 14px;
   background: var(--input);
   color: var(--text-btn);
