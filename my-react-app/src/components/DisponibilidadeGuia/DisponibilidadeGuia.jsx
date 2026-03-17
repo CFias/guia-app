@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   collection,
-  addDoc,
   getDoc,
   getDocs,
   Timestamp,
@@ -12,6 +11,14 @@ import {
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
 import LoadingBlock from "../LoadingOverlay/LoadingOverlay";
+import {
+  CalendarMonthRounded,
+  FilterListRounded,
+  ManageAccountsRounded,
+  SaveRounded,
+  SearchRounded,
+  TodayRounded,
+} from "@mui/icons-material";
 
 /* ===== ABREVIAÇÃO DOS DIAS ===== */
 const DIA_ABREV = {
@@ -24,31 +31,33 @@ const DIA_ABREV = {
   Domingo: "Dom",
 };
 
+const nomesDiasSemana = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
+];
+
 const DisponibilidadeGuia = () => {
   const [guias, setGuias] = useState([]);
   const [guiaSelecionado, setGuiaSelecionado] = useState(null);
-  /* ===== FILTRO POR DIAS ===== */
   const [filtroDias, setFiltroDias] = useState([]);
 
   const [diasSemana, setDiasSemana] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
 
-  const [dropdownGuiasOpen, setDropdownGuiasOpen] = useState(false);
   const [dropdownDiasOpen, setDropdownDiasOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
-  /* ===== CONTROLE DE SEMANA ===== */
   const [semanaOffset, setSemanaOffset] = useState(0);
 
-  /* ===== NOVOS STATES ===== */
   const [disponibilidadeSemana, setDisponibilidadeSemana] = useState([]);
   const [busca, setBusca] = useState("");
 
-  /* ===== BUSCA GUIA ===== */
-  const [buscaGuia, setBuscaGuia] = useState("");
-
-  /* ===== CARREGAR GUIAS ===== */
   useEffect(() => {
     const carregarGuias = async () => {
       const snapshot = await getDocs(collection(db, "guides"));
@@ -64,26 +73,22 @@ const DisponibilidadeGuia = () => {
 
   const toggleFiltroDia = (date) => {
     setFiltroDias((prev) =>
-      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]
     );
   };
 
   const selecionarTodosDias = () => {
     if (selecionados.length === diasSemana.length) {
-      // se já estão todos selecionados, limpa
       setSelecionados([]);
     } else {
-      // seleciona todos os dias da semana atual
       setSelecionados(diasSemana);
     }
   };
 
-  /* ===== ATUALIZA SEMANA VISÍVEL ===== */
   useEffect(() => {
     setDiasSemana(getSemanaAtual(semanaOffset));
   }, [semanaOffset]);
 
-  /* ===== CARREGAR DISPONIBILIDADE DA SEMANA ===== */
   useEffect(() => {
     const carregarDisponibilidadeSemana = async () => {
       setLoading(true);
@@ -133,7 +138,6 @@ const DisponibilidadeGuia = () => {
     if (guias.length) carregarDisponibilidadeSemana();
   }, [guias, semanaOffset]);
 
-  /* ===== FILTRO LISTAGEM ===== */
   const disponibilidadeFiltrada = disponibilidadeSemana.filter((g) => {
     if (busca) {
       const termo = busca.toLowerCase();
@@ -145,13 +149,12 @@ const DisponibilidadeGuia = () => {
           DIA_ABREV[d.day].toLowerCase().includes(termo) ||
           d.day.toLowerCase().includes(termo) ||
           d.date.includes(termo) ||
-          d.date.split("-").reverse().join("/").includes(termo),
+          d.date.split("-").reverse().join("/").includes(termo)
       );
 
       if (!nomeMatch && !diaMatch) return false;
     }
 
-    /* FILTRO POR DIAS ESPECÍFICOS */
     if (filtroDias.length) {
       return g.dias.some((d) => filtroDias.includes(d.date));
     }
@@ -159,7 +162,6 @@ const DisponibilidadeGuia = () => {
     return true;
   });
 
-  /* ===== REMOVER DATA SALVA ===== */
   const removerDataSalva = async (guiaId, date) => {
     if (!window.confirm("Remover esta data?")) return;
 
@@ -167,17 +169,13 @@ const DisponibilidadeGuia = () => {
       const ref = doc(db, "guide_availability", guiaId);
       const snap = await getDoc(ref);
 
-      if (!snap.exists()) {
-        console.error("Documento não encontrado para o guia:", guiaId);
-        return;
-      }
+      if (!snap.exists()) return;
 
       const dados = snap.data();
-
       if (!Array.isArray(dados.disponibilidade)) return;
 
       const novaDisponibilidade = dados.disponibilidade.filter(
-        (d) => d.date !== date,
+        (d) => d.date !== date
       );
 
       await updateDoc(ref, {
@@ -185,16 +183,15 @@ const DisponibilidadeGuia = () => {
         updatedAt: Timestamp.now(),
       });
 
-      // 🔹 Atualiza a tela sem refresh
       setDisponibilidadeSemana((prev) =>
         prev.map((g) =>
           g.guiaId === guiaId
             ? {
-                ...g,
-                dias: g.dias.filter((d) => d.date !== date),
-              }
-            : g,
-        ),
+              ...g,
+              dias: g.dias.filter((d) => d.date !== date),
+            }
+            : g
+        )
       );
     } catch (err) {
       console.error("Erro ao remover data:", err);
@@ -202,15 +199,11 @@ const DisponibilidadeGuia = () => {
     }
   };
 
-  /* ===== GUIA ===== */
   const selecionarGuia = (guia) => {
     setGuiaSelecionado(guia);
     setSelecionados([]);
-    setBuscaGuia("");
-    setDropdownGuiasOpen(false);
   };
 
-  /* ===== DIAS ===== */
   const adicionarDia = (dia) => {
     if (selecionados.find((d) => d.date === dia.date)) return;
     setSelecionados([...selecionados, dia]);
@@ -221,15 +214,12 @@ const DisponibilidadeGuia = () => {
     setSelecionados(selecionados.filter((d) => d.date !== date));
   };
 
-  /* ===== SALVAR ===== */
   const salvarDisponibilidade = async () => {
     if (!guiaSelecionado || !selecionados.length) return;
 
     setLoading(true);
     try {
       const ref = doc(db, "guide_availability", guiaSelecionado.id);
-
-      // 🔹 Busca disponibilidade atual (evita sobrescrever)
       const snap = await getDoc(ref);
 
       let disponibilidadeAtual = [];
@@ -241,9 +231,8 @@ const DisponibilidadeGuia = () => {
         }
       }
 
-      // 🔹 Junta sem duplicar
       const novasDatas = selecionados.filter(
-        (d) => !disponibilidadeAtual.some((x) => x.date === d.date),
+        (d) => !disponibilidadeAtual.some((x) => x.date === d.date)
       );
 
       const disponibilidadeFinal = [
@@ -262,10 +251,9 @@ const DisponibilidadeGuia = () => {
           disponibilidade: disponibilidadeFinal,
           updatedAt: Timestamp.now(),
         },
-        { merge: true },
+        { merge: true }
       );
 
-      // 🔹 Atualiza a tabela SEM refresh
       setDisponibilidadeSemana((prev) => {
         const existe = prev.find((g) => g.guiaId === guiaSelecionado.id);
 
@@ -273,15 +261,15 @@ const DisponibilidadeGuia = () => {
           return prev.map((g) =>
             g.guiaId === guiaSelecionado.id
               ? {
-                  ...g,
-                  dias: [
-                    ...g.dias,
-                    ...novasDatas.filter(
-                      (d) => !g.dias.some((x) => x.date === d.date),
-                    ),
-                  ],
-                }
-              : g,
+                ...g,
+                dias: [
+                  ...g.dias,
+                  ...novasDatas.filter(
+                    (d) => !g.dias.some((x) => x.date === d.date)
+                  ),
+                ],
+              }
+              : g
           );
         }
 
@@ -305,10 +293,6 @@ const DisponibilidadeGuia = () => {
     }
   };
 
-  const guiasFiltrados = guias.filter((g) =>
-    g.nome.toLowerCase().includes(buscaGuia.toLowerCase()),
-  );
-
   const formatarIntervaloSemana = (semana) => {
     if (!semana.length) return "";
 
@@ -323,180 +307,277 @@ const DisponibilidadeGuia = () => {
   };
 
   return (
-    <div className="disp-container">
-      <h2 className="disp-h2">Disponibilidade da Semana</h2>
-      <div className="disp-content">
-        {/* ===== FORMULÁRIO ===== */}
-        <label>
-          Guia<span className="dropdown-car">*</span>
-        </label>
-        <div className="dropdown">
-          <select
-            className="select-guia"
-            value={guiaSelecionado ? guiaSelecionado.id : ""}
-            onChange={(e) => {
-              const guia = guias.find((g) => g.id === e.target.value);
-              selecionarGuia(guia);
-            }}
-          >
-            <option value="">Selecionar guia</option>
-
-            {guias.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.nome} • P{g.nivelPrioridade || 2}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {guiaSelecionado && (
-          <>
-            <label>Dias disponíveis</label>
-
-            <div className="disp-dropdown">
-              <div
-                className="disp-btn"
-                onClick={() => setDropdownDiasOpen(!dropdownDiasOpen)}
-              >
-                Selecionar dias ▾
-              </div>
-              <button
-                type="button"
-                className="btn-disp"
-                onClick={selecionarTodosDias}
-              >
-                {selecionados.length === diasSemana.length
-                  ? "Remover todos os dias"
-                  : "Selecionar todos os dias"}
-              </button>
-
-              {dropdownDiasOpen && (
-                <div className="dropdown-list">
-                  {diasSemana.map((d) => (
-                    <div
-                      key={d.date}
-                      className="dropdown-item"
-                      onClick={() => adicionarDia(d)}
-                    >
-                      {d.label}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* NOVA OPÇÃO */}
-            </div>
-          </>
-        )}
-
-        <div className="selected-languages">
-          {selecionados.map((d) => (
-            <div key={d.date} className="language-tag purple">
-              {d.label}
-              <span onClick={() => removerDia(d.date)}>×</span>
-            </div>
-          ))}
-        </div>
-
-        <button
-          className="disp-btn-save"
-          onClick={salvarDisponibilidade}
-          disabled={loading || !guiaSelecionado || !selecionados.length}
-        >
-          {loading ? "Salvando..." : "Salvar Disponibilidade"}
-        </button>
-        <div className="disp-bottom">
-          <div className="disp-btn">
-            <button
-              className="btn-disp"
-              onClick={() => setSemanaOffset((o) => o - 1)}
-            >
-              ◀ Semana anterior
-            </button>
-            <button className="btn-disp" onClick={() => setSemanaOffset(0)}>
-              Semana atual
-            </button>
-            <button
-              className="btn-disp"
-              onClick={() => setSemanaOffset((o) => o + 1)}
-            >
-              Próxima semana ▶
-            </button>
-          </div>
-          <p className="disp-semana-intervalo">
-            {formatarIntervaloSemana(diasSemana)}
+    <div className="disponibilidade-guia-page">
+      <div className="disponibilidade-guia-header">
+        <div>
+          <h2 className="disponibilidade-guia-title">
+            Disponibilidade da Semana <CalendarMonthRounded fontSize="small" />
+          </h2>
+          <p className="disponibilidade-guia-subtitle">
+            Organize os dias disponíveis por guia e acompanhe a distribuição da
+            semana de forma rápida e visual.
           </p>
         </div>
       </div>
 
-      <h3 className="disp-title-3">Guias disponíveis nesta semana</h3>
-      <div className="tabela-disponibilidade">
-        <div className="search-block">
-          <input
-            className="search-input"
-            placeholder="Buscar por guia ou data"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
-        </div>
-        {/* ===== FILTRO POR DIAS DA SEMANA ===== */}
-        <h4 className="h3-name">Filtrar por data</h4>
-        <div className="filtro-dias">
-          {diasSemana.map((d) => (
-            <div
-              key={d.date}
-              className={`dia-filtro-tag ${
-                filtroDias.includes(d.date) ? "ativo" : ""
-              }`}
-              onClick={() => toggleFiltroDia(d.date)}
-            >
-              {DIA_ABREV[d.day]}
-              <span>{d.date.split("-").reverse().join("/")}</span>
+      <div className="disponibilidade-guia-grid">
+        <div className="disponibilidade-guia-card disponibilidade-guia-card-large">
+          <div className="disponibilidade-guia-card-header">
+            <div className="disponibilidade-guia-card-title-row">
+              <h3>Lançar disponibilidade</h3>
+              <span className="disponibilidade-guia-badge">Disponibilidade</span>
             </div>
-          ))}
-        </div>
-
-        {/* CABEÇALHO */}
-        <div className="linha header">
-          <div className="col guia">Guia</div>
-          {diasSemana.map((d) => (
-            <div key={d.date} className="col dia">
-              {DIA_ABREV[d.day]}
-            </div>
-          ))}
-        </div>
-        {disponibilidadeFiltrada.map((g) => (
-          <div key={g.guiaId} className="linha">
-            <div className="col guia">
-              <div className="guia-nome-wrap">
-                <span className={`priority-pill p-${g.nivelPrioridade || 2}`}>
-                  P{g.nivelPrioridade || 2}
-                </span>
-                <span>{g.nome}</span>
-              </div>
-            </div>
-
-            {diasSemana.map((d) => {
-              const diaGuia = g.dias.find((x) => x.date === d.date);
-
-              return (
-                <div key={`${g.guiaId}-${d.date}`} className="col dia">
-                  {diaGuia && (
-                    <div className="cell-dia">
-                      {`${d.date.split("-")[2]}/${d.date.split("-")[1]}`}
-                      <button
-                        className="remove-dia"
-                        onClick={() => removerDataSalva(g.guiaId, d.date)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <p>
+              Selecione o guia, marque os dias disponíveis e salve para a semana
+              atual.
+            </p>
           </div>
-        ))}
+
+          <div className="disponibilidade-guia-form">
+            <div className="disponibilidade-guia-field">
+              <label htmlFor="guia-select">
+                Guia <ManageAccountsRounded fontSize="small" />
+              </label>
+              <select
+                id="guia-select"
+                className="disponibilidade-guia-select"
+                value={guiaSelecionado ? guiaSelecionado.id : ""}
+                onChange={(e) => {
+                  const guia = guias.find((g) => g.id === e.target.value);
+                  selecionarGuia(guia);
+                }}
+              >
+                <option value="">Selecionar guia</option>
+                {guias.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nome} • P{g.nivelPrioridade || 2}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {guiaSelecionado && (
+              <>
+                <div className="disponibilidade-guia-field">
+                  <label>
+                    Dias disponíveis <TodayRounded fontSize="small" />
+                  </label>
+
+                  <div className="disponibilidade-guia-days-actions">
+                    <div className="disponibilidade-guia-dropdown">
+                      <div
+                        className="disponibilidade-guia-dropdown-header"
+                        onClick={() => setDropdownDiasOpen(!dropdownDiasOpen)}
+                      >
+                        <span>Selecionar dias</span>
+                        <span className="disponibilidade-guia-dropdown-arrow">
+                          ▾
+                        </span>
+                      </div>
+
+                      {dropdownDiasOpen && (
+                        <div className="disponibilidade-guia-dropdown-list">
+                          {diasSemana.map((d) => (
+                            <div
+                              key={d.date}
+                              className="disponibilidade-guia-dropdown-item"
+                              onClick={() => adicionarDia(d)}
+                            >
+                              {d.label}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="disponibilidade-guia-btn-soft"
+                      onClick={selecionarTodosDias}
+                    >
+                      {selecionados.length === diasSemana.length
+                        ? "Remover todos"
+                        : "Selecionar todos"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="disponibilidade-guia-tags">
+                  {selecionados.map((d) => (
+                    <div
+                      key={d.date}
+                      className="disponibilidade-guia-tag disponibilidade-guia-tag-day"
+                    >
+                      {d.label}
+                      <span onClick={() => removerDia(d.date)}>×</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="disponibilidade-guia-actions">
+              <button
+                className="disponibilidade-guia-btn-primary"
+                onClick={salvarDisponibilidade}
+                disabled={loading || !guiaSelecionado || !selecionados.length}
+              >
+                <SaveRounded fontSize="small" />
+                {loading ? "Salvando..." : "Salvar disponibilidade"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="disponibilidade-guia-card">
+          <div className="disponibilidade-guia-card-header">
+            <div className="disponibilidade-guia-card-title-row">
+              <h3>Semana exibida</h3>
+              <span className="disponibilidade-guia-badge">Navegação</span>
+            </div>
+            <p>Navegue entre semanas e acompanhe o intervalo atual.</p>
+          </div>
+
+          <div className="disponibilidade-guia-week-box">
+            <div className="disponibilidade-guia-week-range">
+              {formatarIntervaloSemana(diasSemana)}
+            </div>
+
+            <div className="disponibilidade-guia-week-actions">
+              <button
+                type="button"
+                className="disponibilidade-guia-btn-soft"
+                onClick={() => setSemanaOffset((o) => o - 1)}
+              >
+                ◀ Semana anterior
+              </button>
+
+              <button
+                type="button"
+                className="disponibilidade-guia-btn-soft"
+                onClick={() => setSemanaOffset(0)}
+              >
+                Semana atual
+              </button>
+
+              <button
+                type="button"
+                className="disponibilidade-guia-btn-soft"
+                onClick={() => setSemanaOffset((o) => o + 1)}
+              >
+                Próxima semana ▶
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="disponibilidade-guia-card disponibilidade-guia-card-full">
+          <div className="disponibilidade-guia-card-header">
+            <div className="disponibilidade-guia-card-title-row">
+              <h3>Guias disponíveis nesta semana</h3>
+              <span className="disponibilidade-guia-badge">
+                {disponibilidadeFiltrada.length} guia(s)
+              </span>
+            </div>
+            <p>
+              Consulte a disponibilidade registrada, filtre por data e remova
+              dias lançados quando necessário.
+            </p>
+          </div>
+
+          <div className="disponibilidade-guia-toolbar">
+            <div className="disponibilidade-guia-search">
+              <SearchRounded fontSize="small" />
+              <input
+                className="disponibilidade-guia-search-input"
+                placeholder="Buscar por guia ou data"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="disponibilidade-guia-filter-block">
+            <div className="disponibilidade-guia-filter-title">
+              <FilterListRounded fontSize="small" />
+              Filtrar por data
+            </div>
+
+            <div className="disponibilidade-guia-filter-days">
+              {diasSemana.map((d) => (
+                <div
+                  key={d.date}
+                  className={`disponibilidade-guia-filter-tag ${filtroDias.includes(d.date) ? "active" : ""
+                    }`}
+                  onClick={() => toggleFiltroDia(d.date)}
+                >
+                  {DIA_ABREV[d.day]}
+                  <span>{d.date.split("-").reverse().join("/")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="disponibilidade-guia-table-wrap">
+            <div className="disponibilidade-guia-table">
+              <div className="disponibilidade-guia-row disponibilidade-guia-row-header">
+                <div className="disponibilidade-guia-col disponibilidade-guia-col-guide">
+                  Guia
+                </div>
+                {diasSemana.map((d) => (
+                  <div
+                    key={d.date}
+                    className="disponibilidade-guia-col disponibilidade-guia-col-day"
+                  >
+                    {DIA_ABREV[d.day]}
+                  </div>
+                ))}
+              </div>
+
+              {disponibilidadeFiltrada.map((g) => (
+                <div key={g.guiaId} className="disponibilidade-guia-row">
+                  <div className="disponibilidade-guia-col disponibilidade-guia-col-guide">
+                    <div className="disponibilidade-guia-guide-wrap">
+                      <span
+                        className={`disponibilidade-guia-priority p-${g.nivelPrioridade || 2
+                          }`}
+                      >
+                        P{g.nivelPrioridade || 2}
+                      </span>
+                      <span>{g.nome}</span>
+                    </div>
+                  </div>
+
+                  {diasSemana.map((d) => {
+                    const diaGuia = g.dias.find((x) => x.date === d.date);
+
+                    return (
+                      <div
+                        key={`${g.guiaId}-${d.date}`}
+                        className="disponibilidade-guia-col disponibilidade-guia-col-day"
+                      >
+                        {diaGuia && (
+                          <div className="disponibilidade-guia-cell-day">
+                            {`${d.date.split("-")[2]}/${d.date.split("-")[1]}`}
+                            <button
+                              type="button"
+                              className="disponibilidade-guia-remove-day"
+                              onClick={() => removerDataSalva(g.guiaId, d.date)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+
       <LoadingBlock loading={loading} text="Carregando..." />
     </div>
   );
@@ -505,34 +586,18 @@ const DisponibilidadeGuia = () => {
 export default DisponibilidadeGuia;
 
 /* ===== FUNÇÕES AUXILIARES ===== */
-const diasSemana = [
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-  "Domingo",
-];
-
 const getSemanaAtual = (offset = 0) => {
-  // data base SEMPRE ao meio-dia (evita bug de fuso)
   const base = new Date();
   base.setHours(12, 0, 0, 0);
-
-  // aplica offset de semanas
   base.setDate(base.getDate() + offset * 7);
 
-  // getDay(): 0 = domingo, 1 = segunda...
   const day = base.getDay();
-
-  // calcula segunda-feira corretamente
   const diffToMonday = day === 0 ? -6 : 1 - day;
 
   const monday = new Date(base);
   monday.setDate(base.getDate() + diffToMonday);
 
-  return diasSemana.map((dia, index) => {
+  return nomesDiasSemana.map((dia, index) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + index);
 

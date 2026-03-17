@@ -51,12 +51,12 @@ body.dark {
 
 /* ===== DARK PRO (mais premium) ===== */
 body.dark-pro {
-  --bg: #0f1115;
+  --bg: #252323;
   --card: #212328;
   --text-dist: #00c798;
-  --side: #002c22;
+  --side: #182625;
   --input: #2a2a2a;
-  --border: #dadada81;
+  --border: rgba(255, 255, 255, 0.08);;
 
   --text: #e4e4e4;
   --primary: #08201d;

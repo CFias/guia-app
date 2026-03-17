@@ -1,166 +1,439 @@
-/* ============================= */
-/* CONTAINER PRINCIPAL */
-/* ============================= */
-
-.guide-form-container {
-    width: 55vw;
-    margin: 40px auto;
-    padding: 40px;
-    border-radius: 18px;
-}
-
-.guide-form-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 30px;
-    color: var(--text);
-}
-
-/* ============================= */
-/* FORM */
-/* ============================= */
-
-.guide-form {
-    background: var(--card);
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-}
-
-/* ============================= */
-/* INPUTS */
-/* ============================= */
-
-.guide-input,
-.guide-textarea {
-    background: var(--input);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-size: 10px;
-    color: var(--text);
-    outline: none;
-}
-
-.guide-input:focus,
-.guide-textarea:focus {
-    border-color: var(--btn-main);
-    box-shadow: 0 0 0 2px rgba(0, 199, 152, 0.2);
-}
-
-.guide-textarea {
-    min-height: 90px;
-    resize: vertical;
-}
-
-/* ============================= */
-/* DROPDOWN */
-/* ============================= */
-
-.guide-dropdown {
-    position: relative;
-}
-
-.guide-dropdown-header {
-    background: var(--input);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px;
-    font-family: "montserrat", sans-serif;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.guide-dropdown-menu {
-    position: absolute;
+.cadastro-guia-page {
     width: 100%;
-    margin-top: 8px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 10;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    max-width: 1260px;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
 }
 
-.guide-dropdown-item {
-    padding: 10px 14px;
-    cursor: pointer;
+.cadastro-guia-header {
+    margin-bottom: 24px;
 }
 
-.guide-dropdown-item:hover {
-    background: var(--btn-main);
-    color: var(--text-btn);
-}
-
-/* ============================= */
-/* TAGS SELECIONADAS */
-/* ============================= */
-
-.guide-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.guide-tag {
-    background: var(--primary);
-    color: var(--text-btn);
-    padding: 6px 12px;
-    border-radius: 30px;
-    font-size: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.guide-tag span {
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.guide-tag--service {
-    background: var(--text-dist);
-    color: #000;
-}
-
-/* ============================= */
-/* CHECKBOX */
-/* ============================= */
-
-.guide-checkbox {
+.cadastro-guia-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
 }
 
-/* ============================= */
-/* BOTÃO */
-/* ============================= */
+.cadastro-guia-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
 
-.guide-button {
-    background: var(--btn-main);
-    color: var(--text-btn);
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
+.cadastro-guia-layout {
+    width: 100%;
+}
+
+.cadastro-guia-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.cadastro-guia-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+}
+
+.cadastro-guia-card-large {
+    grid-column: span 2;
+}
+
+.cadastro-guia-card-header {
+    margin-bottom: 20px;
+}
+
+.cadastro-guia-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.cadastro-guia-card-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.cadastro-guia-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.cadastro-guia-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+/* form */
+.cadastro-guia-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.cadastro-guia-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.cadastro-guia-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cadastro-guia-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cadastro-guia-field label svg {
+    color: var(--text-dist);
+}
+
+.cadastro-guia-field input,
+.cadastro-guia-field textarea {
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.cadastro-guia-field input {
+    height: 50px;
+}
+
+.cadastro-guia-field textarea {
+    min-height: 110px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.cadastro-guia-field input::placeholder,
+.cadastro-guia-field textarea::placeholder {
+    color: color-mix(in srgb, var(--text) 48%, transparent 52%);
+}
+
+.cadastro-guia-field input:hover,
+.cadastro-guia-field textarea:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-guia-field input:focus,
+.cadastro-guia-field textarea:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* dropdown */
+.cadastro-guia-dropdown {
+    position: relative;
+}
+
+.cadastro-guia-dropdown-header {
+    width: 100%;
+    min-height: 50px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.cadastro-guia-dropdown-header:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-guia-dropdown-arrow {
+    opacity: 0.75;
+}
+
+.cadastro-guia-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    z-index: 20;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.cadastro-guia-dropdown-item {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.cadastro-guia-dropdown-item:hover {
+    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+}
+
+/* tags */
+.cadastro-guia-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-height: 10px;
+}
+
+.cadastro-guia-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
     font-size: 10px;
     font-weight: 600;
+}
+
+.cadastro-guia-tag-service {
+    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    color: var(--text);
+}
+
+.cadastro-guia-tag span {
     cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.85;
 }
 
-.guide-button:hover {
-    filter: brightness(1.1);
+.cadastro-guia-tag span:hover {
+    opacity: 1;
 }
 
-.guide-button:disabled {
-    opacity: 0.6;
+/* switch */
+.cadastro-guia-options-row {
+    display: flex;
+    align-items: center;
+}
+
+.cadastro-guia-switch {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cadastro-guia-switch-track {
+    width: 55px;
+    height: 25px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--border) 76%, var(--bg) 24%);
+    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent 10%);
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    transition: all 0.25s ease;
+}
+
+.cadastro-guia-switch-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+    transition: transform 0.25s ease;
+}
+
+.cadastro-guia-switch.active .cadastro-guia-switch-track {
+    background: color-mix(in srgb, var(--text-dist) 70%, var(--primary) 30%);
+    border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+}
+
+.cadastro-guia-switch.active .cadastro-guia-switch-thumb {
+    transform: translateX(28px);
+}
+
+.cadastro-guia-switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.cadastro-guia-switch-label svg {
+    color: var(--text-dist);
+}
+
+/* actions */
+.cadastro-guia-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.cadastro-guia-btn-primary {
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.cadastro-guia-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.cadastro-guia-btn-primary:disabled {
+    opacity: 0.7;
     cursor: not-allowed;
+}
+
+/* preview */
+.cadastro-guia-preview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.cadastro-guia-preview-item {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border-radius: 18px;
+    padding: 16px;
+}
+
+.cadastro-guia-preview-label {
+    display: block;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+    margin-bottom: 6px;
+}
+
+.cadastro-guia-preview-value {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+/* responsive */
+@media (max-width: 1024px) {
+    .cadastro-guia-card-large {
+        grid-column: span 1;
+    }
+
+    .cadastro-guia-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .cadastro-guia-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cadastro-guia-page {
+        padding: 4px;
+    }
+
+    .cadastro-guia-title {
+        font-size: 25px;
+    }
+
+    .cadastro-guia-subtitle {
+        font-size: 13px;
+    }
+
+    .cadastro-guia-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .cadastro-guia-card-header h3 {
+        font-size: 19px;
+    }
+
+    .cadastro-guia-actions {
+        flex-direction: column;
+    }
+
+    .cadastro-guia-btn-primary {
+        width: 100%;
+    }
+
+    .cadastro-guia-switch {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }

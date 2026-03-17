@@ -1,103 +1,102 @@
 import { NavLink, Outlet } from "react-router-dom";
 import "./styles.css";
-import { useTheme } from "../../Context/ThemeContext";
-
-import PlaylistAddCircleRoundedIcon from "@mui/icons-material/PlaylistAddCircleRounded";
-import PlaylistAddCheckCircleRoundedIcon from "@mui/icons-material/PlaylistAddCheckCircleRounded";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import TourIcon from "@mui/icons-material/Tour";
-import StyleIcon from "@mui/icons-material/Style";
-import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
-import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 
 import logo from "../../assets/logo4.png";
-import { AnalyticsRounded, AssignmentIndRounded, ContactMailRounded, DnsRounded, FactCheckRounded, MapRounded, PlaylistAddCheckCircleRounded, PlaylistAddCheckRounded } from "@mui/icons-material";
+import {
+  AnalyticsRounded,
+  AssignmentIndRounded,
+  DnsRounded,
+  FactCheckRounded,
+  MapRounded,
+  PlaylistAddCheckCircleRounded,
+  SettingsRounded,
+} from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
-
-  const { theme, toggleTheme, togglePro } = useTheme();
+  const getNavClass = ({ isActive }) =>
+    `sidebar-link ${isActive ? "active" : ""}`;
 
   return (
     <div className="dashboard-container">
-
-      {/* ===== SIDEBAR ===== */}
-      <aside className="side-dashboard">
-        <NavLink to="/" className="logo-dashboard">
-          <img src={logo} alt="Ferramenta Operacional SSA" />
-        </NavLink>
-
-        <h4 className="name-side">Serviços e Guias</h4>
-
-        <NavLink to="guias" className="card">
-          <DnsRounded fontSize="small" className="icon-side" />
-          <span className="label">Lista de Guias</span>
-        </NavLink>
-        <NavLink to="mapear-guias" className="card">
-          <MapRounded fontSize="small" className="icon-side" />
-          <span className="label">Mapear Guias</span>
-        </NavLink>
-
-        <NavLink to="passeios" className="card">
-          <AnalyticsRounded fontSize="small" className="icon-side" />
-          <span className="label">Gerar Escala</span>
-        </NavLink>
-
-        <NavLink to="disponibilidade-guia" className="card">
-          <FactCheckRounded fontSize="small" className="icon-side" />
-          <span className="label">Disponibilidade da Semana</span>
-        </NavLink>
-
-        <NavLink to="register-guias" className="card">
-          <AssignmentIndRounded fontSize="small" className="icon-side" />
-          <span className="label">Cadastrar Guias</span>
-        </NavLink>
-
-        <NavLink to="register-tours" className="card">
-          <PlaylistAddCheckCircleRounded fontSize="small" className="icon-side" />
-          <span className="label">Cadastrar Passeios</span>
-        </NavLink>
-        <NavLink to="configuracoes" className="card">
-          <SettingsRoundedIcon fontSize="small" className="icon-side" />
-          <span className="label">Configurações</span>
-        </NavLink>
-
-        {/* <div className="theme-toggle-container">
-
-          <div className="switch" onClick={toggleTheme}>
-            <div className={`slider ${theme !== "light" ? "active" : ""}`} />
-
-            <div className="icon-wrapper">
-              {theme === "light" ? (
-                <LightModeRoundedIcon className="theme-icon sun" />
-              ) : (
-                <DarkModeRoundedIcon className="theme-icon moon" />
-              )}
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <NavLink to="/" className="sidebar-brand-wrap">
+            <div className="sidebar-logo-box">
+              <img src={logo} alt="Operacional SSA" />
             </div>
+
+            <div className="sidebar-brand">
+              <strong>Operacional SSA</strong>
+              <span>Gestão de serviços</span>
+            </div>
+          </NavLink>
+        </div>
+
+        <div className="sidebar-menu">
+          <div className="sidebar-group">
+            <span className="sidebar-group-title">Operação</span>
+
+            <NavLink to="guias" className={getNavClass}>
+              <DnsRounded fontSize="small" className="sidebar-icon" />
+              <span>Lista de Guias</span>
+            </NavLink>
+
+            <NavLink to="mapear-guias" className={getNavClass}>
+              <MapRounded fontSize="small" className="sidebar-icon" />
+              <span>Mapear Guias</span>
+            </NavLink>
+
+            <NavLink to="passeios" className={getNavClass}>
+              <AnalyticsRounded fontSize="small" className="sidebar-icon" />
+              <span>Gerar Escala</span>
+            </NavLink>
+
+            <NavLink to="disponibilidade-guia" className={getNavClass}>
+              <FactCheckRounded fontSize="small" className="sidebar-icon" />
+              <span>Disponibilidade da Semana</span>
+            </NavLink>
           </div>
 
-          {theme !== "light" && (
-            <button className="pro-btn" onClick={togglePro}>
-              {theme === "dark" ? "Ativar Dark Pro" : "Voltar Dark"}
-            </button>
-          )}
+          <div className="sidebar-group">
+            <span className="sidebar-group-title">Cadastros</span>
 
-        </div> */}
+            <NavLink to="register-guias" className={getNavClass}>
+              <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
+              <span>Cadastrar Guias</span>
+            </NavLink>
 
+            <NavLink to="register-tours" className={getNavClass}>
+              <PlaylistAddCheckCircleRounded
+                fontSize="small"
+                className="sidebar-icon"
+              />
+              <span>Cadastrar Passeios</span>
+            </NavLink>
+          </div>
+        </div>
 
-        <span className="v-style">v1.1.0</span>
+        <div className="sidebar-footer">
+          <NavLink to="configuracoes" className={getNavClass}>
+            <SettingsRounded fontSize="small" className="sidebar-icon" />
+            <span>Configurações</span>
+          </NavLink>
+
+          <div className="sidebar-version">v1.1.0</div>
+        </div>
       </aside>
 
-      {/* ===== CONTEÚDO ===== */}
       <div className="dashboard-content">
-        <main className="dashboard-cards">
-          {loading && <div className="loading">Carregando...</div>}
+        <main className="dashboard-main">
+          {loading && (
+            <div className="loading-overlay">
+              <div className="spinner" />
+            </div>
+          )}
           <Outlet />
         </main>
       </div>
-
     </div>
   );
 };
 
-export default Dashboard;
+export default Dashboard

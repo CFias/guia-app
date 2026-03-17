@@ -3,6 +3,16 @@ import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
 import "./styles.css";
+import {
+  AssignmentIndRounded,
+  ChatRounded,
+  DriveFileRenameOutlineRounded,
+  LanguageRounded,
+  LocalActivityRounded,
+  NoCrashRounded,
+  SaveRounded,
+  StarRounded,
+} from "@mui/icons-material";
 
 const CadastroGuia = () => {
   const [nome, setNome] = useState("");
@@ -24,11 +34,9 @@ const CadastroGuia = () => {
 
   useEffect(() => {
     const carregarDados = async () => {
-      // Idiomas
       const langs = await getLanguages();
       setIdiomasDisponiveis(langs);
 
-      // Passeios
       const snapshot = await getDocs(collection(db, "services"));
       const services = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -40,7 +48,6 @@ const CadastroGuia = () => {
     carregarDados();
   }, []);
 
-  // ===== IDIOMAS =====
   const adicionarIdioma = (idioma) => {
     if (idiomasSelecionados.find((i) => i.id === idioma.id)) return;
     setIdiomasSelecionados([...idiomasSelecionados, idioma]);
@@ -51,7 +58,6 @@ const CadastroGuia = () => {
     setIdiomasSelecionados(idiomasSelecionados.filter((i) => i.id !== id));
   };
 
-  // ===== PASSEIOS =====
   const adicionarPasseio = (passeio) => {
     if (passeiosSelecionados.find((p) => p.id === passeio.id)) return;
     setPasseiosSelecionados([...passeiosSelecionados, passeio]);
@@ -74,7 +80,6 @@ const CadastroGuia = () => {
     return valor;
   };
 
-  // ===== SALVAR =====
   const salvarGuia = async (e) => {
     e.preventDefault();
 
@@ -114,115 +119,241 @@ const CadastroGuia = () => {
   };
 
   return (
-    <div className="guide-form-container">
-      <h2 className="guide-form-title">Cadastrar Guia Turístico</h2>
+    <div className="cadastro-guia-page">
+      <div className="cadastro-guia-header">
+        <div>
+          <h2 className="cadastro-guia-title">
+            Cadastrar Guia Turístico <AssignmentIndRounded fontSize="small" />
+          </h2>
+          <p className="cadastro-guia-subtitle">
+            Cadastre guias, defina idiomas, serviços aptos e diferenciais
+            operacionais em uma estrutura mais organizada e profissional.
+          </p>
+        </div>
+      </div>
 
-      <form className="guide-form" onSubmit={salvarGuia}>
-        <input
-          type="text"
-          placeholder="Nome do guia"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          className="guide-input"
-        />
+      <div className="cadastro-guia-layout">
+        <section className="cadastro-guia-grid">
+          <div className="cadastro-guia-card cadastro-guia-card-large">
+            <div className="cadastro-guia-card-header">
+              <div className="cadastro-guia-card-title-row">
+                <h3>Informações do guia</h3>
+                <span className="cadastro-guia-badge">Cadastro</span>
+              </div>
+              <p>
+                Preencha os dados principais do profissional e configure suas
+                características operacionais.
+              </p>
+            </div>
 
-        <input
-          type="text"
-          placeholder="WhatsApp"
-          value={formatarTelefone(whatsapp)}
-          onChange={(e) => setWhatsapp(e.target.value)}
-          maxLength={15}
-          className="guide-input"
-        />
+            <form className="cadastro-guia-form" onSubmit={salvarGuia}>
+              <div className="cadastro-guia-form-grid">
+                <div className="cadastro-guia-field">
+                  <label htmlFor="guia-nome">
+                    Nome do guia{" "}
+                    <DriveFileRenameOutlineRounded fontSize="small" />
+                  </label>
+                  <input
+                    id="guia-nome"
+                    type="text"
+                    placeholder="Digite o nome do guia"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
+                </div>
 
-        {/* ===== IDIOMAS ===== */}
-        <label>Idiomas</label>
-        <div className="guide-dropdown">
-          <div
-            className="guide-dropdown-header"
-            onClick={() => setDropdownIdiomasOpen(!dropdownIdiomasOpen)}
-          >
-            Selecionar idiomas <span>▾</span>
+                <div className="cadastro-guia-field">
+                  <label htmlFor="guia-whatsapp">
+                    WhatsApp <ChatRounded fontSize="small" />
+                  </label>
+                  <input
+                    id="guia-whatsapp"
+                    type="text"
+                    placeholder="Informe o WhatsApp"
+                    value={formatarTelefone(whatsapp)}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    maxLength={15}
+                  />
+                </div>
+              </div>
+
+              <div className="cadastro-guia-form-grid">
+                <div className="cadastro-guia-field">
+                  <label>
+                    Idiomas <LanguageRounded fontSize="small" />
+                  </label>
+
+                  <div className="cadastro-guia-dropdown">
+                    <div
+                      className="cadastro-guia-dropdown-header"
+                      onClick={() =>
+                        setDropdownIdiomasOpen(!dropdownIdiomasOpen)
+                      }
+                    >
+                      <span>Selecionar idiomas</span>
+                      <span className="cadastro-guia-dropdown-arrow">▾</span>
+                    </div>
+
+                    {dropdownIdiomasOpen && (
+                      <div className="cadastro-guia-dropdown-menu">
+                        {idiomasDisponiveis.map((idioma) => (
+                          <div
+                            key={idioma.id}
+                            className="cadastro-guia-dropdown-item"
+                            onClick={() => adicionarIdioma(idioma)}
+                          >
+                            {idioma.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cadastro-guia-tags">
+                    {idiomasSelecionados.map((idioma) => (
+                      <div className="cadastro-guia-tag" key={idioma.id}>
+                        {idioma.label}
+                        <span onClick={() => removerIdioma(idioma.id)}>×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="cadastro-guia-field">
+                  <label>
+                    Passeios aptos <LocalActivityRounded fontSize="small" />
+                  </label>
+
+                  <div className="cadastro-guia-dropdown">
+                    <div
+                      className="cadastro-guia-dropdown-header"
+                      onClick={() =>
+                        setDropdownPasseiosOpen(!dropdownPasseiosOpen)
+                      }
+                    >
+                      <span>Selecionar passeios</span>
+                      <span className="cadastro-guia-dropdown-arrow">▾</span>
+                    </div>
+
+                    {dropdownPasseiosOpen && (
+                      <div className="cadastro-guia-dropdown-menu">
+                        {passeiosDisponiveis.map((passeio) => (
+                          <div
+                            key={passeio.id}
+                            className="cadastro-guia-dropdown-item"
+                            onClick={() => adicionarPasseio(passeio)}
+                          >
+                            {passeio.nome}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cadastro-guia-tags">
+                    {passeiosSelecionados.map((passeio) => (
+                      <div
+                        className="cadastro-guia-tag cadastro-guia-tag-service"
+                        key={passeio.id}
+                      >
+                        {passeio.nome}
+                        <span onClick={() => removerPasseio(passeio.id)}>
+                          ×
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="cadastro-guia-options-row">
+                <button
+                  type="button"
+                  className={`cadastro-guia-switch ${motoguia ? "active" : ""
+                    }`}
+                  onClick={() => setMotoguia(!motoguia)}
+                  aria-pressed={motoguia}
+                >
+                  <span className="cadastro-guia-switch-track">
+                    <span className="cadastro-guia-switch-thumb" />
+                  </span>
+                  <span className="cadastro-guia-switch-label">
+                    Atua como Motoguia <NoCrashRounded fontSize="small" />
+                  </span>
+                </button>
+              </div>
+
+              <div className="cadastro-guia-field">
+                <label htmlFor="guia-diferencial">
+                  Diferencial do guia <StarRounded fontSize="small" />
+                </label>
+                <textarea
+                  id="guia-diferencial"
+                  placeholder="Informe pontos fortes, características ou diferenciais importantes"
+                  value={diferencial}
+                  onChange={(e) => setDiferencial(e.target.value)}
+                />
+              </div>
+
+              <div className="cadastro-guia-actions">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="cadastro-guia-btn-primary"
+                >
+                  <SaveRounded fontSize="small" />
+                  {loading ? "Salvando..." : "Cadastrar guia"}
+                </button>
+              </div>
+            </form>
           </div>
 
-          {dropdownIdiomasOpen && (
-            <div className="guide-dropdown-menu">
-              {idiomasDisponiveis.map((idioma) => (
-                <div
-                  key={idioma.id}
-                  className="guide-dropdown-item"
-                  onClick={() => adicionarIdioma(idioma)}
-                >
-                  {idioma.label}
-                </div>
-              ))}
+          <div className="cadastro-guia-card">
+            <div className="cadastro-guia-card-header">
+              <div className="cadastro-guia-card-title-row">
+                <h3>Resumo do cadastro</h3>
+                <span className="cadastro-guia-badge">Preview</span>
+              </div>
+              <p>
+                Confira rapidamente como os dados do guia estão sendo montados
+                antes de salvar.
+              </p>
             </div>
-          )}
-        </div>
 
-        <div className="guide-tags">
-          {idiomasSelecionados.map((idioma) => (
-            <div className="guide-tag" key={idioma.id}>
-              {idioma.label}
-              <span onClick={() => removerIdioma(idioma.id)}>×</span>
+            <div className="cadastro-guia-preview">
+              <div className="cadastro-guia-preview-item">
+                <span className="cadastro-guia-preview-label">Nome</span>
+                <strong className="cadastro-guia-preview-value">
+                  {nome || "Não informado"}
+                </strong>
+              </div>
+
+              <div className="cadastro-guia-preview-item">
+                <span className="cadastro-guia-preview-label">WhatsApp</span>
+                <strong className="cadastro-guia-preview-value">
+                  {formatarTelefone(whatsapp) || "Não informado"}
+                </strong>
+              </div>
+
+              <div className="cadastro-guia-preview-item">
+                <span className="cadastro-guia-preview-label">Idiomas</span>
+                <strong className="cadastro-guia-preview-value">
+                  {idiomasSelecionados.length > 0
+                    ? idiomasSelecionados.map((i) => i.label).join(", ")
+                    : "Nenhum selecionado"}
+                </strong>
+              </div>
+
+              <div className="cadastro-guia-preview-item">
+                <span className="cadastro-guia-preview-label">Motoguia</span>
+                <strong className="cadastro-guia-preview-value">
+                  {motoguia ? "Sim" : "Não"}
+                </strong>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* ===== PASSEIOS ===== */}
-        <label>Passeios Aptos</label>
-        <div className="guide-dropdown">
-          <div
-            className="guide-dropdown-header"
-            onClick={() => setDropdownPasseiosOpen(!dropdownPasseiosOpen)}
-          >
-            Selecionar passeios <span>▾</span>
           </div>
-
-          {dropdownPasseiosOpen && (
-            <div className="guide-dropdown-menu">
-              {passeiosDisponiveis.map((passeio) => (
-                <div
-                  key={passeio.id}
-                  className="guide-dropdown-item"
-                  onClick={() => adicionarPasseio(passeio)}
-                >
-                  {passeio.nome}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="guide-tags">
-          {passeiosSelecionados.map((passeio) => (
-            <div className="guide-tag guide-tag--service" key={passeio.id}>
-              {passeio.nome}
-              <span onClick={() => removerPasseio(passeio.id)}>×</span>
-            </div>
-          ))}
-        </div>
-
-        <label className="guide-checkbox">
-          <input
-            type="checkbox"
-            checked={motoguia}
-            onChange={(e) => setMotoguia(e.target.checked)}
-          />
-          Atua como Motoguia
-        </label>
-
-        <textarea
-          placeholder="Diferencial do guia"
-          value={diferencial}
-          onChange={(e) => setDiferencial(e.target.value)}
-          className="guide-textarea"
-        />
-
-        <button type="submit" disabled={loading} className="guide-button">
-          {loading ? "Salvando..." : "Cadastrar Guia"}
-        </button>
-      </form>
+        </section>
+      </div>
     </div>
   );
 };

@@ -1,281 +1,563 @@
-/* ===== CONTAINER ===== */
-.form-container {
-  width: 55vw;
-  margin: 40px auto;
-  padding: 24px;
-  font-family: "Montserrat", sans-serif;
-  overflow-x: hidden;
+.cadastro-passeio-page {
+  width: 100%;
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
-.importacao-api-box {
-  margin-top: 24px;
+.cadastro-passeio-header {
   margin-bottom: 24px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
 }
 
-.importacao-api-box h3 {
-  margin-bottom: 8px;
-}
-
-.importacao-api-box p {
-  font-size: 12px;
-  color: var(--text-dist);
-  margin-bottom: 12px;
-}
-
-.btn-importar-api {
-  border: none;
-  padding: 10px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--btn-main);
-  color: var(--text-btn);
-  font-weight: 600;
-}
-
-.passeio-acoes {
+.cadastro-passeio-title {
   display: flex;
-  gap: 8px;
   align-items: center;
-}
-
-.btn-excluir {
-  border: none;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #dc2626;
-  color: white;
-  font-weight: 600;
-}
-
-.form-container h2 {
-  font-size: 14px;
-  font-weight: 700;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
   color: var(--text);
+  letter-spacing: -0.03em;
+}
+
+.cadastro-passeio-subtitle {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.cadastro-passeio-layout {
+  width: 100%;
+}
+
+.cadastro-passeio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.cadastro-passeio-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+}
+
+.cadastro-passeio-card-large {
+  grid-column: span 2;
+}
+
+.cadastro-passeio-card-full {
+  grid-column: 1 / -1;
+}
+
+.cadastro-passeio-card-header {
   margin-bottom: 20px;
 }
 
-/* ===== FORM CARD ===== */
-.form-container form {
-  background: var(--card);
-  padding: 28px;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+.cadastro-passeio-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cadastro-passeio-card-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.cadastro-passeio-card-header p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.cadastro-passeio-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dist);
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+/* form */
+.cadastro-passeio-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* ===== INPUTS ===== */
-.form-container input,
-.form-container textarea {
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  font-size: 10px;
-  background: var(--input);
+.cadastro-passeio-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 16px;
 }
 
-.form-container textarea {
-  resize: none;
-  min-height: 90px;
+.cadastro-passeio-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.form-container input:focus,
-.form-container textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  background: var(--card);
-  box-shadow: 0 0 0 2px rgba(2, 115, 115, 0.15);
-}
-
-/* ===== LABEL ===== */
-.form-container label {
-  font-size: 10px;
-  font-weight: 600;
+.cadastro-passeio-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
 }
 
-/* ===== DROPDOWN ===== */
-.dropdown-cad {
+.cadastro-passeio-field label svg {
+  color: var(--text-dist);
+}
+
+.cadastro-passeio-field input,
+.cadastro-passeio-field textarea {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 12px;
+  outline: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.cadastro-passeio-field input {
+  height: 50px;
+}
+
+.cadastro-passeio-field textarea {
+  min-height: 110px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.cadastro-passeio-field input::placeholder,
+.cadastro-passeio-field textarea::placeholder {
+  color: color-mix(in srgb, var(--text) 48%, transparent 52%);
+}
+
+.cadastro-passeio-field input:hover,
+.cadastro-passeio-field textarea:hover {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-passeio-field input:focus,
+.cadastro-passeio-field textarea:focus {
+  border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+    inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* dropdown */
+.cadastro-passeio-dropdown {
   position: relative;
 }
 
-.dropdown-header {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: var(--input);
-  border: 1px solid var(--border);
+.cadastro-passeio-dropdown-header {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
   color: var(--text);
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.cadastro-passeio-dropdown-header:hover {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-passeio-dropdown-arrow {
+  opacity: 0.75;
+}
+
+.cadastro-passeio-dropdown-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  z-index: 20;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+}
+
+.cadastro-passeio-dropdown-item {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cadastro-passeio-dropdown-item:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+}
+
+/* tags */
+.cadastro-passeio-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 10px;
+}
+
+.cadastro-passeio-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+  color: var(--text-dist);
   font-size: 10px;
   font-weight: 500;
+}
+
+.cadastro-passeio-tag span {
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.dropdown-list {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 100%;
-  background: var(--card);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  overflow: hidden;
-}
-
-.dropdown-item {
-  padding: 12px 16px;
   font-size: 10px;
+  line-height: 1;
+  color: var(--text-dist);
+  opacity: 0.85;
+}
+
+.cadastro-passeio-tag span:hover {
+  opacity: 1;
+}
+
+/* actions */
+.cadastro-passeio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.cadastro-passeio-btn-primary,
+.cadastro-passeio-btn-secondary,
+.cadastro-passeio-btn-soft,
+.cadastro-passeio-btn-edit,
+.cadastro-passeio-btn-delete {
+  border: none;
   cursor: pointer;
+  transition: all 0.25s ease;
+  font-weight: 500;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.dropdown-item:hover {
-  background: #f3f4f6;
+.cadastro-passeio-btn-primary {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: var(--btn-main);
+  color: var(--text-btn);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
-/* ===== TAGS (DIAS SELECIONADOS) ===== */
-.selected-languages {
+.cadastro-passeio-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.cadastro-passeio-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cadastro-passeio-btn-secondary {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.cadastro-passeio-btn-secondary:hover {
+  background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+}
+
+.cadastro-passeio-btn-soft {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+}
+
+.cadastro-passeio-btn-soft:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+}
+
+.cadastro-passeio-btn-soft:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* import */
+.cadastro-passeio-import-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+}
+
+.cadastro-passeio-import-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+  color: var(--text-dist);
+}
+
+/* list */
+.cadastro-passeio-empty {
+  border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border-radius: 18px;
+  padding: 18px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+  background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+}
+
+.cadastro-passeio-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cadastro-passeio-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+}
+
+.cadastro-passeio-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cadastro-passeio-item-name {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.cadastro-passeio-item-desc {
+  margin: 0 0 10px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+}
+
+.cadastro-passeio-item-desc.is-empty {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.cadastro-passeio-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+}
+
+.cadastro-passeio-meta strong {
+  color: var(--text);
+}
+
+.cadastro-passeio-frequency {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.language-tag {
-  background: var(--primary);
-  color: var(--text-dist);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 999px;
-  display: flex;
+.cadastro-passeio-day-tag {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.language-tag span {
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.language-tag span:hover {
-  color: #b91c1c;
-}
-
-/* ===== BOTÃO ===== */
-.form-container button {
-  align-self: flex-start;
-  background: var(--side);
-  color: var(--text-btn);
-  padding: 14px 22px;
-  border-radius: 12px;
-  border: none;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.form-container button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ===== MOBILE ===== */
-@media (max-width: 640px) {
-  .form-container {
-    padding: 16px;
-  }
-
-  .form-container form {
-    padding: 20px;
-  }
-}
-
-.passeio-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.lista-passeios {
-  margin-top: 30px;
-}
-
-.lista-passeios h3 {
-  margin-bottom: 10px;
-  color: var(--text);
-  font-size: 14px;
-}
-
-.passeio-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 15px;
-  background: var(--card) !important;
-  border: 1px solid var(--border) !important;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
-
-.p-name {
-  font-size: 12px;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.passeio-info p {
-  margin: 6px 0;
-  color: var(--text);
-  font-size: 10px;
-}
-
-.frequencia-tags {
-  display: flex;
-  flex-wrap: wrap;
-  width: 100%;
-  gap: 6px;
-}
-
-.tag-dia {
-  background: var(--primary);
-  color: var(--text-dist);
-  padding: 4px 8px;
-  border-radius: 8px;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 999px;
   font-size: 8px;
-}
-
-.btn-editar {
-  background: var(--primary);
+  font-weight: 600;
   color: var(--text-dist);
-  border: none;
-  padding: 8px !important;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 10px !important;
-  transition: 0.2s;
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
 }
 
-.btn-cancelar {
-  background: var(--secondary);
-  color: var(--text-dist);
-  border: none;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 8px;
-  width: 100%;
+.cadastro-passeio-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 13px;
 }
 
-.btn-cancelar:hover {
-  background: #555;
+.cadastro-passeio-btn-edit {
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border) 82%);
+}
+
+.cadastro-passeio-btn-edit:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+}
+
+.cadastro-passeio-btn-delete {
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--p1) 12%, transparent 88%);
+  color: var(--p1);
+  border: 1px solid color-mix(in srgb, var(--p1) 24%, transparent 76%);
+}
+
+.cadastro-passeio-btn-delete:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--p1) 18%, transparent 82%);
+}
+
+/* responsive */
+@media (max-width: 1024px) {
+  .cadastro-passeio-card-large {
+    grid-column: span 1;
+  }
+
+  .cadastro-passeio-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .cadastro-passeio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cadastro-passeio-card-full {
+    grid-column: auto;
+  }
+
+  .cadastro-passeio-item {
+    flex-direction: column;
+  }
+
+  .cadastro-passeio-item-actions {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+  }
+
+  .cadastro-passeio-btn-edit,
+  .cadastro-passeio-btn-delete {
+    flex: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .cadastro-passeio-page {
+    padding: 4px;
+  }
+
+  .cadastro-passeio-title {
+    font-size: 25px;
+  }
+
+  .cadastro-passeio-subtitle {
+    font-size: 13px;
+  }
+
+  .cadastro-passeio-card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .cadastro-passeio-card-header h3 {
+    font-size: 19px;
+  }
+
+  .cadastro-passeio-actions {
+    flex-direction: column;
+  }
+
+  .cadastro-passeio-btn-primary,
+  .cadastro-passeio-btn-secondary,
+  .cadastro-passeio-btn-soft {
+    width: 100%;
+  }
+
+  .cadastro-passeio-import-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cadastro-passeio-item-actions {
+    flex-direction: column;
+  }
 }
