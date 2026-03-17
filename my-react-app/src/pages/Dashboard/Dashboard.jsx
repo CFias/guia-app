@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import "./styles.css";
 
-import logo from "../../assets/logo4.png";
+import logo from "../../assets/clover.png";
 import {
   AnalyticsRounded,
   AssignmentIndRounded,
@@ -81,7 +81,7 @@ const Dashboard = ({ loading }) => {
             <span>Configurações</span>
           </NavLink>
 
-          <div className="sidebar-version">v1.1.0</div>
+          <div className="sidebar-version">v1.1.1 Beta</div>
         </div>
       </aside>
 

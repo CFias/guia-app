@@ -170,8 +170,8 @@
 .resumo-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 18px;
+  border-radius: 14px;
+  padding: 10px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
 }
 
@@ -180,12 +180,12 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 3px;
 }
 
 .resumo-nome {
   margin: 0;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text);
 }
@@ -195,6 +195,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  font-size: 10px;
 }
 
 .medalha {
@@ -207,7 +208,7 @@
 }
 
 .resumo-percent {
-  min-width: 40px;
+  min-width: 30px;
   text-align: center;
   padding: 6px 8px;
   border-radius: 999px;
@@ -302,14 +303,16 @@
 
 .mini-bar {
   width: 10px;
-  height: 16px;
+  height: 10px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--border) 60%, transparent 40%);
+  background: color-mix(in srgb, var(--border) 100%, transparent 40%);
 }
 
 .mini-bar.ativo {
   width: 10px;
-  height: 18px;
+  height: 10px;
+  padding: 0;
+  background: #000;
   border-radius: 8px;
   background: var(--text-dist);
 }

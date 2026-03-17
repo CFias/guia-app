@@ -23,16 +23,14 @@
   width: 100%;
   min-height: calc(100vh - 48px);
   position: relative;
-  background: var(--card);
   padding: 20px;
   border-radius: 7px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  border: 1px solid var(--border);
 }
 
 /* ===== SIDEBAR ===== */
 .sidebar {
-  width: 250px;
+  width: 350px;
   min-height: 100vh;
   position: fixed;
   top: 0;
@@ -79,8 +77,8 @@
 }
 
 .sidebar-logo-box img {
-  width: 26px;
-  height: 26px;
+  width: 45px;
+  height: 45px;
   object-fit: contain;
 }
 
@@ -138,7 +136,7 @@
 }
 
 .sidebar-link span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: inherit;
 }
@@ -155,7 +153,7 @@
 
 /* ===== ITEM ATIVO ===== */
 .sidebar-link.active {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(19, 122, 92, 0.16);
   color: #ffffff;
 }
 

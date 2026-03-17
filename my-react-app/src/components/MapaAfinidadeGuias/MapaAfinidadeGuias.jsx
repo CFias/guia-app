@@ -10,6 +10,13 @@ import {
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
 import LoadingBlock from "../LoadingOverlay/LoadingOverlay";
+import {
+  AutoGraphRounded,
+  ManageAccountsRounded,
+  SaveRounded,
+  TravelExploreRounded,
+  TuneRounded,
+} from "@mui/icons-material";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não operar";
@@ -188,78 +195,174 @@ const MapaAfinidadeGuias = () => {
   };
 
   return (
-    <div className="mapa-page">
-      <h2 className="page-h2">Mapa de Afinidade Guia x Passeio</h2>
+    <div className="afinidade-page">
+      <div className="afinidade-page-header">
+        <div>
+          <h2 className="afinidade-page-title">
+            Mapa de Afinidade Guia x Passeio{" "}
+            <AutoGraphRounded fontSize="small" />
+          </h2>
+          <p className="afinidade-page-subtitle">
+            Defina o nível de operação de cada guia em relação aos passeios e
+            melhore a qualidade da distribuição automática.
+          </p>
+        </div>
+      </div>
 
-      <div className="mapa-card">
-        <div className="config-field">
-          <label>Selecionar guia</label>
-          <select
-            className="theme-select"
-            value={guiaSelecionado}
-            onChange={(e) => setGuiaSelecionado(e.target.value)}
-          >
-            <option value="">Selecione um guia</option>
-            {guias.map((guia) => (
-              <option key={guia.id} value={guia.id}>
-                {guia.nome}
-              </option>
-            ))}
-          </select>
+      <div className="afinidade-grid">
+        <div className="afinidade-card afinidade-card-large">
+          <div className="afinidade-card-header">
+            <div className="afinidade-card-title-row">
+              <h3>Selecionar guia</h3>
+              <span className="afinidade-badge">Configuração</span>
+            </div>
+            <p>
+              Escolha um guia para ajustar sua afinidade operacional com cada
+              passeio cadastrado.
+            </p>
+          </div>
+
+          <div className="afinidade-field">
+            <label htmlFor="afinidade-guia-select">
+              Guia <ManageAccountsRounded fontSize="small" />
+            </label>
+            <select
+              id="afinidade-guia-select"
+              className="afinidade-select"
+              value={guiaSelecionado}
+              onChange={(e) => setGuiaSelecionado(e.target.value)}
+            >
+              <option value="">Selecione um guia</option>
+              {guias.map((guia) => (
+                <option key={guia.id} value={guia.id}>
+                  {guia.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {mensagem && (
+            <div className={`afinidade-alerta ${tipoMensagem}`}>{mensagem}</div>
+          )}
+
+          {guiaAtual && (
+            <div className="afinidade-resumo-guia">
+              Configurando níveis de operação para{" "}
+              <strong>{guiaAtual.nome}</strong>
+            </div>
+          )}
+
+          {guiaAtual && passeios.length === 0 && (
+            <div className="afinidade-vazio">
+              Nenhum passeio encontrado na coleção <strong>services</strong>.
+            </div>
+          )}
         </div>
 
-        {mensagem && (
-          <div className={`mapa-alerta ${tipoMensagem}`}>{mensagem}</div>
-        )}
-
-        {guiaAtual && (
-          <div className="mapa-resumo-guia">
-            Configurando níveis de operação para{" "}
-            <strong>{guiaAtual.nome}</strong>
+        <div className="afinidade-card">
+          <div className="afinidade-card-header">
+            <div className="afinidade-card-title-row">
+              <h3>Leitura dos níveis</h3>
+              <span className="afinidade-badge">Escala</span>
+            </div>
+            <p>
+              Use a escala para indicar o quanto o guia está apto a operar cada
+              passeio.
+            </p>
           </div>
-        )}
 
-        {guiaAtual && passeios.length === 0 && (
-          <div className="mapa-vazio">
-            Nenhum passeio encontrado na coleção <strong>services</strong>.
+          <div className="afinidade-legend">
+            <div className="afinidade-legend-item">
+              <span className="afinidade-legend-dot zero" />
+              <div>
+                <strong>0</strong>
+                <span>Não operar</span>
+              </div>
+            </div>
+
+            <div className="afinidade-legend-item">
+              <span className="afinidade-legend-dot baixo" />
+              <div>
+                <strong>5 a 40</strong>
+                <span>Nível baixo</span>
+              </div>
+            </div>
+
+            <div className="afinidade-legend-item">
+              <span className="afinidade-legend-dot medio" />
+              <div>
+                <strong>45 a 60</strong>
+                <span>Nível médio</span>
+              </div>
+            </div>
+
+            <div className="afinidade-legend-item">
+              <span className="afinidade-legend-dot alto" />
+              <div>
+                <strong>65 a 100</strong>
+                <span>Nível alto</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
 
         {guiaAtual && passeios.length > 0 && (
-          <>
-            <div className="mapa-lista">
+          <div className="afinidade-card afinidade-card-full">
+            <div className="afinidade-card-header">
+              <div className="afinidade-card-title-row">
+                <h3>Relações de afinidade</h3>
+                <span className="afinidade-badge">
+                  {passeios.length} passeio(s)
+                </span>
+              </div>
+              <p>
+                Ajuste os níveis individualmente para refletir melhor a aptidão
+                operacional do guia.
+              </p>
+            </div>
+
+            <div className="afinidade-lista">
               {passeios.map((passeio) => {
                 const valor = niveis[String(passeio.id)] ?? 0;
 
                 return (
-                  <div key={passeio.id} className="mapa-item">
-                    <div className="mapa-topo">
-                      <div className="mapa-titulo-relacao">
-                        <span className="mapa-guia">{guiaAtual.nome}</span>
-                        <span className="mapa-separador">•</span>
-                        <span className="mapa-passeio">
+                  <div key={passeio.id} className="afinidade-item">
+                    <div className="afinidade-item-topo">
+                      <div className="afinidade-item-relacao">
+                        <span className="afinidade-item-guia">
+                          <ManageAccountsRounded fontSize="small" />
+                          {guiaAtual.nome}
+                        </span>
+
+                        <span className="afinidade-item-separador">•</span>
+
+                        <span className="afinidade-item-passeio">
+                          <TravelExploreRounded fontSize="small" />
                           {obterNomePasseio(passeio)}
                         </span>
                       </div>
 
-                      <div className="mapa-valor">
-                        {valor} • {LABEL_NIVEL(valor)}
+                      <div className="afinidade-item-valor">
+                        <strong>{valor}</strong>
+                        <span>{LABEL_NIVEL(valor)}</span>
                       </div>
                     </div>
 
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={valor}
-                      onChange={(e) =>
-                        atualizarNivel(passeio.id, e.target.value)
-                      }
-                      className="mapa-range"
-                    />
+                    <div className="afinidade-range-wrap">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={valor}
+                        onChange={(e) =>
+                          atualizarNivel(passeio.id, e.target.value)
+                        }
+                        className="afinidade-range"
+                      />
+                    </div>
 
-                    <div className="mapa-escala-labels">
+                    <div className="afinidade-escala-labels">
                       <span>Não opera</span>
                       <span>Médio</span>
                       <span>Excelente</span>
@@ -269,14 +372,17 @@ const MapaAfinidadeGuias = () => {
               })}
             </div>
 
-            <button
-              className="disp-btn-save"
-              onClick={salvarMapa}
-              disabled={salvando || !guiaSelecionado}
-            >
-              {salvando ? "Salvando..." : "Salvar mapeamento"}
-            </button>
-          </>
+            <div className="afinidade-actions">
+              <button
+                className="afinidade-btn-save"
+                onClick={salvarMapa}
+                disabled={salvando || !guiaSelecionado}
+              >
+                <SaveRounded fontSize="small" />
+                {salvando ? "Salvando..." : "Salvar mapeamento"}
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

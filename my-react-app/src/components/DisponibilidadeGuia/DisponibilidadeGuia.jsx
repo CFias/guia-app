@@ -578,7 +578,7 @@ const DisponibilidadeGuia = () => {
         </div>
       </div>
 
-      <LoadingBlock loading={loading} text="Carregando..." />
+      <LoadingBlock loading={loading} text="Carregando..." respectSidebar />
     </div>
   );
 };

@@ -375,12 +375,12 @@ const ordenarServicosPorEscassez = (
 
     const maiorNivel = aptos.length
       ? Math.max(
-        ...aptos.map((g) =>
-          Number(
-            obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
+          ...aptos.map((g) =>
+            Number(
+              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
+            ),
           ),
-        ),
-      )
+        )
       : 0;
 
     return {
@@ -510,13 +510,13 @@ const escolherProximoServico = ({
     const maiorNivel = usarAfinidadeGuiaPasseio
       ? elegiveis.length
         ? Math.max(
-          ...elegiveis.map((g) =>
-            Number(
-              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
-              0,
+            ...elegiveis.map((g) =>
+              Number(
+                obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
+                  0,
+              ),
             ),
-          ),
-        )
+          )
         : 0
       : 0;
 
@@ -848,9 +848,10 @@ const ListaPasseiosSemana = () => {
         grupo.forEach((linha, index) => {
           htmlLinhas += `
           <tr>
-            ${index === 0
-              ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
-              : ""
+            ${
+              index === 0
+                ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
+                : ""
             }
             <td>${linha.passeio}</td>
             <td>${linha.guia}</td>
@@ -1414,13 +1415,13 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                ...r,
-                allocationStatus: status,
-                ...(status === "CLOSED" && {
-                  guiaId: null,
-                  guiaNome: null,
-                }),
-              }
+                  ...r,
+                  allocationStatus: status,
+                  ...(status === "CLOSED" && {
+                    guiaId: null,
+                    guiaNome: null,
+                  }),
+                }
               : r,
           );
         });
@@ -1939,12 +1940,12 @@ Operacional - Luck Receptivo 🍀
 
         const itensOrdenados = usarAfinidadeGuiaPasseio
           ? ordenarServicosPorEscassez(
-            itensPendentes,
-            guiasDisponiveis,
-            usadosNoDia,
-            mapaAfinidade,
-            services,
-          )
+              itensPendentes,
+              guiasDisponiveis,
+              usadosNoDia,
+              mapaAfinidade,
+              services,
+            )
           : itensPendentes;
 
         for (const item of itensOrdenados) {
@@ -1970,26 +1971,26 @@ Operacional - Luck Receptivo 🍀
 
           const candidatosOrdenados = usarAfinidadeGuiaPasseio
             ? ordenarGuiasComAfinidade(
-              elegiveis,
-              contadorSemana,
-              workedInWeek,
-              diasTrabalhadosSemana,
-              item,
-              mapaAfinidade,
-              services,
-              modoDistribuicaoGuias,
-              mapaDisponibilidade,
-              semana,
-            )
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                item,
+                mapaAfinidade,
+                services,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              )
             : ordenarGuiasSemAfinidade(
-              elegiveis,
-              contadorSemana,
-              workedInWeek,
-              diasTrabalhadosSemana,
-              modoDistribuicaoGuias,
-              mapaDisponibilidade,
-              semana,
-            );
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              );
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
@@ -2060,7 +2061,7 @@ Operacional - Luck Receptivo 🍀
 
   return (
     <div className="page-container">
-      <LoadingBlock loading={loading} text="Processando escala..." />
+      <LoadingBlock loading={loading} text="Carregando..." respectSidebar />
 
       <h2>Planejamento Semanal de Passeios</h2>
 
