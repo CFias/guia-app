@@ -10,7 +10,7 @@
 
 .page-container {
   width: 100%;
-  max-width: 1320px;
+  max-width: 65vw;
   margin: 0 auto;
   padding: 8px;
   box-sizing: border-box;
@@ -60,8 +60,13 @@
   background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
   color: var(--text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
+}
+
+.counter-info strong {
+  font-weight: 600;
+  color: var(--text-dist);
 }
 
 /* ===== BOTÕES ===== */
@@ -69,6 +74,7 @@
 .btn-list-edt,
 .btn-list-cld,
 .btn-list-send,
+.btn-list-gerar,
 .btn-whatsapp-guia,
 .btn-add,
 .btn-remove {
@@ -103,15 +109,26 @@
   background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
 }
 
+.btn-list-gerar {
+  background: color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, var(--border) 82%);
+}
+
+.btn-list-gerar:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--text-dist) 18%, var(--card) 82%);
+}
+
 .btn-list-edt {
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  color: var(--text-dist);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+  background: color-mix(in srgb, var(--p2) 10%, transparent 90%);
+  color: var(--p2);
+  border: 1px solid color-mix(in srgb, var(--p2) 18%, transparent 82%);
 }
 
 .btn-list-edt:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+  background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
 }
 
 .btn-list-cld {
@@ -151,7 +168,7 @@
   background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
   border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border) 84%);
   color: var(--text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -602,4 +619,53 @@
   .day-list {
     font-size: 16px;
   }
+}
+
+.planner-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.planner-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(16, 124, 65, 0.1);
+  color: #107c41;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(16, 124, 65, 0.16);
+}
+
+.planner-summary-skeleton,
+.planner-days-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.day-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-toggle button:disabled,
+.week-controls button:disabled,
+.btn-whatsapp-guia:disabled,
+.btn-add:disabled,
+.btn-remove:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.passeio-item input:disabled,
+.passeio-item select:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
 }

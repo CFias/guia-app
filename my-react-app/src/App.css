@@ -5,73 +5,127 @@
 
 /* ===== LIGHT ===== */
 body.light {
-  --bg: #d5d5d5;
-  --card: #ececec;
-  --side: #12443b;
-  --input: #dfdfdf;
-  --text-side: #e4e4e4;
-  --border: #dadada81;
-  --text: #1f1f1f;
-  --text-btn: #eeeeee;
-  --text-dist: #00c798;
-  --p1: #9d0e0e;
-  --primary-2: #a80303;
-  --p2: #b6a100;
-  --primary-1: #b39800;
-  --p3: #00c798;
-  --primary: #014034;
-  --btn-main: #005646;
-  --status-red: #c61414a2;
-  --status-red-btn: #161200;
+  /* Base */
+  --bg: #f5f7f8;
+  --card: #ffffff;
+  --side: #017f69;
+  --input: #f1f3f4;
 
+  /* Texto */
+  --text: #1a1a1a;
+  --text-side: #f4f6f7;
+  --text-btn: #ffffff;
+
+  /* Bordas */
+  --border: rgba(15, 23, 42, 0.08);
+
+  /* Identidade (mantida) */
+  --text-dist: #00c798;
+
+  /* Verde principal */
+  --primary: #014034;
+  --primary-1: #016554;
+  --primary-2: #018a73;
+
+  /* Botões */
+  --btn-main: #017b64;
+
+  /* Destaques */
+  --p3: #00c798;
+  --p2: #c6ad00;
+  --p1: #b01818;
+
+  /* Status */
+  --status-red: #dc2626;
+  --status-red-btn: #7f1d1d;
 }
+
 
 /* ===== DARK PADRÃO ===== */
 body.dark {
-  --bg: #1F2024;
-  --card: #373737;
+
+  /* Base */
+  --bg: #16181b;
+  --card: #1f2328;
   --side: #0a1d19;
-  --input: #434343;
-  --border: #dadada81;
-  --text: #d5d5d5;
-  --primary: #064d47;
+  --input: #24282e;
+
+  /* Bordas */
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* Texto */
+  --text: #e4e6eb;
+  --text-btn: #f1f1f1;
+
+  /* Identidade */
   --text-dist: #00c798;
-  --btn-main: #094439;
-  --text-btn: #c2c2c2;
-  --status-red: #c61414a2;
-  --status-red-btn: #161200;
-  --p1: #c70000;
-  --primary-2: #4d0606;
-  --p2: #f7db05;
-  --primary-1: #4d4206;
+
+  /* Verde principal */
+  --primary: #014034;
+  --primary-1: #016554;
+  --primary-2: #018a73;
+
+  /* Botão principal */
+  --btn-main: #016554;
+
+  /* Destaques */
   --p3: #00c798;
+  --p2: #d9c400;
+  --p1: #d32f2f;
+
+  /* Status */
+  --status-red: #ef4444;
+  --status-red-btn: #7f1d1d;
 }
 
 
 
-/* ===== DARK PRO (mais premium) ===== */
+/* ===== DARK PRO (premium refinado) ===== */
 body.dark-pro {
-  --bg: #252323;
-  --card: #212328;
-  --text-dist: #00c798;
-  --side: #182625;
-  --input: #2a2a2a;
-  --border: rgba(255, 255, 255, 0.08);;
 
-  --text: #e4e4e4;
-  --primary: #08201d;
-  --btn-main: #027963;
-  --status-red: #c61414a2;
-  --status-red-btn: #161200;
-  --text-btn: #dbdbdb;
-  --p1: #c70000;
-  --primary-2: #4d060648;
-  --p2: #f7db05;
-  --primary-1: #4d42063d;
+  /* Fundo principal */
+  --bg: #121417;
+
+  /* Camadas */
+  --card: #1a1d21;
+  --side: #0f1f1d;
+  --input: #1f2328;
+
+  /* Bordas */
+  --border: rgba(255, 255, 255, 0.06);
+
+  /* Texto */
+  --text: #e6e8eb;
+  --text-btn: #f1f3f4;
+
+  /* Identidade */
+  --text-dist: #00c798;
+
+  /* Verde principal */
+  --primary: #013c32;
+  --primary-1: #01594a;
+  --primary-2: #017a64;
+
+  /* Botões */
+  --btn-main: #017a64;
+
+  /* Destaques */
   --p3: #00c798;
+  --p2: #e6c800;
+  --p1: #e53935;
+
+  /* Status */
+  --status-red: #ef4444;
+  --status-red-btn: #7f1d1d;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
+}
+
+.home-dashboard-card,
+.lista-guias-card {
+  position: relative;
+  overflow: hidden;
 }

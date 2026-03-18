@@ -16,7 +16,7 @@ import {
 } from "@mui/icons-material";
 import { db } from "../../Services/Services/firebase";
 import logo from "../../assets/logo4.png";
-import LoadingBlock from "../LoadingOverlay/LoadingOverlay.jsx";
+import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 
 const DIAS = [
@@ -393,7 +393,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -404,11 +404,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -579,8 +579,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -888,10 +888,10 @@ Operacional - Luck Receptivo
     return `em ${dataBr}`;
   };
 
+  const carregandoCards = loading || atualizandoApi;
+
   return (
     <div className="home-dashboard-page">
-      <LoadingBlock loading={loading} text="Carregando..." respectSidebar />
-
       <div className="home-dashboard-header">
         <div className="home-dashboard-brand">
           <img
@@ -961,53 +961,59 @@ Operacional - Luck Receptivo
             </div>
           </div>
 
-          <div className="home-dashboard-metrics">
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <TravelExploreRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Serviços reais</span>
-                <strong className="metric-value">
-                  {dashboard.totalServicosReais}
-                </strong>
-              </div>
-            </button>
+          {loading ? (
+            <CardSkeleton variant="metrics" />
+          ) : (
+            <div className="home-dashboard-metrics">
+              <button type="button" className="home-dashboard-metric-card">
+                <div className="metric-icon">
+                  <TravelExploreRounded fontSize="small" />
+                </div>
+                <div>
+                  <span className="metric-label">Serviços reais</span>
+                  <strong className="metric-value">
+                    {dashboard.totalServicosReais}
+                  </strong>
+                </div>
+              </button>
 
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <FactCheckRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Serviços com guia (%)</span>
-                <strong className="metric-value">
-                  {dashboard.percentualServicosComGuia}%
-                </strong>
-              </div>
-            </button>
+              <button type="button" className="home-dashboard-metric-card">
+                <div className="metric-icon">
+                  <FactCheckRounded fontSize="small" />
+                </div>
+                <div>
+                  <span className="metric-label">Serviços com guia (%)</span>
+                  <strong className="metric-value">
+                    {dashboard.percentualServicosComGuia}%
+                  </strong>
+                </div>
+              </button>
 
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <GroupsRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Passageiros com guia (%)</span>
-                <strong className="metric-value">
-                  {dashboard.percentualPassageirosComGuia}%
-                </strong>
-              </div>
-            </button>
+              <button type="button" className="home-dashboard-metric-card">
+                <div className="metric-icon">
+                  <GroupsRounded fontSize="small" />
+                </div>
+                <div>
+                  <span className="metric-label">Passageiros com guia (%)</span>
+                  <strong className="metric-value">
+                    {dashboard.percentualPassageirosComGuia}%
+                  </strong>
+                </div>
+              </button>
 
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <InsightsRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Pax sem guia</span>
-                <strong className="metric-value">{dashboard.paxSemGuia}</strong>
-              </div>
-            </button>
-          </div>
+              <button type="button" className="home-dashboard-metric-card">
+                <div className="metric-icon">
+                  <InsightsRounded fontSize="small" />
+                </div>
+                <div>
+                  <span className="metric-label">Pax sem guia</span>
+                  <strong className="metric-value">
+                    {dashboard.paxSemGuia}
+                  </strong>
+                </div>
+              </button>
+            </div>
+          )}
 
           <div className="home-dashboard-card home-dashboard-card-full">
             <div className="home-dashboard-card-header">
@@ -1025,142 +1031,146 @@ Operacional - Luck Receptivo
               </button>
             </div>
 
-            <div className="home-day-selector">
-              {semana.map((dia) => (
-                <button
-                  key={dia.date}
-                  type="button"
-                  className={`home-day-chip ${
-                    diaSelecionadoHome === dia.date ? "active" : ""
-                  }`}
-                  onClick={() => setDiaSelecionadoHome(dia.date)}
-                >
-                  {dia.day} • {dia.label}
-                </button>
-              ))}
-            </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="table" />
+            ) : (
+              <>
+                <div className="home-day-selector">
+                  {semana.map((dia) => (
+                    <button
+                      key={dia.date}
+                      type="button"
+                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
+                        }`}
+                      onClick={() => setDiaSelecionadoHome(dia.date)}
+                    >
+                      {dia.day} • {dia.label}
+                    </button>
+                  ))}
+                </div>
 
-            <div className="home-services-filters">
-              <select
-                className="home-services-filter-select"
-                value={filtroStatusDia}
-                onChange={(e) => setFiltroStatusDia(e.target.value)}
-              >
-                <option value="todos">Todos os status</option>
-                <option value="alocado">Alocado</option>
-                <option value="sem_guia">Sem guia</option>
-                <option value="fechado">Fechado</option>
-                <option value="grupo_formado">Grupo formado</option>
-                <option value="formar_grupo">Formar grupo</option>
-              </select>
+                <div className="home-services-filters">
+                  <select
+                    className="home-services-filter-select"
+                    value={filtroStatusDia}
+                    onChange={(e) => setFiltroStatusDia(e.target.value)}
+                  >
+                    <option value="todos">Todos os status</option>
+                    <option value="alocado">Alocado</option>
+                    <option value="sem_guia">Sem guia</option>
+                    <option value="fechado">Fechado</option>
+                    <option value="grupo_formado">Grupo formado</option>
+                    <option value="formar_grupo">Formar grupo</option>
+                  </select>
 
-              <select
-                className="home-services-filter-select"
-                value={filtroGuiaDia}
-                onChange={(e) => setFiltroGuiaDia(e.target.value)}
-              >
-                <option value="todos">Todos os guias</option>
-                {guiasDisponiveisNoDia.map((guia) => (
-                  <option key={guia} value={guia}>
-                    {guia}
-                  </option>
-                ))}
-              </select>
+                  <select
+                    className="home-services-filter-select"
+                    value={filtroGuiaDia}
+                    onChange={(e) => setFiltroGuiaDia(e.target.value)}
+                  >
+                    <option value="todos">Todos os guias</option>
+                    {guiasDisponiveisNoDia.map((guia) => (
+                      <option key={guia} value={guia}>
+                        {guia}
+                      </option>
+                    ))}
+                  </select>
 
-              <select
-                className="home-services-filter-select"
-                value={ordenacaoPaxDia}
-                onChange={(e) => setOrdenacaoPaxDia(e.target.value)}
-              >
-                <option value="maior">Ordenar por maior pax</option>
-                <option value="menor">Ordenar por menor pax</option>
-                <option value="nome">Ordenar por nome</option>
-              </select>
-            </div>
+                  <select
+                    className="home-services-filter-select"
+                    value={ordenacaoPaxDia}
+                    onChange={(e) => setOrdenacaoPaxDia(e.target.value)}
+                  >
+                    <option value="maior">Ordenar por maior pax</option>
+                    <option value="menor">Ordenar por menor pax</option>
+                    <option value="nome">Ordenar por nome</option>
+                  </select>
+                </div>
 
-            <div className="home-services-table-wrap">
-              <table className="home-services-table">
-                <thead>
-                  <tr>
-                    <th>Status operacional</th>
-                    <th>Status do grupo</th>
-                    <th>Passeio</th>
-                    <th>Guia</th>
-                    <th>Pax</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {servicosDoDia.length === 0 ? (
-                    <tr>
-                      <td colSpan="6">
-                        <div className="empty-state">
-                          Nenhum serviço encontrado para o dia selecionado.
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    servicosDoDia.map((item) => (
-                      <tr key={item.chave}>
-                        <td>
-                          <span
-                            className={`home-service-status ${
-                              item.statusOperacional === "Fechado"
-                                ? "fechado"
-                                : item.statusOperacional === "Alocado"
-                                  ? "alocado"
-                                  : "sem-guia"
-                            }`}
-                          >
-                            {item.statusOperacional}
-                          </span>
-                        </td>
-
-                        <td>
-                          <span
-                            className={`home-group-status ${
-                              item.statusGrupo === "Fechado"
-                                ? "fechado"
-                                : item.statusGrupo === "Grupo formado"
-                                  ? "formado"
-                                  : "alerta"
-                            }`}
-                          >
-                            {item.statusGrupo}
-                          </span>
-                        </td>
-
-                        <td>{item.serviceName}</td>
-                        <td>{item.guiaNome || "-"}</td>
-                        <td>
-                          {item.passengers}
-                          <small className="home-service-pax-detail">
-                            {" "}
-                            ({item.adultCount || 0} ADT / {item.childCount || 0}{" "}
-                            CHD / {item.infantCount || 0} INF)
-                          </small>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="home-send-guide-btn"
-                            onClick={() => enviarWhatsappServico(item)}
-                            disabled={!item.guiaId && !item.guiaNome}
-                            title={
-                              item.guiaId || item.guiaNome
-                                ? "Enviar mensagem ao guia"
-                                : "Serviço sem guia alocado"
-                            }
-                          >
-                            Enviar ao guia
-                          </button>
-                        </td>
+                <div className="home-services-table-wrap">
+                  <table className="home-services-table">
+                    <thead>
+                      <tr>
+                        <th>Status operacional</th>
+                        <th>Status do grupo</th>
+                        <th>Passeio</th>
+                        <th>Guia</th>
+                        <th>Pax</th>
+                        <th>Ações</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {servicosDoDia.length === 0 ? (
+                        <tr>
+                          <td colSpan="6">
+                            <div className="empty-state">
+                              Nenhum serviço encontrado para o dia selecionado.
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        servicosDoDia.map((item) => (
+                          <tr key={item.chave}>
+                            <td>
+                              <span
+                                className={`home-service-status ${item.statusOperacional === "Fechado"
+                                    ? "fechado"
+                                    : item.statusOperacional === "Alocado"
+                                      ? "alocado"
+                                      : "sem-guia"
+                                  }`}
+                              >
+                                {item.statusOperacional}
+                              </span>
+                            </td>
+
+                            <td>
+                              <span
+                                className={`home-group-status ${item.statusGrupo === "Fechado"
+                                    ? "fechado"
+                                    : item.statusGrupo === "Grupo formado"
+                                      ? "formado"
+                                      : "alerta"
+                                  }`}
+                              >
+                                {item.statusGrupo}
+                              </span>
+                            </td>
+
+                            <td>{item.serviceName}</td>
+                            <td>{item.guiaNome || "-"}</td>
+                            <td>
+                              {item.passengers}
+                              <small className="home-service-pax-detail">
+                                {" "}
+                                ({item.adultCount || 0} ADT /{" "}
+                                {item.childCount || 0} CHD /{" "}
+                                {item.infantCount || 0} INF)
+                              </small>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="home-send-guide-btn"
+                                onClick={() => enviarWhatsappServico(item)}
+                                disabled={!item.guiaId && !item.guiaNome}
+                                title={
+                                  item.guiaId || item.guiaNome
+                                    ? "Enviar mensagem ao guia"
+                                    : "Serviço sem guia alocado"
+                                }
+                              >
+                                Enviar ao guia
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="home-dashboard-grid">
@@ -1172,23 +1182,27 @@ Operacional - Luck Receptivo
                 </div>
               </div>
 
-              <div className="home-alerts-list">
-                {dashboard.alertas.length === 0 ? (
-                  <div className="empty-state">
-                    Nenhum alerta crítico detectado nesta semana.
-                  </div>
-                ) : (
-                  dashboard.alertas.map((alerta, index) => (
-                    <div
-                      key={`${alerta.titulo}-${index}`}
-                      className={`home-alert-item ${alerta.tipo}`}
-                    >
-                      <strong>{alerta.titulo}</strong>
-                      <span>{alerta.descricao}</span>
+              {carregandoCards ? (
+                <CardSkeleton variant="list" rows={4} />
+              ) : (
+                <div className="home-alerts-list">
+                  {dashboard.alertas.length === 0 ? (
+                    <div className="empty-state">
+                      Nenhum alerta crítico detectado nesta semana.
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : (
+                    dashboard.alertas.map((alerta, index) => (
+                      <div
+                        key={`${alerta.titulo}-${index}`}
+                        className={`home-alert-item ${alerta.tipo}`}
+                      >
+                        <strong>{alerta.titulo}</strong>
+                        <span>{alerta.descricao}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="home-dashboard-card home-dashboard-card-large">
@@ -1199,60 +1213,66 @@ Operacional - Luck Receptivo
                 </div>
               </div>
 
-              <div className="home-week-chart advanced">
-                {dashboard.distribuicaoSemana.map((dia) => (
-                  <div key={dia.date} className="chart-col">
-                    <div className="chart-bars advanced">
-                      <div
-                        className="chart-bar chart-bar-total"
-                        style={{
-                          height: `${Math.max(
-                            (dia.total / dashboard.maiorVolumeDia) * 180,
-                            dia.total > 0 ? 16 : 8,
-                          )}px`,
-                        }}
-                        title={`${dia.total} serviços`}
-                      />
-                      <div
-                        className="chart-bar chart-bar-guided"
-                        style={{
-                          height: `${Math.max(
-                            (dia.comGuia / dashboard.maiorVolumeDia) * 180,
-                            dia.comGuia > 0 ? 12 : 6,
-                          )}px`,
-                        }}
-                        title={`${dia.comGuia} com guia`}
-                      />
-                      <div
-                        className="chart-bar chart-bar-pax"
-                        style={{
-                          height: `${Math.max(
-                            (dia.pax / dashboard.maiorPaxDia) * 180,
-                            dia.pax > 0 ? 12 : 6,
-                          )}px`,
-                        }}
-                        title={`${dia.pax} pax`}
-                      />
-                    </div>
-                    <strong>{dia.short}</strong>
-                    <span>{dia.total} serv.</span>
-                    <small>{dia.comGuia} c/ guia</small>
-                    <small>{dia.pax} pax</small>
+              {carregandoCards ? (
+                <CardSkeleton variant="chart" />
+              ) : (
+                <>
+                  <div className="home-week-chart advanced">
+                    {dashboard.distribuicaoSemana.map((dia) => (
+                      <div key={dia.date} className="chart-col">
+                        <div className="chart-bars advanced">
+                          <div
+                            className="chart-bar chart-bar-total"
+                            style={{
+                              height: `${Math.max(
+                                (dia.total / dashboard.maiorVolumeDia) * 180,
+                                dia.total > 0 ? 16 : 8,
+                              )}px`,
+                            }}
+                            title={`${dia.total} serviços`}
+                          />
+                          <div
+                            className="chart-bar chart-bar-guided"
+                            style={{
+                              height: `${Math.max(
+                                (dia.comGuia / dashboard.maiorVolumeDia) * 180,
+                                dia.comGuia > 0 ? 12 : 6,
+                              )}px`,
+                            }}
+                            title={`${dia.comGuia} com guia`}
+                          />
+                          <div
+                            className="chart-bar chart-bar-pax"
+                            style={{
+                              height: `${Math.max(
+                                (dia.pax / dashboard.maiorPaxDia) * 180,
+                                dia.pax > 0 ? 12 : 6,
+                              )}px`,
+                            }}
+                            title={`${dia.pax} pax`}
+                          />
+                        </div>
+                        <strong>{dia.short}</strong>
+                        <span>{dia.total} serv.</span>
+                        <small>{dia.comGuia} c/ guia</small>
+                        <small>{dia.pax} pax</small>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div className="chart-legend">
-                <span>
-                  <i className="legend-box total" /> Total de serviços
-                </span>
-                <span>
-                  <i className="legend-box guided" /> Serviços com guia
-                </span>
-                <span>
-                  <i className="legend-box pax" /> Pax do dia
-                </span>
-              </div>
+                  <div className="chart-legend">
+                    <span>
+                      <i className="legend-box total" /> Total de serviços
+                    </span>
+                    <span>
+                      <i className="legend-box guided" /> Serviços com guia
+                    </span>
+                    <span>
+                      <i className="legend-box pax" /> Pax do dia
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="home-dashboard-card home-dashboard-card-full">
@@ -1263,7 +1283,9 @@ Operacional - Luck Receptivo
                 </div>
               </div>
 
-              {versiculo ? (
+              {loading ? (
+                <CardSkeleton variant="verse" />
+              ) : versiculo ? (
                 <div className="home-bible-card">
                   <p className="home-bible-text">"{versiculo.texto}"</p>
                   <strong className="home-bible-ref">
@@ -1290,44 +1312,47 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-ranking">
-              {dashboard.resumoGuias.length === 0 ? (
-                <div className="empty-state">
-                  Sem dados de ocupação nesta semana.
-                </div>
-              ) : (
-                dashboard.resumoGuias.map((guia) => (
-                  <div key={guia.id} className="ranking-item">
-                    <div className="ranking-top">
-                      <span className="ranking-name">
-                        {guia.nome}
-                        {guia.motoguia && (
-                          <em className="inline-badge">Motoguia</em>
-                        )}
-                      </span>
-                      <span className="ranking-badge">
-                        {guia.ocupacao}% • {LABEL_OCUPACAO(guia.ocupacao)}
-                      </span>
-                    </div>
-
-                    <div className="ranking-bar">
-                      <div
-                        className={`ranking-bar-fill ${
-                          guia.ocupacao >= 80 ? "high" : "low"
-                        }`}
-                        style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
-                      />
-                    </div>
-
-                    <div className="ranking-meta">
-                      <span>{guia.servicos} serviço(s)</span>
-                      <span>{guia.diasDisponiveis} dia(s) disponíveis</span>
-                      <span>{guia.diasBloqueados} bloqueado(s)</span>
-                    </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={6} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.resumoGuias.length === 0 ? (
+                  <div className="empty-state">
+                    Sem dados de ocupação nesta semana.
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  dashboard.resumoGuias.map((guia) => (
+                    <div key={guia.id} className="ranking-item">
+                      <div className="ranking-top">
+                        <span className="ranking-name">
+                          {guia.nome}
+                          {guia.motoguia && (
+                            <em className="inline-badge">Motoguia</em>
+                          )}
+                        </span>
+                        <span className="ranking-badge">
+                          {guia.ocupacao}% • {LABEL_OCUPACAO(guia.ocupacao)}
+                        </span>
+                      </div>
+
+                      <div className="ranking-bar">
+                        <div
+                          className={`ranking-bar-fill ${guia.ocupacao >= 80 ? "high" : "low"
+                            }`}
+                          style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
+                        />
+                      </div>
+
+                      <div className="ranking-meta">
+                        <span>{guia.servicos} serviço(s)</span>
+                        <span>{guia.diasDisponiveis} dia(s) disponíveis</span>
+                        <span>{guia.diasBloqueados} bloqueado(s)</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="home-dashboard-card">
@@ -1338,29 +1363,33 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-ranking">
-              {dashboard.guiasSobrecarga.length === 0 ? (
-                <div className="empty-state">
-                  Nenhum guia em sobrecarga alta.
-                </div>
-              ) : (
-                dashboard.guiasSobrecarga.map((guia) => (
-                  <div key={guia.id} className="ranking-item">
-                    <div className="ranking-top">
-                      <span className="ranking-name">{guia.nome}</span>
-                      <span className="ranking-badge">{guia.ocupacao}%</span>
-                    </div>
-
-                    <div className="ranking-bar">
-                      <div
-                        className="ranking-bar-fill high"
-                        style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
-                      />
-                    </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={5} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.guiasSobrecarga.length === 0 ? (
+                  <div className="empty-state">
+                    Nenhum guia em sobrecarga alta.
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  dashboard.guiasSobrecarga.map((guia) => (
+                    <div key={guia.id} className="ranking-item">
+                      <div className="ranking-top">
+                        <span className="ranking-name">{guia.nome}</span>
+                        <span className="ranking-badge">{guia.ocupacao}%</span>
+                      </div>
+
+                      <div className="ranking-bar">
+                        <div
+                          className="ranking-bar-fill high"
+                          style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="home-dashboard-card">
@@ -1371,29 +1400,33 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-ranking">
-              {dashboard.guiasOciosos.length === 0 ? (
-                <div className="empty-state">
-                  Nenhum guia com ociosidade relevante.
-                </div>
-              ) : (
-                dashboard.guiasOciosos.map((guia) => (
-                  <div key={guia.id} className="ranking-item">
-                    <div className="ranking-top">
-                      <span className="ranking-name">{guia.nome}</span>
-                      <span className="ranking-badge">{guia.ocupacao}%</span>
-                    </div>
-
-                    <div className="ranking-bar">
-                      <div
-                        className="ranking-bar-fill low"
-                        style={{ width: `${Math.max(guia.ocupacao, 4)}%` }}
-                      />
-                    </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={5} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.guiasOciosos.length === 0 ? (
+                  <div className="empty-state">
+                    Nenhum guia com ociosidade relevante.
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  dashboard.guiasOciosos.map((guia) => (
+                    <div key={guia.id} className="ranking-item">
+                      <div className="ranking-top">
+                        <span className="ranking-name">{guia.nome}</span>
+                        <span className="ranking-badge">{guia.ocupacao}%</span>
+                      </div>
+
+                      <div className="ranking-bar">
+                        <div
+                          className="ranking-bar-fill low"
+                          style={{ width: `${Math.max(guia.ocupacao, 4)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1408,45 +1441,49 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-ranking">
-              {dashboard.topPasseios.length === 0 ? (
-                <div className="empty-state">
-                  Sem volume registrado nesta semana.
-                </div>
-              ) : (
-                dashboard.topPasseios.map((passeio) => (
-                  <div key={passeio.nome} className="tour-item">
-                    <div className="tour-top">
-                      <span className="tour-name">{passeio.nome}</span>
-                      <span className="tour-pax">{passeio.pax} pax</span>
-                    </div>
-
-                    <div className="tour-bar">
-                      <div
-                        className="tour-bar-fill"
-                        style={{
-                          width: `${Math.max(
-                            (passeio.pax /
-                              Math.max(
-                                ...dashboard.topPasseios.map((t) => t.pax),
-                                1,
-                              )) *
-                              100,
-                            8,
-                          )}%`,
-                        }}
-                      />
-                    </div>
-
-                    <div className="tour-meta">
-                      <span>{passeio.servicos} ocorrência(s)</span>
-                      <span>{passeio.comGuia} com guia</span>
-                      <span>{passeio.semGuia} sem guia</span>
-                    </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={6} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.topPasseios.length === 0 ? (
+                  <div className="empty-state">
+                    Sem volume registrado nesta semana.
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  dashboard.topPasseios.map((passeio) => (
+                    <div key={passeio.nome} className="tour-item">
+                      <div className="tour-top">
+                        <span className="tour-name">{passeio.nome}</span>
+                        <span className="tour-pax">{passeio.pax} pax</span>
+                      </div>
+
+                      <div className="tour-bar">
+                        <div
+                          className="tour-bar-fill"
+                          style={{
+                            width: `${Math.max(
+                              (passeio.pax /
+                                Math.max(
+                                  ...dashboard.topPasseios.map((t) => t.pax),
+                                  1,
+                                )) *
+                              100,
+                              8,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div className="tour-meta">
+                        <span>{passeio.servicos} ocorrência(s)</span>
+                        <span>{passeio.comGuia} com guia</span>
+                        <span>{passeio.semGuia} sem guia</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="home-dashboard-card home-dashboard-card-full">
@@ -1457,37 +1494,41 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-summary-grid">
-              <div className="summary-box">
-                <span className="summary-label">Serviços reais</span>
-                <strong>{dashboard.totalServicosReais}</strong>
-              </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="metrics" />
+            ) : (
+              <div className="home-dashboard-summary-grid">
+                <div className="summary-box">
+                  <span className="summary-label">Serviços reais</span>
+                  <strong>{dashboard.totalServicosReais}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Alocados</span>
-                <strong>{dashboard.servicosAlocados.length}</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Alocados</span>
+                  <strong>{dashboard.servicosAlocados.length}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Sem guia</span>
-                <strong>{dashboard.servicosSemGuia.length}</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Sem guia</span>
+                  <strong>{dashboard.servicosSemGuia.length}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Fechados</span>
-                <strong>{dashboard.servicosFechados.length}</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Fechados</span>
+                  <strong>{dashboard.servicosFechados.length}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Grupos formados</span>
-                <strong>{dashboard.gruposFormados.length}</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Grupos formados</span>
+                  <strong>{dashboard.gruposFormados.length}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Grupos não formados</span>
-                <strong>{dashboard.gruposNaoFormados.length}</strong>
+                <div className="summary-box">
+                  <span className="summary-label">Grupos não formados</span>
+                  <strong>{dashboard.gruposNaoFormados.length}</strong>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1502,27 +1543,31 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-summary-grid single-column">
-              <div className="summary-box">
-                <span className="summary-label">Serviços com guia (%)</span>
-                <strong>{dashboard.percentualServicosComGuia}%</strong>
-              </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={4} />
+            ) : (
+              <div className="home-dashboard-summary-grid single-column">
+                <div className="summary-box">
+                  <span className="summary-label">Serviços com guia (%)</span>
+                  <strong>{dashboard.percentualServicosComGuia}%</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Passageiros com guia (%)</span>
-                <strong>{dashboard.percentualPassageirosComGuia}%</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Passageiros com guia (%)</span>
+                  <strong>{dashboard.percentualPassageirosComGuia}%</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Pax sem guia</span>
-                <strong>{dashboard.paxSemGuia}</strong>
-              </div>
+                <div className="summary-box">
+                  <span className="summary-label">Pax sem guia</span>
+                  <strong>{dashboard.paxSemGuia}</strong>
+                </div>
 
-              <div className="summary-box">
-                <span className="summary-label">Cobertura afinidade</span>
-                <strong>{dashboard.coberturaAfinidade}%</strong>
+                <div className="summary-box">
+                  <span className="summary-label">Cobertura afinidade</span>
+                  <strong>{dashboard.coberturaAfinidade}%</strong>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="home-dashboard-card home-dashboard-card-large">
@@ -1533,35 +1578,39 @@ Operacional - Luck Receptivo
               </div>
             </div>
 
-            <div className="home-dashboard-ranking">
-              {dashboard.passeiosMaisRisco.length === 0 ? (
-                <div className="empty-state">Nenhum risco calculado.</div>
-              ) : (
-                dashboard.passeiosMaisRisco.map((passeio) => (
-                  <div key={passeio.nome} className="ranking-item">
-                    <div className="ranking-top">
-                      <span className="ranking-name">{passeio.nome}</span>
-                      <span className="ranking-badge">
-                        {passeio.risco} • {NIVEL_RISCO(passeio.risco)}
-                      </span>
-                    </div>
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={6} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.passeiosMaisRisco.length === 0 ? (
+                  <div className="empty-state">Nenhum risco calculado.</div>
+                ) : (
+                  dashboard.passeiosMaisRisco.map((passeio) => (
+                    <div key={passeio.nome} className="ranking-item">
+                      <div className="ranking-top">
+                        <span className="ranking-name">{passeio.nome}</span>
+                        <span className="ranking-badge">
+                          {passeio.risco} • {NIVEL_RISCO(passeio.risco)}
+                        </span>
+                      </div>
 
-                    <div className="ranking-bar">
-                      <div
-                        className="ranking-bar-fill high"
-                        style={{ width: `${Math.min(passeio.risco, 100)}%` }}
-                      />
-                    </div>
+                      <div className="ranking-bar">
+                        <div
+                          className="ranking-bar-fill high"
+                          style={{ width: `${Math.min(passeio.risco, 100)}%` }}
+                        />
+                      </div>
 
-                    <div className="ranking-meta">
-                      <span>{passeio.semGuia} sem guia</span>
-                      <span>{passeio.paxSemGuia} pax sem guia</span>
-                      <span>{passeio.servicos} total</span>
+                      <div className="ranking-meta">
+                        <span>{passeio.semGuia} sem guia</span>
+                        <span>{passeio.paxSemGuia} pax sem guia</span>
+                        <span>{passeio.servicos} total</span>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

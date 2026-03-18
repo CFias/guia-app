@@ -1,6 +1,6 @@
 .cadastro-passeio-page {
   width: 100%;
-  max-width: 1260px;
+  max-width: 65vw;
   margin: 0 auto;
   padding: 8px;
   box-sizing: border-box;
@@ -560,4 +560,40 @@
   .cadastro-passeio-item-actions {
     flex-direction: column;
   }
+}
+
+.cadastro-passeio-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.cadastro-passeio-btn-primary.is-saving,
+.cadastro-passeio-btn-soft.is-syncing {
+  cursor: progress;
+  opacity: 0.92;
+}
+
+.cadastro-passeio-item.is-removing {
+  opacity: 0.55;
+  transform: scale(0.99);
+  transition: all 0.18s ease;
+}
+
+.cadastro-passeio-btn-primary:disabled,
+.cadastro-passeio-btn-soft:disabled,
+.cadastro-passeio-btn-secondary:disabled,
+.cadastro-passeio-btn-edit:disabled,
+.cadastro-passeio-btn-delete:disabled,
+.cadastro-passeio-form input:disabled,
+.cadastro-passeio-form textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.cadastro-passeio-dropdown-header {
+  user-select: none;
+}
+
+.cadastro-passeio-tag span {
+  cursor: pointer;
 }

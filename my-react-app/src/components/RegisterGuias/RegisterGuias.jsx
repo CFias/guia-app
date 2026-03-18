@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
+import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import {
   AssignmentIndRounded,
@@ -30,19 +31,28 @@ const CadastroGuia = () => {
   const [dropdownIdiomasOpen, setDropdownIdiomasOpen] = useState(false);
   const [dropdownPasseiosOpen, setDropdownPasseiosOpen] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+  const [loadingInicial, setLoadingInicial] = useState(true);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     const carregarDados = async () => {
-      const langs = await getLanguages();
-      setIdiomasDisponiveis(langs);
+      try {
+        setLoadingInicial(true);
 
-      const snapshot = await getDocs(collection(db, "services"));
-      const services = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        nome: doc.data().nome,
-      }));
-      setPasseiosDisponiveis(services);
+        const langs = await getLanguages();
+        setIdiomasDisponiveis(langs);
+
+        const snapshot = await getDocs(collection(db, "services"));
+        const services = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          nome: doc.data().nome,
+        }));
+        setPasseiosDisponiveis(services);
+      } catch (error) {
+        console.error("Erro ao carregar dados do cadastro:", error);
+      } finally {
+        setLoadingInicial(false);
+      }
     };
 
     carregarDados();
@@ -89,7 +99,7 @@ const CadastroGuia = () => {
     }
 
     try {
-      setLoading(true);
+      setSalvando(true);
 
       await addDoc(collection(db, "guides"), {
         nome,
@@ -110,13 +120,17 @@ const CadastroGuia = () => {
       setPasseiosSelecionados([]);
       setMotoguia(false);
       setDiferencial("");
+      setDropdownIdiomasOpen(false);
+      setDropdownPasseiosOpen(false);
     } catch (error) {
       console.error(error);
       alert("Erro ao cadastrar guia");
     } finally {
-      setLoading(false);
+      setSalvando(false);
     }
   };
+
+  const bloqueado = salvando || loadingInicial;
 
   return (
     <div className="cadastro-guia-page">
@@ -146,166 +160,177 @@ const CadastroGuia = () => {
               </p>
             </div>
 
-            <form className="cadastro-guia-form" onSubmit={salvarGuia}>
-              <div className="cadastro-guia-form-grid">
-                <div className="cadastro-guia-field">
-                  <label htmlFor="guia-nome">
-                    Nome do guia{" "}
-                    <DriveFileRenameOutlineRounded fontSize="small" />
-                  </label>
-                  <input
-                    id="guia-nome"
-                    type="text"
-                    placeholder="Digite o nome do guia"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                  />
-                </div>
-
-                <div className="cadastro-guia-field">
-                  <label htmlFor="guia-whatsapp">
-                    WhatsApp <ChatRounded fontSize="small" />
-                  </label>
-                  <input
-                    id="guia-whatsapp"
-                    type="text"
-                    placeholder="Informe o WhatsApp"
-                    value={formatarTelefone(whatsapp)}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    maxLength={15}
-                  />
-                </div>
-              </div>
-
-              <div className="cadastro-guia-form-grid">
-                <div className="cadastro-guia-field">
-                  <label>
-                    Idiomas <LanguageRounded fontSize="small" />
-                  </label>
-
-                  <div className="cadastro-guia-dropdown">
-                    <div
-                      className="cadastro-guia-dropdown-header"
-                      onClick={() =>
-                        setDropdownIdiomasOpen(!dropdownIdiomasOpen)
-                      }
-                    >
-                      <span>Selecionar idiomas</span>
-                      <span className="cadastro-guia-dropdown-arrow">▾</span>
-                    </div>
-
-                    {dropdownIdiomasOpen && (
-                      <div className="cadastro-guia-dropdown-menu">
-                        {idiomasDisponiveis.map((idioma) => (
-                          <div
-                            key={idioma.id}
-                            className="cadastro-guia-dropdown-item"
-                            onClick={() => adicionarIdioma(idioma)}
-                          >
-                            {idioma.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+            {loadingInicial ? (
+              <CardSkeleton variant="filters" />
+            ) : (
+              <form className="cadastro-guia-form" onSubmit={salvarGuia}>
+                <div className="cadastro-guia-form-grid">
+                  <div className="cadastro-guia-field">
+                    <label htmlFor="guia-nome">
+                      Nome do guia{" "}
+                      <DriveFileRenameOutlineRounded fontSize="small" />
+                    </label>
+                    <input
+                      id="guia-nome"
+                      type="text"
+                      placeholder="Digite o nome do guia"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      disabled={bloqueado}
+                    />
                   </div>
 
-                  <div className="cadastro-guia-tags">
-                    {idiomasSelecionados.map((idioma) => (
-                      <div className="cadastro-guia-tag" key={idioma.id}>
-                        {idioma.label}
-                        <span onClick={() => removerIdioma(idioma.id)}>×</span>
-                      </div>
-                    ))}
+                  <div className="cadastro-guia-field">
+                    <label htmlFor="guia-whatsapp">
+                      WhatsApp <ChatRounded fontSize="small" />
+                    </label>
+                    <input
+                      id="guia-whatsapp"
+                      type="text"
+                      placeholder="Informe o WhatsApp"
+                      value={formatarTelefone(whatsapp)}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      maxLength={15}
+                      disabled={bloqueado}
+                    />
                   </div>
                 </div>
 
-                <div className="cadastro-guia-field">
-                  <label>
-                    Passeios aptos <LocalActivityRounded fontSize="small" />
-                  </label>
+                <div className="cadastro-guia-form-grid">
+                  <div className="cadastro-guia-field">
+                    <label>
+                      Idiomas <LanguageRounded fontSize="small" />
+                    </label>
 
-                  <div className="cadastro-guia-dropdown">
-                    <div
-                      className="cadastro-guia-dropdown-header"
-                      onClick={() =>
-                        setDropdownPasseiosOpen(!dropdownPasseiosOpen)
-                      }
-                    >
-                      <span>Selecionar passeios</span>
-                      <span className="cadastro-guia-dropdown-arrow">▾</span>
-                    </div>
-
-                    {dropdownPasseiosOpen && (
-                      <div className="cadastro-guia-dropdown-menu">
-                        {passeiosDisponiveis.map((passeio) => (
-                          <div
-                            key={passeio.id}
-                            className="cadastro-guia-dropdown-item"
-                            onClick={() => adicionarPasseio(passeio)}
-                          >
-                            {passeio.nome}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="cadastro-guia-tags">
-                    {passeiosSelecionados.map((passeio) => (
+                    <div className="cadastro-guia-dropdown">
                       <div
-                        className="cadastro-guia-tag cadastro-guia-tag-service"
-                        key={passeio.id}
+                        className="cadastro-guia-dropdown-header"
+                        onClick={() =>
+                          !bloqueado &&
+                          setDropdownIdiomasOpen(!dropdownIdiomasOpen)
+                        }
                       >
-                        {passeio.nome}
-                        <span onClick={() => removerPasseio(passeio.id)}>
-                          ×
-                        </span>
+                        <span>Selecionar idiomas</span>
+                        <span className="cadastro-guia-dropdown-arrow">▾</span>
                       </div>
-                    ))}
+
+                      {dropdownIdiomasOpen && !bloqueado && (
+                        <div className="cadastro-guia-dropdown-menu">
+                          {idiomasDisponiveis.map((idioma) => (
+                            <div
+                              key={idioma.id}
+                              className="cadastro-guia-dropdown-item"
+                              onClick={() => adicionarIdioma(idioma)}
+                            >
+                              {idioma.label}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="cadastro-guia-tags">
+                      {idiomasSelecionados.map((idioma) => (
+                        <div className="cadastro-guia-tag" key={idioma.id}>
+                          {idioma.label}
+                          <span onClick={() => !bloqueado && removerIdioma(idioma.id)}>
+                            ×
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="cadastro-guia-field">
+                    <label>
+                      Passeios aptos <LocalActivityRounded fontSize="small" />
+                    </label>
+
+                    <div className="cadastro-guia-dropdown">
+                      <div
+                        className="cadastro-guia-dropdown-header"
+                        onClick={() =>
+                          !bloqueado &&
+                          setDropdownPasseiosOpen(!dropdownPasseiosOpen)
+                        }
+                      >
+                        <span>Selecionar passeios</span>
+                        <span className="cadastro-guia-dropdown-arrow">▾</span>
+                      </div>
+
+                      {dropdownPasseiosOpen && !bloqueado && (
+                        <div className="cadastro-guia-dropdown-menu">
+                          {passeiosDisponiveis.map((passeio) => (
+                            <div
+                              key={passeio.id}
+                              className="cadastro-guia-dropdown-item"
+                              onClick={() => adicionarPasseio(passeio)}
+                            >
+                              {passeio.nome}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="cadastro-guia-tags">
+                      {passeiosSelecionados.map((passeio) => (
+                        <div
+                          className="cadastro-guia-tag cadastro-guia-tag-service"
+                          key={passeio.id}
+                        >
+                          {passeio.nome}
+                          <span onClick={() => !bloqueado && removerPasseio(passeio.id)}>
+                            ×
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="cadastro-guia-options-row">
-                <button
-                  type="button"
-                  className={`cadastro-guia-switch ${motoguia ? "active" : ""
-                    }`}
-                  onClick={() => setMotoguia(!motoguia)}
-                  aria-pressed={motoguia}
-                >
-                  <span className="cadastro-guia-switch-track">
-                    <span className="cadastro-guia-switch-thumb" />
-                  </span>
-                  <span className="cadastro-guia-switch-label">
-                    Atua como Motoguia <NoCrashRounded fontSize="small" />
-                  </span>
-                </button>
-              </div>
+                <div className="cadastro-guia-options-row">
+                  <button
+                    type="button"
+                    className={`cadastro-guia-switch ${motoguia ? "active" : ""}`}
+                    onClick={() => setMotoguia(!motoguia)}
+                    aria-pressed={motoguia}
+                    disabled={bloqueado}
+                  >
+                    <span className="cadastro-guia-switch-track">
+                      <span className="cadastro-guia-switch-thumb" />
+                    </span>
+                    <span className="cadastro-guia-switch-label">
+                      Atua como Motoguia <NoCrashRounded fontSize="small" />
+                    </span>
+                  </button>
+                </div>
 
-              <div className="cadastro-guia-field">
-                <label htmlFor="guia-diferencial">
-                  Diferencial do guia <StarRounded fontSize="small" />
-                </label>
-                <textarea
-                  id="guia-diferencial"
-                  placeholder="Informe pontos fortes, características ou diferenciais importantes"
-                  value={diferencial}
-                  onChange={(e) => setDiferencial(e.target.value)}
-                />
-              </div>
+                <div className="cadastro-guia-field">
+                  <label htmlFor="guia-diferencial">
+                    Diferencial do guia <StarRounded fontSize="small" />
+                  </label>
+                  <textarea
+                    id="guia-diferencial"
+                    placeholder="Informe pontos fortes, características ou diferenciais importantes"
+                    value={diferencial}
+                    onChange={(e) => setDiferencial(e.target.value)}
+                    disabled={bloqueado}
+                  />
+                </div>
 
-              <div className="cadastro-guia-actions">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="cadastro-guia-btn-primary"
-                >
-                  <SaveRounded fontSize="small" />
-                  {loading ? "Salvando..." : "Cadastrar guia"}
-                </button>
-              </div>
-            </form>
+                <div className="cadastro-guia-actions">
+                  <button
+                    type="submit"
+                    disabled={salvando}
+                    className={`cadastro-guia-btn-primary ${salvando ? "is-saving" : ""}`}
+                  >
+                    <SaveRounded fontSize="small" />
+                    {salvando ? "Salvando..." : "Cadastrar guia"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           <div className="cadastro-guia-card">
@@ -320,37 +345,41 @@ const CadastroGuia = () => {
               </p>
             </div>
 
-            <div className="cadastro-guia-preview">
-              <div className="cadastro-guia-preview-item">
-                <span className="cadastro-guia-preview-label">Nome</span>
-                <strong className="cadastro-guia-preview-value">
-                  {nome || "Não informado"}
-                </strong>
-              </div>
+            {loadingInicial ? (
+              <CardSkeleton variant="list" rows={4} />
+            ) : (
+              <div className="cadastro-guia-preview">
+                <div className="cadastro-guia-preview-item">
+                  <span className="cadastro-guia-preview-label">Nome</span>
+                  <strong className="cadastro-guia-preview-value">
+                    {nome || "Não informado"}
+                  </strong>
+                </div>
 
-              <div className="cadastro-guia-preview-item">
-                <span className="cadastro-guia-preview-label">WhatsApp</span>
-                <strong className="cadastro-guia-preview-value">
-                  {formatarTelefone(whatsapp) || "Não informado"}
-                </strong>
-              </div>
+                <div className="cadastro-guia-preview-item">
+                  <span className="cadastro-guia-preview-label">WhatsApp</span>
+                  <strong className="cadastro-guia-preview-value">
+                    {formatarTelefone(whatsapp) || "Não informado"}
+                  </strong>
+                </div>
 
-              <div className="cadastro-guia-preview-item">
-                <span className="cadastro-guia-preview-label">Idiomas</span>
-                <strong className="cadastro-guia-preview-value">
-                  {idiomasSelecionados.length > 0
-                    ? idiomasSelecionados.map((i) => i.label).join(", ")
-                    : "Nenhum selecionado"}
-                </strong>
-              </div>
+                <div className="cadastro-guia-preview-item">
+                  <span className="cadastro-guia-preview-label">Idiomas</span>
+                  <strong className="cadastro-guia-preview-value">
+                    {idiomasSelecionados.length > 0
+                      ? idiomasSelecionados.map((i) => i.label).join(", ")
+                      : "Nenhum selecionado"}
+                  </strong>
+                </div>
 
-              <div className="cadastro-guia-preview-item">
-                <span className="cadastro-guia-preview-label">Motoguia</span>
-                <strong className="cadastro-guia-preview-value">
-                  {motoguia ? "Sim" : "Não"}
-                </strong>
+                <div className="cadastro-guia-preview-item">
+                  <span className="cadastro-guia-preview-label">Motoguia</span>
+                  <strong className="cadastro-guia-preview-value">
+                    {motoguia ? "Sim" : "Não"}
+                  </strong>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
       </div>

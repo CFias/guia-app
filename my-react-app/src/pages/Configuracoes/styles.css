@@ -1,6 +1,6 @@
 .config-page {
     width: 100%;
-    max-width: 1260px;
+    max-width: 65vw;
     margin: 0 auto;
     padding: 8px;
     box-sizing: border-box;
@@ -573,4 +573,34 @@
         flex-direction: column;
         align-items: flex-start;
     }
+}
+
+.config-card,
+.config-status-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.config-nav-item:disabled,
+.theme-option:disabled,
+.radio-card:disabled,
+.modern-switch:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.config-saved,
+.config-saving {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.config-saving {
+    color: #b45309;
+}
+
+.config-saved {
+    color: #15803d;
 }

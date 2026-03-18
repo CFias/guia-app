@@ -10,9 +10,9 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import {
-  AutoAwesomeRounded,
   CalendarMonthRounded,
   DeleteOutlineRounded,
   DriveFileRenameOutlineRounded,
@@ -62,13 +62,10 @@ const TERMOS_IGNORADOS = [
 const MAPA_NOMES_CANONICOS = {
   "city tour historico e panoramico": "CITY TOUR HISTORICO E PANORAMICO",
   "city tour historico panoramico": "CITY TOUR HISTORICO E PANORAMICO",
-
   "tour de ilhas frades e itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
   "ilhas frades + itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
   "ilhas frades itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
-
   "volta frades com itaparica": "VOLTA FRADES COM ITAPARICA",
-
   "city tour panoramico": "CITY TOUR PANORAMICO",
   "city tour historico": "CITY TOUR HISTORICO",
 };
@@ -94,11 +91,11 @@ const deveIgnorarServico = (nome = "") => {
 
   const ignoradoExato = SERVICOS_IGNORADOS.some(
     (servico) =>
-      normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado
+      normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado,
   );
 
   const ignoradoPorTrecho = TERMOS_IGNORADOS.some((termo) =>
-    nomeNormalizado.includes(normalizarTexto(termo))
+    nomeNormalizado.includes(normalizarTexto(termo)),
   );
 
   return ignoradoExato || ignoradoPorTrecho;
@@ -141,7 +138,7 @@ const obterDiaSemanaPt = (dataIso) => {
 
 const ordenarFrequencia = (lista = []) => {
   return [...lista].sort(
-    (a, b) => diasSemana.indexOf(a) - diasSemana.indexOf(b)
+    (a, b) => diasSemana.indexOf(a) - diasSemana.indexOf(b),
   );
 };
 
@@ -176,18 +173,23 @@ const CadastroPasseio = () => {
   const [frequencia, setFrequencia] = useState([]);
   const [externalServiceId, setExternalServiceId] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const [loadingInicial, setLoadingInicial] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [importandoApi, setImportandoApi] = useState(false);
+  const [excluindoId, setExcluindoId] = useState(null);
 
   const [passeios, setPasseios] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
 
   useEffect(() => {
-    carregarPasseios();
+    carregarPasseios(true);
   }, []);
 
-  const carregarPasseios = async () => {
+  const carregarPasseios = async (isInitial = false) => {
     try {
+      if (isInitial) setLoadingInicial(true);
+
       const snap = await getDocs(collection(db, "services"));
       const lista = snap.docs
         .map((d) => ({
@@ -197,12 +199,14 @@ const CadastroPasseio = () => {
         .sort((a, b) =>
           (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
             sensitivity: "base",
-          })
+          }),
         );
 
       setPasseios(lista);
     } catch (err) {
       console.error("Erro ao carregar passeios:", err);
+    } finally {
+      if (isInitial) setLoadingInicial(false);
     }
   };
 
@@ -222,6 +226,7 @@ const CadastroPasseio = () => {
     setFrequencia([]);
     setExternalServiceId("");
     setEditandoId(null);
+    setDropdownOpen(false);
   };
 
   const editarPasseio = (p) => {
@@ -230,6 +235,7 @@ const CadastroPasseio = () => {
     setDescricao(p.descricao || "");
     setFrequencia(ordenarFrequencia(p.frequencia || []));
     setExternalServiceId(p.externalServiceId || "");
+    setDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -242,7 +248,7 @@ const CadastroPasseio = () => {
     }
 
     try {
-      setLoading(true);
+      setSalvando(true);
 
       const payload = {
         nome: obterNomeCanonico(nome),
@@ -277,7 +283,7 @@ const CadastroPasseio = () => {
       console.error(error);
       alert("Erro ao salvar passeio");
     } finally {
-      setLoading(false);
+      setSalvando(false);
     }
   };
 
@@ -285,12 +291,14 @@ const CadastroPasseio = () => {
     if (!passeio?.id) return;
 
     const confirmar = window.confirm(
-      `Deseja realmente apagar o passeio "${passeio.nome}"?`
+      `Deseja realmente apagar o passeio "${passeio.nome}"?`,
     );
 
     if (!confirmar) return;
 
     try {
+      setExcluindoId(passeio.id);
+
       await deleteDoc(doc(db, "services", passeio.id));
 
       if (editandoId === passeio.id) {
@@ -302,6 +310,8 @@ const CadastroPasseio = () => {
     } catch (err) {
       console.error("Erro ao apagar passeio:", err);
       alert("Erro ao apagar passeio");
+    } finally {
+      setExcluindoId(null);
     }
   };
 
@@ -389,7 +399,7 @@ const CadastroPasseio = () => {
 
       for (const servico of encontrados.values()) {
         const frequenciaCalculada = ordenarFrequencia(
-          Array.from(servico.frequenciaSet || [])
+          Array.from(servico.frequenciaSet || []),
         );
 
         const externalKey = servico.externalServiceId
@@ -397,7 +407,7 @@ const CadastroPasseio = () => {
           : null;
 
         const nomeKey = normalizarTexto(
-          servico.externalName || servico.nome || ""
+          servico.externalName || servico.nome || "",
         );
 
         const existente =
@@ -417,7 +427,7 @@ const CadastroPasseio = () => {
               ativo: existente.ativo ?? true,
               updatedAt: Timestamp.now(),
             },
-            { merge: true }
+            { merge: true },
           );
 
           atualizados++;
@@ -441,7 +451,7 @@ const CadastroPasseio = () => {
       await carregarPasseios();
 
       alert(
-        `Importação concluída!\n\nNovos passeios: ${inseridos}\nAtualizados: ${atualizados}`
+        `Importação concluída!\n\nNovos passeios: ${inseridos}\nAtualizados: ${atualizados}`,
       );
     } catch (err) {
       console.error("Erro ao importar passeios da API:", err);
@@ -450,6 +460,8 @@ const CadastroPasseio = () => {
       setImportandoApi(false);
     }
   };
+
+  const bloqueado = salvando || importandoApi || loadingInicial;
 
   return (
     <div className="cadastro-passeio-page">
@@ -484,116 +496,124 @@ const CadastroPasseio = () => {
               </p>
             </div>
 
-            <form
-              className="cadastro-passeio-form"
-              onSubmit={salvarPasseio}
-            >
-              <div className="cadastro-passeio-form-grid">
-                <div className="cadastro-passeio-field">
-                  <label htmlFor="nome-passeio">
-                    Nome do passeio{" "}
-                    <DriveFileRenameOutlineRounded fontSize="small" />
-                  </label>
-                  <input
-                    id="nome-passeio"
-                    type="text"
-                    placeholder="Digite o nome do passeio"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                  />
-                </div>
-
-                <div className="cadastro-passeio-field">
-                  <label htmlFor="external-id">
-                    ID externo{" "}
-                    <InfoOutlined fontSize="small" />
-                  </label>
-                  <input
-                    id="external-id"
-                    type="number"
-                    placeholder="Informe o ID do serviço no Phoenix"
-                    value={externalServiceId}
-                    onChange={(e) => setExternalServiceId(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="cadastro-passeio-field">
-                <label htmlFor="descricao-passeio">
-                  Descrição do passeio <InfoOutlined fontSize="small" />
-                </label>
-                <textarea
-                  id="descricao-passeio"
-                  placeholder="Descreva o passeio ou observações importantes"
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                />
-              </div>
-
-              <div className="cadastro-passeio-field">
-                <label>
-                  Frequência do passeio <CalendarMonthRounded fontSize="small" />
-                </label>
-
-                <div className="cadastro-passeio-dropdown">
-                  <div
-                    className="cadastro-passeio-dropdown-header"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                  >
-                    <span>Selecionar dias da semana</span>
-                    <span className="cadastro-passeio-dropdown-arrow">▾</span>
+            {loadingInicial ? (
+              <CardSkeleton variant="filters" />
+            ) : (
+              <form className="cadastro-passeio-form" onSubmit={salvarPasseio}>
+                <div className="cadastro-passeio-form-grid">
+                  <div className="cadastro-passeio-field">
+                    <label htmlFor="nome-passeio">
+                      Nome do passeio{" "}
+                      <DriveFileRenameOutlineRounded fontSize="small" />
+                    </label>
+                    <input
+                      id="nome-passeio"
+                      type="text"
+                      placeholder="Digite o nome do passeio"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      disabled={bloqueado}
+                    />
                   </div>
 
-                  {dropdownOpen && (
-                    <div className="cadastro-passeio-dropdown-list">
-                      {diasSemana.map((dia) => (
-                        <div
-                          key={dia}
-                          className="cadastro-passeio-dropdown-item"
-                          onClick={() => adicionarDia(dia)}
-                        >
-                          {dia}
-                        </div>
-                      ))}
+                  <div className="cadastro-passeio-field">
+                    <label htmlFor="external-id">
+                      ID externo <InfoOutlined fontSize="small" />
+                    </label>
+                    <input
+                      id="external-id"
+                      type="number"
+                      placeholder="Informe o ID do serviço no Phoenix"
+                      value={externalServiceId}
+                      onChange={(e) => setExternalServiceId(e.target.value)}
+                      disabled={bloqueado}
+                    />
+                  </div>
+                </div>
+
+                <div className="cadastro-passeio-field">
+                  <label htmlFor="descricao-passeio">
+                    Descrição do passeio <InfoOutlined fontSize="small" />
+                  </label>
+                  <textarea
+                    id="descricao-passeio"
+                    placeholder="Descreva o passeio ou observações importantes"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    disabled={bloqueado}
+                  />
+                </div>
+
+                <div className="cadastro-passeio-field">
+                  <label>
+                    Frequência do passeio{" "}
+                    <CalendarMonthRounded fontSize="small" />
+                  </label>
+
+                  <div className="cadastro-passeio-dropdown">
+                    <div
+                      className="cadastro-passeio-dropdown-header"
+                      onClick={() => !bloqueado && setDropdownOpen(!dropdownOpen)}
+                    >
+                      <span>Selecionar dias da semana</span>
+                      <span className="cadastro-passeio-dropdown-arrow">▾</span>
                     </div>
+
+                    {dropdownOpen && !bloqueado && (
+                      <div className="cadastro-passeio-dropdown-list">
+                        {diasSemana.map((dia) => (
+                          <div
+                            key={dia}
+                            className="cadastro-passeio-dropdown-item"
+                            onClick={() => adicionarDia(dia)}
+                          >
+                            {dia}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cadastro-passeio-tags">
+                    {frequencia.map((dia) => (
+                      <div className="cadastro-passeio-tag" key={dia}>
+                        {dia}
+                        <span onClick={() => !bloqueado && removerDia(dia)}>
+                          ×
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="cadastro-passeio-actions">
+                  <button
+                    type="submit"
+                    className={`cadastro-passeio-btn-primary ${salvando ? "is-saving" : ""
+                      }`}
+                    disabled={salvando || importandoApi}
+                  >
+                    <SaveRounded fontSize="small" />
+                    {salvando
+                      ? "Salvando..."
+                      : editandoId
+                        ? "Salvar alterações"
+                        : "Cadastrar passeio"}
+                  </button>
+
+                  {editandoId && (
+                    <button
+                      type="button"
+                      className="cadastro-passeio-btn-secondary"
+                      onClick={limparFormulario}
+                      disabled={bloqueado}
+                    >
+                      Cancelar edição
+                    </button>
                   )}
                 </div>
-
-                <div className="cadastro-passeio-tags">
-                  {frequencia.map((dia) => (
-                    <div className="cadastro-passeio-tag" key={dia}>
-                      {dia}
-                      <span onClick={() => removerDia(dia)}>×</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="cadastro-passeio-actions">
-                <button
-                  type="submit"
-                  className="cadastro-passeio-btn-primary"
-                  disabled={loading}
-                >
-                  <SaveRounded fontSize="small" />
-                  {loading
-                    ? "Salvando..."
-                    : editandoId
-                      ? "Salvar alterações"
-                      : "Cadastrar passeio"}
-                </button>
-
-                {editandoId && (
-                  <button
-                    type="button"
-                    className="cadastro-passeio-btn-secondary"
-                    onClick={limparFormulario}
-                  >
-                    Cancelar edição
-                  </button>
-                )}
-              </div>
-            </form>
+              </form>
+            )}
           </div>
 
           <div className="cadastro-passeio-card">
@@ -608,21 +628,26 @@ const CadastroPasseio = () => {
               </p>
             </div>
 
-            <div className="cadastro-passeio-import-box">
-              <div className="cadastro-passeio-import-icon">
-                <SyncRounded fontSize="small" />
-              </div>
+            {loadingInicial ? (
+              <CardSkeleton variant="list" rows={3} />
+            ) : (
+              <div className="cadastro-passeio-import-box">
+                <div className="cadastro-passeio-import-icon">
+                  <SyncRounded fontSize="small" />
+                </div>
 
-              <button
-                type="button"
-                className="cadastro-passeio-btn-soft"
-                onClick={importarPasseiosDaApi}
-                disabled={importandoApi}
-              >
-                <FileDownloadDoneRounded fontSize="small" />
-                {importandoApi ? "Importando..." : "Puxar dados do Phoenix"}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className={`cadastro-passeio-btn-soft ${importandoApi ? "is-syncing" : ""
+                    }`}
+                  onClick={importarPasseiosDaApi}
+                  disabled={importandoApi || salvando}
+                >
+                  <FileDownloadDoneRounded fontSize="small" />
+                  {importandoApi ? "Importando..." : "Puxar dados do Phoenix"}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="cadastro-passeio-card cadastro-passeio-card-full">
@@ -630,7 +655,7 @@ const CadastroPasseio = () => {
               <div className="cadastro-passeio-card-title-row">
                 <h3>Passeios cadastrados</h3>
                 <span className="cadastro-passeio-badge">
-                  {passeios.length} item(ns)
+                  {loadingInicial ? "..." : `${passeios.length} item(ns)`}
                 </span>
               </div>
               <p>
@@ -639,14 +664,20 @@ const CadastroPasseio = () => {
               </p>
             </div>
 
-            {passeios.length === 0 ? (
+            {loadingInicial ? (
+              <CardSkeleton variant="list" rows={6} />
+            ) : passeios.length === 0 ? (
               <div className="cadastro-passeio-empty">
                 Nenhum passeio cadastrado.
               </div>
             ) : (
               <ul className="cadastro-passeio-list">
                 {passeios.map((p) => (
-                  <li key={p.id} className="cadastro-passeio-item">
+                  <li
+                    key={p.id}
+                    className={`cadastro-passeio-item ${excluindoId === p.id ? "is-removing" : ""
+                      }`}
+                  >
                     <div className="cadastro-passeio-item-info">
                       <strong className="cadastro-passeio-item-name">
                         {p.nome}
@@ -686,6 +717,7 @@ const CadastroPasseio = () => {
                         type="button"
                         className="cadastro-passeio-btn-edit"
                         onClick={() => editarPasseio(p)}
+                        disabled={bloqueado || !!excluindoId}
                       >
                         <EditRounded fontSize="small" />
                         Editar
@@ -695,6 +727,7 @@ const CadastroPasseio = () => {
                         type="button"
                         className="cadastro-passeio-btn-delete"
                         onClick={() => excluirPasseio(p)}
+                        disabled={bloqueado || !!excluindoId}
                       >
                         <DeleteOutlineRounded fontSize="small" />
                         Apagar

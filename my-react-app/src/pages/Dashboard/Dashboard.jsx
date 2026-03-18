@@ -10,6 +10,7 @@ import {
   MapRounded,
   PlaylistAddCheckCircleRounded,
   SettingsRounded,
+  DashboardRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -32,6 +33,10 @@ const Dashboard = ({ loading }) => {
           </NavLink>
         </div>
 
+        <NavLink to="/" className={getNavClass}>
+          <DashboardRounded fontSize="small" className="sidebar-icon" />
+          <span>Dashboard</span>
+        </NavLink>
         <div className="sidebar-menu">
           <div className="sidebar-group">
             <span className="sidebar-group-title">Operação</span>

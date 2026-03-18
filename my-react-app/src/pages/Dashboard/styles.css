@@ -20,12 +20,10 @@
 }
 
 .dashboard-main {
-  width: 100%;
   min-height: calc(100vh - 48px);
   position: relative;
   padding: 20px;
   border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 /* ===== SIDEBAR ===== */
@@ -91,12 +89,12 @@
 .sidebar-brand strong {
   font-size: 15px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .sidebar-brand span {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--text);
   margin-top: 4px;
 }
 
@@ -114,11 +112,11 @@
 }
 
 .sidebar-group-title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--text);
   padding: 0 10px 10px;
 }
 
@@ -129,7 +127,7 @@
   gap: 12px;
   width: 100%;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   padding: 11px 12px;
   border-radius: 10px;
   position: relative;
@@ -153,7 +151,7 @@
 
 /* ===== ITEM ATIVO ===== */
 .sidebar-link.active {
-  background: rgba(19, 122, 92, 0.16);
+  background: var(--side);
   color: #ffffff;
 }
 
@@ -178,8 +176,8 @@
 }
 
 .sidebar-version {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 8px;
+  color: var(--text);
   padding-left: 12px;
 }
 

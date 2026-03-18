@@ -25,7 +25,7 @@ import {
   Groups,
   Lock,
 } from "@mui/icons-material";
-import LoadingBlock from "../../components/LoadingOverlay/LoadingOverlay";
+import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
 
 const DIAS = [
   "Segunda",
@@ -375,12 +375,12 @@ const ordenarServicosPorEscassez = (
 
     const maiorNivel = aptos.length
       ? Math.max(
-          ...aptos.map((g) =>
-            Number(
-              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
-            ),
+        ...aptos.map((g) =>
+          Number(
+            obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
           ),
-        )
+        ),
+      )
       : 0;
 
     return {
@@ -510,13 +510,13 @@ const escolherProximoServico = ({
     const maiorNivel = usarAfinidadeGuiaPasseio
       ? elegiveis.length
         ? Math.max(
-            ...elegiveis.map((g) =>
-              Number(
-                obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
-                  0,
-              ),
+          ...elegiveis.map((g) =>
+            Number(
+              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
+              0,
             ),
-          )
+          ),
+        )
         : 0
       : 0;
 
@@ -747,7 +747,6 @@ const ListaPasseiosSemana = () => {
   const [guias, setGuias] = useState([]);
   const [modoVisualizacao, setModoVisualizacao] = useState(true);
   const [resumoGuias, setResumoGuias] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [paxEditando, setPaxEditando] = useState({});
   const [novoServico, setNovoServico] = useState({});
   const [disponibilidades, setDisponibilidades] = useState([]);
@@ -755,18 +754,22 @@ const ListaPasseiosSemana = () => {
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
     useState("equilibrado");
 
+  const [loadingInicial, setLoadingInicial] = useState(true);
+  const [loadingSemana, setLoadingSemana] = useState(false);
+  const [processandoAcao, setProcessandoAcao] = useState(false);
+
+  const primeiraCargaRef = useRef(true);
   const paxTimers = useRef({});
 
   useEffect(() => {
-    carregarDados();
-  }, [semanaOffset]);
-
-  useEffect(() => {
-    document.body.style.overflow = loading ? "hidden" : "auto";
-    return () => {
-      document.body.style.overflow = "auto";
+    const carregar = async () => {
+      const initial = primeiraCargaRef.current;
+      await carregarDados({ initial, showSkeleton: true });
+      primeiraCargaRef.current = false;
     };
-  }, [loading]);
+
+    carregar();
+  }, [semanaOffset]);
 
   useEffect(() => {
     if (semana.length && guias.length) {
@@ -779,6 +782,8 @@ const ListaPasseiosSemana = () => {
       Object.values(paxTimers.current).forEach((timer) => clearTimeout(timer));
     };
   }, []);
+
+  const carregandoEstrutura = loadingInicial || loadingSemana;
 
   const abrirEscalaEmNovaAba = () => {
     try {
@@ -848,10 +853,9 @@ const ListaPasseiosSemana = () => {
         grupo.forEach((linha, index) => {
           htmlLinhas += `
           <tr>
-            ${
-              index === 0
-                ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
-                : ""
+            ${index === 0
+              ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
+              : ""
             }
             <td>${linha.passeio}</td>
             <td>${linha.guia}</td>
@@ -911,7 +915,6 @@ const ListaPasseiosSemana = () => {
             .table-wrap {
               overflow-x: auto;
               border-radius: 12px;
-            
             }
 
             table {
@@ -983,7 +986,6 @@ const ListaPasseiosSemana = () => {
 
           <div class="toolbar">
             <button onclick="window.print()">Imprimir / Salvar em PDF</button>
-          
           </div>
 
           <div class="table-wrap">
@@ -1306,8 +1308,15 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const carregarDados = async () => {
-    setLoading(true);
+  const carregarDados = async ({
+    initial = false,
+    showSkeleton = true,
+  } = {}) => {
+    if (showSkeleton) {
+      if (initial) setLoadingInicial(true);
+      else setLoadingSemana(true);
+    }
+
     try {
       const semanaAtual = gerarSemana(semanaOffset);
       setSemana(semanaAtual);
@@ -1350,7 +1359,6 @@ const ListaPasseiosSemana = () => {
         const snap = await getDocs(q);
 
         const listaDia = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
         mapa[dia.date] = listaDia;
       }
 
@@ -1358,39 +1366,49 @@ const ListaPasseiosSemana = () => {
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
     } finally {
-      setLoading(false);
+      if (showSkeleton) {
+        if (initial) setLoadingInicial(false);
+        else setLoadingSemana(false);
+      }
     }
   };
 
   const limparDuplicadosSemana = async () => {
-    for (const dia of semana) {
-      const q = query(
-        collection(db, "weekly_services"),
-        where("date", "==", dia.date),
-      );
+    setProcessandoAcao(true);
+    try {
+      for (const dia of semana) {
+        const q = query(
+          collection(db, "weekly_services"),
+          where("date", "==", dia.date),
+        );
 
-      const snap = await getDocs(q);
-      const lista = snap.docs.map((d) => ({
-        id: d.id,
-        ref: d.ref,
-        ...d.data(),
-      }));
+        const snap = await getDocs(q);
+        const lista = snap.docs.map((d) => ({
+          id: d.id,
+          ref: d.ref,
+          ...d.data(),
+        }));
 
-      const mapa = {};
+        const mapa = {};
 
-      for (const item of lista) {
-        const nomeCanonico = obterNomeCanonico(item.serviceName || "");
-        const chave = `${item.date}_${nomeCanonico}`;
+        for (const item of lista) {
+          const nomeCanonico = obterNomeCanonico(item.serviceName || "");
+          const chave = `${item.date}_${nomeCanonico}`;
 
-        if (!mapa[chave]) {
-          mapa[chave] = item;
-        } else {
-          await deleteDoc(item.ref);
+          if (!mapa[chave]) {
+            mapa[chave] = item;
+          } else {
+            await deleteDoc(item.ref);
+          }
         }
       }
-    }
 
-    await carregarDados();
+      await carregarDados({ showSkeleton: false });
+    } catch (err) {
+      console.error("Erro ao limpar duplicados:", err);
+    } finally {
+      setProcessandoAcao(false);
+    }
   };
 
   const alterarStatusAlocacao = async (registroId, status) => {
@@ -1415,13 +1433,13 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                  ...r,
-                  allocationStatus: status,
-                  ...(status === "CLOSED" && {
-                    guiaId: null,
-                    guiaNome: null,
-                  }),
-                }
+                ...r,
+                allocationStatus: status,
+                ...(status === "CLOSED" && {
+                  guiaId: null,
+                  guiaNome: null,
+                }),
+              }
               : r,
           );
         });
@@ -1482,7 +1500,7 @@ const ListaPasseiosSemana = () => {
       return;
     }
 
-    setLoading(true);
+    setProcessandoAcao(true);
     try {
       await setDoc(
         doc(db, "weekly_services", registroId),
@@ -1497,11 +1515,11 @@ const ListaPasseiosSemana = () => {
         { merge: true },
       );
 
-      await carregarDados();
+      await carregarDados({ showSkeleton: false });
     } catch (err) {
       console.error("Erro ao alterar guia manualmente:", err);
     } finally {
-      setLoading(false);
+      setProcessandoAcao(false);
     }
   };
 
@@ -1513,7 +1531,7 @@ const ListaPasseiosSemana = () => {
       return;
     }
 
-    setLoading(true);
+    setProcessandoAcao(true);
     try {
       await addDoc(collection(db, "weekly_services"), {
         serviceName: dados.nome,
@@ -1537,23 +1555,23 @@ const ListaPasseiosSemana = () => {
         [dia.date]: {},
       }));
 
-      await carregarDados();
+      await carregarDados({ showSkeleton: false });
     } catch (err) {
       console.error("Erro ao adicionar passeio manual:", err);
     } finally {
-      setLoading(false);
+      setProcessandoAcao(false);
     }
   };
 
   const removerPasseio = async (id) => {
-    setLoading(true);
+    setProcessandoAcao(true);
     try {
       await deleteDoc(doc(db, "weekly_services", id));
-      await carregarDados();
+      await carregarDados({ showSkeleton: false });
     } catch (err) {
       console.error("Erro ao remover passeio:", err);
     } finally {
-      setLoading(false);
+      setProcessandoAcao(false);
     }
   };
 
@@ -1840,7 +1858,7 @@ Operacional - Luck Receptivo 🍀
   };
 
   const alocarGuiasSemana = async () => {
-    setLoading(true);
+    setProcessandoAcao(true);
 
     try {
       if (!guias.length || !semana.length) return;
@@ -1940,12 +1958,12 @@ Operacional - Luck Receptivo 🍀
 
         const itensOrdenados = usarAfinidadeGuiaPasseio
           ? ordenarServicosPorEscassez(
-              itensPendentes,
-              guiasDisponiveis,
-              usadosNoDia,
-              mapaAfinidade,
-              services,
-            )
+            itensPendentes,
+            guiasDisponiveis,
+            usadosNoDia,
+            mapaAfinidade,
+            services,
+          )
           : itensPendentes;
 
         for (const item of itensOrdenados) {
@@ -1971,26 +1989,26 @@ Operacional - Luck Receptivo 🍀
 
           const candidatosOrdenados = usarAfinidadeGuiaPasseio
             ? ordenarGuiasComAfinidade(
-                elegiveis,
-                contadorSemana,
-                workedInWeek,
-                diasTrabalhadosSemana,
-                item,
-                mapaAfinidade,
-                services,
-                modoDistribuicaoGuias,
-                mapaDisponibilidade,
-                semana,
-              )
+              elegiveis,
+              contadorSemana,
+              workedInWeek,
+              diasTrabalhadosSemana,
+              item,
+              mapaAfinidade,
+              services,
+              modoDistribuicaoGuias,
+              mapaDisponibilidade,
+              semana,
+            )
             : ordenarGuiasSemAfinidade(
-                elegiveis,
-                contadorSemana,
-                workedInWeek,
-                diasTrabalhadosSemana,
-                modoDistribuicaoGuias,
-                mapaDisponibilidade,
-                semana,
-              );
+              elegiveis,
+              contadorSemana,
+              workedInWeek,
+              diasTrabalhadosSemana,
+              modoDistribuicaoGuias,
+              mapaDisponibilidade,
+              semana,
+            );
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
@@ -2019,16 +2037,16 @@ Operacional - Luck Receptivo 🍀
       }
 
       await salvarModoGeradoSemana(semana, modoDistribuicaoGuias);
-      await carregarDados();
+      await carregarDados({ showSkeleton: false });
     } catch (err) {
       console.error("Erro ao alocar guias da semana:", err);
     } finally {
-      setLoading(false);
+      setProcessandoAcao(false);
     }
   };
 
   const removerGuiasSemana = async () => {
-    setLoading(true);
+    setProcessandoAcao(true);
     try {
       for (const dia of semana) {
         const q = query(
@@ -2051,25 +2069,48 @@ Operacional - Luck Receptivo 🍀
       }
 
       await limparModoGeradoSemana(semana);
-      await carregarDados();
+      await carregarDados({ showSkeleton: false });
     } catch (err) {
       console.error("Erro ao remover guias da semana:", err);
     } finally {
-      setLoading(false);
+      setProcessandoAcao(false);
     }
   };
 
+  const renderResumoSkeleton = () => (
+    <div className="planner-summary-skeleton">
+      <CardSkeleton variant="list" rows={4} />
+    </div>
+  );
+
+  const renderDiasSkeleton = () => (
+    <div className="planner-days-skeleton">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="day-card">
+          <CardSkeleton variant="list" rows={5} />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="page-container">
-      <LoadingBlock loading={loading} text="Carregando..." respectSidebar />
+      <div className="planner-header-row">
+        <h2>Planejamento Semanal de Passeios</h2>
 
-      <h2>Planejamento Semanal de Passeios</h2>
+        {(processandoAcao || loadingSemana) && (
+          <div className="planner-status-pill">
+            {processandoAcao ? "Processando alterações..." : "Atualizando semana..."}
+          </div>
+        )}
+      </div>
 
       <div className="header-tours">
         <div className="mode-toggle">
           <button
             className="btn-list"
             onClick={() => setModoVisualizacao(true)}
+            disabled={processandoAcao || carregandoEstrutura}
           >
             Visualizar <Visibility fontSize="10" />
           </button>
@@ -2077,23 +2118,39 @@ Operacional - Luck Receptivo 🍀
           <button
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
+            disabled={processandoAcao || carregandoEstrutura}
           >
             Editar escala <ModeEdit fontSize="10" />
           </button>
 
-          <button className="btn-list" onClick={alocarGuiasSemana}>
+          <button
+            className="btn-list-gerar"
+            onClick={alocarGuiasSemana}
+            disabled={processandoAcao || carregandoEstrutura}
+          >
             Gerar escala de Guias <ManageAccounts fontSize="10" />
           </button>
 
-          <button className="btn-list-cld" onClick={removerGuiasSemana}>
+          <button
+            className="btn-list-cld"
+            onClick={removerGuiasSemana}
+            disabled={processandoAcao || carregandoEstrutura}
+          >
             Desfazer escala de Guias <Undo fontSize="10" />
           </button>
-          <button className="btn-list" onClick={abrirEscalaEmNovaAba}>
+
+          <button
+            className="btn-list"
+            onClick={abrirEscalaEmNovaAba}
+            disabled={processandoAcao || carregandoEstrutura}
+          >
             Abrir planilha
           </button>
+
           <button
             className="btn-list-send"
             onClick={enviarWhatsappGuiasSemana_FIRESTORE}
+            disabled={processandoAcao || carregandoEstrutura}
           >
             Enviar todos os Bloqueios{" "}
             <WhatsApp className="icon-zap" fontSize="10" />
@@ -2105,17 +2162,23 @@ Operacional - Luck Receptivo 🍀
             <button
               className="btn-list"
               onClick={() => setSemanaOffset((o) => o - 1)}
+              disabled={processandoAcao}
             >
               ⬅ Semana anterior
             </button>
 
-            <button className="btn-list" onClick={() => setSemanaOffset(0)}>
+            <button
+              className="btn-list"
+              onClick={() => setSemanaOffset(0)}
+              disabled={processandoAcao}
+            >
               Semana atual
             </button>
 
             <button
               className="btn-list"
               onClick={() => setSemanaOffset((o) => o + 1)}
+              disabled={processandoAcao}
             >
               Semana seguinte ➡
             </button>
@@ -2143,275 +2206,293 @@ Operacional - Luck Receptivo 🍀
         <Warning fontSize="10" className="icon-warning" />
       </div>
 
-      <div className="resumo-container">
-        {resumoGuias.map((g, index) => (
-          <div key={g.guiaId} className="resumo-card">
-            <div className="resumo-header">
-              <h4 className="resumo-nome">
-                <span className="resumo-nome-main">
-                  {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
-                    <span
-                      className={`priority-pill p-${g.nivelPrioridade || 2}`}
-                    >
-                      P{g.nivelPrioridade || 2}
+      {carregandoEstrutura ? (
+        <>
+          {renderResumoSkeleton()}
+          {renderDiasSkeleton()}
+        </>
+      ) : (
+        <>
+          <div className="resumo-container">
+            {resumoGuias.map((g, index) => (
+              <div key={g.guiaId} className="resumo-card">
+                <div className="resumo-header">
+                  <h4 className="resumo-nome">
+                    <span className="resumo-nome-main">
+                      {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
+                        <span
+                          className={`priority-pill p-${g.nivelPrioridade || 2}`}
+                        >
+                          P{g.nivelPrioridade || 2}
+                        </span>
+                      )}
+                      {index === 0 && <span className="medalha">🏆</span>}
+                      {g.nome}
                     </span>
-                  )}
-                  {index === 0 && <span className="medalha">🏆</span>}
-                  {g.nome}
-                </span>
 
-                {g.sobrecarga && <span className="indicador-alerta">●</span>}
-              </h4>
+                    {g.sobrecarga && <span className="indicador-alerta">●</span>}
+                  </h4>
 
-              <span
-                className={`resumo-percent 
-                  ${g.ocupacao >= 80 ? "alta" : ""}
-                  ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
-                  ${g.ocupacao < 50 ? "baixa" : ""}
-                `}
-              >
-                {g.ocupacao}%
-              </span>
-            </div>
+                  <span
+                    className={`resumo-percent 
+                      ${g.ocupacao >= 80 ? "alta" : ""}
+                      ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+                      ${g.ocupacao < 50 ? "baixa" : ""}
+                    `}
+                  >
+                    {g.ocupacao}%
+                  </span>
+                </div>
 
-            <div className="resumo-bar">
-              <div
-                className={`resumo-bar-fill 
-                  ${g.ocupacao >= 80 ? "alta" : ""}
-                  ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
-                  ${g.ocupacao < 50 ? "baixa" : ""}
-                `}
-                style={{ width: `${g.ocupacao}%` }}
-              />
-            </div>
+                <div className="resumo-bar">
+                  <div
+                    className={`resumo-bar-fill 
+                      ${g.ocupacao >= 80 ? "alta" : ""}
+                      ${g.ocupacao >= 50 && g.ocupacao < 80 ? "media" : ""}
+                      ${g.ocupacao < 50 ? "baixa" : ""}
+                    `}
+                    style={{ width: `${g.ocupacao}%` }}
+                  />
+                </div>
 
-            <p className="resumo-info">{g.totalServicos} serviços</p>
+                <p className="resumo-info">{g.totalServicos} serviços</p>
 
-            <div className="mini-chart">
-              {semana.map((dia) => (
-                <div
-                  key={dia.date}
-                  className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""}`}
-                />
-              ))}
+                <div className="mini-chart">
+                  {semana.map((dia) => (
+                    <div
+                      key={dia.date}
+                      className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""}`}
+                    />
+                  ))}
 
-              <div className="whatsapp-wrapper">
-                <button
-                  className="btn-whatsapp-guia"
-                  onClick={() => enviarWhatsappGuiaIndividual(g)}
-                >
-                  <Send fontSize="12" /> Enviar
-                </button>
+                  <div className="whatsapp-wrapper">
+                    <button
+                      className="btn-whatsapp-guia"
+                      onClick={() => enviarWhatsappGuiaIndividual(g)}
+                      disabled={processandoAcao}
+                    >
+                      <Send fontSize="12" /> Enviar
+                    </button>
 
-                <div className="resumo-tooltip">
-                  <pre>{gerarMensagemGuia(g)}</pre>
+                    <div className="resumo-tooltip">
+                      <pre>{gerarMensagemGuia(g)}</pre>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {semana.map((dia) => {
-        const registrosOrdenados = agruparRegistrosPorServico(
-          extras[dia.date] || [],
-        );
+          {semana.map((dia) => {
+            const registrosOrdenados = agruparRegistrosPorServico(
+              extras[dia.date] || [],
+            );
 
-        const totalPasseios = registrosOrdenados.length;
-        const passeiosComGuia = registrosOrdenados.filter(
-          (r) => !!r.guiaId && r.allocationStatus !== "CLOSED",
-        ).length;
+            const totalPasseios = registrosOrdenados.length;
+            const passeiosComGuia = registrosOrdenados.filter(
+              (r) => !!r.guiaId && r.allocationStatus !== "CLOSED",
+            ).length;
 
-        let statusDia = "vazio";
-        if (passeiosComGuia === 0) statusDia = "vazio";
-        else if (passeiosComGuia < totalPasseios) statusDia = "parcial";
-        else statusDia = "completo";
+            let statusDia = "vazio";
+            if (passeiosComGuia === 0) statusDia = "vazio";
+            else if (passeiosComGuia < totalPasseios) statusDia = "parcial";
+            else statusDia = "completo";
 
-        return (
-          <div key={dia.date} className="day-card">
-            <strong className={`day-list ${statusDia}`}>
-              {dia.label}
-              <span className="day-status">
-                {" "}
-                - Passeios com Guia: {passeiosComGuia} - Total de Passeios:{" "}
-                {totalPasseios}
-              </span>
-            </strong>
+            return (
+              <div key={dia.date} className="day-card">
+                <strong className={`day-list ${statusDia}`}>
+                  {dia.label}
+                  <span className="day-status">
+                    {" "}
+                    - Passeios com Guia: {passeiosComGuia} - Total de Passeios:{" "}
+                    {totalPasseios}
+                  </span>
+                </strong>
 
-            {registrosOrdenados.map((item) => (
-              <div
-                key={`${dia.date}-${item.externalServiceId || item.id}`}
-                className="passeio-item"
-              >
-                <span className="passeio-name">{item.serviceName}</span>
+                {registrosOrdenados.map((item) => (
+                  <div
+                    key={`${dia.date}-${item.externalServiceId || item.id}`}
+                    className="passeio-item"
+                  >
+                    <span className="passeio-name">{item.serviceName}</span>
 
-                <span className="guia-name-aloc">{item.guiaNome || "-"}</span>
-                {modoVisualizacao ? (
-                  <>
-                    <span className="passeio-pax-1">
-                      {item.passengers || 0} pax
-                      <small>
-                        {" "}
-                        ({item.adultCount || 0} ADT / {item.childCount || 0} CHD
-                        / {item.infantCount || 0} INF)
-                      </small>
-                    </span>
-                    {statusGrupo(item.passengers, item.allocationStatus)}
-                  </>
-                ) : (
-                  <>
+                    <span className="guia-name-aloc">{item.guiaNome || "-"}</span>
+                    {modoVisualizacao ? (
+                      <>
+                        <span className="passeio-pax-1">
+                          {item.passengers || 0} pax
+                          <small>
+                            {" "}
+                            ({item.adultCount || 0} ADT / {item.childCount || 0} CHD
+                            / {item.infantCount || 0} INF)
+                          </small>
+                        </span>
+                        {statusGrupo(item.passengers, item.allocationStatus)}
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="number"
+                          min="0"
+                          value={paxEditando[item.id] ?? item.passengers ?? 0}
+                          onChange={(e) =>
+                            alterarPaxManual(item.id, e.target.value)
+                          }
+                          disabled={processandoAcao}
+                        />
+
+                        <select
+                          value={item.allocationStatus || "OPEN"}
+                          onChange={(e) =>
+                            alterarStatusAlocacao(item.id, e.target.value)
+                          }
+                          disabled={processandoAcao}
+                        >
+                          <option value="OPEN">Aberto</option>
+                          <option value="CLOSED">Fechado</option>
+                        </select>
+
+                        <select
+                          value={item.guiaId || ""}
+                          disabled={processandoAcao}
+                          onChange={async (e) => {
+                            const guia = guias.find((g) => g.id === e.target.value);
+
+                            if (item.allocationStatus === "CLOSED") {
+                              alert(
+                                "Não é possível alocar guia em um serviço fechado.",
+                              );
+                              return;
+                            }
+
+                            await alterarGuiaManual(
+                              item.id,
+                              guia || null,
+                              dia,
+                              item,
+                            );
+                          }}
+                        >
+                          <option value="">Sem guia</option>
+
+                          {guias.map((g) => {
+                            const status = getStatusGuiaNoDia(
+                              g.id,
+                              dia.date,
+                              registrosOrdenados,
+                            );
+                            const carga = getCargaSemanal(g.id);
+
+                            let label = g.nome;
+
+                            if (status.status === "AVAILABLE")
+                              label += ` 🟢 (${carga}%)`;
+                            if (status.status === "USED")
+                              label += ` 🔒 (Já alocado)`;
+                            if (status.status === "BLOCKED")
+                              label += ` 🔴 (Bloqueado)`;
+                            if (status.status === "NO_DATA")
+                              label += ` ⚫ (Sem disponibilidade)`;
+
+                            const disabled =
+                              status.status === "BLOCKED" ||
+                              status.status === "USED" ||
+                              status.status === "NO_DATA";
+
+                            return (
+                              <option key={g.id} value={g.id} disabled={disabled}>
+                                {label}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        {item.manual && (
+                          <button
+                            className="btn-remove"
+                            onClick={() => removerPasseio(item.id)}
+                            disabled={processandoAcao}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+
+                {!modoVisualizacao && (
+                  <div className="passeio-item passeio-add">
+                    <input
+                      type="text"
+                      placeholder="Nome do serviço"
+                      value={novoServico[dia.date]?.nome || ""}
+                      disabled={processandoAcao}
+                      onChange={(e) =>
+                        setNovoServico((prev) => ({
+                          ...prev,
+                          [dia.date]: {
+                            ...prev[dia.date],
+                            nome: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+
                     <input
                       type="number"
                       min="0"
-                      value={paxEditando[item.id] ?? item.passengers ?? 0}
+                      placeholder="Pax"
+                      value={novoServico[dia.date]?.pax || ""}
+                      disabled={processandoAcao}
                       onChange={(e) =>
-                        alterarPaxManual(item.id, e.target.value)
+                        setNovoServico((prev) => ({
+                          ...prev,
+                          [dia.date]: {
+                            ...prev[dia.date],
+                            pax: e.target.value,
+                          },
+                        }))
                       }
                     />
 
                     <select
-                      value={item.allocationStatus || "OPEN"}
-                      onChange={(e) =>
-                        alterarStatusAlocacao(item.id, e.target.value)
-                      }
-                    >
-                      <option value="OPEN">Aberto</option>
-                      <option value="CLOSED">Fechado</option>
-                    </select>
-
-                    <select
-                      value={item.guiaId || ""}
-                      onChange={async (e) => {
+                      value={novoServico[dia.date]?.guiaId || ""}
+                      disabled={processandoAcao}
+                      onChange={(e) => {
                         const guia = guias.find((g) => g.id === e.target.value);
-
-                        if (item.allocationStatus === "CLOSED") {
-                          alert(
-                            "Não é possível alocar guia em um serviço fechado.",
-                          );
-                          return;
-                        }
-
-                        await alterarGuiaManual(
-                          item.id,
-                          guia || null,
-                          dia,
-                          item,
-                        );
+                        setNovoServico((prev) => ({
+                          ...prev,
+                          [dia.date]: {
+                            ...prev[dia.date],
+                            guiaId: guia?.id || null,
+                            guiaNome: guia?.nome || null,
+                          },
+                        }));
                       }}
                     >
-                      <option value="">Sem guia</option>
-
-                      {guias.map((g) => {
-                        const status = getStatusGuiaNoDia(
-                          g.id,
-                          dia.date,
-                          registrosOrdenados,
-                        );
-                        const carga = getCargaSemanal(g.id);
-
-                        let label = g.nome;
-
-                        if (status.status === "AVAILABLE")
-                          label += ` 🟢 (${carga}%)`;
-                        if (status.status === "USED")
-                          label += ` 🔒 (Já alocado)`;
-                        if (status.status === "BLOCKED")
-                          label += ` 🔴 (Bloqueado)`;
-                        if (status.status === "NO_DATA")
-                          label += ` ⚫ (Sem disponibilidade)`;
-
-                        const disabled =
-                          status.status === "BLOCKED" ||
-                          status.status === "USED" ||
-                          status.status === "NO_DATA";
-
-                        return (
-                          <option key={g.id} value={g.id} disabled={disabled}>
-                            {label}
-                          </option>
-                        );
-                      })}
+                      <option value="">Selecione o guia</option>
+                      {guias.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.nome}
+                        </option>
+                      ))}
                     </select>
 
-                    {item.manual && (
-                      <button
-                        className="btn-remove"
-                        onClick={() => removerPasseio(item.id)}
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </>
+                    <button
+                      className="btn-add"
+                      onClick={() => adicionarPasseioManual(dia)}
+                      disabled={processandoAcao}
+                    >
+                      ➕
+                    </button>
+                  </div>
                 )}
               </div>
-            ))}
-
-            {!modoVisualizacao && (
-              <div className="passeio-item passeio-add">
-                <input
-                  type="text"
-                  placeholder="Nome do serviço"
-                  value={novoServico[dia.date]?.nome || ""}
-                  onChange={(e) =>
-                    setNovoServico((prev) => ({
-                      ...prev,
-                      [dia.date]: {
-                        ...prev[dia.date],
-                        nome: e.target.value,
-                      },
-                    }))
-                  }
-                />
-
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Pax"
-                  value={novoServico[dia.date]?.pax || ""}
-                  onChange={(e) =>
-                    setNovoServico((prev) => ({
-                      ...prev,
-                      [dia.date]: {
-                        ...prev[dia.date],
-                        pax: e.target.value,
-                      },
-                    }))
-                  }
-                />
-
-                <select
-                  value={novoServico[dia.date]?.guiaId || ""}
-                  onChange={(e) => {
-                    const guia = guias.find((g) => g.id === e.target.value);
-                    setNovoServico((prev) => ({
-                      ...prev,
-                      [dia.date]: {
-                        ...prev[dia.date],
-                        guiaId: guia?.id || null,
-                        guiaNome: guia?.nome || null,
-                      },
-                    }));
-                  }}
-                >
-                  <option value="">Selecione o guia</option>
-                  {guias.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.nome}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  className="btn-add"
-                  onClick={() => adicionarPasseioManual(dia)}
-                >
-                  ➕
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </>
+      )}
     </div>
   );
 };

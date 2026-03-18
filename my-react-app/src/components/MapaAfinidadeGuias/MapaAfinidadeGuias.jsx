@@ -8,14 +8,13 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import LoadingBlock from "../LoadingOverlay/LoadingOverlay";
 import {
   AutoGraphRounded,
   ManageAccountsRounded,
   SaveRounded,
   TravelExploreRounded,
-  TuneRounded,
 } from "@mui/icons-material";
 
 const LABEL_NIVEL = (valor) => {
@@ -43,7 +42,9 @@ const MapaAfinidadeGuias = () => {
   const [passeios, setPasseios] = useState([]);
   const [guiaSelecionado, setGuiaSelecionado] = useState("");
   const [niveis, setNiveis] = useState({});
-  const [loading, setLoading] = useState(false);
+
+  const [loadingInicial, setLoadingInicial] = useState(true);
+  const [loadingMapa, setLoadingMapa] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
   const [mensagem, setMensagem] = useState("");
@@ -52,7 +53,7 @@ const MapaAfinidadeGuias = () => {
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        setLoading(true);
+        setLoadingInicial(true);
 
         const [snapGuias, snapPasseios] = await Promise.all([
           getDocs(collection(db, "guides")),
@@ -90,9 +91,7 @@ const MapaAfinidadeGuias = () => {
             (a.nomeExibicao || "").localeCompare(
               b.nomeExibicao || "",
               "pt-BR",
-              {
-                sensitivity: "base",
-              },
+              { sensitivity: "base" },
             ),
           );
 
@@ -103,7 +102,7 @@ const MapaAfinidadeGuias = () => {
         setTipoMensagem("erro");
         setMensagem("Erro ao carregar dados.");
       } finally {
-        setLoading(false);
+        setLoadingInicial(false);
       }
     };
 
@@ -118,7 +117,7 @@ const MapaAfinidadeGuias = () => {
       }
 
       try {
-        setLoading(true);
+        setLoadingMapa(true);
 
         const ref = doc(db, "guide_tour_levels", guiaSelecionado);
         const snap = await getDoc(ref);
@@ -134,7 +133,7 @@ const MapaAfinidadeGuias = () => {
         setTipoMensagem("erro");
         setMensagem("Erro ao carregar o mapeamento do guia.");
       } finally {
-        setLoading(false);
+        setLoadingMapa(false);
       }
     };
 
@@ -165,7 +164,7 @@ const MapaAfinidadeGuias = () => {
   };
 
   const salvarMapa = async () => {
-    if (!guiaSelecionado) return;
+    if (!guiaSelecionado || salvando) return;
 
     try {
       setSalvando(true);
@@ -222,40 +221,49 @@ const MapaAfinidadeGuias = () => {
             </p>
           </div>
 
-          <div className="afinidade-field">
-            <label htmlFor="afinidade-guia-select">
-              Guia <ManageAccountsRounded fontSize="small" />
-            </label>
-            <select
-              id="afinidade-guia-select"
-              className="afinidade-select"
-              value={guiaSelecionado}
-              onChange={(e) => setGuiaSelecionado(e.target.value)}
-            >
-              <option value="">Selecione um guia</option>
-              {guias.map((guia) => (
-                <option key={guia.id} value={guia.id}>
-                  {guia.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+          {loadingInicial ? (
+            <CardSkeleton variant="filters" />
+          ) : (
+            <>
+              <div className="afinidade-field">
+                <label htmlFor="afinidade-guia-select">
+                  Guia <ManageAccountsRounded fontSize="small" />
+                </label>
+                <select
+                  id="afinidade-guia-select"
+                  className="afinidade-select"
+                  value={guiaSelecionado}
+                  onChange={(e) => setGuiaSelecionado(e.target.value)}
+                  disabled={salvando}
+                >
+                  <option value="">Selecione um guia</option>
+                  {guias.map((guia) => (
+                    <option key={guia.id} value={guia.id}>
+                      {guia.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {mensagem && (
-            <div className={`afinidade-alerta ${tipoMensagem}`}>{mensagem}</div>
-          )}
+              {mensagem && (
+                <div className={`afinidade-alerta ${tipoMensagem}`}>
+                  {mensagem}
+                </div>
+              )}
 
-          {guiaAtual && (
-            <div className="afinidade-resumo-guia">
-              Configurando níveis de operação para{" "}
-              <strong>{guiaAtual.nome}</strong>
-            </div>
-          )}
+              {guiaAtual && (
+                <div className="afinidade-resumo-guia">
+                  Configurando níveis de operação para{" "}
+                  <strong>{guiaAtual.nome}</strong>
+                </div>
+              )}
 
-          {guiaAtual && passeios.length === 0 && (
-            <div className="afinidade-vazio">
-              Nenhum passeio encontrado na coleção <strong>services</strong>.
-            </div>
+              {guiaAtual && passeios.length === 0 && (
+                <div className="afinidade-vazio">
+                  Nenhum passeio encontrado na coleção <strong>services</strong>.
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -271,48 +279,52 @@ const MapaAfinidadeGuias = () => {
             </p>
           </div>
 
-          <div className="afinidade-legend">
-            <div className="afinidade-legend-item">
-              <span className="afinidade-legend-dot zero" />
-              <div>
-                <strong>0</strong>
-                <span>Não operar</span>
+          {loadingInicial ? (
+            <CardSkeleton variant="list" rows={4} />
+          ) : (
+            <div className="afinidade-legend">
+              <div className="afinidade-legend-item">
+                <span className="afinidade-legend-dot zero" />
+                <div>
+                  <strong>0</strong>
+                  <span>Não operar</span>
+                </div>
               </div>
-            </div>
 
-            <div className="afinidade-legend-item">
-              <span className="afinidade-legend-dot baixo" />
-              <div>
-                <strong>5 a 40</strong>
-                <span>Nível baixo</span>
+              <div className="afinidade-legend-item">
+                <span className="afinidade-legend-dot baixo" />
+                <div>
+                  <strong>5 a 40</strong>
+                  <span>Nível baixo</span>
+                </div>
               </div>
-            </div>
 
-            <div className="afinidade-legend-item">
-              <span className="afinidade-legend-dot medio" />
-              <div>
-                <strong>45 a 60</strong>
-                <span>Nível médio</span>
+              <div className="afinidade-legend-item">
+                <span className="afinidade-legend-dot medio" />
+                <div>
+                  <strong>45 a 60</strong>
+                  <span>Nível médio</span>
+                </div>
               </div>
-            </div>
 
-            <div className="afinidade-legend-item">
-              <span className="afinidade-legend-dot alto" />
-              <div>
-                <strong>65 a 100</strong>
-                <span>Nível alto</span>
+              <div className="afinidade-legend-item">
+                <span className="afinidade-legend-dot alto" />
+                <div>
+                  <strong>65 a 100</strong>
+                  <span>Nível alto</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {guiaAtual && passeios.length > 0 && (
+        {guiaSelecionado && (
           <div className="afinidade-card afinidade-card-full">
             <div className="afinidade-card-header">
               <div className="afinidade-card-title-row">
                 <h3>Relações de afinidade</h3>
                 <span className="afinidade-badge">
-                  {passeios.length} passeio(s)
+                  {loadingMapa ? "Carregando..." : `${passeios.length} passeio(s)`}
                 </span>
               </div>
               <p>
@@ -321,72 +333,90 @@ const MapaAfinidadeGuias = () => {
               </p>
             </div>
 
-            <div className="afinidade-lista">
-              {passeios.map((passeio) => {
-                const valor = niveis[String(passeio.id)] ?? 0;
+            {loadingMapa ? (
+              <CardSkeleton variant="affinity" rows={8} />
+            ) : passeios.length > 0 ? (
+              <>
+                <div className="afinidade-lista">
+                  {passeios.map((passeio) => {
+                    const valor = niveis[String(passeio.id)] ?? 0;
 
-                return (
-                  <div key={passeio.id} className="afinidade-item">
-                    <div className="afinidade-item-topo">
-                      <div className="afinidade-item-relacao">
-                        <span className="afinidade-item-guia">
-                          <ManageAccountsRounded fontSize="small" />
-                          {guiaAtual.nome}
-                        </span>
+                    return (
+                      <div
+                        key={passeio.id}
+                        className={`afinidade-item ${salvando ? "is-saving" : ""}`}
+                      >
+                        <div className="afinidade-item-topo">
+                          <div className="afinidade-item-relacao">
+                            <span className="afinidade-item-guia">
+                              <ManageAccountsRounded fontSize="small" />
+                              {guiaAtual?.nome}
+                            </span>
 
-                        <span className="afinidade-item-separador">•</span>
+                            <span className="afinidade-item-separador">•</span>
 
-                        <span className="afinidade-item-passeio">
-                          <TravelExploreRounded fontSize="small" />
-                          {obterNomePasseio(passeio)}
-                        </span>
+                            <span className="afinidade-item-passeio">
+                              <TravelExploreRounded fontSize="small" />
+                              {obterNomePasseio(passeio)}
+                            </span>
+                          </div>
+
+                          <div className="afinidade-item-valor">
+                            <strong>{valor}</strong>
+                            <span>{LABEL_NIVEL(valor)}</span>
+                          </div>
+                        </div>
+
+                        <div className="afinidade-range-wrap">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={valor}
+                            onChange={(e) =>
+                              atualizarNivel(passeio.id, e.target.value)
+                            }
+                            className="afinidade-range"
+                            disabled={salvando}
+                          />
+                        </div>
+
+                        <div className="afinidade-escala-labels">
+                          <span>Não opera</span>
+                          <span>Médio</span>
+                          <span>Excelente</span>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      <div className="afinidade-item-valor">
-                        <strong>{valor}</strong>
-                        <span>{LABEL_NIVEL(valor)}</span>
-                      </div>
-                    </div>
+                <div className="afinidade-actions">
+                  <button
+                    className={`afinidade-btn-save ${salvando ? "is-saving" : ""}`}
+                    onClick={salvarMapa}
+                    disabled={salvando || !guiaSelecionado}
+                  >
+                    <SaveRounded fontSize="small" />
+                    {salvando ? "Salvando alterações..." : "Salvar mapeamento"}
+                  </button>
 
-                    <div className="afinidade-range-wrap">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={valor}
-                        onChange={(e) =>
-                          atualizarNivel(passeio.id, e.target.value)
-                        }
-                        className="afinidade-range"
-                      />
-                    </div>
-
-                    <div className="afinidade-escala-labels">
-                      <span>Não opera</span>
-                      <span>Médio</span>
-                      <span>Excelente</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="afinidade-actions">
-              <button
-                className="afinidade-btn-save"
-                onClick={salvarMapa}
-                disabled={salvando || !guiaSelecionado}
-              >
-                <SaveRounded fontSize="small" />
-                {salvando ? "Salvando..." : "Salvar mapeamento"}
-              </button>
-            </div>
+                  {salvando && (
+                    <span className="afinidade-saving-hint">
+                      Persistindo dados no sistema...
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="afinidade-vazio">
+                Nenhum passeio encontrado para configurar.
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      <LoadingBlock loading={loading} text="Carregando..." />
     </div>
   );
 };
