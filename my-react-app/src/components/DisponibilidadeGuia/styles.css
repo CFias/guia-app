@@ -30,9 +30,10 @@
 
 .disponibilidade-guia-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
   gap: 20px;
   align-items: start;
+  min-height: 25vh;
 }
 
 .disponibilidade-guia-card {
@@ -255,7 +256,7 @@
   cursor: pointer;
   transition: all 0.25s ease;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -282,7 +283,7 @@
 }
 
 .disponibilidade-guia-btn-soft {
-  min-height: 38px;
+  min-height: 28px;
   padding: 0 18px;
   border-radius: 16px;
   background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);

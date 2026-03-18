@@ -1,0 +1,83 @@
+/* ===== UI STATES / GLOBAL REUSABLE ===== */
+
+.is-saving,
+.is-syncing,
+.is-processing {
+    cursor: progress !important;
+    opacity: 0.92;
+}
+
+.is-removing {
+    opacity: 0.55;
+    transform: scale(0.99);
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s ease;
+}
+
+.empty-state-soft {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent 30%);
+    color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.status-pill.success {
+    background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
+    color: var(--text-dist);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+}
+
+.status-pill.warning {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    color: #9a7a00;
+    border: 1px solid color-mix(in srgb, var(--p2) 22%, transparent 78%);
+}
+
+.status-pill.danger {
+    background: color-mix(in srgb, var(--p1) 14%, transparent 86%);
+    color: var(--p1);
+    border: 1px solid color-mix(in srgb, var(--p1) 18%, transparent 82%);
+}
+
+.status-pill.info {
+    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+}
+
+.disabled-ui,
+.disabled-ui * {
+    pointer-events: none !important;
+    user-select: none;
+}
+
+.soft-section {
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 18px;
+}
+
+.sticky-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: color-mix(in srgb, var(--card) 88%, var(--bg) 12%);
+    border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent 24%);
+    backdrop-filter: blur(8px);
+}

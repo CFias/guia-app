@@ -8,11 +8,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
+import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import LoadingBlock from "../LoadingOverlay/LoadingOverlay.jsx";
 import {
   AssignmentIndRounded,
-  CheckCircleRounded,
   CloseRounded,
   LanguageRounded,
   LocalActivityRounded,
@@ -184,6 +183,8 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     }
   };
 
+  const bloqueado = loadingSalvar || loadingDados;
+
   return (
     <div className="editar-guia-overlay">
       <div className="editar-guia-modal">
@@ -198,147 +199,150 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
             </p>
           </div>
 
-          <button className="editar-guia-close" onClick={onClose}>
+          <button
+            className="editar-guia-close"
+            onClick={onClose}
+            disabled={loadingSalvar}
+          >
             <CloseRounded fontSize="small" />
           </button>
         </div>
 
-        <div className="editar-guia-form-grid">
-          <div className="editar-guia-field">
-            <label>Nome</label>
-            <input
-              placeholder="Nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-            />
+        <div className="editar-guia-modal-body">
+          <div className="editar-guia-form-grid">
+            <div className="editar-guia-field">
+              <label>Nome</label>
+              <input
+                placeholder="Nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                disabled={bloqueado}
+              />
+            </div>
+
+            <div className="editar-guia-field">
+              <label>WhatsApp</label>
+              <input
+                type="text"
+                placeholder="WhatsApp"
+                value={formatarTelefone(whatsapp)}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                maxLength={15}
+                disabled={bloqueado}
+              />
+            </div>
           </div>
 
-          <div className="editar-guia-field">
-            <label>WhatsApp</label>
-            <input
-              type="text"
-              placeholder="WhatsApp"
-              value={formatarTelefone(whatsapp)}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              maxLength={15}
-            />
-          </div>
-        </div>
+          <div className="editar-guia-section">
+            <label className="editar-guia-section-title">
+              Idiomas <LanguageRounded fontSize="small" />
+            </label>
 
-        <div className="editar-guia-section">
-          <label className="editar-guia-section-title">
-            Idiomas <LanguageRounded fontSize="small" />
-          </label>
-
-          <div className="editar-guia-tag-selector">
-            <LoadingBlock
-              loading={loading}
-              text="Carregando..."
-              respectSidebar
-            />
-
-            {!loadingDados &&
-              idiomasDisponiveis.map((idioma) => (
-                <span
-                  key={idioma}
-                  className={`editar-guia-tag-option ${
-                    idiomasSelecionados.includes(idioma) ? "active" : ""
-                  }`}
-                  onClick={() => toggleIdioma(idioma)}
-                >
-                  {idioma}
-                </span>
-              ))}
-          </div>
-        </div>
-
-        <div className="editar-guia-section">
-          <label className="editar-guia-section-title">
-            Passeios aptos + Nível de Guiamento{" "}
-            <LocalActivityRounded fontSize="small" />
-          </label>
-
-          <div className="editar-guia-operacao-lista somente-leitura">
-            <LoadingBlock
-              loading={loadingDados}
-              height={120}
-              text="Carregando passeios..."
-            />
-
-            {!loadingDados && passeiosAptos.length === 0 && (
-              <div className="editar-guia-passeios-vazio">
-                Este guia ainda não possui passeios aptos definidos no
-                mapeamento.
+            {loadingDados ? (
+              <CardSkeleton variant="list" rows={2} dense />
+            ) : (
+              <div className="editar-guia-tag-selector">
+                {idiomasDisponiveis.map((idioma) => (
+                  <span
+                    key={idioma}
+                    className={`editar-guia-tag-option ${
+                      idiomasSelecionados.includes(idioma) ? "active" : ""
+                    }`}
+                    onClick={() => !bloqueado && toggleIdioma(idioma)}
+                  >
+                    {idioma}
+                  </span>
+                ))}
               </div>
             )}
+          </div>
 
-            {!loadingDados &&
-              passeiosAptos.map((passeio) => (
-                <div key={passeio.id} className="editar-guia-operacao-item">
-                  <div className="editar-guia-operacao-topo">
-                    <div className="editar-guia-operacao-checkline leitura">
-                      <input type="checkbox" checked readOnly disabled />
-                      <span className="editar-guia-operacao-nome">
-                        {obterNomePasseio(passeio)}
-                      </span>
-                    </div>
+          <div className="editar-guia-section">
+            <label className="editar-guia-section-title">
+              Passeios aptos + Nível de Guiamento{" "}
+              <LocalActivityRounded fontSize="small" />
+            </label>
 
-                    <div className="editar-guia-operacao-meta">
-                      <span className="editar-guia-operacao-status">
-                        {passeio.statusNivel}
-                      </span>
-                      <span
-                        className={`editar-guia-nivel-badge ${getNivelClass(
-                          passeio.nivel,
-                        )}`}
-                      >
-                        {passeio.nivel}
-                      </span>
+            <div className="editar-guia-operacao-lista somente-leitura">
+              {loadingDados ? (
+                <CardSkeleton variant="affinity" rows={4} />
+              ) : passeiosAptos.length === 0 ? (
+                <div className="editar-guia-passeios-vazio">
+                  Este guia ainda não possui passeios aptos definidos no
+                  mapeamento.
+                </div>
+              ) : (
+                passeiosAptos.map((passeio) => (
+                  <div key={passeio.id} className="editar-guia-operacao-item">
+                    <div className="editar-guia-operacao-topo">
+                      <div className="editar-guia-operacao-checkline leitura">
+                        <input type="checkbox" checked readOnly disabled />
+                        <span className="editar-guia-operacao-nome">
+                          {obterNomePasseio(passeio)}
+                        </span>
+                      </div>
+
+                      <div className="editar-guia-operacao-meta">
+                        <span className="editar-guia-operacao-status">
+                          {passeio.statusNivel}
+                        </span>
+                        <span
+                          className={`editar-guia-nivel-badge ${getNivelClass(
+                            passeio.nivel,
+                          )}`}
+                        >
+                          {passeio.nivel}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="editar-guia-options">
-          <label className="editar-guia-checkbox-line">
-            <input
-              type="checkbox"
-              checked={motoguia}
-              onChange={(e) => setMotoguia(e.target.checked)}
-            />
-            Atua como motoguia
-          </label>
+          <div className="editar-guia-options">
+            <label className="editar-guia-checkbox-line">
+              <input
+                type="checkbox"
+                checked={motoguia}
+                onChange={(e) => setMotoguia(e.target.checked)}
+                disabled={bloqueado}
+              />
+              Atua como motoguia
+            </label>
 
-          <label className="editar-guia-checkbox-line">
-            <input
-              type="checkbox"
-              checked={ativo}
-              onChange={(e) => setAtivo(e.target.checked)}
-            />
-            Guia ativo
-          </label>
-        </div>
+            <label className="editar-guia-checkbox-line">
+              <input
+                type="checkbox"
+                checked={ativo}
+                onChange={(e) => setAtivo(e.target.checked)}
+                disabled={bloqueado}
+              />
+              Guia ativo
+            </label>
+          </div>
 
-        <div className="editar-guia-field">
-          <label className="editar-guia-section-title">
-            Nível de prioridade <StarRounded fontSize="small" />
-          </label>
-          <select
-            className="editar-guia-select"
-            value={nivelPrioridade}
-            onChange={(e) => setNivelPrioridade(Number(e.target.value))}
-          >
-            <option value={1}>1 - Baixa</option>
-            <option value={2}>2 - Média</option>
-            <option value={3}>3 - Alta</option>
-          </select>
+          <div className="editar-guia-field">
+            <label className="editar-guia-section-title">
+              Nível de prioridade <StarRounded fontSize="small" />
+            </label>
+            <select
+              className="editar-guia-select"
+              value={nivelPrioridade}
+              onChange={(e) => setNivelPrioridade(Number(e.target.value))}
+              disabled={bloqueado}
+            >
+              <option value={1}>1 - Baixa</option>
+              <option value={2}>2 - Média</option>
+              <option value={3}>3 - Alta</option>
+            </select>
+          </div>
         </div>
 
         <div className="editar-guia-modal-actions">
           <button
-            className="editar-guia-btn-save"
+            className={`editar-guia-btn-save ${loadingSalvar ? "is-saving" : ""}`}
             onClick={salvar}
             disabled={loadingSalvar}
           >
@@ -346,7 +350,11 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
             {loadingSalvar ? "Salvando..." : "Salvar"}
           </button>
 
-          <button className="editar-guia-btn-cancel" onClick={onClose}>
+          <button
+            className="editar-guia-btn-cancel"
+            onClick={onClose}
+            disabled={loadingSalvar}
+          >
             Cancelar
           </button>
         </div>

@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
+import "./uiStates.css";
 
 import Dashboard from "./pages/Dashboard/Dashboard";
 import RegisterGuias from "./components/RegisterGuias/RegisterGuias";
