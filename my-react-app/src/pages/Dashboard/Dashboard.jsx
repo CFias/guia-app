@@ -60,6 +60,10 @@ const Dashboard = ({ loading }) => {
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Disponibilidade da Semana</span>
             </NavLink>
+            <NavLink to="previas" className={getNavClass}>
+              <FactCheckRounded fontSize="small" className="sidebar-icon" />
+              <span>Prévia de Transfers</span>
+            </NavLink>
           </div>
 
           <div className="sidebar-group">

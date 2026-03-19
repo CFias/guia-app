@@ -1,0 +1,593 @@
+.previa-operacional-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.previa-operacional-header {
+    margin-bottom: 24px;
+}
+
+.previa-operacional-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.previa-operacional-title svg {
+    color: var(--text-dist);
+}
+
+.previa-operacional-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.previa-operacional-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+    min-height: 25vh;
+}
+
+.previa-operacional-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.previa-operacional-card-large {
+    grid-column: span 2;
+}
+
+.previa-operacional-card-full {
+    grid-column: 1 / -1;
+}
+
+.previa-operacional-card-header {
+    margin-bottom: 20px;
+}
+
+.previa-operacional-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.previa-operacional-card-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.previa-operacional-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.previa-operacional-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.previa-operacional-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: end;
+}
+
+.previa-operacional-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.previa-operacional-field.small {
+    min-width: 140px;
+}
+
+.previa-operacional-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.previa-operacional-field label svg {
+    color: var(--text-dist);
+}
+
+.previa-operacional-input {
+    width: 100%;
+    height: 50px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    font-size: 12px;
+    padding: 0 14px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.previa-operacional-input:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.previa-operacional-input:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.previa-operacional-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.previa-operacional-btn-primary,
+.previa-operacional-btn-soft {
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.previa-operacional-btn-primary {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.previa-operacional-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.previa-operacional-btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.previa-operacional-btn-soft {
+    min-height: 28px;
+    padding: 0 18px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+}
+
+.previa-operacional-btn-soft:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+}
+
+.previa-operacional-stats.single {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.previa-operacional-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.previa-operacional-stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.previa-operacional-stat span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.previa-operacional-stat strong {
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.previa-operacional-stat .small-value {
+    font-size: 13px;
+}
+
+.previa-operacional-kpis {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.previa-operacional-kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.previa-operacional-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.previa-operacional-kpi-icon.in {
+    background: color-mix(in srgb, var(--p3) 12%, transparent 88%);
+    border-color: color-mix(in srgb, var(--p3) 18%, transparent 82%);
+    color: var(--p3);
+}
+
+.previa-operacional-kpi-icon.out {
+    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
+    border-color: color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    color: var(--text);
+}
+
+.previa-operacional-kpi-icon.trf {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    border-color: color-mix(in srgb, var(--p2) 22%, transparent 78%);
+    color: var(--p2);
+}
+
+.previa-operacional-kpi span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.previa-operacional-kpi strong {
+    font-size: 18px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.previa-operacional-empty {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-soft, #64748b);
+    font-weight: 500;
+}
+
+.previa-operacional-sheet-wrap {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+}
+
+.previa-operacional-sheet-header {
+    position: relative;
+    min-height: 84px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary) 10%, var(--card) 90%),
+            color-mix(in srgb, var(--bg) 18%, var(--card) 82%));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.previa-operacional-sheet-header h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--text);
+}
+
+.previa-operacional-sheet-logo {
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--card) 82%, var(--primary) 18%);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    color: var(--text-dist);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.previa-operacional-sheet-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.previa-operacional-sheet-grid {
+    display: grid;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+}
+
+.previa-operacional-sheet-grid:last-child {
+    border-bottom: 0;
+}
+
+.previa-operacional-coluna {
+    border-right: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    min-height: 320px;
+    background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
+}
+
+.previa-operacional-coluna:last-child {
+    border-right: 0;
+}
+
+.previa-operacional-coluna-titulo {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+}
+
+.previa-operacional-coluna-subtitulo {
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 6px;
+    background: color-mix(in srgb, var(--bg) 16%, var(--card) 84%);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text) 76%, transparent 24%);
+    text-transform: uppercase;
+}
+
+.previa-operacional-coluna-linhas {
+    display: flex;
+    flex-direction: column;
+}
+
+.previa-operacional-linha {
+    min-height: 21px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    background: transparent;
+}
+
+.previa-operacional-linha .texto-linha {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.previa-operacional-linha .extra-linha {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--text) 76%, transparent 24%);
+    white-space: nowrap;
+}
+
+.previa-operacional-linha.in {
+    background: color-mix(in srgb, var(--text-dist) 6%, transparent 94%);
+}
+
+.previa-operacional-linha.out {
+    background: color-mix(in srgb, var(--primary) 4%, transparent 96%);
+}
+
+.previa-operacional-linha.trf {
+    background: color-mix(in srgb, var(--p2) 10%, transparent 90%);
+}
+
+.previa-operacional-linha.vazia {
+    color: transparent;
+    background: transparent;
+}
+
+.coluna-vazia .previa-operacional-coluna-titulo,
+.coluna-vazia .previa-operacional-coluna-subtitulo {
+    color: color-mix(in srgb, var(--text) 40%, transparent 60%);
+}
+
+@media (max-width: 1200px) {
+    .previa-operacional-kpis {
+        grid-template-columns: repeat(3, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 1024px) {
+    .previa-operacional-card-large {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 900px) {
+    .previa-operacional-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .previa-operacional-card-full {
+        grid-column: auto;
+    }
+
+    .previa-operacional-kpis {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .previa-operacional-page {
+        padding: 4px;
+        max-width: 100%;
+    }
+
+    .previa-operacional-title {
+        font-size: 25px;
+    }
+
+    .previa-operacional-subtitle {
+        font-size: 13px;
+    }
+
+    .previa-operacional-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .previa-operacional-card-header h3 {
+        font-size: 19px;
+    }
+
+    .previa-operacional-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .previa-operacional-actions {
+        width: 100%;
+    }
+
+    .previa-operacional-btn-primary,
+    .previa-operacional-btn-soft {
+        width: 100%;
+    }
+
+    .previa-operacional-sheet-header h1 {
+        font-size: 24px;
+    }
+
+    .previa-operacional-kpis {
+        grid-template-columns: 1fr;
+    }
+}
+
+.previa-operacional-btn-soft:disabled,
+.previa-operacional-btn-primary:disabled,
+.previa-operacional-input:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+@media print {
+    .previa-operacional-page {
+        max-width: 100%;
+        padding: 0;
+        background: #fff;
+    }
+
+    .previa-operacional-header,
+    .previa-operacional-grid>.previa-operacional-card:not(.previa-operacional-card-full) {
+        display: none !important;
+    }
+
+    .previa-operacional-card-full {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .previa-operacional-card-header {
+        margin-bottom: 10px;
+    }
+
+    .previa-operacional-sheet-wrap {
+        border-radius: 0;
+        border: 1px solid #999;
+    }
+
+    .previa-operacional-sheet-header h1 {
+        font-size: 26px;
+        color: #000;
+    }
+
+    .previa-operacional-coluna,
+    .previa-operacional-linha,
+    .previa-operacional-coluna-titulo,
+    .previa-operacional-coluna-subtitulo {
+        border-color: #999 !important;
+    }
+}

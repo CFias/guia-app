@@ -13,6 +13,10 @@ import {
   ShieldRounded,
   TravelExploreRounded,
   WarningAmberRounded,
+  BusinessRounded,
+  TrendingUpRounded,
+  TrendingDownRounded,
+  RemoveRounded,
 } from "@mui/icons-material";
 import { db } from "../../Services/Services/firebase";
 import logo from "../../assets/logo4.png";
@@ -101,13 +105,6 @@ const LABEL_OCUPACAO = (valor) => {
   return "Baixa";
 };
 
-const NIVEL_RISCO = (valor) => {
-  if (valor >= 80) return "Crítico";
-  if (valor >= 55) return "Alto";
-  if (valor >= 30) return "Moderado";
-  return "Baixo";
-};
-
 const getSemanaAtual = () => {
   const hoje = new Date();
   const base = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
@@ -132,6 +129,24 @@ const getSemanaAtual = () => {
     };
   });
 };
+
+const somarDiasIso = (dataIso, dias) => {
+  const [ano, mes, dia] = String(dataIso).split("-").map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  data.setDate(data.getDate() + dias);
+
+  const yyyy = data.getFullYear();
+  const mm = String(data.getMonth() + 1).padStart(2, "0");
+  const dd = String(data.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getSemanaAnterior = (semanaAtual) =>
+  semanaAtual.map((dia) => ({
+    ...dia,
+    date: somarDiasIso(dia.date, -7),
+  }));
 
 const montarUrlApi = (date) => {
   const params = new URLSearchParams();
@@ -182,6 +197,97 @@ const extrairContagemPax = (item) => {
   };
 };
 
+const extrairCodigoReserva = (item) =>
+  item?.reserve?.code ||
+  item?.reserve_code ||
+  item?.code ||
+  item?.reserve?.id ||
+  null;
+
+const extrairHotelReserva = (item) => {
+  const hotel =
+    item?.establishmentOrigin?.name ||
+    item?.reserve?.hotel?.name ||
+    item?.reserve?.establishmentOrigin?.name ||
+    item?.hotel?.name ||
+    item?.hotel ||
+    "";
+
+  return String(hotel || "").trim();
+};
+
+const hotelNaoInformado = (item) => {
+  const hotel = extrairHotelReserva(item);
+  if (!hotel) return true;
+
+  const normalizado = normalizarTexto(hotel);
+  return (
+    normalizado === "nao informado" ||
+    normalizado === "nao definido" ||
+    normalizado === "sem hotel" ||
+    normalizado === "hotel nao informado"
+  );
+};
+
+const extrairOperadora = (item) => {
+  const nome =
+    item?.reserve?.partner?.fantasy_name ||
+    item?.reserve?.partner?.company_name ||
+    item?.reserve?.partner?.name ||
+    item?.partner?.name ||
+    "";
+
+  return String(nome || "").trim() || "SEM OPERADORA";
+};
+
+const calcularDeltaPercentual = (atual, anterior) => {
+  const a = Number(atual || 0);
+  const b = Number(anterior || 0);
+
+  if (b === 0 && a > 0) return 100;
+  if (b === 0 && a === 0) return 0;
+
+  return Math.round(((a - b) / b) * 100);
+};
+
+const formatarDelta = (valor) => {
+  if (valor > 0) return `+${valor}`;
+  return `${valor}`;
+};
+
+const getAlertaComparativoPax = (atual, anterior) => {
+  const delta = atual - anterior;
+  const percentual = calcularDeltaPercentual(atual, anterior);
+
+  if (delta > 0) {
+    return {
+      tipo: delta >= 15 ? "atencao" : "info",
+      titulo: "Aumento de pax em relação à semana anterior",
+      descricao: `A demanda subiu ${delta} pax (${formatarDelta(
+        percentual,
+      )}%) versus a semana passada. Vale reforçar acompanhamento operacional, guias disponíveis e capacidade dos passeios.`,
+      icone: "up",
+    };
+  }
+
+  if (delta < 0) {
+    return {
+      tipo: "info",
+      titulo: "Queda de pax em relação à semana anterior",
+      descricao: `A demanda caiu ${Math.abs(delta)} pax (${percentual}%) versus a semana passada. O cenário pode indicar janela para reorganizar equipe e redistribuir disponibilidade.`,
+      icone: "down",
+    };
+  }
+
+  return {
+    tipo: "info",
+    titulo: "Pax estável em relação à semana anterior",
+    descricao:
+      "A quantidade total de pax permaneceu estável em comparação com a semana passada.",
+    icone: "stable",
+  };
+};
+
 const Home = () => {
   const navigate = useNavigate();
 
@@ -195,8 +301,12 @@ const Home = () => {
   const [availabilityDocs, setAvailabilityDocs] = useState([]);
   const [affinityDocs, setAffinityDocs] = useState([]);
   const [apiSemana, setApiSemana] = useState([]);
+  const [apiSemanaAnterior, setApiSemanaAnterior] = useState([]);
+  const [alertasApiBrutos, setAlertasApiBrutos] = useState([]);
 
   const [ultimaAtualizacaoApi, setUltimaAtualizacaoApi] = useState(null);
+  const [ultimaAtualizacaoComparativo, setUltimaAtualizacaoComparativo] =
+    useState(null);
   const [abaAtiva, setAbaAtiva] = useState("operacao");
   const [diaSelecionadoHome, setDiaSelecionadoHome] = useState("");
 
@@ -208,69 +318,106 @@ const Home = () => {
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
+  const carregarSemanaApi = async (listaSemana) => {
+    const respostasApi = await Promise.all(
+      listaSemana.map(async (dia) => {
+        try {
+          const response = await fetch(montarUrlApi(dia.date), {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          });
+
+          if (!response.ok) return [];
+
+          const json = await response.json();
+          return extrairListaResposta(json);
+        } catch (err) {
+          console.error(`Erro ao buscar API do dia ${dia.date}:`, err);
+          return [];
+        }
+      }),
+    );
+
+    const itensApiAgrupados = {};
+    const itensBrutos = [];
+
+    respostasApi.flat().forEach((item) => {
+      const nome = extrairNomePasseio(item);
+      const externalServiceId = extrairServiceIdExterno(item);
+      const date = extrairDataServico(item);
+      const pax = extrairContagemPax(item);
+
+      if (!date || !nome) return;
+
+      const nomeCanonico = obterNomeCanonico(nome);
+      if (deveIgnorarServico(nomeCanonico)) return;
+
+      itensBrutos.push({
+        ...item,
+        _date: date,
+        _serviceNameCanonico: nomeCanonico,
+        _externalServiceId: externalServiceId || null,
+        _paxTotal: pax.total,
+        _adultCount: pax.adultos,
+        _childCount: pax.criancas,
+        _infantCount: pax.infants,
+      });
+
+      const chave = externalServiceId
+        ? `${date}_id_${externalServiceId}`
+        : `${date}_nome_${normalizarTexto(nomeCanonico)}`;
+
+      if (!itensApiAgrupados[chave]) {
+        itensApiAgrupados[chave] = {
+          chave,
+          date,
+          serviceName: nomeCanonico,
+          externalServiceId: externalServiceId || null,
+          passengers: 0,
+          adultCount: 0,
+          childCount: 0,
+          infantCount: 0,
+        };
+      }
+
+      itensApiAgrupados[chave].passengers += pax.total;
+      itensApiAgrupados[chave].adultCount += pax.adultos;
+      itensApiAgrupados[chave].childCount += pax.criancas;
+      itensApiAgrupados[chave].infantCount += pax.infants;
+    });
+
+    return {
+      agrupados: Object.values(itensApiAgrupados),
+      brutos: itensBrutos,
+    };
+  };
+
   const carregarApiSemana = async () => {
     try {
       setAtualizandoApi(true);
 
-      const respostasApi = await Promise.all(
-        semana.map(async (dia) => {
-          try {
-            const response = await fetch(montarUrlApi(dia.date), {
-              method: "GET",
-              headers: { Accept: "application/json" },
-            });
+      const semanaAnterior = getSemanaAnterior(semana);
 
-            if (!response.ok) return [];
+      const [semanaAtualApi, semanaAnteriorApi] = await Promise.all([
+        carregarSemanaApi(semana),
+        carregarSemanaApi(semanaAnterior),
+      ]);
 
-            const json = await response.json();
-            return extrairListaResposta(json);
-          } catch (err) {
-            console.error(`Erro ao buscar API do dia ${dia.date}:`, err);
-            return [];
-          }
-        }),
+      const listaAnteriorNormalizada = semanaAnteriorApi.agrupados.map(
+        (item) => {
+          const dateComparativa = somarDiasIso(item.date, 7);
+          return {
+            ...item,
+            dateComparativa,
+          };
+        },
       );
 
-      const itensApiAgrupados = {};
-
-      respostasApi.flat().forEach((item) => {
-        const nome = extrairNomePasseio(item);
-        const externalServiceId = extrairServiceIdExterno(item);
-        const date = extrairDataServico(item);
-        const pax = extrairContagemPax(item);
-
-        if (!date || !nome) return;
-        if (date < inicioSemana || date > fimSemana) return;
-
-        const nomeCanonico = obterNomeCanonico(nome);
-        if (deveIgnorarServico(nomeCanonico)) return;
-
-        const chave = externalServiceId
-          ? `${date}_id_${externalServiceId}`
-          : `${date}_nome_${normalizarTexto(nomeCanonico)}`;
-
-        if (!itensApiAgrupados[chave]) {
-          itensApiAgrupados[chave] = {
-            chave,
-            date,
-            serviceName: nomeCanonico,
-            externalServiceId: externalServiceId || null,
-            passengers: 0,
-            adultCount: 0,
-            childCount: 0,
-            infantCount: 0,
-          };
-        }
-
-        itensApiAgrupados[chave].passengers += pax.total;
-        itensApiAgrupados[chave].adultCount += pax.adultos;
-        itensApiAgrupados[chave].childCount += pax.criancas;
-        itensApiAgrupados[chave].infantCount += pax.infants;
-      });
-
-      const listaFinal = Object.values(itensApiAgrupados);
-      setApiSemana(listaFinal);
+      setApiSemana(semanaAtualApi.agrupados);
+      setApiSemanaAnterior(listaAnteriorNormalizada);
+      setAlertasApiBrutos(semanaAtualApi.brutos);
       setUltimaAtualizacaoApi(new Date());
+      setUltimaAtualizacaoComparativo(new Date());
 
       if (!diaSelecionadoHome) {
         const hoje = new Date().toISOString().slice(0, 10);
@@ -467,17 +614,19 @@ const Home = () => {
       0,
     );
 
-    const paxSemGuia = servicosSemGuia.reduce(
-      (acc, item) => acc + Number(item.passengers || 0),
-      0,
-    );
-
     const percentualServicosComGuia = totalServicosReais
       ? Math.round((servicosAlocados.length / totalServicosReais) * 100)
       : 0;
 
     const percentualPassageirosComGuia = paxTotalSemana
-      ? Math.round(((paxTotalSemana - paxSemGuia) / paxTotalSemana) * 100)
+      ? Math.round(
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -540,7 +689,6 @@ const Home = () => {
           comGuia: 0,
           semGuia: 0,
           fechados: 0,
-          paxSemGuia: 0,
         };
       }
 
@@ -553,28 +701,11 @@ const Home = () => {
         mapaPasseios[nome].comGuia += 1;
       } else {
         mapaPasseios[nome].semGuia += 1;
-        mapaPasseios[nome].paxSemGuia += Number(item.passengers || 0);
       }
     });
 
     const topPasseios = Object.values(mapaPasseios)
       .sort((a, b) => b.pax - a.pax)
-      .slice(0, 6);
-
-    const passeiosMaisRisco = Object.values(mapaPasseios)
-      .map((p) => {
-        const risco =
-          p.semGuia * 25 +
-          p.paxSemGuia * 1.2 +
-          p.fechados * 10 +
-          (p.servicos > 0 ? ((p.semGuia / p.servicos) * 100) / 2 : 0);
-
-        return {
-          ...p,
-          risco: Math.round(risco),
-        };
-      })
-      .sort((a, b) => b.risco - a.risco)
       .slice(0, 6);
 
     const coberturaAfinidade = affinityDocs.length
@@ -616,7 +747,160 @@ const Home = () => {
     );
     const maiorPaxDia = Math.max(...distribuicaoSemana.map((d) => d.pax), 1);
 
+    const resumoSemanaAnterior = {
+      totalServicos: apiSemanaAnterior.length,
+      pax: apiSemanaAnterior.reduce(
+        (acc, item) => acc + Number(item.passengers || 0),
+        0,
+      ),
+    };
+
+    const resumoSemanaAtual = {
+      totalServicos: servicosExecutivos.length,
+      pax: servicosExecutivos.reduce(
+        (acc, item) => acc + Number(item.passengers || 0),
+        0,
+      ),
+    };
+
+    const comparativoGeral = {
+      servicosAtual: resumoSemanaAtual.totalServicos,
+      servicosAnterior: resumoSemanaAnterior.totalServicos,
+      paxAtual: resumoSemanaAtual.pax,
+      paxAnterior: resumoSemanaAnterior.pax,
+      deltaServicos:
+        resumoSemanaAtual.totalServicos - resumoSemanaAnterior.totalServicos,
+      deltaPax: resumoSemanaAtual.pax - resumoSemanaAnterior.pax,
+      deltaPercentualServicos: calcularDeltaPercentual(
+        resumoSemanaAtual.totalServicos,
+        resumoSemanaAnterior.totalServicos,
+      ),
+      deltaPercentualPax: calcularDeltaPercentual(
+        resumoSemanaAtual.pax,
+        resumoSemanaAnterior.pax,
+      ),
+    };
+
+    const distribuicaoComparativaSemana = semana.map((dia) => {
+      const atual = servicosExecutivos.filter((r) => r.date === dia.date);
+      const anterior = apiSemanaAnterior.filter(
+        (r) => r.dateComparativa === dia.date,
+      );
+
+      const servicosAtual = atual.length;
+      const servicosAnterior = anterior.length;
+
+      const paxAtual = atual.reduce(
+        (acc, item) => acc + Number(item.passengers || 0),
+        0,
+      );
+
+      const paxAnterior = anterior.reduce(
+        (acc, item) => acc + Number(item.passengers || 0),
+        0,
+      );
+
+      return {
+        ...dia,
+        servicosAtual,
+        servicosAnterior,
+        paxAtual,
+        paxAnterior,
+        deltaServicos: servicosAtual - servicosAnterior,
+        deltaPax: paxAtual - paxAnterior,
+      };
+    });
+
+    const maiorComparativoServicos = Math.max(
+      ...distribuicaoComparativaSemana.flatMap((d) => [
+        d.servicosAtual,
+        d.servicosAnterior,
+      ]),
+      1,
+    );
+
+    const maiorComparativoPax = Math.max(
+      ...distribuicaoComparativaSemana.flatMap((d) => [
+        d.paxAtual,
+        d.paxAnterior,
+      ]),
+      1,
+    );
+
+    const mapaPasseiosAtual = {};
+    servicosExecutivos.forEach((item) => {
+      const nome = item.serviceName || "Passeio";
+      if (!mapaPasseiosAtual[nome]) {
+        mapaPasseiosAtual[nome] = { nome, servicos: 0, pax: 0 };
+      }
+      mapaPasseiosAtual[nome].servicos += 1;
+      mapaPasseiosAtual[nome].pax += Number(item.passengers || 0);
+    });
+
+    const mapaPasseiosAnterior = {};
+    apiSemanaAnterior.forEach((item) => {
+      const nome = item.serviceName || "Passeio";
+      if (!mapaPasseiosAnterior[nome]) {
+        mapaPasseiosAnterior[nome] = { nome, servicos: 0, pax: 0 };
+      }
+      mapaPasseiosAnterior[nome].servicos += 1;
+      mapaPasseiosAnterior[nome].pax += Number(item.passengers || 0);
+    });
+
+    const comparativoPasseios = Array.from(
+      new Set([
+        ...Object.keys(mapaPasseiosAtual),
+        ...Object.keys(mapaPasseiosAnterior),
+      ]),
+    )
+      .map((nome) => {
+        const atual = mapaPasseiosAtual[nome] || { servicos: 0, pax: 0 };
+        const anterior = mapaPasseiosAnterior[nome] || { servicos: 0, pax: 0 };
+
+        return {
+          nome,
+          servicosAtual: atual.servicos,
+          servicosAnterior: anterior.servicos,
+          paxAtual: atual.pax,
+          paxAnterior: anterior.pax,
+          deltaServicos: atual.servicos - anterior.servicos,
+          deltaPax: atual.pax - anterior.pax,
+        };
+      })
+      .sort((a, b) => Math.abs(b.deltaPax) - Math.abs(a.deltaPax))
+      .slice(0, 8);
+
+    const operadorasSemana = Object.values(
+      alertasApiBrutos.reduce((acc, item) => {
+        const operadora = extrairOperadora(item);
+        const pax = Number(item?._paxTotal || 0);
+        const chave = operadora.toUpperCase();
+
+        if (!acc[chave]) {
+          acc[chave] = {
+            nome: operadora.toUpperCase(),
+            pax: 0,
+            reservas: 0,
+          };
+        }
+
+        acc[chave].pax += pax;
+        acc[chave].reservas += 1;
+
+        return acc;
+      }, {}),
+    )
+      .sort((a, b) => b.pax - a.pax)
+      .slice(0, 10);
+
+    const alertaComparativoPax = getAlertaComparativoPax(
+      comparativoGeral.paxAtual,
+      comparativoGeral.paxAnterior,
+    );
+
     const alertas = [];
+
+    alertas.push(alertaComparativoPax);
 
     if (servicosSemGuia.length > 0) {
       alertas.push({
@@ -626,27 +910,21 @@ const Home = () => {
       });
     }
 
-    if (paxSemGuia > 0) {
+    if (comparativoGeral.deltaServicos > 0) {
       alertas.push({
-        tipo: "critico",
-        titulo: "Pax sem guia",
-        descricao: `${paxSemGuia} passageiro(s) estão em serviços ainda sem guia alocado.`,
+        tipo: "info",
+        titulo: "Aumento de serviços vs semana anterior",
+        descricao: `A semana atual está com ${formatarDelta(
+          comparativoGeral.deltaServicos,
+        )} serviço(s) em relação à semana passada.`,
       });
-    }
-
-    if (percentualServicosComGuia < 80) {
+    } else if (comparativoGeral.deltaServicos < 0) {
       alertas.push({
-        tipo: "atencao",
-        titulo: "Serviços com guia abaixo do ideal",
-        descricao: `O percentual atual está em ${percentualServicosComGuia}%.`,
-      });
-    }
-
-    if (percentualPassageirosComGuia < 80) {
-      alertas.push({
-        tipo: "atencao",
-        titulo: "Passageiros com guia abaixo do ideal",
-        descricao: `O percentual atual está em ${percentualPassageirosComGuia}%.`,
+        tipo: "info",
+        titulo: "Redução de serviços vs semana anterior",
+        descricao: `A semana atual está com ${Math.abs(
+          comparativoGeral.deltaServicos,
+        )} serviço(s) a menos em relação à semana passada.`,
       });
     }
 
@@ -666,6 +944,25 @@ const Home = () => {
       });
     }
 
+    const reservasSemHotel = alertasApiBrutos
+      .filter((item) => !deveIgnorarServico(item?._serviceNameCanonico || ""))
+      .filter((item) => hotelNaoInformado(item))
+      .map((item) => ({
+        codigoReserva: extrairCodigoReserva(item),
+        passeio:
+          item?._serviceNameCanonico || extrairNomePasseio(item) || "Passeio",
+      }))
+      .filter((item) => item.codigoReserva)
+      .slice(0, 12);
+
+    reservasSemHotel.forEach((item) => {
+      alertas.push({
+        tipo: "critico",
+        titulo: `Cod. da reserva ${item.codigoReserva}`,
+        descricao: `Hotel "Não Informado" no passeio ${item.passeio}.`,
+      });
+    });
+
     return {
       totalServicosReais,
       servicosAlocados,
@@ -674,7 +971,6 @@ const Home = () => {
       gruposFormados,
       gruposNaoFormados,
       paxTotalSemana,
-      paxSemGuia,
       percentualServicosComGuia,
       percentualPassageirosComGuia,
       guiasAtivos: guiasAtivos.length,
@@ -690,9 +986,15 @@ const Home = () => {
       guiasSobrecarga,
       guiasOciosos,
       topPasseios,
-      passeiosMaisRisco,
       alertas,
       servicosExecutivos,
+      comparativoGeral,
+      distribuicaoComparativaSemana,
+      maiorComparativoServicos,
+      maiorComparativoPax,
+      comparativoPasseios,
+      operadorasSemana,
+      alertaComparativoPax,
     };
   }, [
     guias,
@@ -701,6 +1003,8 @@ const Home = () => {
     availabilityDocs,
     affinityDocs,
     apiSemana,
+    apiSemanaAnterior,
+    alertasApiBrutos,
     semana,
     inicioSemana,
     fimSemana,
@@ -888,6 +1192,14 @@ Operacional - Luck Receptivo
     return `em ${dataBr}`;
   };
 
+  const renderIconeComparativo = () => {
+    const tipo = dashboard.alertaComparativoPax?.icone;
+
+    if (tipo === "up") return <TrendingUpRounded fontSize="small" />;
+    if (tipo === "down") return <TrendingDownRounded fontSize="small" />;
+    return <RemoveRounded fontSize="small" />;
+  };
+
   const carregandoCards = loading || atualizandoApi;
 
   return (
@@ -933,10 +1245,10 @@ Operacional - Luck Receptivo
           Passeios
         </button>
         <button
-          className={`home-tab ${abaAtiva === "risco" ? "active" : ""}`}
-          onClick={() => setAbaAtiva("risco")}
+          className={`home-tab ${abaAtiva === "comparativo" ? "active" : ""}`}
+          onClick={() => setAbaAtiva("comparativo")}
         >
-          Risco
+          Comparativo
         </button>
       </div>
 
@@ -1003,12 +1315,12 @@ Operacional - Luck Receptivo
 
               <button type="button" className="home-dashboard-metric-card">
                 <div className="metric-icon">
-                  <InsightsRounded fontSize="small" />
+                  <BusinessRounded fontSize="small" />
                 </div>
                 <div>
-                  <span className="metric-label">Pax sem guia</span>
+                  <span className="metric-label">Operadoras na semana</span>
                   <strong className="metric-value">
-                    {dashboard.paxSemGuia}
+                    {dashboard.operadorasSemana.length}
                   </strong>
                 </div>
               </button>
@@ -1198,6 +1510,43 @@ Operacional - Luck Receptivo
                       >
                         <strong>{alerta.titulo}</strong>
                         <span>{alerta.descricao}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="home-dashboard-card home-dashboard-card-large">
+              <div className="home-dashboard-card-header">
+                <div className="home-dashboard-card-title">
+                  <BusinessRounded fontSize="small" />
+                  <h3>Operadoras com maior volume na semana</h3>
+                </div>
+              </div>
+
+              {carregandoCards ? (
+                <CardSkeleton variant="list" rows={6} />
+              ) : (
+                <div className="home-dashboard-ranking">
+                  {dashboard.operadorasSemana.length === 0 ? (
+                    <div className="empty-state">
+                      Nenhuma operadora identificada nesta semana.
+                    </div>
+                  ) : (
+                    dashboard.operadorasSemana.map((operadora) => (
+                      <div key={operadora.nome} className="ranking-item">
+                        <div className="ranking-top">
+                          <span className="ranking-name">{operadora.nome}</span>
+                          <span className="ranking-badge">
+                            {operadora.pax} pax
+                          </span>
+                        </div>
+
+                        <div className="ranking-meta">
+                          <span>{operadora.reservas} reserva(s)/ocorrência(s)</span>
+                          <span>Total de pax na semana</span>
+                        </div>
                       </div>
                     ))
                   )}
@@ -1533,39 +1882,76 @@ Operacional - Luck Receptivo
         </div>
       )}
 
-      {abaAtiva === "risco" && (
+      {abaAtiva === "comparativo" && (
         <div className="home-dashboard-grid">
-          <div className="home-dashboard-card">
+          <div className="home-dashboard-card home-dashboard-card-full">
             <div className="home-dashboard-card-header">
               <div className="home-dashboard-card-title">
                 <ShieldRounded fontSize="small" />
-                <h3>Indicadores de risco</h3>
+                <h3>Comparativo semanal</h3>
               </div>
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={4} />
+              <CardSkeleton variant="metrics" />
             ) : (
-              <div className="home-dashboard-summary-grid single-column">
+              <div className="home-dashboard-summary-grid">
                 <div className="summary-box">
-                  <span className="summary-label">Serviços com guia (%)</span>
-                  <strong>{dashboard.percentualServicosComGuia}%</strong>
+                  <span className="summary-label">Serviços atuais</span>
+                  <strong>{dashboard.comparativoGeral.servicosAtual}</strong>
+                  <small>
+                    Semana anterior: {dashboard.comparativoGeral.servicosAnterior}
+                  </small>
                 </div>
 
                 <div className="summary-box">
-                  <span className="summary-label">Passageiros com guia (%)</span>
-                  <strong>{dashboard.percentualPassageirosComGuia}%</strong>
+                  <span className="summary-label">Delta de serviços</span>
+                  <strong>
+                    {formatarDelta(dashboard.comparativoGeral.deltaServicos)}
+                  </strong>
+                  <small>
+                    {formatarDelta(
+                      dashboard.comparativoGeral.deltaPercentualServicos,
+                    )}
+                    %
+                  </small>
                 </div>
 
                 <div className="summary-box">
-                  <span className="summary-label">Pax sem guia</span>
-                  <strong>{dashboard.paxSemGuia}</strong>
+                  <span className="summary-label">Pax atuais</span>
+                  <strong>{dashboard.comparativoGeral.paxAtual}</strong>
+                  <small>
+                    Semana anterior: {dashboard.comparativoGeral.paxAnterior}
+                  </small>
                 </div>
 
                 <div className="summary-box">
-                  <span className="summary-label">Cobertura afinidade</span>
-                  <strong>{dashboard.coberturaAfinidade}%</strong>
+                  <span className="summary-label">Delta de pax</span>
+                  <strong>{formatarDelta(dashboard.comparativoGeral.deltaPax)}</strong>
+                  <small>
+                    {formatarDelta(dashboard.comparativoGeral.deltaPercentualPax)}%
+                  </small>
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div className="home-dashboard-card home-dashboard-card-full">
+            <div className="home-dashboard-card-header">
+              <div className="home-dashboard-card-title">
+                {renderIconeComparativo()}
+                <h3>Leitura operacional do comparativo de pax</h3>
+              </div>
+            </div>
+
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={2} />
+            ) : (
+              <div
+                className={`home-alert-item ${dashboard.alertaComparativoPax?.tipo || "info"}`}
+              >
+                <strong>{dashboard.alertaComparativoPax?.titulo}</strong>
+                <span>{dashboard.alertaComparativoPax?.descricao}</span>
               </div>
             )}
           </div>
@@ -1573,44 +1959,222 @@ Operacional - Luck Receptivo
           <div className="home-dashboard-card home-dashboard-card-large">
             <div className="home-dashboard-card-header">
               <div className="home-dashboard-card-title">
-                <WarningAmberRounded fontSize="small" />
-                <h3>Passeios com maior risco operacional</h3>
+                <InsightsRounded fontSize="small" />
+                <h3>Serviços por dia • Atual x Semana anterior</h3>
               </div>
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={6} />
+              <CardSkeleton variant="chart" />
+            ) : (
+              <>
+                <div className="home-week-chart advanced">
+                  {dashboard.distribuicaoComparativaSemana.map((dia) => (
+                    <div key={dia.date} className="chart-col">
+                      <div className="chart-bars advanced">
+                        <div
+                          className="chart-bar chart-bar-total"
+                          style={{
+                            height: `${Math.max(
+                              (dia.servicosAnterior /
+                                dashboard.maiorComparativoServicos) *
+                              180,
+                              dia.servicosAnterior > 0 ? 12 : 6,
+                            )}px`,
+                            opacity: 0.45,
+                          }}
+                          title={`Semana anterior: ${dia.servicosAnterior} serviços`}
+                        />
+                        <div
+                          className="chart-bar chart-bar-guided"
+                          style={{
+                            height: `${Math.max(
+                              (dia.servicosAtual /
+                                dashboard.maiorComparativoServicos) *
+                              180,
+                              dia.servicosAtual > 0 ? 12 : 6,
+                            )}px`,
+                          }}
+                          title={`Semana atual: ${dia.servicosAtual} serviços`}
+                        />
+                      </div>
+
+                      <strong>{dia.short}</strong>
+                      <span>
+                        {dia.servicosAtual} / {dia.servicosAnterior}
+                      </span>
+                      <small>Δ {formatarDelta(dia.deltaServicos)}</small>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="chart-legend">
+                  <span>
+                    <i className="legend-box total" /> Semana anterior
+                  </span>
+                  <span>
+                    <i className="legend-box guided" /> Semana atual
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="home-dashboard-card home-dashboard-card-large">
+            <div className="home-dashboard-card-header">
+              <div className="home-dashboard-card-title">
+                <GroupsRounded fontSize="small" />
+                <h3>Pax por dia • Atual x Semana anterior</h3>
+              </div>
+            </div>
+
+            {carregandoCards ? (
+              <CardSkeleton variant="chart" />
+            ) : (
+              <>
+                <div className="home-week-chart advanced">
+                  {dashboard.distribuicaoComparativaSemana.map((dia) => (
+                    <div key={dia.date} className="chart-col">
+                      <div className="chart-bars advanced">
+                        <div
+                          className="chart-bar chart-bar-total"
+                          style={{
+                            height: `${Math.max(
+                              (dia.paxAnterior / dashboard.maiorComparativoPax) *
+                              180,
+                              dia.paxAnterior > 0 ? 12 : 6,
+                            )}px`,
+                            opacity: 0.45,
+                          }}
+                          title={`Semana anterior: ${dia.paxAnterior} pax`}
+                        />
+                        <div
+                          className="chart-bar chart-bar-pax"
+                          style={{
+                            height: `${Math.max(
+                              (dia.paxAtual / dashboard.maiorComparativoPax) *
+                              180,
+                              dia.paxAtual > 0 ? 12 : 6,
+                            )}px`,
+                          }}
+                          title={`Semana atual: ${dia.paxAtual} pax`}
+                        />
+                      </div>
+
+                      <strong>{dia.short}</strong>
+                      <span>
+                        {dia.paxAtual} / {dia.paxAnterior}
+                      </span>
+                      <small>Δ {formatarDelta(dia.deltaPax)}</small>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="chart-legend">
+                  <span>
+                    <i className="legend-box total" /> Semana anterior
+                  </span>
+                  <span>
+                    <i className="legend-box pax" /> Semana atual
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="home-dashboard-card home-dashboard-card-full">
+            <div className="home-dashboard-card-header">
+              <div className="home-dashboard-card-title">
+                <TravelExploreRounded fontSize="small" />
+                <h3>Passeios com maior variação</h3>
+              </div>
+            </div>
+
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={8} />
             ) : (
               <div className="home-dashboard-ranking">
-                {dashboard.passeiosMaisRisco.length === 0 ? (
-                  <div className="empty-state">Nenhum risco calculado.</div>
+                {dashboard.comparativoPasseios.length === 0 ? (
+                  <div className="empty-state">
+                    Sem dados comparativos de passeios.
+                  </div>
                 ) : (
-                  dashboard.passeiosMaisRisco.map((passeio) => (
+                  dashboard.comparativoPasseios.map((passeio) => (
                     <div key={passeio.nome} className="ranking-item">
                       <div className="ranking-top">
                         <span className="ranking-name">{passeio.nome}</span>
                         <span className="ranking-badge">
-                          {passeio.risco} • {NIVEL_RISCO(passeio.risco)}
+                          Δ pax {formatarDelta(passeio.deltaPax)}
                         </span>
                       </div>
 
-                      <div className="ranking-bar">
-                        <div
-                          className="ranking-bar-fill high"
-                          style={{ width: `${Math.min(passeio.risco, 100)}%` }}
-                        />
-                      </div>
-
                       <div className="ranking-meta">
-                        <span>{passeio.semGuia} sem guia</span>
-                        <span>{passeio.paxSemGuia} pax sem guia</span>
-                        <span>{passeio.servicos} total</span>
+                        <span>
+                          Serviços: {passeio.servicosAtual} /{" "}
+                          {passeio.servicosAnterior}
+                        </span>
+                        <span>
+                          Pax: {passeio.paxAtual} / {passeio.paxAnterior}
+                        </span>
+                        <span>
+                          Δ serviços: {formatarDelta(passeio.deltaServicos)}
+                        </span>
                       </div>
                     </div>
                   ))
                 )}
               </div>
             )}
+          </div>
+
+          <div className="home-dashboard-card home-dashboard-card-full">
+            <div className="home-dashboard-card-header">
+              <div className="home-dashboard-card-title">
+                <BusinessRounded fontSize="small" />
+                <h3>Operadoras da semana</h3>
+              </div>
+            </div>
+
+            {carregandoCards ? (
+              <CardSkeleton variant="list" rows={8} />
+            ) : (
+              <div className="home-dashboard-ranking">
+                {dashboard.operadorasSemana.length === 0 ? (
+                  <div className="empty-state">
+                    Nenhuma operadora identificada nesta semana.
+                  </div>
+                ) : (
+                  dashboard.operadorasSemana.map((operadora) => (
+                    <div key={operadora.nome} className="ranking-item">
+                      <div className="ranking-top">
+                        <span className="ranking-name">{operadora.nome}</span>
+                        <span className="ranking-badge">
+                          {operadora.pax} pax
+                        </span>
+                      </div>
+
+                      <div className="ranking-meta">
+                        <span>{operadora.reservas} reserva(s)/ocorrência(s)</span>
+                        <span>Total de pax na semana</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="home-dashboard-card home-dashboard-card-full">
+            <div className="home-dashboard-card-header">
+              <div className="home-dashboard-card-title">
+                <CalendarMonthRounded fontSize="small" />
+                <h3>Atualização do comparativo</h3>
+              </div>
+            </div>
+
+            <div className="home-live-info">
+              {formatarUltimaAtualizacao(ultimaAtualizacaoComparativo)}
+            </div>
           </div>
         </div>
       )}

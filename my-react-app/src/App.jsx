@@ -13,6 +13,7 @@ import RelatoriosGuias from "./components/RelatoriosGuias/RelatoriosGuias";
 import Home from "./components/Home/Home";
 import Configuracoes from "./pages/Configuracoes/Configuracoes";
 import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGuias";
+import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
 
         {/* ROTAS INTERNAS (renderizam no <Outlet />) */}
         <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
+        <Route path="previas" element={<PreviaTransfers />} />
         <Route path="register-guias" element={<RegisterGuias />} />
         <Route path="register-tours" element={<RegisterTours />} />
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
