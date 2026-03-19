@@ -376,7 +376,7 @@
 
 .previa-operacional-coluna {
     border-right: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    min-height: 320px;
+    min-height: 360px;
     background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
 }
 
@@ -384,23 +384,30 @@
     border-right: 0;
 }
 
+.previa-operacional-coluna-topo {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
+}
+
 .previa-operacional-coluna-titulo {
-    min-height: 30px;
+    min-height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 8px;
-    background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+    background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     text-align: center;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text);
     text-transform: uppercase;
 }
 
 .previa-operacional-coluna-subtitulo {
-    min-height: 22px;
+    min-height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -410,7 +417,7 @@
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     text-align: center;
     font-size: 9px;
-    font-weight: 600;
+    font-weight: 700;
     color: color-mix(in srgb, var(--text) 76%, transparent 24%);
     text-transform: uppercase;
 }
@@ -421,7 +428,7 @@
 }
 
 .previa-operacional-linha {
-    min-height: 21px;
+    min-height: 24px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -452,11 +459,11 @@
 }
 
 .previa-operacional-linha.in {
-    background: color-mix(in srgb, var(--text-dist) 6%, transparent 94%);
+    background: color-mix(in srgb, var(--p3) 7%, transparent 93%);
 }
 
 .previa-operacional-linha.out {
-    background: color-mix(in srgb, var(--primary) 4%, transparent 96%);
+    background: color-mix(in srgb, var(--primary) 5%, transparent 95%);
 }
 
 .previa-operacional-linha.trf {
@@ -589,5 +596,40 @@
     .previa-operacional-coluna-titulo,
     .previa-operacional-coluna-subtitulo {
         border-color: #999 !important;
+    }
+}
+
+.previa-operacional-sheet-loading {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 2;
+}
+
+.previa-operacional-sheet-loading span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+}
+
+.previa-operacional-sheet-spinner {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+    border-top-color: var(--text-dist);
+    border-right-color: var(--primary-2);
+    animation: previaSheetSpin 0.8s linear infinite;
+}
+
+@keyframes previaSheetSpin {
+    to {
+        transform: rotate(360deg);
     }
 }

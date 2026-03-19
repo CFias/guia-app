@@ -11,6 +11,8 @@ import {
   PlaylistAddCheckCircleRounded,
   SettingsRounded,
   DashboardRounded,
+  FlightLandRounded,
+  ViewModuleRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -61,8 +63,12 @@ const Dashboard = ({ loading }) => {
               <span>Disponibilidade da Semana</span>
             </NavLink>
             <NavLink to="previas" className={getNavClass}>
-              <FactCheckRounded fontSize="small" className="sidebar-icon" />
+              <ViewModuleRounded fontSize="small" className="sidebar-icon" />
               <span>Prévia de Transfers</span>
+            </NavLink>
+            <NavLink to="chegadas" className={getNavClass}>
+              <FlightLandRounded fontSize="small" className="sidebar-icon" />
+              <span>Painel de Chegadas</span>
             </NavLink>
           </div>
 
