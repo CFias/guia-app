@@ -13,6 +13,8 @@ import {
   DashboardRounded,
   FlightLandRounded,
   ViewModuleRounded,
+  FlightTakeoffRounded,
+  LocalShippingRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -70,6 +72,10 @@ const Dashboard = ({ loading }) => {
               <FlightLandRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de Chegadas</span>
             </NavLink>
+            <NavLink to="outs" className={getNavClass}>
+              <FlightTakeoffRounded fontSize="small" className="sidebar-icon" />
+              <span>Painel de OUT's</span>
+            </NavLink>
           </div>
 
           <div className="sidebar-group">
@@ -80,19 +86,16 @@ const Dashboard = ({ loading }) => {
               <span>Cadastrar Guias</span>
             </NavLink>
 
+            <NavLink to="register-fornecedores" className={getNavClass}>
+              <LocalShippingRounded fontSize="small" className="sidebar-icon" />
+              <span>Cadastrar Fornecedores</span>
+            </NavLink>
             <NavLink to="register-tours" className={getNavClass}>
               <PlaylistAddCheckCircleRounded
                 fontSize="small"
                 className="sidebar-icon"
               />
               <span>Cadastrar Passeios</span>
-            </NavLink>
-            <NavLink to="register-fornecedores" className={getNavClass}>
-              <PlaylistAddCheckCircleRounded
-                fontSize="small"
-                className="sidebar-icon"
-              />
-              <span>Cadastrar Fornecedores</span>
             </NavLink>
           </div>
         </div>
@@ -121,4 +124,4 @@ const Dashboard = ({ loading }) => {
   );
 };
 
-export default Dashboard
+export default Dashboard;

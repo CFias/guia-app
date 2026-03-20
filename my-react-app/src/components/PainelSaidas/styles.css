@@ -1,0 +1,540 @@
+.painel-outs-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.painel-outs-header {
+    margin-bottom: 24px;
+}
+
+.painel-outs-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.painel-outs-title svg {
+    color: var(--text-dist);
+}
+
+.painel-outs-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.painel-outs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+    min-height: 25vh;
+}
+
+.painel-outs-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.painel-outs-card-large {
+    grid-column: span 2;
+}
+
+.painel-outs-card-full {
+    grid-column: 1 / -1;
+}
+
+.painel-outs-card-header {
+    margin-bottom: 20px;
+}
+
+.painel-outs-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.painel-outs-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.painel-outs-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-outs-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.painel-outs-badge.alerta {
+    color: var(--p2);
+    background: color-mix(in srgb, var(--p2) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--p2) 18%, transparent 82%);
+}
+
+.painel-outs-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: end;
+}
+
+.painel-outs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.painel-outs-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.painel-outs-field label svg {
+    color: var(--text-dist);
+}
+
+.painel-outs-input {
+    width: 100%;
+    height: 50px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    font-size: 12px;
+    padding: 0 14px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.painel-outs-input:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.painel-outs-input:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.painel-outs-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.painel-outs-btn-primary {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.painel-outs-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.painel-outs-btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.painel-outs-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-outs-stat-icon,
+.painel-outs-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.painel-outs-kpi-icon.alerta {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    border-color: color-mix(in srgb, var(--p2) 22%, transparent 78%);
+    color: var(--p2);
+}
+
+.painel-outs-stat span,
+.painel-outs-kpi span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-outs-stat strong,
+.painel-outs-kpi strong {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.painel-outs-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.painel-outs-kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-outs-empty {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-soft, #64748b);
+    font-weight: 500;
+}
+
+.painel-outs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-outs-item {
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border-radius: 20px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
+}
+
+.painel-outs-item-top {
+    width: 100%;
+    border: none;
+    text-align: left;
+    padding: 16px 18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
+            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
+    cursor: pointer;
+    position: relative;
+}
+
+.painel-outs-item-top:hover {
+    filter: brightness(1.01);
+}
+
+.painel-outs-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.painel-outs-item-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.painel-outs-item-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.painel-outs-item-time {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.painel-outs-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-outs-item-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.painel-outs-expand-icon {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-outs-item-expanded {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-outs-hotel-block {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 18px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+}
+
+.painel-outs-hotel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+    flex-wrap: wrap;
+}
+
+.painel-outs-hotel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.painel-outs-hotel-title svg {
+    color: var(--text-dist);
+}
+
+.painel-outs-hotel-time {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.painel-outs-reservas {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+}
+
+.painel-outs-reserva-card {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    padding: 14px;
+}
+
+.painel-outs-reserva-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.painel-outs-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.painel-outs-info-label {
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-outs-info strong {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.painel-outs-observacao {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-outs-observacao-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.painel-outs-observacao p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 82%, transparent 18%);
+    white-space: pre-wrap;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .painel-outs-card-large {
+        grid-column: span 1;
+    }
+
+    .painel-outs-kpis {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+
+    .painel-outs-reserva-grid {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .painel-outs-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-outs-card-full {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .painel-outs-page {
+        padding: 4px;
+        max-width: 100%;
+    }
+
+    .painel-outs-title {
+        font-size: 25px;
+    }
+
+    .painel-outs-subtitle {
+        font-size: 13px;
+    }
+
+    .painel-outs-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .painel-outs-card-header h3 {
+        font-size: 19px;
+    }
+
+    .painel-outs-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-outs-actions,
+    .painel-outs-btn-primary {
+        width: 100%;
+    }
+
+    .painel-outs-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-outs-reserva-grid {
+        grid-template-columns: 1fr;
+    }
+}

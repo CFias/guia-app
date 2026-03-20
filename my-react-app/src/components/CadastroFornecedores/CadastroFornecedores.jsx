@@ -187,7 +187,6 @@ const CadastroFornecedores = () => {
       setVeiculosDisponiveis(formatados);
     } catch (error) {
       console.error("Erro ao carregar veículos da API:", error);
-      alert("Não foi possível carregar os veículos escalados da API.");
     } finally {
       setSincronizandoVeiculos(false);
     }
@@ -244,12 +243,10 @@ const CadastroFornecedores = () => {
     e.preventDefault();
 
     if (!nome.trim() || !whatsapp.trim()) {
-      alert("Nome e WhatsApp são obrigatórios.");
       return;
     }
 
     if (veiculosSelecionados.length === 0) {
-      alert("Selecione ao menos um veículo.");
       return;
     }
 
@@ -293,7 +290,6 @@ const CadastroFornecedores = () => {
       });
     } catch (error) {
       console.error("Erro ao alterar status:", error);
-      alert("Erro ao alterar status do fornecedor.");
     }
   };
 

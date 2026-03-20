@@ -13,6 +13,7 @@ import {
   FilterAltRounded,
   ConnectingAirportsRounded,
   SearchRounded,
+  SyncRounded,
 } from "@mui/icons-material";
 import "./styles.css";
 
@@ -304,37 +305,6 @@ const extrairFlagPousado = (item) => {
 };
 
 const extrairModalidadeServico = (item) => {
-  const candidatos = [
-    item?.service?.mode,
-    item?.service?.modality,
-    item?.service?.type,
-    item?.service?.service_type,
-    item?.service?.category,
-    item?.service?.name,
-    item?.service_name,
-
-    item?.reserve?.mode,
-    item?.reserve?.modality,
-    item?.reserve?.type,
-    item?.reserve?.service_type,
-    item?.reserve?.category,
-    item?.reserve?.service_mode,
-    item?.reserve?.service_modality,
-    item?.reserve?.transport_type,
-    item?.reserve?.name,
-
-    item?.schedule?.mode,
-    item?.schedule?.modality,
-    item?.schedule?.type,
-    item?.schedule?.name,
-
-    item?.type,
-    item?.mode,
-    item?.modality,
-    item?.category,
-    item?.name,
-  ].filter(Boolean);
-
   const texto = String(item?.serviceModeAsText || "").trim();
 
   if (!texto) return "-";
@@ -801,7 +771,10 @@ const PainelChegadas = () => {
                 onClick={carregarChegadas}
                 disabled={loading}
               >
-                <RefreshRounded fontSize="small" />
+                <RefreshRounded
+                  fontSize="small"
+                  className={loading ? "spin" : ""}
+                />
                 {loading ? "Atualizando..." : "Atualizar"}
               </button>
             </div>
@@ -823,15 +796,19 @@ const PainelChegadas = () => {
             <div>
               <span>Atualizado em</span>
               <strong>
-                {ultimaAtualizacao
-                  ? ultimaAtualizacao.toLocaleString("pt-BR")
-                  : "--"}
+                {loading ? (
+                  <SyncRounded className="spin" fontSize="small" />
+                ) : ultimaAtualizacao ? (
+                  ultimaAtualizacao.toLocaleString("pt-BR")
+                ) : (
+                  "--"
+                )}
               </strong>
             </div>
           </div>
         </div>
 
-        {voosAlterados.length > 0 && (
+        {!loading && voosAlterados.length > 0 && (
           <div className="painel-chegadas-card painel-chegadas-card-full">
             <div className="painel-chegadas-card-header">
               <div className="painel-chegadas-card-title-row">
@@ -893,7 +870,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Voos</span>
-                <strong>{resumo.voos}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.voos
+                  )}
+                </strong>
               </div>
             </div>
 
@@ -903,7 +886,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Reservas</span>
-                <strong>{resumo.reservas}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.reservas
+                  )}
+                </strong>
               </div>
             </div>
 
@@ -913,7 +902,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Pax</span>
-                <strong>{resumo.pax}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.pax
+                  )}
+                </strong>
               </div>
             </div>
 
@@ -923,7 +918,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Crianças</span>
-                <strong>{resumo.criancas}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.criancas
+                  )}
+                </strong>
               </div>
             </div>
 
@@ -933,7 +934,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Infantes</span>
-                <strong>{resumo.infantes}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.infantes
+                  )}
+                </strong>
               </div>
             </div>
 
@@ -943,7 +950,13 @@ const PainelChegadas = () => {
               </div>
               <div>
                 <span>Voos alterados</span>
-                <strong>{resumo.alterados}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.alterados
+                  )}
+                </strong>
               </div>
             </div>
           </div>
@@ -954,7 +967,7 @@ const PainelChegadas = () => {
             <div className="painel-chegadas-card-title-row">
               <h3>Voos monitorados</h3>
               <span className="painel-chegadas-badge">
-                {voosFiltrados.length} voo(s)
+                {loading ? "Carregando..." : `${voosFiltrados.length} voo(s)`}
               </span>
             </div>
             <p>
@@ -966,7 +979,12 @@ const PainelChegadas = () => {
 
           {erro ? (
             <div className="painel-chegadas-empty">{erro}</div>
-          ) : voosFiltrados.length === 0 && !loading ? (
+          ) : loading ? (
+            <div className="painel-chegadas-empty">
+              <SyncRounded className="spin" fontSize="small" />
+              <span style={{ marginLeft: 8 }}>Atualizando chegadas...</span>
+            </div>
+          ) : voosFiltrados.length === 0 ? (
             <div className="painel-chegadas-empty">
               Nenhum voo encontrado para esta data/filtro.
             </div>

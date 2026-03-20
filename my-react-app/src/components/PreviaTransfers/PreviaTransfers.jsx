@@ -15,6 +15,7 @@ import {
   WhatsApp,
   WarningAmberRounded,
   RouteRounded,
+  SyncRounded,
 } from "@mui/icons-material";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
@@ -372,24 +373,6 @@ const extrairTextoLinhaEscala = (item, tipo) => {
     return extrairPasseio(item);
   }
 
-  if (tipo === "PASSEIO") {
-    const nomePasseioAtual = extrairPasseio(item);
-    const passeioIdAtual = extrairPasseioId(item);
-
-    if (nomePasseioAtual) {
-      mapa[veiculo].linhasPorEscala[chaveEscala].texto = nomePasseioAtual;
-      mapa[veiculo].linhasPorEscala[chaveEscala].passeio = nomePasseioAtual;
-    }
-
-    if (passeioIdAtual) {
-      mapa[veiculo].linhasPorEscala[chaveEscala].passeioId = passeioIdAtual;
-    }
-
-    if (!mapa[veiculo].linhasPorEscala[chaveEscala].guia) {
-      mapa[veiculo].linhasPorEscala[chaveEscala].guia = extrairGuia(item) || "";
-    }
-  }
-
   return "";
 };
 
@@ -496,20 +479,6 @@ const tipoLinhaClass = (tipo) => {
   if (tipo === "TRF") return "trf";
   if (tipo === "PASSEIO") return "passeio";
   return "";
-};
-
-const LoadingMinimal = ({ show }) => {
-  if (!show) return null;
-
-  return (
-    <div className="previa-loading-minimal">
-      <div className="previa-loading-minimal-bar" />
-      <div className="previa-loading-minimal-text">
-        <span className="dot" />
-        Atualizando operação...
-      </div>
-    </div>
-  );
 };
 
 const PreviaEscalasPlanilha = () => {
@@ -983,18 +952,21 @@ const PreviaEscalasPlanilha = () => {
                 onClick={carregarServicos}
                 disabled={loading}
               >
-                <RefreshRounded fontSize="small" />
-                {loading ? "Atualizando..." : "Atualizar"}
+                <RefreshRounded
+                  fontSize="small"
+                  className={loading ? "spin" : ""}
+                />
+                {loading ? "Atualizando serviços..." : "Atualizar"}
               </button>
 
-              <button
+              {/* <button
                 type="button"
                 className="previa-operacional-btn-soft"
                 onClick={() => window.print()}
               >
                 <LocalPrintshopRounded fontSize="small" />
                 Imprimir
-              </button>
+              </button> */}
 
               <button
                 type="button"
@@ -1015,8 +987,6 @@ const PreviaEscalasPlanilha = () => {
               </button>
             </div>
           </div>
-
-          <LoadingMinimal show={loading} />
         </div>
 
         <div className="previa-operacional-card">
@@ -1034,9 +1004,13 @@ const PreviaEscalasPlanilha = () => {
               <div>
                 <span>Atualizado em</span>
                 <strong className="small-value">
-                  {ultimaAtualizacao
-                    ? ultimaAtualizacao.toLocaleString("pt-BR")
-                    : "--"}
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : ultimaAtualizacao ? (
+                    ultimaAtualizacao.toLocaleString("pt-BR")
+                  ) : (
+                    "--"
+                  )}
                 </strong>
               </div>
             </div>
@@ -1058,7 +1032,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>Veículos</span>
-                <strong>{resumo.veiculos}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.veiculos}
+                </strong>
               </div>
             </div>
 
@@ -1068,7 +1044,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>Serviços</span>
-                <strong>{resumo.servicos}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.servicos}
+                </strong>
               </div>
             </div>
 
@@ -1078,7 +1056,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>Pax</span>
-                <strong>{resumo.pax}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.pax}
+                </strong>
               </div>
             </div>
 
@@ -1088,7 +1068,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>IN</span>
-                <strong>{resumo.totalIn}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.totalIn}
+                </strong>
               </div>
             </div>
 
@@ -1098,7 +1080,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>OUT</span>
-                <strong>{resumo.totalOut}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.totalOut}
+                </strong>
               </div>
             </div>
 
@@ -1108,7 +1092,9 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>Transfer</span>
-                <strong>{resumo.totalTrf}</strong>
+                <strong>
+                  {loading ? <SyncRounded className="spin" /> : resumo.totalTrf}
+                </strong>
               </div>
             </div>
 
@@ -1118,13 +1104,19 @@ const PreviaEscalasPlanilha = () => {
               </div>
               <div>
                 <span>Passeios</span>
-                <strong>{resumo.totalPasseio}</strong>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" />
+                  ) : (
+                    resumo.totalPasseio
+                  )}
+                </strong>
               </div>
             </div>
           </div>
         </div>
 
-        {cardsEnvioPorVeiculo.length > 0 && (
+        {cardsEnvioPorVeiculo.length > 0 && !loading && (
           <div className="previa-operacional-card previa-operacional-card-full">
             <div className="previa-operacional-card-header">
               <div className="previa-operacional-card-title-row">
@@ -1220,14 +1212,23 @@ const PreviaEscalasPlanilha = () => {
             <div className="previa-operacional-card-title-row">
               <h3>Planilha operacional automática</h3>
               <span className="previa-operacional-badge">
-                {formatarDataTitulo(dataSelecionada)}
+                {loading
+                  ? "Carregando..."
+                  : formatarDataTitulo(dataSelecionada)}
               </span>
             </div>
           </div>
 
           {erro ? (
             <div className="previa-operacional-empty">{erro}</div>
-          ) : grupos.length === 0 && !loading ? (
+          ) : loading ? (
+            <div className="previa-operacional-empty">
+              <SyncRounded className="spin" fontSize="small" />
+              <span style={{ marginLeft: 8 }}>
+                Atualizando prévia operacional...
+              </span>
+            </div>
+          ) : grupos.length === 0 ? (
             <div className="previa-operacional-empty">
               Nenhum serviço escalado encontrado para esta data.
             </div>

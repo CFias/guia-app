@@ -16,6 +16,7 @@ import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGui
 import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
 import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
+import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="previas" element={<PreviaTransfers />} />
         <Route path="register-fornecedores" element={<CadastroFornecedores />} />
         <Route path="chegadas" element={<PainelChegadas />} />
+        <Route path="outs" element={<PainelOuts />} />
         <Route path="register-guias" element={<RegisterGuias />} />
         <Route path="register-tours" element={<RegisterTours />} />
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
