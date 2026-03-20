@@ -1,0 +1,650 @@
+.cadastro-fornecedor-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.cadastro-fornecedor-header {
+    margin-bottom: 24px;
+}
+
+.cadastro-fornecedor-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.cadastro-fornecedor-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.cadastro-fornecedor-layout {
+    width: 100%;
+}
+
+.cadastro-fornecedor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.cadastro-fornecedor-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.cadastro-fornecedor-card-large {
+    grid-column: span 2;
+}
+
+.cadastro-fornecedor-card-header {
+    margin-bottom: 20px;
+}
+
+.cadastro-fornecedor-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.cadastro-fornecedor-card-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.cadastro-fornecedor-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.cadastro-fornecedor-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.cadastro-fornecedor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.cadastro-fornecedor-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.cadastro-fornecedor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cadastro-fornecedor-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cadastro-fornecedor-field label svg {
+    color: var(--text-dist);
+}
+
+.cadastro-fornecedor-field input,
+.cadastro-fornecedor-field textarea {
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.cadastro-fornecedor-field input {
+    height: 50px;
+}
+
+.cadastro-fornecedor-field input::placeholder,
+.cadastro-fornecedor-field textarea::placeholder {
+    color: color-mix(in srgb, var(--text) 48%, transparent 52%);
+}
+
+.cadastro-fornecedor-field input:hover,
+.cadastro-fornecedor-field textarea:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-fornecedor-field input:focus,
+.cadastro-fornecedor-field textarea:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.cadastro-fornecedor-api-bar {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) auto;
+    gap: 14px;
+    align-items: end;
+}
+
+.cadastro-fornecedor-dropdown {
+    position: relative;
+}
+
+.cadastro-fornecedor-dropdown-header {
+    width: 100%;
+    min-height: 50px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.cadastro-fornecedor-dropdown-header:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.cadastro-fornecedor-dropdown-arrow {
+    opacity: 0.75;
+}
+
+.cadastro-fornecedor-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    z-index: 20;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.cadastro-fornecedor-dropdown-item {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.cadastro-fornecedor-dropdown-item:hover {
+    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+}
+
+.cadastro-fornecedor-dropdown-item.empty {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.cadastro-fornecedor-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-height: 10px;
+}
+
+.cadastro-fornecedor-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cadastro-fornecedor-tag-vehicle {
+    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    color: var(--text);
+}
+
+.cadastro-fornecedor-tag span {
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.85;
+}
+
+.cadastro-fornecedor-tag span:hover {
+    opacity: 1;
+}
+
+.cadastro-fornecedor-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.cadastro-fornecedor-options-row {
+    display: flex;
+    align-items: center;
+}
+
+.cadastro-fornecedor-switch {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cadastro-fornecedor-switch-track {
+    width: 55px;
+    height: 25px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--border) 76%, var(--bg) 24%);
+    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent 10%);
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    transition: all 0.25s ease;
+}
+
+.cadastro-fornecedor-switch-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+    transition: transform 0.25s ease;
+}
+
+.cadastro-fornecedor-switch.active .cadastro-fornecedor-switch-track {
+    background: color-mix(in srgb, var(--text-dist) 70%, var(--primary) 30%);
+    border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+}
+
+.cadastro-fornecedor-switch.active .cadastro-fornecedor-switch-thumb {
+    transform: translateX(28px);
+}
+
+.cadastro-fornecedor-switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.cadastro-fornecedor-switch-label svg {
+    color: var(--text-dist);
+}
+
+.cadastro-fornecedor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.cadastro-fornecedor-btn-primary,
+.cadastro-fornecedor-btn-secondary {
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+}
+
+.cadastro-fornecedor-btn-primary {
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.cadastro-fornecedor-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.cadastro-fornecedor-btn-secondary {
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+}
+
+.cadastro-fornecedor-btn-secondary:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--primary) 25%, var(--border) 75%);
+}
+
+.cadastro-fornecedor-btn-secondary.warning {
+    color: #b45309;
+}
+
+.cadastro-fornecedor-btn-secondary.success {
+    color: #15803d;
+}
+
+.cadastro-fornecedor-btn-primary:disabled,
+.cadastro-fornecedor-btn-secondary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.cadastro-fornecedor-preview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.cadastro-fornecedor-preview-item {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border-radius: 18px;
+    padding: 16px;
+}
+
+.cadastro-fornecedor-preview-label {
+    display: block;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+    margin-bottom: 6px;
+}
+
+.cadastro-fornecedor-preview-value {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.cadastro-fornecedor-list-toolbar {
+    margin-bottom: 18px;
+}
+
+.cadastro-fornecedor-search {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    padding: 0 14px;
+    box-sizing: border-box;
+}
+
+.cadastro-fornecedor-search svg {
+    color: var(--text-dist);
+    opacity: 0.85;
+}
+
+.cadastro-fornecedor-search input {
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    width: 100%;
+    height: 100%;
+    font-size: 12px;
+}
+
+.cadastro-fornecedor-search input::placeholder {
+    color: color-mix(in srgb, var(--text) 48%, transparent 52%);
+}
+
+.cadastro-fornecedor-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.cadastro-fornecedor-item {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border-radius: 18px;
+    padding: 16px;
+}
+
+.cadastro-fornecedor-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.cadastro-fornecedor-item-top strong {
+    display: block;
+    color: var(--text);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.cadastro-fornecedor-item-top span {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.cadastro-fornecedor-item-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cadastro-fornecedor-status,
+.cadastro-fornecedor-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cadastro-fornecedor-status.ativo {
+    color: #15803d;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.24);
+}
+
+.cadastro-fornecedor-status.inativo {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.24);
+}
+
+.cadastro-fornecedor-mini-badge {
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.cadastro-fornecedor-item-veiculos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.cadastro-fornecedor-veiculo-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    color: var(--text);
+}
+
+.cadastro-fornecedor-empty-mini {
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.cadastro-fornecedor-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cadastro-fornecedor-empty {
+    border: 1px dashed color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border-radius: 18px;
+    padding: 18px;
+    text-align: center;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.cadastro-fornecedor-btn-primary.is-saving {
+    cursor: progress;
+    opacity: 0.92;
+}
+
+.cadastro-fornecedor-btn-primary:disabled,
+.cadastro-fornecedor-switch:disabled,
+.cadastro-fornecedor-form input:disabled {
+    opacity: 0.68;
+    cursor: not-allowed;
+}
+
+.spin {
+    animation: spinFornecedor 0.9s linear infinite;
+}
+
+@keyframes spinFornecedor {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .cadastro-fornecedor-card-large {
+        grid-column: span 1;
+    }
+
+    .cadastro-fornecedor-form-grid,
+    .cadastro-fornecedor-options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cadastro-fornecedor-api-bar {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .cadastro-fornecedor-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cadastro-fornecedor-page {
+        padding: 4px;
+    }
+
+    .cadastro-fornecedor-title {
+        font-size: 25px;
+    }
+
+    .cadastro-fornecedor-subtitle {
+        font-size: 13px;
+    }
+
+    .cadastro-fornecedor-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .cadastro-fornecedor-card-header h3 {
+        font-size: 19px;
+    }
+
+    .cadastro-fornecedor-actions,
+    .cadastro-fornecedor-item-actions {
+        flex-direction: column;
+    }
+
+    .cadastro-fornecedor-btn-primary,
+    .cadastro-fornecedor-btn-secondary {
+        width: 100%;
+    }
+
+    .cadastro-fornecedor-switch {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .cadastro-fornecedor-item-top {
+        flex-direction: column;
+    }
+}

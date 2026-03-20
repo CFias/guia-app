@@ -633,3 +633,332 @@
         transform: rotate(360deg);
     }
 }
+
+.fornecedor-panel-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 16px;
+}
+
+.fornecedor-form-card,
+.fornecedor-list-card {
+    background: var(--card, #fff);
+    border-radius: 14px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 16px;
+}
+
+.fornecedor-form-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.fornecedor-form-top h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 16px;
+}
+
+.fornecedor-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fornecedor-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.fornecedor-veiculos-box {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.fornecedor-veiculos-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.fornecedor-veiculos-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 240px;
+    overflow: auto;
+}
+
+.fornecedor-veiculo-chip {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.fornecedor-veiculo-chip.ativo {
+    background: #0ea5e9;
+    color: #fff;
+    border-color: #0ea5e9;
+}
+
+.fornecedor-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.fornecedor-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fornecedor-item {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.015);
+}
+
+.fornecedor-item-topo {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.fornecedor-item-topo strong {
+    display: block;
+    font-size: 15px;
+}
+
+.fornecedor-item-topo span {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.fornecedor-item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fornecedor-tag {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0369a1;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.fornecedor-item-veiculos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.fornecedor-veiculo-mini {
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.fornecedor-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.previa-operacional-btn-soft.whatsapp {
+    border-color: #22c55e;
+    color: #15803d;
+}
+
+.previa-operacional-btn-soft.warning {
+    border-color: #f59e0b;
+    color: #b45309;
+}
+
+.previa-operacional-btn-soft.danger {
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.previa-operacional-coluna {
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.previa-operacional-coluna:hover {
+    transform: translateY(-2px);
+}
+
+.previa-operacional-coluna.dragging {
+    opacity: 0.45;
+}
+
+.previa-operacional-coluna-titulo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: grab;
+}
+
+@media (max-width: 1100px) {
+    .fornecedor-panel-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.envio-veiculo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 16px;
+}
+
+.envio-veiculo-card {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.envio-veiculo-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.envio-veiculo-titulo {
+    display: block;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.envio-veiculo-motorista {
+    display: block;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.envio-veiculo-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    white-space: nowrap;
+}
+
+.envio-veiculo-fornecedor {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.envio-veiculo-label {
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.envio-veiculo-fornecedor strong {
+    font-size: 13px;
+    color: var(--text);
+}
+
+.envio-veiculo-fornecedor small {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.envio-veiculo-resumo {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.envio-veiculo-resumo-item {
+    border-radius: 14px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.envio-veiculo-resumo-item span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 62%, transparent 38%);
+    margin-bottom: 4px;
+}
+
+.envio-veiculo-resumo-item strong {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.envio-veiculo-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.envio-veiculo-preview-linha {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg) 16%, var(--card) 84%);
+    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
+}
+
+.envio-veiculo-preview-more {
+    font-size: 11px;
+    color: var(--text-dist);
+    font-weight: 600;
+}
+
+.envio-veiculo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .envio-veiculo-actions {
+        flex-direction: column;
+    }
+
+    .envio-veiculo-actions .previa-operacional-btn-soft {
+        width: 100%;
+    }
+}

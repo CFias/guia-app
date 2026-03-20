@@ -15,6 +15,7 @@ import Configuracoes from "./pages/Configuracoes/Configuracoes";
 import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGuias";
 import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
+import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         {/* ROTAS INTERNAS (renderizam no <Outlet />) */}
         <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
         <Route path="previas" element={<PreviaTransfers />} />
+        <Route path="register-fornecedores" element={<CadastroFornecedores />} />
         <Route path="chegadas" element={<PainelChegadas />} />
         <Route path="register-guias" element={<RegisterGuias />} />
         <Route path="register-tours" element={<RegisterTours />} />

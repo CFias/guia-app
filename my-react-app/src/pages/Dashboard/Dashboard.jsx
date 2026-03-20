@@ -87,6 +87,13 @@ const Dashboard = ({ loading }) => {
               />
               <span>Cadastrar Passeios</span>
             </NavLink>
+            <NavLink to="register-fornecedores" className={getNavClass}>
+              <PlaylistAddCheckCircleRounded
+                fontSize="small"
+                className="sidebar-icon"
+              />
+              <span>Cadastrar Fornecedores</span>
+            </NavLink>
           </div>
         </div>
 

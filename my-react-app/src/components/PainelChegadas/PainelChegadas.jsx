@@ -78,6 +78,18 @@ const extrairPax = (item) => {
   return adultos + criancas;
 };
 
+const extrairAdultos = (item) => Number(item?.is_adult_count || 0);
+const extrairCriancas = (item) => Number(item?.is_child_count || 0);
+const extrairInfantes = (item) =>
+  Number(item?.is_baby_count || item?.is_infant_count || 0);
+
+const extrairResumoPax = (item) => {
+  const adt = extrairAdultos(item);
+  const chd = extrairCriancas(item);
+  const inf = extrairInfantes(item);
+  return `ADT ${adt} | CHD ${chd} | INF ${inf}`;
+};
+
 const extrairCodigoReserva = (item) =>
   item?.reserve?.code ||
   item?.reserve_code ||
@@ -97,6 +109,86 @@ const extrairDestino = (item) =>
   item?.destination?.name ||
   item?.reserve?.destination?.name ||
   "Destino não informado";
+
+const extrairOperadora = (item) => {
+  const bruto =
+    item?.reserve?.partner?.name ||
+    item?.reserve?.partner?.fantasy_name ||
+    item?.reserve?.partner?.company_name ||
+    item?.reserve?.operator?.name ||
+    item?.reserve?.agency?.name ||
+    item?.partner?.name ||
+    item?.operator?.name ||
+    item?.agency?.name ||
+    item?.reserve?.origin_operator_name ||
+    item?.reserve?.seller_name ||
+    item?.reserve?.pdvPayment?.user?.name ||
+    "";
+
+  const texto = String(bruto || "").trim();
+  if (!texto) return "-";
+
+  const normalizado = normalizarTexto(texto);
+
+  if (normalizado.includes("azul")) return "AZUL";
+  if (normalizado.includes("frt")) return "FRT";
+  if (normalizado.includes("cvc")) return "CVC";
+  if (normalizado.includes("decolar")) return "DECOLAR";
+  if (normalizado.includes("orpheus")) return "ORPHEUS";
+  if (normalizado.includes("visual")) return "VISUAL";
+  if (normalizado.includes("hotelbeds")) return "HOTELBEDS";
+  if (normalizado.includes("tui")) return "TUI";
+  if (normalizado.includes("booking")) return "BOOKING";
+  if (normalizado.includes("expedia")) return "EXPEDIA";
+
+  return texto.toUpperCase();
+};
+
+const extrairContatoPax = (item) =>
+  item?.reserve?.customer?.phone ||
+  item?.reserve?.customer?.telephone ||
+  item?.reserve?.customer?.cellphone ||
+  item?.reserve?.customer?.mobile ||
+  item?.customer?.phone ||
+  item?.customer?.telephone ||
+  item?.customer?.cellphone ||
+  item?.customer?.mobile ||
+  item?.reserve?.holder_phone ||
+  item?.reserve?.holder_whatsapp ||
+  item?.reserve?.phone ||
+  item?.reserve?.whatsapp ||
+  "-";
+
+const formatarContato = (valor = "") => {
+  const numeros = String(valor).replace(/\D/g, "");
+
+  if (!numeros) return "-";
+  if (numeros.length <= 10) {
+    if (numeros.length < 10) return valor || "-";
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
+  }
+
+  if (numeros.length === 11) {
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
+  }
+
+  return valor || "-";
+};
+
+const extrairAdicionais = (item) => {
+  if (!Array.isArray(item?.additionalReserveServices)) return "-";
+
+  const adicionais = item.additionalReserveServices
+    .map(
+      (add) =>
+        add?.additional?.name || add?.provider?.name || add?.name || "",
+    )
+    .filter(Boolean);
+
+  if (!adicionais.length) return "-";
+
+  return adicionais.join(", ");
+};
 
 const extrairHorarioServico = (item) => {
   const bruto =
@@ -363,7 +455,6 @@ const formatarVariacaoVoo = (diferencaMinutos) => {
 };
 
 const ordenarHora = (a, b) => String(a || "").localeCompare(String(b || ""));
-
 const normalizarCodigoVoo = (valor = "") =>
   String(valor).toUpperCase().replace(/\s+/g, "").replace("-", "");
 
@@ -436,8 +527,16 @@ const PainelChegadas = () => {
         id: `${extrairCodigoReserva(item)}_${index}`,
         codigoReserva: extrairCodigoReserva(item),
         cliente: extrairNomeCliente(item),
+        contatoPax: formatarContato(extrairContatoPax(item)),
         destino: extrairDestino(item),
+        operadora: extrairOperadora(item),
+        adicionais: extrairAdicionais(item),
         pax: extrairPax(item),
+        resumoPax: extrairResumoPax(item),
+        criancas: extrairCriancas(item),
+        infantes: extrairInfantes(item),
+        possuiCrianca: extrairCriancas(item) > 0,
+        possuiInfante: extrairInfantes(item) > 0,
         escalaId: extrairEscalaId(item),
         motorista: extrairMotorista(item),
       });
@@ -497,12 +596,16 @@ const PainelChegadas = () => {
                 reservas: [],
                 totalPax: 0,
                 totalReservas: 0,
+                totalCriancas: 0,
+                totalInfantes: 0,
               };
             }
 
             acc[chaveMotorista].reservas.push(reserva);
             acc[chaveMotorista].totalPax += Number(reserva.pax || 0);
             acc[chaveMotorista].totalReservas += 1;
+            acc[chaveMotorista].totalCriancas += Number(reserva.criancas || 0);
+            acc[chaveMotorista].totalInfantes += Number(reserva.infantes || 0);
 
             return acc;
           }, {}),
@@ -519,6 +622,14 @@ const PainelChegadas = () => {
             0,
           ),
           totalReservas: voo.reservas.length,
+          totalCriancas: voo.reservas.reduce(
+            (acc, r) => acc + Number(r.criancas || 0),
+            0,
+          ),
+          totalInfantes: voo.reservas.reduce(
+            (acc, r) => acc + Number(r.infantes || 0),
+            0,
+          ),
           statusBruto: calculoStatus.status,
           statusKey: classificarStatusVoo(calculoStatus.status),
           statusLabel: labelStatusVoo(calculoStatus.status),
@@ -552,6 +663,8 @@ const PainelChegadas = () => {
       voos: voos.length,
       reservas: voos.reduce((acc, v) => acc + v.totalReservas, 0),
       pax: voos.reduce((acc, v) => acc + v.totalPax, 0),
+      criancas: voos.reduce((acc, v) => acc + v.totalCriancas, 0),
+      infantes: voos.reduce((acc, v) => acc + v.totalInfantes, 0),
       alterados: voos.filter((v) =>
         [
           "atrasado",
@@ -580,8 +693,8 @@ const PainelChegadas = () => {
             Painel de Chegadas
           </h2>
           <p className="painel-chegadas-subtitle">
-            Monitoramento de voos, pax previstos, reservas vinculadas e
-            motorista responsável por escala.
+            Monitoramento de voos, pax previstos, reservas vinculadas,
+            operadora, adicionais e motorista responsável por escala.
           </p>
         </div>
       </div>
@@ -704,11 +817,11 @@ const PainelChegadas = () => {
                       Atualizado:{" "}
                       {voo.horarioAtualizado || voo.horarioReal || "--:--"}
                     </span>
-                    {voo.variacaoTexto ? (
-                      <span>{voo.variacaoTexto}</span>
-                    ) : null}
+                    {voo.variacaoTexto ? <span>{voo.variacaoTexto}</span> : null}
                     <span>{voo.totalPax} pax</span>
                     <span>{voo.totalReservas} reserva(s)</span>
+                    <span>CHD: {voo.totalCriancas}</span>
+                    <span>INF: {voo.totalInfantes}</span>
                   </div>
                 </div>
               ))}
@@ -757,6 +870,26 @@ const PainelChegadas = () => {
             </div>
 
             <div className="painel-chegadas-kpi">
+              <div className="painel-chegadas-kpi-icon">
+                <GroupsRounded fontSize="small" />
+              </div>
+              <div>
+                <span>Crianças</span>
+                <strong>{resumo.criancas}</strong>
+              </div>
+            </div>
+
+            <div className="painel-chegadas-kpi">
+              <div className="painel-chegadas-kpi-icon">
+                <GroupsRounded fontSize="small" />
+              </div>
+              <div>
+                <span>Infantes</span>
+                <strong>{resumo.infantes}</strong>
+              </div>
+            </div>
+
+            <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon alerta">
                 <WarningAmberRounded fontSize="small" />
               </div>
@@ -778,7 +911,7 @@ const PainelChegadas = () => {
             </div>
             <p>
               Cada bloco exibe o voo, status calculado, horários, total de pax,
-              total de reservas e os grupos por motorista.
+              reservas, operadora, adicionais e grupos por motorista.
             </p>
           </div>
 
@@ -841,6 +974,8 @@ const PainelChegadas = () => {
                         ) : null}
                         <span>{voo.totalPax} pax</span>
                         <span>{voo.totalReservas} reserva(s)</span>
+                        <span>CHD: {voo.totalCriancas}</span>
+                        <span>INF: {voo.totalInfantes}</span>
                       </div>
 
                       <div className="painel-chegadas-expand-icon">
@@ -870,6 +1005,8 @@ const PainelChegadas = () => {
                                   {grupoMotorista.totalReservas} reserva(s)
                                 </span>
                                 <span>{grupoMotorista.totalPax} pax</span>
+                                <span>CHD: {grupoMotorista.totalCriancas}</span>
+                                <span>INF: {grupoMotorista.totalInfantes}</span>
                               </div>
                             </div>
 
@@ -879,6 +1016,8 @@ const PainelChegadas = () => {
                                   <tr>
                                     <th>Reserva</th>
                                     <th>Cliente</th>
+                                    <th>Contato Pax</th>
+                                    <th>Operadora</th>
                                     <th>Destino</th>
                                     <th>Pax</th>
                                     <th>Escala</th>
@@ -889,8 +1028,12 @@ const PainelChegadas = () => {
                                     <tr key={reserva.id}>
                                       <td>{reserva.codigoReserva}</td>
                                       <td>{reserva.cliente}</td>
+                                      <td>{reserva.contatoPax}</td>
+                                      <td>
+                                        {reserva.operadora}
+                                      </td>
                                       <td>{reserva.destino}</td>
-                                      <td>{reserva.pax}</td>
+                                      <td>{reserva.resumoPax}</td>
                                       <td>{reserva.escalaId || "-"}</td>
                                     </tr>
                                   ))}
