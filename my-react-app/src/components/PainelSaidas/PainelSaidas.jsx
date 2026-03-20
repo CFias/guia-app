@@ -220,6 +220,18 @@ const extrairRegiao = (item) => {
   return texto;
 };
 
+const formatarPaxDetalhado = (adultos = 0, criancas = 0, infantes = 0) => {
+  const partes = [];
+
+  if (adultos > 0) partes.push(`${adultos} ADT`);
+  if (criancas > 0) partes.push(`${criancas} CHD`);
+  if (infantes > 0) partes.push(`${infantes} INF`);
+
+  if (partes.length === 0) return "0 ADT";
+
+  return partes.join(" | ");
+};
+
 const extrairPresentationHour = (item) =>
   item?.presentation_hour ||
   item?.schedule?.presentation_hour ||
@@ -232,7 +244,7 @@ const extrairMotorista = (item) =>
   item?.roadmapService?.roadmap?.driver?.name ||
   item?.auxRoadmapService?.roadmap?.driver?.name ||
   item?.driver?.name ||
-  "Não definido";
+  "NÃO DEFINIDO";
 
 const extrairVeiculo = (item) =>
   item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
@@ -244,7 +256,7 @@ const extrairVeiculo = (item) =>
   item?.vehicle?.prefix ||
   item?.vehicle?.name ||
   item?.vehicle?.plate ||
-  "Veículo não definido";
+  "FORA DE ESCALA";
 
 const extrairEscalaId = (item) =>
   item?.roadmapService?.roadmap?.id ||
@@ -422,7 +434,8 @@ const PainelOuts = () => {
           </h2>
           <p className="painel-outs-subtitle">
             Organização operacional por veículo e horário de apresentação, com
-            região, hotel do pax, reservas, operadora, telefone e observações.
+            região, hotel do pax, nome do pax, reservas, operadora, telefone e
+            observações.
           </p>
         </div>
       </div>
@@ -620,7 +633,7 @@ const PainelOuts = () => {
             </div>
             <p>
               Lista completa dos serviços agrupados por veículo e horário de
-              apresentação, com região e hotel do pax.
+              apresentação, com região, hotel e nome do pax.
             </p>
           </div>
 
@@ -717,6 +730,13 @@ const PainelOuts = () => {
                                   <div className="painel-outs-reserva-grid">
                                     <div className="painel-outs-info">
                                       <span className="painel-outs-info-label">
+                                        Nome do Pax
+                                      </span>
+                                      <strong>{reserva.cliente}</strong>
+                                    </div>
+
+                                    <div className="painel-outs-info">
+                                      <span className="painel-outs-info-label">
                                         Hotel
                                       </span>
                                       <strong>{reserva.hotel}</strong>
@@ -735,12 +755,17 @@ const PainelOuts = () => {
                                       </span>
                                       <strong>{reserva.reserva}</strong>
                                     </div>
-
                                     <div className="painel-outs-info">
                                       <span className="painel-outs-info-label">
                                         Pax
                                       </span>
-                                      <strong>{reserva.pax}</strong>
+                                      <strong>
+                                        {formatarPaxDetalhado(
+                                          reserva.adultos,
+                                          reserva.criancas,
+                                          reserva.infantes
+                                        )}
+                                      </strong>
                                     </div>
 
                                     <div className="painel-outs-info">
