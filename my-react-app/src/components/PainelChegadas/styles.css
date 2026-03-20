@@ -72,8 +72,8 @@
 
 .painel-chegadas-card-header h3 {
     margin: 0;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text);
     letter-spacing: -0.02em;
 }
@@ -223,9 +223,9 @@
 
 .painel-chegadas-stat strong,
 .painel-chegadas-kpi strong {
-    font-size: 16px;
+    font-size: 12px;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .painel-chegadas-kpis {
@@ -262,7 +262,7 @@
     border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     border-radius: 20px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
 }
 
 .painel-chegadas-flight-top {

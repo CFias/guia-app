@@ -180,8 +180,7 @@ const extrairAdicionais = (item) => {
 
   const adicionais = item.additionalReserveServices
     .map(
-      (add) =>
-        add?.additional?.name || add?.provider?.name || add?.name || "",
+      (add) => add?.additional?.name || add?.provider?.name || add?.name || "",
     )
     .filter(Boolean);
 
@@ -302,6 +301,51 @@ const extrairFlagPousado = (item) => {
     status.includes("arriv") ||
     status.includes("pous")
   );
+};
+
+const extrairModalidadeServico = (item) => {
+  const candidatos = [
+    item?.service?.mode,
+    item?.service?.modality,
+    item?.service?.type,
+    item?.service?.service_type,
+    item?.service?.category,
+    item?.service?.name,
+    item?.service_name,
+
+    item?.reserve?.mode,
+    item?.reserve?.modality,
+    item?.reserve?.type,
+    item?.reserve?.service_type,
+    item?.reserve?.category,
+    item?.reserve?.service_mode,
+    item?.reserve?.service_modality,
+    item?.reserve?.transport_type,
+    item?.reserve?.name,
+
+    item?.schedule?.mode,
+    item?.schedule?.modality,
+    item?.schedule?.type,
+    item?.schedule?.name,
+
+    item?.type,
+    item?.mode,
+    item?.modality,
+    item?.category,
+    item?.name,
+  ].filter(Boolean);
+
+  const texto = String(item?.serviceModeAsText || "").trim();
+
+  if (!texto) return "-";
+
+  const normalizado = normalizarTexto(texto);
+
+  if (normalizado.includes("execut")) return "EXECUTIVO";
+  if (normalizado.includes("priv")) return "PRIVATIVO";
+  if (normalizado.includes("regular")) return "REGULAR";
+
+  return texto.toUpperCase();
 };
 
 const extrairHoraMinutos = (valor) => {
@@ -530,6 +574,7 @@ const PainelChegadas = () => {
         contatoPax: formatarContato(extrairContatoPax(item)),
         destino: extrairDestino(item),
         operadora: extrairOperadora(item),
+        modalidadeServico: extrairModalidadeServico(item),
         adicionais: extrairAdicionais(item),
         pax: extrairPax(item),
         resumoPax: extrairResumoPax(item),
@@ -694,7 +739,8 @@ const PainelChegadas = () => {
           </h2>
           <p className="painel-chegadas-subtitle">
             Monitoramento de voos, pax previstos, reservas vinculadas,
-            operadora, adicionais e motorista responsável por escala.
+            operadora, modalidade do serviço, adicionais e motorista responsável
+            por escala.
           </p>
         </div>
       </div>
@@ -817,7 +863,9 @@ const PainelChegadas = () => {
                       Atualizado:{" "}
                       {voo.horarioAtualizado || voo.horarioReal || "--:--"}
                     </span>
-                    {voo.variacaoTexto ? <span>{voo.variacaoTexto}</span> : null}
+                    {voo.variacaoTexto ? (
+                      <span>{voo.variacaoTexto}</span>
+                    ) : null}
                     <span>{voo.totalPax} pax</span>
                     <span>{voo.totalReservas} reserva(s)</span>
                     <span>CHD: {voo.totalCriancas}</span>
@@ -911,7 +959,8 @@ const PainelChegadas = () => {
             </div>
             <p>
               Cada bloco exibe o voo, status calculado, horários, total de pax,
-              reservas, operadora, adicionais e grupos por motorista.
+              reservas, operadora, modalidade do serviço, adicionais e grupos
+              por motorista.
             </p>
           </div>
 
@@ -1018,6 +1067,7 @@ const PainelChegadas = () => {
                                     <th>Cliente</th>
                                     <th>Contato Pax</th>
                                     <th>Operadora</th>
+                                    <th>Modalidade</th>
                                     <th>Destino</th>
                                     <th>Pax</th>
                                     <th>Escala</th>
@@ -1029,9 +1079,8 @@ const PainelChegadas = () => {
                                       <td>{reserva.codigoReserva}</td>
                                       <td>{reserva.cliente}</td>
                                       <td>{reserva.contatoPax}</td>
-                                      <td>
-                                        {reserva.operadora}
-                                      </td>
+                                      <td>{reserva.operadora}</td>
+                                      <td>{reserva.modalidadeServico}</td>
                                       <td>{reserva.destino}</td>
                                       <td>{reserva.resumoPax}</td>
                                       <td>{reserva.escalaId || "-"}</td>

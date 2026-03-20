@@ -72,8 +72,8 @@
 
 .previa-operacional-card-header h3 {
     margin: 0;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text);
     letter-spacing: -0.02em;
 }
@@ -242,9 +242,9 @@
 }
 
 .previa-operacional-stat strong {
-    font-size: 16px;
+    font-size: 12px;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .previa-operacional-stat .small-value {
@@ -318,108 +318,107 @@
 }
 
 .previa-operacional-sheet-wrap {
-    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid #d9dee7;
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    box-shadow: none;
 }
 
 .previa-operacional-sheet-header {
-    position: relative;
-    min-height: 84px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 10%, var(--card) 90%),
-            color-mix(in srgb, var(--bg) 18%, var(--card) 82%));
-    display: flex;
+    display: grid;
+    grid-template-columns: 60px 1fr 60px;
     align-items: center;
-    justify-content: center;
+    min-height: 52px;
+    padding: 0 12px;
+    background: #f7f9fc;
+    border-bottom: 1px solid #d9dee7;
+}
+
+.previa-operacional-sheet-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #0b6b57;
+    border: 1px solid #cfe7df;
+    background: #eefaf6;
 }
 
 .previa-operacional-sheet-header h1 {
     margin: 0;
-    font-size: 34px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    color: var(--text);
-}
-
-.previa-operacional-sheet-logo {
-    position: absolute;
-    left: 18px;
-    top: 18px;
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    background: color-mix(in srgb, var(--card) 82%, var(--primary) 18%);
-    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
-    color: var(--text-dist);
-    font-size: 11px;
-    font-weight: 700;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1f2937;
 }
 
 .previa-operacional-sheet-body {
     display: flex;
     flex-direction: column;
+    gap: 0;
+    background: #ffffff;
 }
 
 .previa-operacional-sheet-grid {
     display: grid;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-}
-
-.previa-operacional-sheet-grid:last-child {
-    border-bottom: 0;
+    gap: 0;
+    border-bottom: 1px solid #d9dee7;
 }
 
 .previa-operacional-coluna {
-    border-right: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    min-height: 360px;
-    background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
+    background: #ffffff;
+    border-right: 1px solid #d9dee7;
+    min-height: unset;
 }
 
 .previa-operacional-coluna:last-child {
-    border-right: 0;
+    border-right: none;
+}
+
+.previa-operacional-coluna.dragging {
+    opacity: 0.65;
+    background: #f5fbff;
 }
 
 .previa-operacional-coluna-topo {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
+    background: #f8fafc;
+    border-bottom: 1px solid #d9dee7;
 }
 
 .previa-operacional-coluna-titulo {
-    min-height: 34px;
+    min-height: 30px;
+    padding: 4px 8px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 8px;
-    background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    text-align: center;
+    gap: 4px;
     font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
+    font-weight: 800;
+    color: #1f2937;
+    border-bottom: 1px solid #e6ebf2;
     text-transform: uppercase;
+    line-height: 1.1;
 }
 
 .previa-operacional-coluna-subtitulo {
     min-height: 24px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 6px;
-    padding: 0 6px;
-    background: color-mix(in srgb, var(--bg) 16%, var(--card) 84%);
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    text-align: center;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
-    color: color-mix(in srgb, var(--text) 76%, transparent 24%);
-    text-transform: uppercase;
+    color: #4b5563;
+    background: #ffffff;
+}
+
+.previa-operacional-coluna-subtitulo strong {
+    font-size: 10px;
+    color: #111827;
 }
 
 .previa-operacional-coluna-linhas {
@@ -429,55 +428,55 @@
 
 .previa-operacional-linha {
     min-height: 24px;
+    padding: 3px 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    text-transform: uppercase;
-    background: transparent;
+    border-bottom: 1px solid #edf1f5;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.previa-operacional-linha:last-child {
+    border-bottom: none;
 }
 
 .previa-operacional-linha .texto-linha {
+    font-size: 10px;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.previa-operacional-linha .extra-linha {
-    margin-left: auto;
-    font-size: 9px;
-    font-weight: 700;
-    color: color-mix(in srgb, var(--text) 76%, transparent 24%);
-    white-space: nowrap;
+    width: 100%;
+    line-height: 1.15;
 }
 
 .previa-operacional-linha.in {
-    background: color-mix(in srgb, var(--p3) 7%, transparent 93%);
+    background: #eefaf3;
 }
 
 .previa-operacional-linha.out {
-    background: color-mix(in srgb, var(--primary) 5%, transparent 95%);
+    background: #fff7ed;
 }
 
 .previa-operacional-linha.trf {
-    background: color-mix(in srgb, var(--p2) 10%, transparent 90%);
+    background: #f5f3ff;
+}
+
+.previa-operacional-linha.passeio {
+    background: #eff6ff;
 }
 
 .previa-operacional-linha.vazia {
-    color: transparent;
-    background: transparent;
+    background: #ffffff;
 }
 
-.coluna-vazia .previa-operacional-coluna-titulo,
-.coluna-vazia .previa-operacional-coluna-subtitulo {
-    color: color-mix(in srgb, var(--text) 40%, transparent 60%);
+.coluna-vazia .previa-operacional-coluna-topo {
+    opacity: 0.55;
+}
+
+.coluna-vazia .previa-operacional-linha.vazia {
+    background: #ffffff;
 }
 
 @media (max-width: 1200px) {
@@ -829,7 +828,7 @@
 
 .envio-veiculo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
 }
 

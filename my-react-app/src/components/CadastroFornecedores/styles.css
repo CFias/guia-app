@@ -648,3 +648,112 @@
         flex-direction: column;
     }
 }
+
+.cadastro-fornecedor-layout,
+.cadastro-fornecedor-grid,
+.cadastro-fornecedor-card,
+.cadastro-fornecedor-form,
+.cadastro-fornecedor-form-grid,
+.cadastro-fornecedor-field {
+    overflow: visible;
+}
+
+.cadastro-fornecedor-card {
+    position: relative;
+}
+
+.cadastro-fornecedor-field {
+    position: relative;
+    z-index: 1;
+}
+
+.cadastro-fornecedor-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 50;
+}
+
+.cadastro-fornecedor-dropdown-header {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.cadastro-fornecedor-dropdown-header:hover {
+    border-color: rgba(0, 224, 176, 0.35);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cadastro-fornecedor-dropdown-header.open {
+    border-color: rgba(0, 224, 176, 0.45);
+    box-shadow: 0 0 0 3px rgba(0, 224, 176, 0.08);
+}
+
+.cadastro-fornecedor-dropdown-arrow {
+    flex-shrink: 0;
+    font-size: 12px;
+    opacity: 0.8;
+    transition: transform 0.2s ease;
+}
+
+.cadastro-fornecedor-dropdown-header.open .cadastro-fornecedor-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.cadastro-fornecedor-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #111827;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    z-index: 9999;
+    padding: 8px 0;
+}
+
+.cadastro-fornecedor-dropdown-item {
+    padding: 12px 16px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.18s ease;
+    font-size: 14px;
+    line-height: 1.25;
+}
+
+.cadastro-fornecedor-dropdown-item:hover {
+    background: rgba(0, 224, 176, 0.08);
+}
+
+.cadastro-fornecedor-dropdown-item.selected {
+    background: rgba(0, 224, 176, 0.12);
+    color: #00e0b0;
+    font-weight: 600;
+}
+
+.cadastro-fornecedor-dropdown-item.empty {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.cadastro-fornecedor-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    position: relative;
+    z-index: 1;
+}
