@@ -850,10 +850,15 @@
 }
 
 .envio-veiculo-titulo {
-    display: block;
-    font-size: 14px;
-    color: var(--text);
-    margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;     
+  -webkit-box-orient: vertical;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  font-size: 12px;
+  color: var(--text);
 }
 
 .envio-veiculo-motorista {
@@ -890,12 +895,12 @@
 }
 
 .envio-veiculo-fornecedor strong {
-    font-size: 13px;
+    font-size: 8px;
     color: var(--text);
 }
 
 .envio-veiculo-fornecedor small {
-    font-size: 11px;
+    font-size: 8px;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
 

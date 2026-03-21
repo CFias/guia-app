@@ -958,16 +958,6 @@ const PreviaEscalasPlanilha = () => {
                 />
                 {loading ? "Atualizando serviços..." : "Atualizar"}
               </button>
-
-              {/* <button
-                type="button"
-                className="previa-operacional-btn-soft"
-                onClick={() => window.print()}
-              >
-                <LocalPrintshopRounded fontSize="small" />
-                Imprimir
-              </button> */}
-
               <button
                 type="button"
                 className="previa-operacional-btn-soft whatsapp"
@@ -1136,9 +1126,6 @@ const PreviaEscalasPlanilha = () => {
                       <strong className="envio-veiculo-titulo">
                         {item.grupo.veiculo}
                       </strong>
-                      <span className="envio-veiculo-motorista">
-                        {item.grupo.motorista || "SEM MOTORISTA"}
-                      </span>
                     </div>
 
                     <span className="envio-veiculo-badge">
@@ -1153,23 +1140,11 @@ const PreviaEscalasPlanilha = () => {
                     </small>
                   </div>
 
-                  <div className="envio-veiculo-preview compacto">
-                    {item.grupo.linhas.slice(0, 2).map((linha) => (
-                      <div
-                        key={`${item.chave}-${linha.escalaId}`}
-                        className="envio-veiculo-preview-linha"
-                      >
-                        {linha.tipo === "PASSEIO"
-                          ? `${linha.passeio || linha.texto} - ${linha.guia || "SEM GUIA"} - ${linha.paxDetalhado}`
-                          : `${linha.tipo} - ${linha.hora || "--:--"} - ${linha.texto} - ${linha.paxDetalhado}`}
-                      </div>
-                    ))}
-
-                    {item.grupo.linhas.length > 2 && (
-                      <div className="envio-veiculo-preview-more">
-                        + {item.grupo.linhas.length - 2}
-                      </div>
-                    )}
+                  <div className="envio-veiculo-preview compacto resumo">
+                    <div className="envio-veiculo-resumo-item">
+                      <span>Serviços</span>
+                      <strong>{item.totalServicos}</strong>
+                    </div>
                   </div>
 
                   <div className="envio-veiculo-actions compacto">

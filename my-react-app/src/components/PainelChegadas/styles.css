@@ -109,6 +109,7 @@
 .painel-chegadas-field {
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     gap: 10px;
     min-width: 220px;
 }
@@ -118,7 +119,7 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
 }
 
@@ -126,15 +127,24 @@
     color: var(--text-dist);
 }
 
+.painel-chegadas-driver-block.nao-escalado {
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.06);
+}
+
+.painel-chegadas-driver-block.nao-escalado .painel-chegadas-driver-title strong {
+    color: #ffb300;
+}
+
 .painel-chegadas-input {
     width: 100%;
-    height: 50px;
+    min-height: 45px;
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
     color: var(--text);
     font-size: 12px;
-    padding: 0 14px;
+    padding: 0 18px;
     outline: none;
     transition: all 0.25s ease;
     box-sizing: border-box;
@@ -629,4 +639,3 @@
     border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
     background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
 }
-

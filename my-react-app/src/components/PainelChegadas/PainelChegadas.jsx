@@ -14,6 +14,7 @@ import {
   ConnectingAirportsRounded,
   SearchRounded,
   SyncRounded,
+  DirectionsBusRounded,
 } from "@mui/icons-material";
 import "./styles.css";
 
@@ -21,7 +22,7 @@ const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
-  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
 
 const getHojeIso = () => {
   const d = new Date();
@@ -222,6 +223,21 @@ const extrairMotorista = (item) =>
   item?.auxRoadmapService?.roadmap?.driver?.name ||
   item?.driver?.name ||
   "Não definido";
+
+const extrairVeiculoEscalado = (item) =>
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  item?.vehicle?.nickname ||
+  item?.vehicle?.name ||
+  item?.vehicle?.prefix ||
+  item?.vehicle?.plate ||
+  "Sem veículo";
 
 const extrairNumeroVoo = (item) =>
   item?.schedule?.name ||
@@ -472,6 +488,23 @@ const ordenarHora = (a, b) => String(a || "").localeCompare(String(b || ""));
 const normalizarCodigoVoo = (valor = "") =>
   String(valor).toUpperCase().replace(/\s+/g, "").replace("-", "");
 
+const somarReservas = (reservas = []) =>
+  reservas.reduce(
+    (acc, reserva) => {
+      acc.totalPax += Number(reserva.pax || 0);
+      acc.totalCriancas += Number(reserva.criancas || 0);
+      acc.totalInfantes += Number(reserva.infantes || 0);
+      acc.totalReservas += 1;
+      return acc;
+    },
+    {
+      totalPax: 0,
+      totalCriancas: 0,
+      totalInfantes: 0,
+      totalReservas: 0,
+    },
+  );
+
 const PainelChegadas = () => {
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
   const [loading, setLoading] = useState(false);
@@ -479,6 +512,7 @@ const PainelChegadas = () => {
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
   const [itensBrutos, setItensBrutos] = useState([]);
   const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [filtroEscala, setFiltroEscala] = useState("todos");
   const [voosExpandidos, setVoosExpandidos] = useState({});
 
   const carregarChegadas = async () => {
@@ -554,6 +588,7 @@ const PainelChegadas = () => {
         possuiInfante: extrairInfantes(item) > 0,
         escalaId: extrairEscalaId(item),
         motorista: extrairMotorista(item),
+        veiculo: extrairVeiculoEscalado(item),
       });
 
       if (!mapa[vooNormalizado].horarioPrevisto) {
@@ -601,13 +636,21 @@ const PainelChegadas = () => {
           pousado: voo.pousado,
         });
 
-        const reservasPorMotorista = Object.values(
-          voo.reservas.reduce((acc, reserva) => {
-            const chaveMotorista = reserva.motorista || "Não definido";
+        const reservasEscaladas = voo.reservas.filter(
+          (reserva) => reserva.escalaId,
+        );
+        const reservasNaoEscaladas = voo.reservas.filter(
+          (reserva) => !reserva.escalaId,
+        );
 
-            if (!acc[chaveMotorista]) {
-              acc[chaveMotorista] = {
-                motorista: chaveMotorista,
+        const gruposPorVeiculo = Object.values(
+          reservasEscaladas.reduce((acc, reserva) => {
+            const chaveVeiculo = reserva.veiculo || "Sem veículo";
+
+            if (!acc[chaveVeiculo]) {
+              acc[chaveVeiculo] = {
+                veiculo: chaveVeiculo,
+                motorista: reserva.motorista || "Não definido",
                 reservas: [],
                 totalPax: 0,
                 totalReservas: 0,
@@ -616,19 +659,33 @@ const PainelChegadas = () => {
               };
             }
 
-            acc[chaveMotorista].reservas.push(reserva);
-            acc[chaveMotorista].totalPax += Number(reserva.pax || 0);
-            acc[chaveMotorista].totalReservas += 1;
-            acc[chaveMotorista].totalCriancas += Number(reserva.criancas || 0);
-            acc[chaveMotorista].totalInfantes += Number(reserva.infantes || 0);
+            acc[chaveVeiculo].reservas.push(reserva);
+            acc[chaveVeiculo].totalPax += Number(reserva.pax || 0);
+            acc[chaveVeiculo].totalReservas += 1;
+            acc[chaveVeiculo].totalCriancas += Number(reserva.criancas || 0);
+            acc[chaveVeiculo].totalInfantes += Number(reserva.infantes || 0);
+
+            if (
+              (!acc[chaveVeiculo].motorista ||
+                acc[chaveVeiculo].motorista === "Não definido") &&
+              reserva.motorista
+            ) {
+              acc[chaveVeiculo].motorista = reserva.motorista;
+            }
 
             return acc;
           }, {}),
         ).sort((a, b) =>
-          String(a.motorista).localeCompare(String(b.motorista), "pt-BR", {
+          String(a.veiculo).localeCompare(String(b.veiculo), "pt-BR", {
             sensitivity: "base",
           }),
         );
+
+        const totaisNaoEscalados = somarReservas(reservasNaoEscaladas);
+        const possuiReservasEscaladas = reservasEscaladas.length > 0;
+        const possuiReservasNaoEscaladas = reservasNaoEscaladas.length > 0;
+        const totalmenteNaoEscalado =
+          reservasNaoEscaladas.length > 0 && reservasEscaladas.length === 0;
 
         return {
           ...voo,
@@ -650,7 +707,12 @@ const PainelChegadas = () => {
           statusLabel: labelStatusVoo(calculoStatus.status),
           diferencaMinutos: calculoStatus.diferencaMinutos,
           variacaoTexto: formatarVariacaoVoo(calculoStatus.diferencaMinutos),
-          reservasPorMotorista,
+          gruposPorVeiculo,
+          reservasNaoEscaladas,
+          totaisNaoEscalados,
+          possuiReservasEscaladas,
+          possuiReservasNaoEscaladas,
+          totalmenteNaoEscalado,
         };
       })
       .sort((a, b) => ordenarHora(a.horarioPrevisto, b.horarioPrevisto));
@@ -669,9 +731,26 @@ const PainelChegadas = () => {
   }, [voos]);
 
   const voosFiltrados = useMemo(() => {
-    if (filtroStatus === "todos") return voos;
-    return voos.filter((v) => v.statusKey === filtroStatus);
-  }, [voos, filtroStatus]);
+    let lista = voos;
+
+    if (filtroStatus !== "todos") {
+      lista = lista.filter((v) => v.statusKey === filtroStatus);
+    }
+
+    if (filtroEscala === "com-escaladas") {
+      lista = lista.filter((v) => v.possuiReservasEscaladas);
+    }
+
+    if (filtroEscala === "com-nao-escaladas") {
+      lista = lista.filter((v) => v.possuiReservasNaoEscaladas);
+    }
+
+    if (filtroEscala === "somente-nao-escalados") {
+      lista = lista.filter((v) => v.totalmenteNaoEscalado);
+    }
+
+    return lista;
+  }, [voos, filtroStatus, filtroEscala]);
 
   const resumo = useMemo(() => {
     return {
@@ -689,6 +768,8 @@ const PainelChegadas = () => {
           "pousado-antecipado",
         ].includes(v.statusKey),
       ).length,
+      voosComNaoEscalados: voos.filter((v) => v.possuiReservasNaoEscaladas)
+        .length,
     };
   }, [voos]);
 
@@ -709,8 +790,8 @@ const PainelChegadas = () => {
           </h2>
           <p className="painel-chegadas-subtitle">
             Monitoramento de voos, pax previstos, reservas vinculadas,
-            operadora, modalidade do serviço, adicionais e motorista responsável
-            por escala.
+            operadora, modalidade do serviço, adicionais e agrupamento por
+            veículo escalado.
           </p>
         </div>
       </div>
@@ -761,6 +842,27 @@ const PainelChegadas = () => {
                 <option value="pousado-atrasado">Pousado com atraso</option>
                 <option value="pousado-antecipado">Pousado antecipado</option>
                 <option value="sem-info">Sem informação</option>
+              </select>
+            </div>
+
+            <div className="painel-chegadas-field">
+              <label>
+                <FilterAltRounded fontSize="small" />
+                Filtrar escala
+              </label>
+              <select
+                className="painel-chegadas-input"
+                value={filtroEscala}
+                onChange={(e) => setFiltroEscala(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="com-escaladas">Com reservas escaladas</option>
+                <option value="com-nao-escaladas">
+                  Com reservas não escaladas
+                </option>
+                <option value="somente-nao-escalados">
+                  Somente totalmente não escalados
+                </option>
               </select>
             </div>
 
@@ -959,6 +1061,22 @@ const PainelChegadas = () => {
                 </strong>
               </div>
             </div>
+
+            <div className="painel-chegadas-kpi">
+              <div className="painel-chegadas-kpi-icon alerta">
+                <WarningAmberRounded fontSize="small" />
+              </div>
+              <div>
+                <span>Voos com não escalados</span>
+                <strong>
+                  {loading ? (
+                    <SyncRounded className="spin" fontSize="small" />
+                  ) : (
+                    resumo.voosComNaoEscalados
+                  )}
+                </strong>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -972,8 +1090,8 @@ const PainelChegadas = () => {
             </div>
             <p>
               Cada bloco exibe o voo, status calculado, horários, total de pax,
-              reservas, operadora, modalidade do serviço, adicionais e grupos
-              por motorista.
+              reservas e agrupamento por veículo escalado. Use os filtros para
+              localizar voos com reservas escaladas ou não escaladas.
             </p>
           </div>
 
@@ -1043,6 +1161,11 @@ const PainelChegadas = () => {
                         <span>{voo.totalReservas} reserva(s)</span>
                         <span>CHD: {voo.totalCriancas}</span>
                         <span>INF: {voo.totalInfantes}</span>
+                        {voo.reservasNaoEscaladas.length > 0 ? (
+                          <span>
+                            Não escalados: {voo.reservasNaoEscaladas.length}
+                          </span>
+                        ) : null}
                       </div>
 
                       <div className="painel-chegadas-expand-icon">
@@ -1056,24 +1179,28 @@ const PainelChegadas = () => {
 
                     {expandido && (
                       <div className="painel-chegadas-flight-expanded">
-                        {voo.reservasPorMotorista.map((grupoMotorista) => (
-                          <div
-                            key={`${voo.voo}-${grupoMotorista.motorista}`}
-                            className="painel-chegadas-driver-block"
-                          >
+                        {voo.reservasNaoEscaladas?.length > 0 && (
+                          <div className="painel-chegadas-driver-block nao-escalado">
                             <div className="painel-chegadas-driver-header">
                               <div className="painel-chegadas-driver-title">
-                                <ConnectingAirportsRounded fontSize="small" />
-                                <strong>{grupoMotorista.motorista}</strong>
+                                <WarningAmberRounded fontSize="small" />
+                                <strong>Chegadas não escaladas</strong>
                               </div>
 
                               <div className="painel-chegadas-driver-meta">
                                 <span>
-                                  {grupoMotorista.totalReservas} reserva(s)
+                                  {voo.totaisNaoEscalados.totalReservas}{" "}
+                                  reserva(s)
                                 </span>
-                                <span>{grupoMotorista.totalPax} pax</span>
-                                <span>CHD: {grupoMotorista.totalCriancas}</span>
-                                <span>INF: {grupoMotorista.totalInfantes}</span>
+                                <span>
+                                  {voo.totaisNaoEscalados.totalPax} pax
+                                </span>
+                                <span>
+                                  CHD: {voo.totaisNaoEscalados.totalCriancas}
+                                </span>
+                                <span>
+                                  INF: {voo.totaisNaoEscalados.totalInfantes}
+                                </span>
                               </div>
                             </div>
 
@@ -1088,11 +1215,12 @@ const PainelChegadas = () => {
                                     <th>Modalidade</th>
                                     <th>Destino</th>
                                     <th>Pax</th>
+                                    <th>Veículo</th>
                                     <th>Escala</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {grupoMotorista.reservas.map((reserva) => (
+                                  {voo.reservasNaoEscaladas.map((reserva) => (
                                     <tr key={reserva.id}>
                                       <td>{reserva.codigoReserva}</td>
                                       <td>{reserva.cliente}</td>
@@ -1101,6 +1229,64 @@ const PainelChegadas = () => {
                                       <td>{reserva.modalidadeServico}</td>
                                       <td>{reserva.destino}</td>
                                       <td>{reserva.resumoPax}</td>
+                                      <td>-</td>
+                                      <td>-</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {voo.gruposPorVeiculo.map((grupoVeiculo) => (
+                          <div
+                            key={`${voo.voo}-${grupoVeiculo.veiculo}`}
+                            className="painel-chegadas-driver-block"
+                          >
+                            <div className="painel-chegadas-driver-header">
+                              <div className="painel-chegadas-driver-title">
+                                <DirectionsBusRounded fontSize="small" />
+                                <strong>{grupoVeiculo.veiculo}</strong>
+                              </div>
+
+                              <div className="painel-chegadas-driver-meta">
+                                <span>Motorista: {grupoVeiculo.motorista}</span>
+                                <span>
+                                  {grupoVeiculo.totalReservas} reserva(s)
+                                </span>
+                                <span>{grupoVeiculo.totalPax} pax</span>
+                                <span>CHD: {grupoVeiculo.totalCriancas}</span>
+                                <span>INF: {grupoVeiculo.totalInfantes}</span>
+                              </div>
+                            </div>
+
+                            <div className="painel-chegadas-table-wrap">
+                              <table className="painel-chegadas-table">
+                                <thead>
+                                  <tr>
+                                    <th>Reserva</th>
+                                    <th>Cliente</th>
+                                    <th>Contato Pax</th>
+                                    <th>Operadora</th>
+                                    <th>Modalidade</th>
+                                    <th>Destino</th>
+                                    <th>Pax</th>
+                                    <th>Veículo</th>
+                                    <th>Escala</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {grupoVeiculo.reservas.map((reserva) => (
+                                    <tr key={reserva.id}>
+                                      <td>{reserva.codigoReserva}</td>
+                                      <td>{reserva.cliente}</td>
+                                      <td>{reserva.contatoPax}</td>
+                                      <td>{reserva.operadora}</td>
+                                      <td>{reserva.modalidadeServico}</td>
+                                      <td>{reserva.destino}</td>
+                                      <td>{reserva.resumoPax}</td>
+                                      <td>{reserva.veiculo || "-"}</td>
                                       <td>{reserva.escalaId || "-"}</td>
                                     </tr>
                                   ))}

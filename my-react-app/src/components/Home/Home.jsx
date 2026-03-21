@@ -629,7 +629,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -638,11 +638,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -707,13 +707,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -797,8 +797,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1446,8 +1446,9 @@ Operacional - Luck Receptivo
                     <button
                       key={dia.date}
                       type="button"
-                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
-                        }`}
+                      className={`home-day-chip ${
+                        diaSelecionadoHome === dia.date ? "active" : ""
+                      }`}
                       onClick={() => setDiaSelecionadoHome(dia.date)}
                     >
                       {dia.day} • {dia.label}
@@ -1519,12 +1520,13 @@ Operacional - Luck Receptivo
                           <tr key={item.chave}>
                             <td>
                               <span
-                                className={`home-service-status ${item.statusOperacional === "Fechado"
-                                  ? "fechado"
-                                  : item.statusOperacional === "Alocado"
-                                    ? "alocado"
-                                    : "sem-guia"
-                                  }`}
+                                className={`home-service-status ${
+                                  item.statusOperacional === "Fechado"
+                                    ? "fechado"
+                                    : item.statusOperacional === "Alocado"
+                                      ? "alocado"
+                                      : "sem-guia"
+                                }`}
                               >
                                 {item.statusOperacional}
                               </span>
@@ -1532,14 +1534,15 @@ Operacional - Luck Receptivo
 
                             <td>
                               <span
-                                className={`home-group-status ${item.statusGrupo === "Fechado"
-                                  ? "fechado"
-                                  : item.isDisp
-                                    ? "modo-servico"
-                                    : item.statusGrupo === "Grupo formado"
-                                      ? "formado"
-                                      : "alerta"
-                                  }`}
+                                className={`home-group-status ${
+                                  item.statusGrupo === "Fechado"
+                                    ? "fechado"
+                                    : item.isDisp
+                                      ? "modo-servico"
+                                      : item.statusGrupo === "Grupo formado"
+                                        ? "formado"
+                                        : "alerta"
+                                }`}
                               >
                                 {item.statusGrupo}
                               </span>
@@ -1640,7 +1643,9 @@ Operacional - Luck Receptivo
                         </div>
 
                         <div className="ranking-meta">
-                          <span>{operadora.reservas} reserva(s)/ocorrência(s)</span>
+                          <span>
+                            {operadora.reservas} reserva(s)/ocorrência(s)
+                          </span>
                           <span>Total de pax na semana</span>
                         </div>
                       </div>
@@ -1665,6 +1670,10 @@ Operacional - Luck Receptivo
                   <div className="home-week-chart advanced">
                     {dashboard.distribuicaoSemana.map((dia) => (
                       <div key={dia.date} className="chart-col">
+                        <strong>{dia.short}</strong>
+                        <span>{dia.total} serv.</span>
+                        <small>{dia.comGuia} c/ guia</small>
+                        <small>{dia.pax} pax</small>
                         <div className="chart-bars advanced">
                           <div
                             className="chart-bar chart-bar-total"
@@ -1697,10 +1706,6 @@ Operacional - Luck Receptivo
                             title={`${dia.pax} pax`}
                           />
                         </div>
-                        <strong>{dia.short}</strong>
-                        <span>{dia.total} serv.</span>
-                        <small>{dia.comGuia} c/ guia</small>
-                        <small>{dia.pax} pax</small>
                       </div>
                     ))}
                   </div>
@@ -1782,8 +1787,9 @@ Operacional - Luck Receptivo
 
                       <div className="ranking-bar">
                         <div
-                          className={`ranking-bar-fill ${guia.ocupacao >= 80 ? "high" : "low"
-                            }`}
+                          className={`ranking-bar-fill ${
+                            guia.ocupacao >= 80 ? "high" : "low"
+                          }`}
                           style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
                         />
                       </div>
@@ -1912,7 +1918,7 @@ Operacional - Luck Receptivo
                                   ...dashboard.topPasseios.map((t) => t.pax),
                                   1,
                                 )) *
-                              100,
+                                100,
                               8,
                             )}%`,
                           }}
@@ -1996,7 +2002,8 @@ Operacional - Luck Receptivo
                   <span className="summary-label">Serviços atuais</span>
                   <strong>{dashboard.comparativoGeral.servicosAtual}</strong>
                   <small>
-                    Semana anterior: {dashboard.comparativoGeral.servicosAnterior}
+                    Semana anterior:{" "}
+                    {dashboard.comparativoGeral.servicosAnterior}
                   </small>
                 </div>
 
@@ -2023,9 +2030,14 @@ Operacional - Luck Receptivo
 
                 <div className="summary-box">
                   <span className="summary-label">Delta de pax</span>
-                  <strong>{formatarDelta(dashboard.comparativoGeral.deltaPax)}</strong>
+                  <strong>
+                    {formatarDelta(dashboard.comparativoGeral.deltaPax)}
+                  </strong>
                   <small>
-                    {formatarDelta(dashboard.comparativoGeral.deltaPercentualPax)}%
+                    {formatarDelta(
+                      dashboard.comparativoGeral.deltaPercentualPax,
+                    )}
+                    %
                   </small>
                 </div>
               </div>
@@ -2074,7 +2086,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAnterior /
                                 dashboard.maiorComparativoServicos) *
-                              180,
+                                180,
                               dia.servicosAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2087,7 +2099,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAtual /
                                 dashboard.maiorComparativoServicos) *
-                              180,
+                                180,
                               dia.servicosAtual > 0 ? 12 : 6,
                             )}px`,
                           }}
@@ -2136,8 +2148,9 @@ Operacional - Luck Receptivo
                           className="chart-bar chart-bar-total"
                           style={{
                             height: `${Math.max(
-                              (dia.paxAnterior / dashboard.maiorComparativoPax) *
-                              180,
+                              (dia.paxAnterior /
+                                dashboard.maiorComparativoPax) *
+                                180,
                               dia.paxAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2149,14 +2162,13 @@ Operacional - Luck Receptivo
                           style={{
                             height: `${Math.max(
                               (dia.paxAtual / dashboard.maiorComparativoPax) *
-                              180,
+                                180,
                               dia.paxAtual > 0 ? 12 : 6,
                             )}px`,
                           }}
                           title={`Semana atual: ${dia.paxAtual} pax`}
                         />
                       </div>
-
                       <strong>{dia.short}</strong>
                       <span>
                         {dia.paxAtual} / {dia.paxAnterior}
@@ -2250,7 +2262,9 @@ Operacional - Luck Receptivo
                       </div>
 
                       <div className="ranking-meta">
-                        <span>{operadora.reservas} reserva(s)/ocorrência(s)</span>
+                        <span>
+                          {operadora.reservas} reserva(s)/ocorrência(s)
+                        </span>
                         <span>Total de pax na semana</span>
                       </div>
                     </div>
