@@ -854,7 +854,7 @@ const PreviaEscalasPlanilha = () => {
 
         const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
         window.open(url, "_blank");
-      }, index * 350);
+      }, index * 1550);
     });
   };
 
@@ -895,7 +895,7 @@ const PreviaEscalasPlanilha = () => {
         <div>
           <h2 className="previa-operacional-title">
             <ViewModuleRounded fontSize="small" />
-            Prévia Operacional por Veículo
+            Prévia de Serviços
           </h2>
           <p className="previa-operacional-subtitle">
             Estrutura automática por escala, com passeios consumidos em chamada
@@ -974,7 +974,7 @@ const PreviaEscalasPlanilha = () => {
                 onClick={() => envioGeral(false)}
               >
                 <WhatsApp fontSize="small" />
-                Envio geral
+                Enviar todas as prévias
               </button>
 
               <button
@@ -983,7 +983,7 @@ const PreviaEscalasPlanilha = () => {
                 onClick={() => envioGeral(true)}
               >
                 <WarningAmberRounded fontSize="small" />
-                Envio geral atualizado
+                Enviar todas as prévias atualizadas
               </button>
             </div>
           </div>
@@ -1120,7 +1120,7 @@ const PreviaEscalasPlanilha = () => {
           <div className="previa-operacional-card previa-operacional-card-full">
             <div className="previa-operacional-card-header">
               <div className="previa-operacional-card-title-row">
-                <h3>Envio individual por veículo</h3>
+                <h3>Enviar prévia individualmente</h3>
                 <span className="previa-operacional-badge">
                   {cardsEnvioPorVeiculo.length} veículo(s)
                 </span>

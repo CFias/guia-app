@@ -41,7 +41,7 @@ const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
-  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,reserve.pdvPayment,reserve.pdvPayment.user,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
 
 const SERVICOS_IGNORADOS = [
   "01 PASSEIO A ESCOLHER NO DESTINO",
@@ -56,6 +56,14 @@ const SERVICOS_IGNORADOS = [
   "CITY TOUR SAINDO DO LITORAL",
   "CITY TOUR HISTÓRICO + PANORÂMICO",
   "PASSEIO À PRAIA DO FORTE (SHUTTLE)",
+  "TRANSFER - MORRO DE SÃO PAULO / SALVADOR (SEMI TERRESTRE)",
+  "TRANSFER - SALVADOR / MORRO DE SÃO PAULO (SEMI TERRESTRE)",
+  "TRANSFER - SALVADOR / MORRO DE SÃO PAULO (CATAMARÃ)",
+  "TRANSFER - MORRO DE SÃO PAULO / SALVADOR (CATAMARÃ)",
+  "HOTEL SALVADOR / HOTEL LITORAL NORTE",
+  "HOTEL SALVADOR X HOTEL LENÇOIS",
+  "HOTEL SALVADOR/ TERMINAL NAUTICO",
+  "TERMINAL NAUTICO / HOTEL SALVADOR",
 ];
 
 const TERMOS_IGNORADOS = [
@@ -173,11 +181,75 @@ const extrairContagemPax = (item) => {
   };
 };
 
+const ehServicoDisp = (nome = "") => {
+  const nomeNormalizado = normalizarTexto(nome);
+  return nomeNormalizado.includes("disp");
+};
+
+const extrairNomeVendedor = (item) => {
+  const pagamentos = Array.isArray(item?.reserve?.pdvPayment)
+    ? item.reserve.pdvPayment
+    : [];
+
+  const nomes = pagamentos
+    .map((pag) => pag?.user?.name || "")
+    .filter((nome) => typeof nome === "string" && nome.trim());
+
+  return nomes[0] || "";
+};
+
+const extrairNomeOperadora = (item) => {
+  return (
+    item?.reserve?.partner?.fantasy_name ||
+    item?.reserve?.partner?.name ||
+    item?.reserve?.customer?.fantasy_name ||
+    item?.reserve?.customer?.name ||
+    ""
+  );
+};
+
+const extrairPrimeiroNome = (nome = "") => {
+  const limpo = String(nome).trim();
+  if (!limpo) return "";
+  return limpo.split(/\s+/)[0].toUpperCase();
+};
+
+const extrairResponsavelDisp = (item) => {
+  const vendedor = extrairPrimeiroNome(extrairNomeVendedor(item));
+  if (vendedor) return vendedor;
+
+  const operadora = extrairPrimeiroNome(extrairNomeOperadora(item));
+  if (operadora) return operadora;
+
+  return "";
+};
+
+const montarNomeServicoExibicao = (item) => {
+  const nomeBase = obterNomeCanonico(extrairNomePasseio(item));
+
+  if (!ehServicoDisp(nomeBase)) {
+    return nomeBase;
+  }
+
+  const responsavel = extrairResponsavelDisp(item);
+
+  return responsavel ? `${nomeBase} - ${responsavel}` : nomeBase;
+};
+
+const montarChaveImportacao = ({ date, externalServiceId, serviceName }) => {
+  return `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
+    serviceName || "",
+  )}`;
+};
+
 const montarUrlApi = (date) => {
   const params = new URLSearchParams();
   params.append("execution_date", date);
   params.append("expand", EXPAND);
+
   params.append("service_type[]", "3");
+  params.append("service_type[]", "4");
+
   return `${API_BASE}?${params.toString()}`;
 };
 
@@ -300,23 +372,6 @@ const getDiasDisponiveisSemana = (mapaDisponibilidade, guiaId, semanaRef) => {
   ).length;
 };
 
-const getOcupacaoProporcional = (
-  contadorSemana,
-  mapaDisponibilidade,
-  guiaId,
-  semanaRef,
-) => {
-  const servicos = Number(contadorSemana[guiaId] || 0);
-  const diasDisponiveis = getDiasDisponiveisSemana(
-    mapaDisponibilidade,
-    guiaId,
-    semanaRef,
-  );
-
-  if (!diasDisponiveis) return Number.POSITIVE_INFINITY;
-  return servicos / diasDisponiveis;
-};
-
 const getDiasTrabalhadosCount = (diasTrabalhadosSemana, guiaId) => {
   return diasTrabalhadosSemana[guiaId]?.size || 0;
 };
@@ -375,12 +430,12 @@ const ordenarServicosPorEscassez = (
 
     const maiorNivel = aptos.length
       ? Math.max(
-          ...aptos.map((g) =>
-            Number(
-              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
-            ),
+        ...aptos.map((g) =>
+          Number(
+            obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
           ),
-        )
+        ),
+      )
       : 0;
 
     return {
@@ -405,6 +460,30 @@ const ordenarServicosPorEscassez = (
   });
 };
 
+const encontrarServiceCatalogo = (
+  serviceIdExterno,
+  nomeApi,
+  listaServices,
+) => {
+  return (
+    listaServices.find(
+      (s) =>
+        Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
+    ) ||
+    listaServices.find((s) => {
+      const nomeService = normalizarTexto(s.externalName || s.nome || "");
+      const nomeComparado = normalizarTexto(nomeApi || "");
+
+      return (
+        nomeService === nomeComparado ||
+        nomeComparado.startsWith(`${nomeService} `) ||
+        nomeComparado.startsWith(`${nomeService} -`)
+      );
+    }) ||
+    null
+  );
+};
+
 const resolverServiceIdDoItem = (item, servicesData) => {
   if (item?.serviceId) return String(item.serviceId);
 
@@ -420,9 +499,14 @@ const resolverServiceIdDoItem = (item, servicesData) => {
   const nomeItem = normalizarTexto(item?.serviceName || "");
   if (!nomeItem) return "";
 
-  const byName = servicesData.find(
-    (s) => normalizarTexto(s.externalName || s.nome || "") === nomeItem,
-  );
+  const byName = servicesData.find((s) => {
+    const nomeService = normalizarTexto(s.externalName || s.nome || "");
+    return (
+      nomeService === nomeItem ||
+      nomeItem.startsWith(`${nomeService} `) ||
+      nomeItem.startsWith(`${nomeService} -`)
+    );
+  });
 
   return byName?.id ? String(byName.id) : "";
 };
@@ -450,108 +534,18 @@ const guiaCompativelPorPasseio = (guia, item) => {
       p?.externalServiceId &&
       Number(p.externalServiceId) === Number(item.externalServiceId);
 
+    const nomeItemNormalizado = normalizarTexto(item.serviceName || "");
+    const nomePasseioNormalizado = normalizarTexto(
+      p?.externalName || p?.nome || "",
+    );
+
     const matchNome =
-      normalizarTexto(p?.externalName || p?.nome || "") ===
-      normalizarTexto(item.serviceName || "");
+      nomePasseioNormalizado === nomeItemNormalizado ||
+      nomeItemNormalizado.startsWith(`${nomePasseioNormalizado} `) ||
+      nomeItemNormalizado.startsWith(`${nomePasseioNormalizado} -`);
 
     return matchServiceId || matchExternalServiceId || matchNome;
   });
-};
-
-const getElegiveisParaItem = ({
-  item,
-  guias,
-  usedByDate,
-  mapaDisponibilidade,
-  usarAfinidadeGuiaPasseio,
-  mapaAfinidade,
-  servicesData,
-}) => {
-  return guias.filter((g) => {
-    if (usedByDate[item.date]?.has(g.id)) return false;
-    if (!guiaDisponivelNoDia(mapaDisponibilidade, g.id, item.date)) {
-      return false;
-    }
-
-    if (usarAfinidadeGuiaPasseio) {
-      const nivel = obterNivelAfinidade(
-        mapaAfinidade,
-        g.id,
-        item,
-        servicesData,
-      );
-      return nivel > 0;
-    }
-
-    return guiaCompativelPorPasseio(g, item);
-  });
-};
-
-const escolherProximoServico = ({
-  pendentes,
-  guias,
-  usedByDate,
-  mapaDisponibilidade,
-  usarAfinidadeGuiaPasseio,
-  mapaAfinidade,
-  servicesData,
-}) => {
-  const avaliados = pendentes.map((item) => {
-    const elegiveis = getElegiveisParaItem({
-      item,
-      guias,
-      usedByDate,
-      mapaDisponibilidade,
-      usarAfinidadeGuiaPasseio,
-      mapaAfinidade,
-      servicesData,
-    });
-
-    const maiorNivel = usarAfinidadeGuiaPasseio
-      ? elegiveis.length
-        ? Math.max(
-            ...elegiveis.map((g) =>
-              Number(
-                obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) ||
-                  0,
-              ),
-            ),
-          )
-        : 0
-      : 0;
-
-    return {
-      item,
-      elegiveis,
-      quantidadeAptos: elegiveis.length,
-      maiorNivel,
-    };
-  });
-
-  const comCandidatos = avaliados.filter((x) => x.quantidadeAptos > 0);
-  if (!comCandidatos.length) return null;
-
-  comCandidatos.sort((a, b) => {
-    if (a.quantidadeAptos !== b.quantidadeAptos) {
-      return a.quantidadeAptos - b.quantidadeAptos;
-    }
-
-    if (usarAfinidadeGuiaPasseio && b.maiorNivel !== a.maiorNivel) {
-      return b.maiorNivel - a.maiorNivel;
-    }
-
-    const paxA = Number(a.item.passengers || 0);
-    const paxB = Number(b.item.passengers || 0);
-    if (paxB !== paxA) return paxB - paxA;
-
-    return (a.item.serviceName || "").localeCompare(
-      b.item.serviceName || "",
-      "pt-BR",
-      { sensitivity: "base" },
-    );
-  });
-
-  return comCandidatos[0];
 };
 
 const ordenarGuiasComAfinidade = (
@@ -600,38 +594,29 @@ const ordenarGuiasComAfinidade = (
     const workedB = workedInWeek.has(b.id) ? 1 : 0;
 
     if (modoDistribuicaoGuias === "equilibrado") {
-      // 1. menos dias trabalhados proporcionalmente à disponibilidade
       if (eqA.frequenciaDias !== eqB.frequenciaDias) {
         return eqA.frequenciaDias - eqB.frequenciaDias;
       }
 
-      // 2. menor ocupação proporcional de serviços
       if (eqA.ocupacao !== eqB.ocupacao) {
         return eqA.ocupacao - eqB.ocupacao;
       }
 
-      // 3. menos dias absolutos trabalhados
       if (eqA.diasTrabalhados !== eqB.diasTrabalhados) {
         return eqA.diasTrabalhados - eqB.diasTrabalhados;
       }
 
-      // 4. menos serviços absolutos
       if (eqA.servicos !== eqB.servicos) {
         return eqA.servicos - eqB.servicos;
       }
 
-      // 5. afinidade entra como desempate, não como regra principal
       if (faixaB !== faixaA) return faixaB - faixaA;
       if (nivelB !== nivelA) return nivelB - nivelA;
 
-      // 6. quem ainda não trabalhou leva pequena vantagem
       if (workedA !== workedB) return workedA - workedB;
     } else {
-      // modo prioridade
-      // 1. prioridade do guia
       if (prioridadeB !== prioridadeA) return prioridadeB - prioridadeA;
 
-      // 2. ainda equilibrar pelos dias usados
       if (eqA.frequenciaDias !== eqB.frequenciaDias) {
         return eqA.frequenciaDias - eqB.frequenciaDias;
       }
@@ -648,7 +633,6 @@ const ordenarGuiasComAfinidade = (
         return eqA.servicos - eqB.servicos;
       }
 
-      // 3. afinidade ainda conta, mas depois da prioridade e equilíbrio
       if (faixaB !== faixaA) return faixaB - faixaA;
       if (nivelB !== nivelA) return nivelB - nivelA;
 
@@ -785,6 +769,34 @@ const ListaPasseiosSemana = () => {
 
   const carregandoEstrutura = loadingInicial || loadingSemana;
 
+  const getTextoStatusServico = (item) => {
+    if (item?.allocationStatus === "CLOSED") {
+      return "Passeio Fechado";
+    }
+
+    if (ehServicoDisp(item?.serviceName || "")) {
+      return "Privativo";
+    }
+
+    return Number(item?.passengers || 0) >= 8
+      ? "Grupo Formado"
+      : "Formar Grupo";
+  };
+
+  const getClasseStatusServico = (item) => {
+    if (item?.allocationStatus === "CLOSED") {
+      return "status-fechado";
+    }
+
+    if (ehServicoDisp(item?.serviceName || "")) {
+      return "status-privativo";
+    }
+
+    return Number(item?.passengers || 0) >= 8
+      ? "status-formado"
+      : "status-alerta";
+  };
+
   const abrirEscalaEmNovaAba = () => {
     try {
       const novaAba = window.open("", "_blank");
@@ -813,27 +825,13 @@ const ListaPasseiosSemana = () => {
         }
 
         registrosOrdenados.forEach((item) => {
-          let status = "Sem status";
-          let statusClass = "";
-
-          if (item.allocationStatus === "CLOSED") {
-            status = "Passeio Fechado";
-            statusClass = "status-fechado";
-          } else if (Number(item.passengers || 0) >= 8) {
-            status = "Grupo Formado";
-            statusClass = "status-formado";
-          } else {
-            status = "Formar Grupo";
-            statusClass = "status-alerta";
-          }
-
           dadosEscala.push({
             data: dia.label,
             passeio: item.serviceName || "-",
             guia: item.guiaNome || "-",
             pax: Number(item.passengers || 0),
-            status,
-            statusClass,
+            status: getTextoStatusServico(item),
+            statusClass: getClasseStatusServico(item),
           });
         });
       });
@@ -853,10 +851,9 @@ const ListaPasseiosSemana = () => {
         grupo.forEach((linha, index) => {
           htmlLinhas += `
           <tr>
-            ${
-              index === 0
-                ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
-                : ""
+            ${index === 0
+              ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
+              : ""
             }
             <td>${linha.passeio}</td>
             <td>${linha.guia}</td>
@@ -980,6 +977,12 @@ const ListaPasseiosSemana = () => {
               color: #b54708;
               font-weight: 700;
             }
+
+            .status-privativo {
+              color: #3730a3;
+              background: #eef2ff;
+              font-weight: 700;
+            }
           </style>
         </head>
         <body>
@@ -987,6 +990,7 @@ const ListaPasseiosSemana = () => {
 
           <div class="toolbar">
             <button onclick="window.print()">Imprimir / Salvar em PDF</button>
+            <button onclick="exportarExcel()">Exportar Excel</button>
           </div>
 
           <div class="table-wrap">
@@ -1154,25 +1158,6 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const encontrarServiceCatalogo = (
-    serviceIdExterno,
-    nomeApi,
-    listaServices,
-  ) => {
-    return (
-      listaServices.find(
-        (s) =>
-          Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
-      ) ||
-      listaServices.find(
-        (s) =>
-          normalizarTexto(s.externalName || s.nome || "") ===
-          normalizarTexto(nomeApi),
-      ) ||
-      null
-    );
-  };
-
   const sincronizarPasseiosDaApiNaSemana = async (
     semanaAtual,
     servicesData,
@@ -1196,22 +1181,32 @@ const ListaPasseiosSemana = () => {
 
         lista.forEach((item) => {
           const serviceIdExterno = extrairServiceIdExterno(item);
-          const nome = extrairNomePasseio(item);
+          const nomeOriginal = extrairNomePasseio(item);
           const dataServico = extrairDataServico(item);
           const pax = extrairContagemPax(item);
 
           if (!serviceIdExterno || !dataServico) return;
           if (dataServico !== dia.date) return;
 
-          const nomeCanonico = obterNomeCanonico(nome);
-          if (deveIgnorarServico(nomeCanonico)) return;
+          const ehDispItem = ehServicoDisp(nomeOriginal);
 
-          const chave = `${dataServico}_${nomeCanonico}`;
+          const nomeFinal = ehDispItem
+            ? montarNomeServicoExibicao(item)
+            : obterNomeCanonico(nomeOriginal);
+
+          if (!nomeFinal) return;
+          if (deveIgnorarServico(nomeFinal)) return;
+
+          const chave = montarChaveImportacao({
+            date: dataServico,
+            externalServiceId: serviceIdExterno,
+            serviceName: nomeFinal,
+          });
 
           if (!agregados[chave]) {
             agregados[chave] = {
               serviceIdExterno,
-              nome: nomeCanonico,
+              nome: nomeFinal,
               date: dataServico,
               totalPax: 0,
               totalAdultos: 0,
@@ -1243,17 +1238,26 @@ const ListaPasseiosSemana = () => {
         );
 
         for (const passeioApi of Object.values(agregados)) {
+          const chaveAtual = montarChaveImportacao({
+            date: passeioApi.date,
+            externalServiceId: passeioApi.serviceIdExterno,
+            serviceName: passeioApi.nome,
+          });
+
           const serviceCatalogo = encontrarServiceCatalogo(
             passeioApi.serviceIdExterno,
             passeioApi.nome,
             servicesData,
           );
 
-          const duplicados = importadosDoDia.filter(
-            (r) =>
-              Number(r.externalServiceId || 0) ===
-              Number(passeioApi.serviceIdExterno || 0),
-          );
+          const duplicados = importadosDoDia.filter((r) => {
+            const chaveRegistro = montarChaveImportacao({
+              date: r.date,
+              externalServiceId: r.externalServiceId,
+              serviceName: r.serviceName,
+            });
+            return chaveRegistro === chaveAtual;
+          });
 
           const principal = duplicados[0] || null;
           const duplicadosExtras = duplicados.slice(1);
@@ -1292,13 +1296,23 @@ const ListaPasseiosSemana = () => {
           }
         }
 
-        const idsVindosApi = Object.values(agregados).map((p) =>
-          Number(p.serviceIdExterno),
+        const chavesVindasApi = Object.values(agregados).map((p) =>
+          montarChaveImportacao({
+            date: p.date,
+            externalServiceId: p.serviceIdExterno,
+            serviceName: p.nome,
+          }),
         );
 
-        const obsoletos = importadosDoDia.filter(
-          (r) => !idsVindosApi.includes(Number(r.externalServiceId || 0)),
-        );
+        const obsoletos = importadosDoDia.filter((r) => {
+          const chaveRegistro = montarChaveImportacao({
+            date: r.date,
+            externalServiceId: r.externalServiceId,
+            serviceName: r.serviceName,
+          });
+
+          return !chavesVindasApi.includes(chaveRegistro);
+        });
 
         for (const antigo of obsoletos) {
           await deleteDoc(doc(db, "weekly_services", antigo.id));
@@ -1374,44 +1388,6 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const limparDuplicadosSemana = async () => {
-    setProcessandoAcao(true);
-    try {
-      for (const dia of semana) {
-        const q = query(
-          collection(db, "weekly_services"),
-          where("date", "==", dia.date),
-        );
-
-        const snap = await getDocs(q);
-        const lista = snap.docs.map((d) => ({
-          id: d.id,
-          ref: d.ref,
-          ...d.data(),
-        }));
-
-        const mapa = {};
-
-        for (const item of lista) {
-          const nomeCanonico = obterNomeCanonico(item.serviceName || "");
-          const chave = `${item.date}_${nomeCanonico}`;
-
-          if (!mapa[chave]) {
-            mapa[chave] = item;
-          } else {
-            await deleteDoc(item.ref);
-          }
-        }
-      }
-
-      await carregarDados({ showSkeleton: false });
-    } catch (err) {
-      console.error("Erro ao limpar duplicados:", err);
-    } finally {
-      setProcessandoAcao(false);
-    }
-  };
-
   const alterarStatusAlocacao = async (registroId, status) => {
     if (!registroId) return;
 
@@ -1434,13 +1410,13 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                  ...r,
-                  allocationStatus: status,
-                  ...(status === "CLOSED" && {
-                    guiaId: null,
-                    guiaNome: null,
-                  }),
-                }
+                ...r,
+                allocationStatus: status,
+                ...(status === "CLOSED" && {
+                  guiaId: null,
+                  guiaNome: null,
+                }),
+              }
               : r,
           );
         });
@@ -1576,8 +1552,8 @@ const ListaPasseiosSemana = () => {
     }
   };
 
-  const statusGrupo = (pax, allocationStatus) => {
-    if (allocationStatus === "CLOSED") {
+  const statusGrupo = (item) => {
+    if (item?.allocationStatus === "CLOSED") {
       return (
         <span className="status fechado">
           <Lock fontSize="10" /> Passeio Fechado
@@ -1585,7 +1561,11 @@ const ListaPasseiosSemana = () => {
       );
     }
 
-    return Number(pax || 0) >= 8 ? (
+    if (ehServicoDisp(item?.serviceName || "")) {
+      return <span className="status privativo">Privativo</span>;
+    }
+
+    return Number(item?.passengers || 0) >= 8 ? (
       <span className="status ok">
         <Groups fontSize="10" /> Grupo Formado
       </span>
@@ -1959,12 +1939,12 @@ Operacional - Luck Receptivo 🍀
 
         const itensOrdenados = usarAfinidadeGuiaPasseio
           ? ordenarServicosPorEscassez(
-              itensPendentes,
-              guiasDisponiveis,
-              usadosNoDia,
-              mapaAfinidade,
-              services,
-            )
+            itensPendentes,
+            guiasDisponiveis,
+            usadosNoDia,
+            mapaAfinidade,
+            services,
+          )
           : itensPendentes;
 
         for (const item of itensOrdenados) {
@@ -1990,26 +1970,26 @@ Operacional - Luck Receptivo 🍀
 
           const candidatosOrdenados = usarAfinidadeGuiaPasseio
             ? ordenarGuiasComAfinidade(
-                elegiveis,
-                contadorSemana,
-                workedInWeek,
-                diasTrabalhadosSemana,
-                item,
-                mapaAfinidade,
-                services,
-                modoDistribuicaoGuias,
-                mapaDisponibilidade,
-                semana,
-              )
+              elegiveis,
+              contadorSemana,
+              workedInWeek,
+              diasTrabalhadosSemana,
+              item,
+              mapaAfinidade,
+              services,
+              modoDistribuicaoGuias,
+              mapaDisponibilidade,
+              semana,
+            )
             : ordenarGuiasSemAfinidade(
-                elegiveis,
-                contadorSemana,
-                workedInWeek,
-                diasTrabalhadosSemana,
-                modoDistribuicaoGuias,
-                mapaDisponibilidade,
-                semana,
-              );
+              elegiveis,
+              contadorSemana,
+              workedInWeek,
+              diasTrabalhadosSemana,
+              modoDistribuicaoGuias,
+              mapaDisponibilidade,
+              semana,
+            );
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
@@ -2316,7 +2296,7 @@ Operacional - Luck Receptivo 🍀
 
                 {registrosOrdenados.map((item) => (
                   <div
-                    key={`${dia.date}-${item.externalServiceId || item.id}`}
+                    key={`${dia.date}-${item.externalServiceId || item.id}-${item.serviceName}`}
                     className="passeio-item"
                   >
                     <span className="passeio-name">{item.serviceName}</span>
@@ -2324,6 +2304,7 @@ Operacional - Luck Receptivo 🍀
                     <span className="guia-name-aloc">
                       {item.guiaNome || "-"}
                     </span>
+
                     {modoVisualizacao ? (
                       <>
                         <span className="passeio-pax-1">
@@ -2334,7 +2315,7 @@ Operacional - Luck Receptivo 🍀
                             CHD / {item.infantCount || 0} INF)
                           </small>
                         </span>
-                        {statusGrupo(item.passengers, item.allocationStatus)}
+                        {statusGrupo(item)}
                       </>
                     ) : (
                       <>

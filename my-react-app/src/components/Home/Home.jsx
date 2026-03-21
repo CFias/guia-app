@@ -37,7 +37,7 @@ const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
-  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,reserve.pdvPayment,reserve.pdvPayment.user,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
 
 const SERVICOS_IGNORADOS = [
   "01 PASSEIO A ESCOLHER NO DESTINO",
@@ -52,6 +52,14 @@ const SERVICOS_IGNORADOS = [
   "CITY TOUR SAINDO DO LITORAL",
   "CITY TOUR HISTÓRICO + PANORÂMICO",
   "PASSEIO À PRAIA DO FORTE (SHUTTLE)",
+  "TRANSFER - MORRO DE SÃO PAULO / SALVADOR (SEMI TERRESTRE)",
+  "TRANSFER - SALVADOR / MORRO DE SÃO PAULO (SEMI TERRESTRE)",
+  "TRANSFER - SALVADOR / MORRO DE SÃO PAULO (CATAMARÃ)",
+  "TRANSFER - MORRO DE SÃO PAULO / SALVADOR (CATAMARÃ)",
+  "HOTEL SALVADOR / HOTEL LITORAL NORTE",
+  "HOTEL SALVADOR X HOTEL LENÇOIS",
+  "HOTEL SALVADOR/ TERMINAL NAUTICO",
+  "TERMINAL NAUTICO / HOTEL SALVADOR",
 ];
 
 const TERMOS_IGNORADOS = [];
@@ -153,6 +161,7 @@ const montarUrlApi = (date) => {
   params.append("execution_date", date);
   params.append("expand", EXPAND);
   params.append("service_type[]", "3");
+  params.append("service_type[]", "4");
   return `${API_BASE}?${params.toString()}`;
 };
 
@@ -169,6 +178,22 @@ const extrairNomePasseio = (item) =>
   item?.reserveService?.service?.name ||
   item?.name ||
   "";
+
+const extrairModoServico = (item) => {
+  return (
+    item?.serviceModeAsText ||
+    item?.service_mode_as_text ||
+    item?.service_mode_text ||
+    ""
+  );
+};
+
+const ehServicoDispPorNomeOuTipo = (item) => {
+  const nome = extrairNomePasseio(item);
+  const tipo = Number(item?.service?.type || 0);
+
+  return tipo === 4 || ehServicoDisp(nome);
+};
 
 const extrairServiceIdExterno = (item) =>
   Number(item?.service_id || item?.service?.id || 0) || null;
@@ -195,6 +220,63 @@ const extrairContagemPax = (item) => {
     infants,
     total: adultos + criancas,
   };
+};
+
+const ehServicoDisp = (nome = "") => {
+  const nomeNormalizado = normalizarTexto(nome);
+  return nomeNormalizado.includes("disp");
+};
+
+const extrairNomeVendedor = (item) => {
+  const pagamentos = Array.isArray(item?.reserve?.pdvPayment)
+    ? item.reserve.pdvPayment
+    : [];
+
+  const pagamentoComUsuario = pagamentos.find(
+    (pag) => typeof pag?.user?.name === "string" && pag.user.name.trim(),
+  );
+
+  return pagamentoComUsuario?.user?.name || "";
+};
+
+const extrairNomeOperadora = (item) => {
+  const nome =
+    item?.reserve?.partner?.fantasy_name ||
+    item?.reserve?.partner?.company_name ||
+    item?.reserve?.partner?.name ||
+    item?.partner?.name ||
+    item?.reserve?.customer?.fantasy_name ||
+    item?.reserve?.customer?.name ||
+    "";
+
+  return String(nome || "").trim();
+};
+
+const extrairPrimeiroNome = (nome = "") => {
+  const limpo = String(nome).trim();
+  if (!limpo) return "";
+  return limpo.split(/\s+/)[0].toUpperCase();
+};
+
+const extrairResponsavelDisp = (item) => {
+  const vendedor = extrairPrimeiroNome(extrairNomeVendedor(item));
+  if (vendedor) return vendedor;
+
+  const operadora = extrairPrimeiroNome(extrairNomeOperadora(item));
+  if (operadora) return operadora;
+
+  return "";
+};
+
+const montarNomeServicoExibicao = (item) => {
+  const nomeBase = obterNomeCanonico(extrairNomePasseio(item));
+
+  if (!ehServicoDisp(nomeBase)) {
+    return nomeBase;
+  }
+
+  const responsavel = extrairResponsavelDisp(item);
+  return responsavel ? `${nomeBase} - ${responsavel}` : nomeBase;
 };
 
 const extrairCodigoReserva = (item) =>
@@ -342,41 +424,48 @@ const Home = () => {
     const itensBrutos = [];
 
     respostasApi.flat().forEach((item) => {
-      const nome = extrairNomePasseio(item);
+      const nomeOriginal = extrairNomePasseio(item);
       const externalServiceId = extrairServiceIdExterno(item);
       const date = extrairDataServico(item);
       const pax = extrairContagemPax(item);
 
-      if (!date || !nome) return;
+      if (!date || !nomeOriginal) return;
 
-      const nomeCanonico = obterNomeCanonico(nome);
-      if (deveIgnorarServico(nomeCanonico)) return;
+      const nomeExibicao = montarNomeServicoExibicao(item);
+      if (!nomeExibicao) return;
+      if (deveIgnorarServico(nomeExibicao)) return;
 
       itensBrutos.push({
         ...item,
         _date: date,
-        _serviceNameCanonico: nomeCanonico,
+        _serviceNameCanonico: nomeExibicao,
         _externalServiceId: externalServiceId || null,
         _paxTotal: pax.total,
         _adultCount: pax.adultos,
         _childCount: pax.criancas,
         _infantCount: pax.infants,
+        _serviceType: Number(item?.service?.type || 0),
+        _serviceModeAsText: extrairModoServico(item),
+        _isDisp: ehServicoDispPorNomeOuTipo(item),
       });
 
-      const chave = externalServiceId
-        ? `${date}_id_${externalServiceId}`
-        : `${date}_nome_${normalizarTexto(nomeCanonico)}`;
+      const chave = `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
+        nomeExibicao,
+      )}`;
 
       if (!itensApiAgrupados[chave]) {
         itensApiAgrupados[chave] = {
           chave,
           date,
-          serviceName: nomeCanonico,
+          serviceName: nomeExibicao,
           externalServiceId: externalServiceId || null,
           passengers: 0,
           adultCount: 0,
           childCount: 0,
           infantCount: 0,
+          serviceType: Number(item?.service?.type || 0),
+          serviceModeAsText: extrairModoServico(item),
+          isDisp: ehServicoDispPorNomeOuTipo(item),
         };
       }
 
@@ -524,12 +613,12 @@ const Home = () => {
     const motoguias = guias.filter((g) => g.motoguia);
 
     const weeklyNormalizados = weeklyServices.map((r) => {
-      const nomeCanonico = obterNomeCanonico(r.serviceName || "");
+      const nomeServico = String(r.serviceName || "").trim();
 
       return {
         ...r,
-        _nomeCanonico: nomeCanonico,
-        _nomeNormalizado: normalizarTexto(nomeCanonico),
+        _nomeCanonico: nomeServico,
+        _nomeNormalizado: normalizarTexto(nomeServico),
         _externalIdNormalizado:
           r.externalServiceId !== null && r.externalServiceId !== undefined
             ? Number(r.externalServiceId)
@@ -544,9 +633,7 @@ const Home = () => {
           ? Number(apiItem.externalServiceId)
           : null;
 
-      const nomeApiNormalizado = normalizarTexto(
-        obterNomeCanonico(apiItem.serviceName || ""),
-      );
+      const nomeApiNormalizado = normalizarTexto(apiItem.serviceName || "");
 
       const porExternalId =
         externalIdApi !== null
@@ -1020,16 +1107,21 @@ const Home = () => {
         if (item.fechado) statusOperacional = "Fechado";
         else if (item.alocado) statusOperacional = "Alocado";
 
+        const isDisp = !!item.isDisp || Number(item.serviceType || 0) === 4;
+
         const statusGrupo = item.fechado
           ? "Fechado"
-          : Number(item.passengers || 0) >= 8
-            ? "Grupo formado"
-            : "Formar grupo";
+          : isDisp
+            ? "Privativo"
+            : Number(item.passengers || 0) >= 8
+              ? "Grupo formado"
+              : "Formar grupo";
 
         return {
           ...item,
           statusOperacional,
           statusGrupo,
+          isDisp,
         };
       });
   }, [dashboard.servicosExecutivos, diaSelecionadoHome]);
@@ -1059,8 +1151,10 @@ const Home = () => {
         (filtroStatusDia === "fechado" &&
           item.statusOperacional === "Fechado") ||
         (filtroStatusDia === "grupo_formado" &&
+          !item.isDisp &&
           item.statusGrupo === "Grupo formado") ||
         (filtroStatusDia === "formar_grupo" &&
+          !item.isDisp &&
           item.statusGrupo === "Formar grupo");
 
       const guiaOk =
@@ -1426,10 +1520,10 @@ Operacional - Luck Receptivo
                             <td>
                               <span
                                 className={`home-service-status ${item.statusOperacional === "Fechado"
-                                    ? "fechado"
-                                    : item.statusOperacional === "Alocado"
-                                      ? "alocado"
-                                      : "sem-guia"
+                                  ? "fechado"
+                                  : item.statusOperacional === "Alocado"
+                                    ? "alocado"
+                                    : "sem-guia"
                                   }`}
                               >
                                 {item.statusOperacional}
@@ -1439,7 +1533,9 @@ Operacional - Luck Receptivo
                             <td>
                               <span
                                 className={`home-group-status ${item.statusGrupo === "Fechado"
-                                    ? "fechado"
+                                  ? "fechado"
+                                  : item.isDisp
+                                    ? "modo-servico"
                                     : item.statusGrupo === "Grupo formado"
                                       ? "formado"
                                       : "alerta"

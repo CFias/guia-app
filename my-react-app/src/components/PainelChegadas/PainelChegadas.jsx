@@ -965,7 +965,7 @@ const PainelChegadas = () => {
         <div className="painel-chegadas-card painel-chegadas-card-full">
           <div className="painel-chegadas-card-header">
             <div className="painel-chegadas-card-title-row">
-              <h3>Voos monitorados</h3>
+              <h3>Todos os Voos</h3>
               <span className="painel-chegadas-badge">
                 {loading ? "Carregando..." : `${voosFiltrados.length} voo(s)`}
               </span>

@@ -779,3 +779,9 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.home-group-status.modo-servico {
+    background: #c1cef78e;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+}
