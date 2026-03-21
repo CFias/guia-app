@@ -357,13 +357,9 @@
   right: 0;
   bottom: calc(100% + 10px);
   width: 280px;
-  max-width: 80vw;
-  background: var(--card);
   color: var(--text);
-  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px);
@@ -383,6 +379,7 @@
   font-family: inherit;
   font-size: 10px;
   line-height: 1.5;
+  border-radius: 15px;
 }
 
 /* ===== CARD DO DIA ===== */
@@ -992,11 +989,8 @@
   top: calc(100% + 8px);
   width: 280px;
   z-index: 20;
-  background: var(--card);
-  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
 }
 
 .resumo-tooltip pre {
@@ -1005,6 +999,8 @@
   font-family: inherit;
   font-size: 11px;
   color: var(--text);
+  background: var(--card);
+  padding: 10px;
 }
 
 .day-card-padrao {
