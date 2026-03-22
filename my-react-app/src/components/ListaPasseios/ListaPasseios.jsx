@@ -24,6 +24,7 @@ import {
   Warning,
   Groups,
   Lock,
+  RefreshRounded,
 } from "@mui/icons-material";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
 
@@ -64,6 +65,8 @@ const SERVICOS_IGNORADOS = [
   "HOTEL SALVADOR X HOTEL LENÇOIS",
   "HOTEL SALVADOR/ TERMINAL NAUTICO",
   "TERMINAL NAUTICO / HOTEL SALVADOR",
+  "HOTEL LITORAL NORTE / HOTEL SALVADOR",
+  "HOTEL SALVADOR / HOTEL SALVADOR",
 ];
 
 const TERMOS_IGNORADOS = [
@@ -142,8 +145,23 @@ export const gerarSemana = (offset = 0) => {
 
 const extrairListaResposta = (json) => {
   if (Array.isArray(json)) return json;
-  if (Array.isArray(json?.data)) return json.data;
-  if (Array.isArray(json?.results)) return json.results;
+
+  const candidatos = [
+    json?.data,
+    json?.results,
+    json?.rows,
+    json?.items,
+    json?.content,
+    json?.data?.data,
+    json?.data?.results,
+    json?.payload,
+    json?.payload?.data,
+  ];
+
+  for (const item of candidatos) {
+    if (Array.isArray(item)) return item;
+  }
+
   return [];
 };
 
@@ -169,15 +187,81 @@ const extrairDataServico = (item) => {
 };
 
 const extrairContagemPax = (item) => {
-  const adultos = Number(item?.is_adult_count || 0);
-  const criancas = Number(item?.is_child_count || 0);
-  const infants = Number(item?.is_infant_count || 0);
+  const toNumber = (valor) => {
+    const n = Number(valor);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const pegarPrimeiroNumeroValido = (...valores) => {
+    for (const valor of valores) {
+      if (valor === null || valor === undefined || valor === "") continue;
+      const numero = Number(valor);
+      if (Number.isFinite(numero)) return numero;
+    }
+    return 0;
+  };
+
+  const adultos = pegarPrimeiroNumeroValido(
+    item?.is_adult_count,
+    item?.adult_count,
+    item?.adults,
+    item?.reserve?.is_adult_count,
+    item?.reserve?.adult_count,
+    item?.reserve?.adults,
+    item?.reserveService?.is_adult_count,
+    item?.reserveService?.adult_count,
+    item?.reserveService?.adults,
+  );
+
+  const criancas = pegarPrimeiroNumeroValido(
+    item?.is_child_count,
+    item?.child_count,
+    item?.children,
+    item?.reserve?.is_child_count,
+    item?.reserve?.child_count,
+    item?.reserve?.children,
+    item?.reserveService?.is_child_count,
+    item?.reserveService?.child_count,
+    item?.reserveService?.children,
+  );
+
+  const infants = pegarPrimeiroNumeroValido(
+    item?.is_infant_count,
+    item?.infant_count,
+    item?.infants,
+    item?.reserve?.is_infant_count,
+    item?.reserve?.infant_count,
+    item?.reserve?.infants,
+    item?.reserveService?.is_infant_count,
+    item?.reserveService?.infant_count,
+    item?.reserveService?.infants,
+  );
+
+  const totalCalculado =
+    toNumber(adultos) + toNumber(criancas) + toNumber(infants);
+
+  const totalDireto = pegarPrimeiroNumeroValido(
+    item?.passengers,
+    item?.passenger_count,
+    item?.pax,
+    item?.quantity_pax,
+    item?.reserve?.passengers,
+    item?.reserve?.passenger_count,
+    item?.reserve?.pax,
+    item?.reserve?.quantity_pax,
+    item?.reserveService?.passengers,
+    item?.reserveService?.passenger_count,
+    item?.reserveService?.pax,
+    item?.reserveService?.quantity_pax,
+  );
+
+  const total = Math.max(totalDireto, totalCalculado);
 
   return {
-    adultos,
-    criancas,
-    infants,
-    total: adultos + criancas,
+    adultos: toNumber(adultos),
+    criancas: toNumber(criancas),
+    infants: toNumber(infants),
+    total: toNumber(total),
   };
 };
 
@@ -289,17 +373,21 @@ const agruparRegistrosPorServico = (registros) => {
 
     mapa[chave].originalNames.add(nomeOriginal);
 
+    const passageirosRegistro = Number(r.passengers ?? 0);
     const adultos = Number(r.adultCount ?? 0);
     const criancas = Number(r.childCount ?? 0);
     const infants = Number(r.infantCount ?? 0);
+    const totalDetalhadoRegistro = adultos + criancas + infants;
+
+    // ✅ mantém o maior valor confiável do registro
+    mapa[chave].passengers += Math.max(
+      passageirosRegistro,
+      totalDetalhadoRegistro,
+    );
 
     mapa[chave].adultCount += adultos;
     mapa[chave].childCount += criancas;
     mapa[chave].infantCount += infants;
-
-    if (adultos === 0 && criancas === 0 && infants === 0) {
-      mapa[chave].passengers += Number(r.passengers ?? 0);
-    }
 
     if (!mapa[chave].guiaId && r.guiaId) {
       mapa[chave].guiaId = r.guiaId;
@@ -324,8 +412,9 @@ const agruparRegistrosPorServico = (registros) => {
       return {
         ...item,
         originalNames: Array.from(item.originalNames),
-        passengers:
-          totalDetalhado > 0 ? totalDetalhado : Number(item.passengers ?? 0),
+
+        // ✅ aqui também usa o maior total confiável
+        passengers: Math.max(Number(item.passengers ?? 0), totalDetalhado),
       };
     })
     .sort((a, b) =>
@@ -430,12 +519,12 @@ const ordenarServicosPorEscassez = (
 
     const maiorNivel = aptos.length
       ? Math.max(
-        ...aptos.map((g) =>
-          Number(
-            obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
+          ...aptos.map((g) =>
+            Number(
+              obterNivelAfinidade(mapaAfinidade, g.id, item, servicesData) || 0,
+            ),
           ),
-        ),
-      )
+        )
       : 0;
 
     return {
@@ -460,15 +549,10 @@ const ordenarServicosPorEscassez = (
   });
 };
 
-const encontrarServiceCatalogo = (
-  serviceIdExterno,
-  nomeApi,
-  listaServices,
-) => {
+const encontrarServiceCatalogo = (serviceIdExterno, nomeApi, listaServices) => {
   return (
     listaServices.find(
-      (s) =>
-        Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
+      (s) => Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
     ) ||
     listaServices.find((s) => {
       const nomeService = normalizarTexto(s.externalName || s.nome || "");
@@ -735,6 +819,8 @@ const ListaPasseiosSemana = () => {
   const [novoServico, setNovoServico] = useState({});
   const [disponibilidades, setDisponibilidades] = useState([]);
   const [modoGeradoSemana, setModoGeradoSemana] = useState(null);
+  const [apiSemanaListaPasseios, setApiSemanaListaPasseios] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
     useState("equilibrado");
 
@@ -797,6 +883,50 @@ const ListaPasseiosSemana = () => {
       : "status-alerta";
   };
 
+  const atualizarSomentePlanilha = async () => {
+    if (!semana.length) return;
+
+    setLoadingSemana(true);
+
+    try {
+      await sincronizarPasseiosDaApiNaSemana(semana, services);
+
+      const [apiAgrupada, resultadosFirestore] = await Promise.all([
+        carregarSemanaApiListaPasseios(semana),
+        Promise.all(
+          semana.map(async (dia) => {
+            const q = query(
+              collection(db, "weekly_services"),
+              where("date", "==", dia.date),
+            );
+
+            const snap = await getDocs(q);
+
+            return {
+              date: dia.date,
+              items: snap.docs.map((d) => ({
+                id: d.id,
+                ...d.data(),
+              })),
+            };
+          }),
+        ),
+      ]);
+
+      const mapa = {};
+      resultadosFirestore.forEach((item) => {
+        mapa[item.date] = item.items;
+      });
+
+      setApiSemanaListaPasseios(apiAgrupada);
+      setExtras(mapa);
+    } catch (err) {
+      console.error("Erro ao atualizar planilha:", err);
+    } finally {
+      setLoadingSemana(false);
+    }
+  };
+
   const abrirEscalaEmNovaAba = () => {
     try {
       const novaAba = window.open("", "_blank");
@@ -810,9 +940,8 @@ const ListaPasseiosSemana = () => {
 
       semana.forEach((dia) => {
         const registrosOrdenados = agruparRegistrosPorServico(
-          extras[dia.date] || [],
+          aplicarPaxDaApiNosRegistros(extras[dia.date] || []),
         );
-
         if (!registrosOrdenados.length) {
           dadosEscala.push({
             data: dia.label,
@@ -851,9 +980,10 @@ const ListaPasseiosSemana = () => {
         grupo.forEach((linha, index) => {
           htmlLinhas += `
           <tr>
-            ${index === 0
-              ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
-              : ""
+            ${
+              index === 0
+                ? `<td rowspan="${grupo.length}" class="data-cell">${linha.data}</td>`
+                : ""
             }
             <td>${linha.passeio}</td>
             <td>${linha.guia}</td>
@@ -1157,7 +1287,6 @@ const ListaPasseiosSemana = () => {
       console.error("Erro ao limpar modo gerado da semana:", err);
     }
   };
-
   const sincronizarPasseiosDaApiNaSemana = async (
     semanaAtual,
     servicesData,
@@ -1176,7 +1305,6 @@ const ListaPasseiosSemana = () => {
 
         const json = await response.json();
         const lista = extrairListaResposta(json);
-
         const agregados = {};
 
         lista.forEach((item) => {
@@ -1215,16 +1343,17 @@ const ListaPasseiosSemana = () => {
             };
           }
 
-          agregados[chave].totalPax += pax.total;
-          agregados[chave].totalAdultos += pax.adultos;
-          agregados[chave].totalCriancas += pax.criancas;
-          agregados[chave].totalInfants += pax.infants;
+          agregados[chave].totalPax += Number(pax.total || 0);
+          agregados[chave].totalAdultos += Number(pax.adultos || 0);
+          agregados[chave].totalCriancas += Number(pax.criancas || 0);
+          agregados[chave].totalInfants += Number(pax.infants || 0);
         });
 
         const qDia = query(
           collection(db, "weekly_services"),
           where("date", "==", dia.date),
         );
+
         const snapDia = await getDocs(qDia);
 
         const registrosExistentes = snapDia.docs.map((d) => ({
@@ -1256,6 +1385,7 @@ const ListaPasseiosSemana = () => {
               externalServiceId: r.externalServiceId,
               serviceName: r.serviceName,
             });
+
             return chaveRegistro === chaveAtual;
           });
 
@@ -1266,11 +1396,21 @@ const ListaPasseiosSemana = () => {
             await deleteDoc(doc(db, "weekly_services", dup.id));
           }
 
+          const totalDetalhado =
+            Number(passeioApi.totalAdultos || 0) +
+            Number(passeioApi.totalCriancas || 0) +
+            Number(passeioApi.totalInfants || 0);
+
+          const totalFinal = Math.max(
+            Number(passeioApi.totalPax || 0),
+            totalDetalhado,
+          );
+
           const payload = {
             serviceId: serviceCatalogo?.id || null,
             externalServiceId: passeioApi.serviceIdExterno,
             serviceName: passeioApi.nome,
-            passengers: Number(passeioApi.totalPax || 0),
+            passengers: totalFinal,
             adultCount: Number(passeioApi.totalAdultos || 0),
             childCount: Number(passeioApi.totalCriancas || 0),
             infantCount: Number(passeioApi.totalInfants || 0),
@@ -1323,6 +1463,74 @@ const ListaPasseiosSemana = () => {
     }
   };
 
+  const montarChaveApiServico = ({ date, externalServiceId, serviceName }) => {
+    return `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
+      serviceName || "",
+    )}`;
+  };
+
+  const carregarSemanaApiListaPasseios = async (listaSemana) => {
+    const respostasApi = await Promise.all(
+      listaSemana.map(async (dia) => {
+        try {
+          const response = await fetch(montarUrlApi(dia.date), {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          });
+
+          if (!response.ok) return [];
+
+          const json = await response.json();
+          return extrairListaResposta(json);
+        } catch (err) {
+          console.error(`Erro ao buscar API do dia ${dia.date}:`, err);
+          return [];
+        }
+      }),
+    );
+
+    const itensApiAgrupados = {};
+
+    respostasApi.flat().forEach((item) => {
+      const nomeOriginal = extrairNomePasseio(item);
+      const externalServiceId = extrairServiceIdExterno(item);
+      const date = extrairDataServico(item);
+      const pax = extrairContagemPax(item);
+
+      if (!date || !nomeOriginal) return;
+
+      const nomeExibicao = montarNomeServicoExibicao(item);
+      if (!nomeExibicao) return;
+      if (deveIgnorarServico(nomeExibicao)) return;
+
+      const chave = montarChaveApiServico({
+        date,
+        externalServiceId,
+        serviceName: nomeExibicao,
+      });
+
+      if (!itensApiAgrupados[chave]) {
+        itensApiAgrupados[chave] = {
+          chave,
+          date,
+          serviceName: nomeExibicao,
+          externalServiceId: externalServiceId || null,
+          passengers: 0,
+          adultCount: 0,
+          childCount: 0,
+          infantCount: 0,
+        };
+      }
+
+      itensApiAgrupados[chave].passengers += Number(pax.total || 0);
+      itensApiAgrupados[chave].adultCount += Number(pax.adultos || 0);
+      itensApiAgrupados[chave].childCount += Number(pax.criancas || 0);
+      itensApiAgrupados[chave].infantCount += Number(pax.infants || 0);
+    });
+
+    return Object.values(itensApiAgrupados);
+  };
+
   const carregarDados = async ({
     initial = false,
     showSkeleton = true,
@@ -1338,12 +1546,14 @@ const ListaPasseiosSemana = () => {
 
       await carregarModoGeradoSemana(semanaAtual);
 
-      const [servSnap, guiasSnap, configSnap, dispSnap] = await Promise.all([
-        getDocs(collection(db, "services")),
-        getDocs(collection(db, "guides")),
-        getDoc(doc(db, "settings", "scale")),
-        getDocs(collection(db, "guide_availability")),
-      ]);
+      const [servSnap, guiasSnap, configSnap, dispSnap, apiAgrupada] =
+        await Promise.all([
+          getDocs(collection(db, "services")),
+          getDocs(collection(db, "guides")),
+          getDoc(doc(db, "settings", "scale")),
+          getDocs(collection(db, "guide_availability")),
+          carregarSemanaApiListaPasseios(semanaAtual),
+        ]);
 
       const servicesData = servSnap.docs.map((d) => ({
         id: d.id,
@@ -1355,6 +1565,7 @@ const ListaPasseiosSemana = () => {
       setServices(servicesData);
       setGuias(guiasData);
       setDisponibilidades(disponibilidadesData);
+      setApiSemanaListaPasseios(apiAgrupada);
 
       setModoDistribuicaoGuias(
         configSnap.exists()
@@ -1388,6 +1599,40 @@ const ListaPasseiosSemana = () => {
     }
   };
 
+  const aplicarPaxDaApiNosRegistros = (registros) => {
+    const mapaApi = {};
+
+    apiSemanaListaPasseios.forEach((item) => {
+      const chave = montarChaveApiServico({
+        date: item.date,
+        externalServiceId: item.externalServiceId,
+        serviceName: item.serviceName,
+      });
+
+      mapaApi[chave] = item;
+    });
+
+    return registros.map((r) => {
+      const chave = montarChaveApiServico({
+        date: r.date,
+        externalServiceId: r.externalServiceId,
+        serviceName: r.serviceName,
+      });
+
+      const apiMatch = mapaApi[chave];
+
+      if (!apiMatch) return r;
+
+      return {
+        ...r,
+        passengers: Number(apiMatch.passengers || 0),
+        adultCount: Number(apiMatch.adultCount || 0),
+        childCount: Number(apiMatch.childCount || 0),
+        infantCount: Number(apiMatch.infantCount || 0),
+      };
+    });
+  };
+
   const alterarStatusAlocacao = async (registroId, status) => {
     if (!registroId) return;
 
@@ -1410,13 +1655,13 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                ...r,
-                allocationStatus: status,
-                ...(status === "CLOSED" && {
-                  guiaId: null,
-                  guiaNome: null,
-                }),
-              }
+                  ...r,
+                  allocationStatus: status,
+                  ...(status === "CLOSED" && {
+                    guiaId: null,
+                    guiaNome: null,
+                  }),
+                }
               : r,
           );
         });
@@ -1939,12 +2184,12 @@ Operacional - Luck Receptivo 🍀
 
         const itensOrdenados = usarAfinidadeGuiaPasseio
           ? ordenarServicosPorEscassez(
-            itensPendentes,
-            guiasDisponiveis,
-            usadosNoDia,
-            mapaAfinidade,
-            services,
-          )
+              itensPendentes,
+              guiasDisponiveis,
+              usadosNoDia,
+              mapaAfinidade,
+              services,
+            )
           : itensPendentes;
 
         for (const item of itensOrdenados) {
@@ -1970,26 +2215,26 @@ Operacional - Luck Receptivo 🍀
 
           const candidatosOrdenados = usarAfinidadeGuiaPasseio
             ? ordenarGuiasComAfinidade(
-              elegiveis,
-              contadorSemana,
-              workedInWeek,
-              diasTrabalhadosSemana,
-              item,
-              mapaAfinidade,
-              services,
-              modoDistribuicaoGuias,
-              mapaDisponibilidade,
-              semana,
-            )
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                item,
+                mapaAfinidade,
+                services,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              )
             : ordenarGuiasSemAfinidade(
-              elegiveis,
-              contadorSemana,
-              workedInWeek,
-              diasTrabalhadosSemana,
-              modoDistribuicaoGuias,
-              mapaDisponibilidade,
-              semana,
-            );
+                elegiveis,
+                contadorSemana,
+                workedInWeek,
+                diasTrabalhadosSemana,
+                modoDistribuicaoGuias,
+                mapaDisponibilidade,
+                semana,
+              );
 
           const guiaSelecionado = candidatosOrdenados[0];
           if (!guiaSelecionado) continue;
@@ -2165,18 +2410,24 @@ Operacional - Luck Receptivo 🍀
             >
               Semana seguinte ➡
             </button>
+            <button
+              className="btn-list"
+              onClick={atualizarSomentePlanilha}
+              disabled={loading || processandoAcao}
+            >
+              Atualizar dados (Phoenix) <RefreshRounded fontSize="10" />
+            </button>
 
             <span className="counter-info">{formatarPeriodoSemana()}</span>
+            <p className="counter-info">
+              Modo de distribuição:{" "}
+              <strong>
+                {modoDistribuicaoGuias === "seguir_nivel_selecionado"
+                  ? "Prioridade"
+                  : "Equilibrado"}
+              </strong>
+            </p>
           </div>
-
-          <p className="counter-info">
-            Modo de distribuição:{" "}
-            <strong>
-              {modoDistribuicaoGuias === "seguir_nivel_selecionado"
-                ? "Prioridade"
-                : "Equilibrado"}
-            </strong>
-          </p>
         </div>
       </div>
 
@@ -2270,7 +2521,7 @@ Operacional - Luck Receptivo 🍀
 
           {semana.map((dia) => {
             const registrosOrdenados = agruparRegistrosPorServico(
-              extras[dia.date] || [],
+              aplicarPaxDaApiNosRegistros(extras[dia.date] || []),
             );
 
             const totalPasseios = registrosOrdenados.length;
