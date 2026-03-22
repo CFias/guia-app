@@ -15,6 +15,7 @@ import {
   ViewModuleRounded,
   FlightTakeoffRounded,
   LocalShippingRounded,
+  AssignmentRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -75,6 +76,10 @@ const Dashboard = ({ loading }) => {
             <NavLink to="outs" className={getNavClass}>
               <FlightTakeoffRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de OUT's</span>
+            </NavLink>
+            <NavLink to="resumo" className={getNavClass}>
+              <AssignmentRounded fontSize="small" className="sidebar-icon" />
+              <span>Painel de Passeios</span>
             </NavLink>
           </div>
 

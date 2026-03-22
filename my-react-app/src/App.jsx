@@ -17,6 +17,7 @@ import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
 import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
 import PainelOuts from "./components/PainelSaidas/PainelSaidas";
+import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
         <Route path="outs" element={<PainelOuts />} />
         <Route path="register-guias" element={<RegisterGuias />} />
         <Route path="register-tours" element={<RegisterTours />} />
+        <Route path="resumo" element={<ResumoOperacionalGuias />} />
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
         <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
         <Route path="/" element={<Home />} />
