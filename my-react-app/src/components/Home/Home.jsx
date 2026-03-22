@@ -4,6 +4,8 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import {
   AutoGraphRounded,
   CalendarMonthRounded,
+  RefreshRounded,
+  SyncRounded,
   FactCheckRounded,
   GroupsRounded,
   InsightsRounded,
@@ -20,7 +22,6 @@ import {
 } from "@mui/icons-material";
 import { db } from "../../Services/Services/firebase";
 import logo from "../../assets/logo4.png";
-import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 
 const DIAS = [
@@ -41,7 +42,6 @@ const EXPAND =
 
 const SERVICOS_IGNORADOS = [
   "01 PASSEIO A ESCOLHER NO DESTINO",
-  "CITY TOUR PANORAMICO",
   "VOLTA FRADES COM ITAPARICA",
   "STAFF MSC - PORTO SALVADOR",
   "COORDENAÇÃO MSC - PORTO SALVADOR",
@@ -60,6 +60,7 @@ const SERVICOS_IGNORADOS = [
   "HOTEL SALVADOR X HOTEL LENÇOIS",
   "HOTEL SALVADOR/ TERMINAL NAUTICO",
   "TERMINAL NAUTICO / HOTEL SALVADOR",
+  "HOTEL LITORAL NORTE / HOTEL SALVADOR",
 ];
 
 const TERMOS_IGNORADOS = [];
@@ -113,9 +114,11 @@ const LABEL_OCUPACAO = (valor) => {
   return "Baixa";
 };
 
-const getSemanaAtual = () => {
+const getSemanaPorOffset = (offset = 0) => {
   const hoje = new Date();
   const base = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  base.setDate(base.getDate() + offset * 7);
+
   const diaSemana = base.getDay() === 0 ? 7 : base.getDay();
 
   const segunda = new Date(base);
@@ -153,6 +156,7 @@ const somarDiasIso = (dataIso, dias) => {
 const getSemanaAnterior = (semanaAtual) =>
   semanaAtual.map((dia) => ({
     ...dia,
+    dateComparativa: dia.date,
     date: somarDiasIso(dia.date, -7),
   }));
 
@@ -395,8 +399,9 @@ const Home = () => {
   const [filtroStatusDia, setFiltroStatusDia] = useState("todos");
   const [filtroGuiaDia, setFiltroGuiaDia] = useState("todos");
   const [ordenacaoPaxDia, setOrdenacaoPaxDia] = useState("maior");
+  const [semanaOffset, setSemanaOffset] = useState(0);
 
-  const semana = useMemo(() => getSemanaAtual(), []);
+  const semana = useMemo(() => getSemanaPorOffset(semanaOffset), [semanaOffset]);
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
@@ -607,6 +612,19 @@ const Home = () => {
     carregarTudo();
   }, [inicioSemana, fimSemana]);
 
+  useEffect(() => {
+    if (!semana.length) return;
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const existeHojeNaSemana = semana.some((d) => d.date === hoje);
+
+    if (existeHojeNaSemana) {
+      setDiaSelecionadoHome(hoje);
+    } else {
+      setDiaSelecionadoHome(semana[0]?.date || "");
+    }
+  }, [semana]);
+
   const dashboard = useMemo(() => {
     const guiasAtivos = guias.filter((g) => g.ativo !== false);
     const guiasInativos = guias.filter((g) => g.ativo === false);
@@ -629,7 +647,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -638,11 +656,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -707,13 +725,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -797,8 +815,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1296,6 +1314,20 @@ Operacional - Luck Receptivo
 
   const carregandoCards = loading || atualizandoApi;
 
+  const renderValorCard = (valor, suffix = "") =>
+    carregandoCards ? (
+      <SyncRounded className="spin" fontSize="small" />
+    ) : (
+      `${valor}${suffix}`
+    );
+
+  const renderCardLoading = (texto = "Atualizando dados...") => (
+    <div className="home-dashboard-empty home-dashboard-loading-inline">
+      <SyncRounded className="spin" fontSize="small" />
+      <span>{texto}</span>
+    </div>
+  );
+
   return (
     <div className="home-dashboard-page">
       <div className="home-dashboard-header">
@@ -1354,72 +1386,72 @@ Operacional - Luck Receptivo
                 type="button"
                 className="home-refresh-btn"
                 onClick={carregarApiSemana}
-                disabled={atualizandoApi}
+                disabled={carregandoCards}
               >
-                {atualizandoApi
+                <RefreshRounded
+                  fontSize="small"
+                  className={carregandoCards ? "spin" : ""}
+                />
+                {carregandoCards
                   ? "Atualizando Phoenix..."
                   : "Atualizar dados do Phoenix"}
               </button>
             </div>
 
             <div className="home-live-info">
-              {formatarUltimaAtualizacao(ultimaAtualizacaoApi)}
+              {carregandoCards ? (<><SyncRounded className="spin" fontSize="small" /> <span>Atualizando...</span></>) : formatarUltimaAtualizacao(ultimaAtualizacaoApi)}
             </div>
           </div>
 
-          {loading ? (
-            <CardSkeleton variant="metrics" />
-          ) : (
-            <div className="home-dashboard-metrics">
-              <button type="button" className="home-dashboard-metric-card">
-                <div className="metric-icon">
-                  <TravelExploreRounded fontSize="small" />
-                </div>
-                <div>
-                  <span className="metric-label">Serviços reais</span>
-                  <strong className="metric-value">
-                    {dashboard.totalServicosReais}
-                  </strong>
-                </div>
-              </button>
+          <div className="home-dashboard-metrics">
+            <button type="button" className="home-dashboard-metric-card">
+              <div className="metric-icon">
+                <TravelExploreRounded fontSize="small" />
+              </div>
+              <div>
+                <span className="metric-label">Serviços reais</span>
+                <strong className="metric-value">
+                  {renderValorCard(dashboard.totalServicosReais)}
+                </strong>
+              </div>
+            </button>
 
-              <button type="button" className="home-dashboard-metric-card">
-                <div className="metric-icon">
-                  <FactCheckRounded fontSize="small" />
-                </div>
-                <div>
-                  <span className="metric-label">Serviços com guia (%)</span>
-                  <strong className="metric-value">
-                    {dashboard.percentualServicosComGuia}%
-                  </strong>
-                </div>
-              </button>
+            <button type="button" className="home-dashboard-metric-card">
+              <div className="metric-icon">
+                <FactCheckRounded fontSize="small" />
+              </div>
+              <div>
+                <span className="metric-label">Serviços com guia (%)</span>
+                <strong className="metric-value">
+                  {renderValorCard(dashboard.percentualServicosComGuia, "%")}
+                </strong>
+              </div>
+            </button>
 
-              <button type="button" className="home-dashboard-metric-card">
-                <div className="metric-icon">
-                  <GroupsRounded fontSize="small" />
-                </div>
-                <div>
-                  <span className="metric-label">Passageiros com guia (%)</span>
-                  <strong className="metric-value">
-                    {dashboard.percentualPassageirosComGuia}%
-                  </strong>
-                </div>
-              </button>
+            <button type="button" className="home-dashboard-metric-card">
+              <div className="metric-icon">
+                <GroupsRounded fontSize="small" />
+              </div>
+              <div>
+                <span className="metric-label">Passageiros com guia (%)</span>
+                <strong className="metric-value">
+                  {renderValorCard(dashboard.percentualPassageirosComGuia, "%")}
+                </strong>
+              </div>
+            </button>
 
-              <button type="button" className="home-dashboard-metric-card">
-                <div className="metric-icon">
-                  <BusinessRounded fontSize="small" />
-                </div>
-                <div>
-                  <span className="metric-label">Operadoras na semana</span>
-                  <strong className="metric-value">
-                    {dashboard.operadorasSemana.length}
-                  </strong>
-                </div>
-              </button>
-            </div>
-          )}
+            <button type="button" className="home-dashboard-metric-card">
+              <div className="metric-icon">
+                <BusinessRounded fontSize="small" />
+              </div>
+              <div>
+                <span className="metric-label">Operadoras na semana</span>
+                <strong className="metric-value">
+                  {renderValorCard(dashboard.operadorasSemana.length)}
+                </strong>
+              </div>
+            </button>
+          </div>
 
           <div className="home-dashboard-card home-dashboard-card-full">
             <div className="home-dashboard-card-header">
@@ -1428,17 +1460,54 @@ Operacional - Luck Receptivo
                 <h3>Serviços do dia</h3>
               </div>
 
-              <button
-                type="button"
-                className="home-open-scale-btn"
-                onClick={() => navigate("/passeios")}
-              >
-                Abrir escala da semana
-              </button>
+              <div className="home-header-actions">
+                <div className="home-week-switcher">
+                  <button
+                    type="button"
+                    className="home-week-nav-btn"
+                    onClick={() => setSemanaOffset((prev) => prev - 1)}
+                    disabled={carregandoCards}
+                  >
+                    ← Semana anterior
+                  </button>
+
+                  <span className="home-week-range-label">
+                    {semana[0]?.label} até {semana[6]?.label}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="home-week-nav-btn"
+                    onClick={() => setSemanaOffset((prev) => prev + 1)}
+                    disabled={carregandoCards}
+                  >
+                    Próxima semana →
+                  </button>
+
+                  {semanaOffset !== 0 && (
+                    <button
+                      type="button"
+                      className="home-week-nav-btn secondary"
+                      onClick={() => setSemanaOffset(0)}
+                      disabled={carregandoCards}
+                    >
+                      Semana atual
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="home-open-scale-btn"
+                  onClick={() => navigate("/passeios")}
+                >
+                  Abrir escala da semana
+                </button>
+              </div>
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="table" />
+              renderCardLoading("Atualizando serviços do dia...")
             ) : (
               <>
                 <div className="home-day-selector">
@@ -1446,10 +1515,10 @@ Operacional - Luck Receptivo
                     <button
                       key={dia.date}
                       type="button"
-                      className={`home-day-chip ${
-                        diaSelecionadoHome === dia.date ? "active" : ""
-                      }`}
+                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
+                        }`}
                       onClick={() => setDiaSelecionadoHome(dia.date)}
+                      disabled={carregandoCards}
                     >
                       {dia.day} • {dia.label}
                     </button>
@@ -1520,13 +1589,12 @@ Operacional - Luck Receptivo
                           <tr key={item.chave}>
                             <td>
                               <span
-                                className={`home-service-status ${
-                                  item.statusOperacional === "Fechado"
+                                className={`home-service-status ${item.statusOperacional === "Fechado"
                                     ? "fechado"
                                     : item.statusOperacional === "Alocado"
                                       ? "alocado"
                                       : "sem-guia"
-                                }`}
+                                  }`}
                               >
                                 {item.statusOperacional}
                               </span>
@@ -1534,15 +1602,14 @@ Operacional - Luck Receptivo
 
                             <td>
                               <span
-                                className={`home-group-status ${
-                                  item.statusGrupo === "Fechado"
+                                className={`home-group-status ${item.statusGrupo === "Fechado"
                                     ? "fechado"
                                     : item.isDisp
                                       ? "modo-servico"
                                       : item.statusGrupo === "Grupo formado"
                                         ? "formado"
                                         : "alerta"
-                                }`}
+                                  }`}
                               >
                                 {item.statusGrupo}
                               </span>
@@ -1594,7 +1661,7 @@ Operacional - Luck Receptivo
               </div>
 
               {carregandoCards ? (
-                <CardSkeleton variant="list" rows={4} />
+                renderCardLoading("Atualizando alertas operacionais...")
               ) : (
                 <div className="home-alerts-list">
                   {dashboard.alertas.length === 0 ? (
@@ -1625,7 +1692,7 @@ Operacional - Luck Receptivo
               </div>
 
               {carregandoCards ? (
-                <CardSkeleton variant="list" rows={6} />
+                renderCardLoading("Atualizando operadoras da semana...")
               ) : (
                 <div className="home-dashboard-ranking">
                   {dashboard.operadorasSemana.length === 0 ? (
@@ -1664,7 +1731,7 @@ Operacional - Luck Receptivo
               </div>
 
               {carregandoCards ? (
-                <CardSkeleton variant="chart" />
+                renderCardLoading("Atualizando demanda real da semana...")
               ) : (
                 <>
                   <div className="home-week-chart advanced">
@@ -1734,7 +1801,7 @@ Operacional - Luck Receptivo
               </div>
 
               {loading ? (
-                <CardSkeleton variant="verse" />
+                renderCardLoading("Atualizando versículo do dia...")
               ) : versiculo ? (
                 <div className="home-bible-card">
                   <p className="home-bible-text">"{versiculo.texto}"</p>
@@ -1763,7 +1830,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={6} />
+              renderCardLoading("Atualizando balanceamento por guia...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.resumoGuias.length === 0 ? (
@@ -1787,9 +1854,8 @@ Operacional - Luck Receptivo
 
                       <div className="ranking-bar">
                         <div
-                          className={`ranking-bar-fill ${
-                            guia.ocupacao >= 80 ? "high" : "low"
-                          }`}
+                          className={`ranking-bar-fill ${guia.ocupacao >= 80 ? "high" : "low"
+                            }`}
                           style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
                         />
                       </div>
@@ -1815,7 +1881,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={5} />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.guiasSobrecarga.length === 0 ? (
@@ -1852,7 +1918,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={5} />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.guiasOciosos.length === 0 ? (
@@ -1893,7 +1959,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={6} />
+              renderCardLoading("Atualizando guias disponíveis...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.topPasseios.length === 0 ? (
@@ -1918,7 +1984,7 @@ Operacional - Luck Receptivo
                                   ...dashboard.topPasseios.map((t) => t.pax),
                                   1,
                                 )) *
-                                100,
+                              100,
                               8,
                             )}%`,
                           }}
@@ -1946,12 +2012,12 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="metrics" />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-summary-grid">
                 <div className="summary-box">
                   <span className="summary-label">Serviços reais</span>
-                  <strong>{dashboard.totalServicosReais}</strong>
+                  <strong>{renderValorCard(dashboard.totalServicosReais)}</strong>
                 </div>
 
                 <div className="summary-box">
@@ -1995,7 +2061,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="metrics" />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-summary-grid">
                 <div className="summary-box">
@@ -2053,7 +2119,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={2} />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div
                 className={`home-alert-item ${dashboard.alertaComparativoPax?.tipo || "info"}`}
@@ -2073,7 +2139,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="chart" />
+              renderCardLoading("Atualizando card...")
             ) : (
               <>
                 <div className="home-week-chart advanced">
@@ -2086,7 +2152,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAnterior /
                                 dashboard.maiorComparativoServicos) *
-                                180,
+                              180,
                               dia.servicosAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2099,7 +2165,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAtual /
                                 dashboard.maiorComparativoServicos) *
-                                180,
+                              180,
                               dia.servicosAtual > 0 ? 12 : 6,
                             )}px`,
                           }}
@@ -2137,7 +2203,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="chart" />
+              renderCardLoading("Atualizando card...")
             ) : (
               <>
                 <div className="home-week-chart advanced">
@@ -2150,7 +2216,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.paxAnterior /
                                 dashboard.maiorComparativoPax) *
-                                180,
+                              180,
                               dia.paxAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2162,7 +2228,7 @@ Operacional - Luck Receptivo
                           style={{
                             height: `${Math.max(
                               (dia.paxAtual / dashboard.maiorComparativoPax) *
-                                180,
+                              180,
                               dia.paxAtual > 0 ? 12 : 6,
                             )}px`,
                           }}
@@ -2199,7 +2265,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={8} />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.comparativoPasseios.length === 0 ? (
@@ -2244,7 +2310,7 @@ Operacional - Luck Receptivo
             </div>
 
             {carregandoCards ? (
-              <CardSkeleton variant="list" rows={8} />
+              renderCardLoading("Atualizando card...")
             ) : (
               <div className="home-dashboard-ranking">
                 {dashboard.operadorasSemana.length === 0 ? (

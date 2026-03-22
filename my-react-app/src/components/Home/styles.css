@@ -150,6 +150,104 @@
     text-align: left;
 }
 
+.spin {
+    animation: homeSpin 1s linear infinite;
+}
+
+@keyframes homeSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.home-dashboard-empty {
+    min-height: 110px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px;
+    color: var(--text-soft, var(--text));
+    text-align: center;
+}
+
+.home-dashboard-loading-inline {
+    min-height: 160px;
+}
+
+.home-live-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-refresh-btn:disabled,
+.home-week-nav-btn:disabled,
+.home-day-chip:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.metric-value {
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.home-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.home-week-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.home-week-nav-btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.home-week-nav-btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+}
+
+.home-week-nav-btn.secondary {
+    background: transparent;
+}
+
+.home-week-range-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 0 4px;
+}
+
 .home-dashboard-metric-card:hover {
     transform: translateY(-2px);
     border-color: color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
@@ -784,4 +882,39 @@
     background: #c1cef78e;
     color: #3730a3;
     border: 1px solid #c7d2fe;
+}
+
+.home-week-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.home-week-nav-btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.home-week-nav-btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+}
+
+.home-week-nav-btn.secondary {
+    background: transparent;
+}
+
+.home-week-range-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 0 4px;
 }
