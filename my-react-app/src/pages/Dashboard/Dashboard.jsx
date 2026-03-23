@@ -69,7 +69,7 @@ const Dashboard = ({ loading }) => {
               <ViewModuleRounded fontSize="small" className="sidebar-icon" />
               <span>Prévia de Transfers</span>
             </NavLink>
-            <NavLink to="chegadas" className={getNavClass}>
+            {/* <NavLink to="chegadas" className={getNavClass}>
               <FlightLandRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de Chegadas</span>
             </NavLink>
@@ -80,6 +80,10 @@ const Dashboard = ({ loading }) => {
             <NavLink to="resumo" className={getNavClass}>
               <AssignmentRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de Passeios</span>
+            </NavLink> */}
+            <NavLink to="op" className={getNavClass}>
+              <AssignmentRounded fontSize="small" className="sidebar-icon" />
+              <span>Painel Operacional</span>
             </NavLink>
           </div>
 

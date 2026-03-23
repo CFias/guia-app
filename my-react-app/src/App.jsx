@@ -18,6 +18,7 @@ import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
 import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
 import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
+import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
         <Route path="previas" element={<PreviaTransfers />} />
         <Route path="register-fornecedores" element={<CadastroFornecedores />} />
+        <Route path="op" element={<PainelOperacionalUnificado />} />
         <Route path="chegadas" element={<PainelChegadas />} />
         <Route path="outs" element={<PainelOuts />} />
         <Route path="register-guias" element={<RegisterGuias />} />

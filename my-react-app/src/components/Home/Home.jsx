@@ -19,6 +19,7 @@ import {
   TrendingUpRounded,
   TrendingDownRounded,
   RemoveRounded,
+  DashboardRounded,
 } from "@mui/icons-material";
 import { db } from "../../Services/Services/firebase";
 import logo from "../../assets/logo4.png";
@@ -401,7 +402,10 @@ const Home = () => {
   const [ordenacaoPaxDia, setOrdenacaoPaxDia] = useState("maior");
   const [semanaOffset, setSemanaOffset] = useState(0);
 
-  const semana = useMemo(() => getSemanaPorOffset(semanaOffset), [semanaOffset]);
+  const semana = useMemo(
+    () => getSemanaPorOffset(semanaOffset),
+    [semanaOffset],
+  );
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
@@ -647,7 +651,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -656,11 +660,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -725,13 +729,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -815,8 +819,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1332,13 +1336,9 @@ Operacional - Luck Receptivo
     <div className="home-dashboard-page">
       <div className="home-dashboard-header">
         <div className="home-dashboard-brand">
-          <img
-            className="home-dashboard-logo"
-            src={logo}
-            alt="Operacional SSA"
-          />
+          <DashboardRounded fontSize="large" />
           <div className="home-dashboard-brand-text">
-            <h2>Painel Operacional</h2>
+            <h2>Dashboard</h2>
             <p>Demanda real do Phoenix cruzada com alocação do sistema</p>
           </div>
         </div>
@@ -1399,7 +1399,14 @@ Operacional - Luck Receptivo
             </div>
 
             <div className="home-live-info">
-              {carregandoCards ? (<><SyncRounded className="spin" fontSize="small" /> <span>Atualizando...</span></>) : formatarUltimaAtualizacao(ultimaAtualizacaoApi)}
+              {carregandoCards ? (
+                <>
+                  <SyncRounded className="spin" fontSize="small" />{" "}
+                  <span>Atualizando...</span>
+                </>
+              ) : (
+                formatarUltimaAtualizacao(ultimaAtualizacaoApi)
+              )}
             </div>
           </div>
 
@@ -1515,8 +1522,9 @@ Operacional - Luck Receptivo
                     <button
                       key={dia.date}
                       type="button"
-                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
-                        }`}
+                      className={`home-day-chip ${
+                        diaSelecionadoHome === dia.date ? "active" : ""
+                      }`}
                       onClick={() => setDiaSelecionadoHome(dia.date)}
                       disabled={carregandoCards}
                     >
@@ -1589,12 +1597,13 @@ Operacional - Luck Receptivo
                           <tr key={item.chave}>
                             <td>
                               <span
-                                className={`home-service-status ${item.statusOperacional === "Fechado"
+                                className={`home-service-status ${
+                                  item.statusOperacional === "Fechado"
                                     ? "fechado"
                                     : item.statusOperacional === "Alocado"
                                       ? "alocado"
                                       : "sem-guia"
-                                  }`}
+                                }`}
                               >
                                 {item.statusOperacional}
                               </span>
@@ -1602,14 +1611,15 @@ Operacional - Luck Receptivo
 
                             <td>
                               <span
-                                className={`home-group-status ${item.statusGrupo === "Fechado"
+                                className={`home-group-status ${
+                                  item.statusGrupo === "Fechado"
                                     ? "fechado"
                                     : item.isDisp
                                       ? "modo-servico"
                                       : item.statusGrupo === "Grupo formado"
                                         ? "formado"
                                         : "alerta"
-                                  }`}
+                                }`}
                               >
                                 {item.statusGrupo}
                               </span>
@@ -1854,8 +1864,9 @@ Operacional - Luck Receptivo
 
                       <div className="ranking-bar">
                         <div
-                          className={`ranking-bar-fill ${guia.ocupacao >= 80 ? "high" : "low"
-                            }`}
+                          className={`ranking-bar-fill ${
+                            guia.ocupacao >= 80 ? "high" : "low"
+                          }`}
                           style={{ width: `${Math.min(guia.ocupacao, 100)}%` }}
                         />
                       </div>
@@ -1984,7 +1995,7 @@ Operacional - Luck Receptivo
                                   ...dashboard.topPasseios.map((t) => t.pax),
                                   1,
                                 )) *
-                              100,
+                                100,
                               8,
                             )}%`,
                           }}
@@ -2017,7 +2028,9 @@ Operacional - Luck Receptivo
               <div className="home-dashboard-summary-grid">
                 <div className="summary-box">
                   <span className="summary-label">Serviços reais</span>
-                  <strong>{renderValorCard(dashboard.totalServicosReais)}</strong>
+                  <strong>
+                    {renderValorCard(dashboard.totalServicosReais)}
+                  </strong>
                 </div>
 
                 <div className="summary-box">
@@ -2152,7 +2165,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAnterior /
                                 dashboard.maiorComparativoServicos) *
-                              180,
+                                180,
                               dia.servicosAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2165,7 +2178,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.servicosAtual /
                                 dashboard.maiorComparativoServicos) *
-                              180,
+                                180,
                               dia.servicosAtual > 0 ? 12 : 6,
                             )}px`,
                           }}
@@ -2216,7 +2229,7 @@ Operacional - Luck Receptivo
                             height: `${Math.max(
                               (dia.paxAnterior /
                                 dashboard.maiorComparativoPax) *
-                              180,
+                                180,
                               dia.paxAnterior > 0 ? 12 : 6,
                             )}px`,
                             opacity: 0.45,
@@ -2228,7 +2241,7 @@ Operacional - Luck Receptivo
                           style={{
                             height: `${Math.max(
                               (dia.paxAtual / dashboard.maiorComparativoPax) *
-                              180,
+                                180,
                               dia.paxAtual > 0 ? 12 : 6,
                             )}px`,
                           }}

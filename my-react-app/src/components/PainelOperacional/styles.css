@@ -1,0 +1,1496 @@
+.painel-operacional-page {
+    width: 100%;
+}
+
+.painel-operacional-header {
+    margin-bottom: 16px;
+}
+
+.painel-operacional-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--text);
+}
+
+.painel-operacional-subtitle {
+    margin: 6px 0 0;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+.painel-operacional-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.painel-operacional-tab {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    font-weight: 600;
+}
+
+.painel-operacional-tab:hover {
+    transform: translateY(-1px);
+}
+
+.painel-operacional-tab.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.painel-operacional-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.painel-operacional-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card);
+}
+
+.painel-operacional-item-header {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    cursor: pointer;
+}
+
+.painel-operacional-item-header strong {
+    display: block;
+    color: var(--text);
+}
+
+.painel-operacional-item-header span {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-light);
+    font-size: 12px;
+}
+
+.painel-operacional-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.painel-operacional-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--background);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.painel-operacional-item-body {
+    padding: 0 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.painel-operacional-subcard {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    background: var(--background);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.painel-operacional-subcard.warning {
+    border-color: #d97706;
+}
+
+.painel-operacional-linha {
+    font-size: 12px;
+    color: var(--text);
+    padding-top: 4px;
+    border-top: 1px dashed var(--border);
+}
+
+.resumo-guia-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.resumo-copy-btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.resumo-copy-btn.success {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+
+/* =========================
+   NAVEGAÇÃO ENTRE ABAS
+========================= */
+
+.painel-chegadas-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.painel-chegadas-tab {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+}
+
+.painel-chegadas-tab svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-tab:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    background: color-mix(in srgb, var(--primary) 7%, var(--card) 93%);
+}
+
+.painel-chegadas-tab.active {
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary) 18%, var(--card) 82%),
+            color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%));
+    border-color: color-mix(in srgb, var(--text-dist) 24%, transparent 76%);
+    color: var(--text);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.05);
+}
+
+.painel-chegadas-tab.active svg {
+    color: var(--text-dist);
+}
+
+
+/* =========================
+   LISTA UNIFICADA
+========================= */
+
+.painel-chegadas-unified-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-chegadas-unified-item {
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border-radius: 20px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.03);
+}
+
+.painel-chegadas-unified-toggle {
+    width: 100%;
+    border: none;
+    text-align: left;
+    padding: 16px 18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
+            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.painel-chegadas-unified-toggle:hover {
+    filter: brightness(1.01);
+}
+
+.painel-chegadas-unified-toggle-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-unified-toggle-title {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.painel-chegadas-unified-toggle-title strong {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.painel-chegadas-unified-toggle-title span {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+    line-height: 1.5;
+}
+
+.painel-chegadas-unified-toggle-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-chegadas-unified-toggle-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.painel-chegadas-unified-expand-icon {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-unified-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+
+/* =========================
+   SUB-BLOCOS INTERNOS
+========================= */
+
+.painel-chegadas-unified-block {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 18px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+}
+
+.painel-chegadas-unified-block.warning {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.06);
+}
+
+.painel-chegadas-unified-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-unified-block-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.painel-chegadas-unified-block-title strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.painel-chegadas-unified-block-title svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-unified-block-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-chegadas-unified-block-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+
+/* =========================
+   LINHAS INTERNAS
+========================= */
+
+.painel-chegadas-unified-row {
+    padding: 12px 14px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.painel-chegadas-unified-row:first-child {
+    border-top: none;
+}
+
+.painel-chegadas-unified-row strong {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.painel-chegadas-unified-row span {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+    line-height: 1.5;
+}
+
+.painel-chegadas-unified-row-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 8px 14px;
+}
+
+.painel-chegadas-unified-row-chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.painel-chegadas-unified-row-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+
+/* =========================
+   BOTÃO DE CÓPIA
+========================= */
+
+.painel-chegadas-copy-btn {
+    min-height: 38px;
+    padding: 0 16px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.painel-chegadas-copy-btn svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-copy-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-copy-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.painel-chegadas-copy-btn.success {
+    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
+    border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
+    color: #15803d;
+}
+
+.painel-chegadas-copy-btn.success svg {
+    color: #15803d;
+}
+
+
+/* =========================
+   AJUSTES RESPONSIVOS
+========================= */
+
+@media (max-width: 1024px) {
+    .painel-chegadas-unified-row-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .painel-chegadas-tabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-chegadas-tab {
+        width: 100%;
+        justify-content: flex-start;
+        min-height: 45px;
+        font-size: 12px;
+    }
+
+    .painel-chegadas-unified-toggle {
+        padding: 16px;
+    }
+
+    .painel-chegadas-unified-toggle-title strong {
+        font-size: 16px;
+    }
+
+    .painel-chegadas-unified-toggle-title span,
+    .painel-chegadas-unified-block-meta span,
+    .painel-chegadas-unified-toggle-meta span {
+        font-size: 10px;
+    }
+
+    .painel-chegadas-unified-body {
+        padding: 12px;
+    }
+}
+
+.painel-chegadas-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.painel-chegadas-header {
+    margin-bottom: 24px;
+}
+
+.painel-chegadas-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.painel-chegadas-title svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.painel-chegadas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+    min-height: 25vh;
+}
+
+.painel-chegadas-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.painel-chegadas-card-large {
+    grid-column: span 2;
+}
+
+.painel-chegadas-card-full {
+    grid-column: 1 / -1;
+}
+
+.painel-chegadas-card-header {
+    margin-bottom: 20px;
+}
+
+.painel-chegadas-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.painel-chegadas-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.painel-chegadas-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.painel-chegadas-badge.alerta {
+    color: var(--p2);
+    background: color-mix(in srgb, var(--p2) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--p2) 18%, transparent 82%);
+}
+
+.painel-chegadas-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: end;
+}
+
+.painel-chegadas-field {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.painel-chegadas-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.painel-chegadas-field label svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-input {
+    width: 100%;
+    min-height: 45px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    font-size: 12px;
+    padding: 0 18px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.painel-chegadas-input:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.painel-chegadas-input:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.painel-chegadas-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.painel-chegadas-btn-primary {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.painel-chegadas-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.painel-chegadas-btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.painel-chegadas-btn-secondary {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+}
+
+.painel-chegadas-btn-secondary svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-btn-secondary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-btn-secondary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.painel-chegadas-copy-btn.success {
+    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
+    border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
+    color: #15803d;
+}
+
+.painel-chegadas-copy-btn.success svg {
+    color: #15803d;
+}
+
+.painel-chegadas-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-chegadas-stat-icon,
+.painel-chegadas-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.painel-chegadas-kpi-icon.alerta {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    border-color: color-mix(in srgb, var(--p2) 22%, transparent 78%);
+    color: var(--p2);
+}
+
+.painel-chegadas-stat span,
+.painel-chegadas-kpi span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-stat strong,
+.painel-chegadas-kpi strong {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.painel-chegadas-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.painel-chegadas-kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-chegadas-empty {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-soft, #64748b);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.painel-chegadas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-chegadas-flight-card {
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border-radius: 20px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
+}
+
+.painel-chegadas-flight-top {
+    width: 100%;
+    border: none;
+    text-align: left;
+    padding: 16px 18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
+            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
+    cursor: pointer;
+    position: relative;
+}
+
+.painel-chegadas-flight-top:hover {
+    filter: brightness(1.01);
+}
+
+.painel-chegadas-flight-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-flight-code-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-flight-code {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.painel-chegadas-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.painel-chegadas-status.programado,
+.painel-chegadas-status.no-horario {
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--text-dist);
+}
+
+.painel-chegadas-status.atrasado,
+.painel-chegadas-status.pousado-atrasado {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    border: 1px solid color-mix(in srgb, var(--p2) 22%, transparent 78%);
+    color: var(--p2);
+}
+
+.painel-chegadas-status.antecipado,
+.painel-chegadas-status.pousado-antecipado {
+    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent 78%);
+    color: var(--text);
+}
+
+.painel-chegadas-status.cancelado {
+    background: color-mix(in srgb, var(--p1) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--p1) 18%, transparent 82%);
+    color: var(--p1);
+}
+
+.painel-chegadas-status.pousado {
+    background: color-mix(in srgb, var(--primary-2) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--primary-2) 18%, transparent 82%);
+    color: var(--primary-2);
+}
+
+.painel-chegadas-status.sem-info {
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: var(--text);
+}
+
+.painel-chegadas-flight-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-chegadas-flight-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.painel-chegadas-expand-icon {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-flight-expanded {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-chegadas-driver-block {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 18px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+}
+
+.painel-chegadas-driver-block.nao-escalado {
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.06);
+}
+
+.painel-chegadas-driver-block.nao-escalado .painel-chegadas-driver-title strong {
+    color: #ffb300;
+}
+
+.painel-chegadas-driver-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-driver-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.painel-chegadas-driver-title svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-driver-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-chegadas-driver-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.painel-chegadas-table-wrap {
+    overflow-x: auto;
+}
+
+.painel-chegadas-table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: collapse;
+}
+
+.painel-chegadas-table thead th {
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+}
+
+.painel-chegadas-table tbody td {
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-chegadas-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.painel-chegadas-google-btn {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+    border-radius: 999px;
+    min-height: 30px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.painel-chegadas-google-btn svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-google-btn:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.painel-chegadas-alert {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+}
+
+.painel-chegadas-alert.atrasado,
+.painel-chegadas-alert.pousado-atrasado {
+    border-color: color-mix(in srgb, var(--p2) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--p2) 10%, var(--card) 90%);
+}
+
+.painel-chegadas-alert.cancelado {
+    border-color: color-mix(in srgb, var(--p1) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--p1) 10%, var(--card) 90%);
+}
+
+.painel-chegadas-alert.antecipado,
+.painel-chegadas-alert.pousado-antecipado {
+    border-color: color-mix(in srgb, var(--primary) 26%, transparent 74%);
+    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-alert-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.painel-chegadas-alert-main strong {
+    font-size: 18px;
+    color: var(--text);
+}
+
+.painel-chegadas-alert-main span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.painel-chegadas-alert-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.painel-chegadas-alert-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* ABAS NO MESMO PADRÃO VISUAL */
+.painel-chegadas-tabs-card {
+    grid-column: 1 / -1;
+}
+
+.painel-chegadas-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.painel-chegadas-tab {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+}
+
+.painel-chegadas-tab svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-tab:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-tab.active {
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.painel-chegadas-tab.active svg {
+    color: var(--text-btn);
+}
+
+/* TABELA / LISTA DOS OUTS E GUIAS USANDO O MESMO BLOCO */
+.painel-chegadas-section-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.painel-chegadas-section-empty {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-soft, #64748b);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spin {
+    animation: painelChegadasSpin 0.9s linear infinite;
+}
+
+@keyframes painelChegadasSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .painel-chegadas-card-large {
+        grid-column: span 1;
+    }
+
+    .painel-chegadas-kpis {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .painel-chegadas-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-chegadas-card-full,
+    .painel-chegadas-tabs-card {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .painel-chegadas-page {
+        padding: 4px;
+        max-width: 100%;
+    }
+
+    .painel-chegadas-title {
+        font-size: 25px;
+    }
+
+    .painel-chegadas-subtitle {
+        font-size: 13px;
+    }
+
+    .painel-chegadas-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .painel-chegadas-card-header h3 {
+        font-size: 19px;
+    }
+
+    .painel-chegadas-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-chegadas-actions,
+    .painel-chegadas-btn-primary,
+    .painel-chegadas-btn-secondary {
+        width: 100%;
+    }
+
+    .painel-chegadas-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-chegadas-tabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-chegadas-tab {
+        width: 100%;
+    }
+}
+
+.painel-chegadas-tabs-card {
+    grid-column: 1 / -1;
+}
+
+.painel-chegadas-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.painel-chegadas-tab {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+}
+
+.painel-chegadas-tab svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-tab:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-tab.active {
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.painel-chegadas-tab.active svg {
+    color: var(--text-btn);
+}
+
+.painel-chegadas-copy-btn.success {
+    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
+    border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
+    color: #15803d;
+}
+
+.painel-chegadas-copy-btn.success svg {
+    color: #15803d;
+}
+
+.spin {
+    animation: painelChegadasSpin 0.9s linear infinite;
+}
+
+@keyframes painelChegadasSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.painel-chegadas-top-status {
+    min-height: 22px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.painel-chegadas-panel-body {
+    min-height: 180px;
+    border: 1px dashed color-mix(in srgb, var(--border) 72%, transparent 28%);
+    border-radius: 18px;
+    padding: 16px;
+    background: color-mix(in srgb, var(--bg) 16%, var(--card) 84%);
+}
+
+.painel-chegadas-inline-loading,
+.painel-chegadas-inline-empty {
+    min-height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.painel-chegadas-tabs-card {
+    grid-column: 1 / -1;
+}
+
+.painel-chegadas-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.painel-chegadas-tab {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    color: var(--text);
+}
+
+.painel-chegadas-tab svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-tab:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.painel-chegadas-tab.active {
+    background: var(--btn-main);
+    color: var(--text-btn);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.painel-chegadas-tab.active svg {
+    color: var(--text-btn);
+}
+
+.painel-chegadas-copy-btn.success {
+    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
+    border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
+    color: #15803d;
+}
+
+.painel-chegadas-copy-btn.success svg {
+    color: #15803d;
+}
+
+.painel-chegadas-tab:disabled,
+.painel-chegadas-btn-primary:disabled,
+.painel-chegadas-btn-secondary:disabled,
+.painel-chegadas-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spin {
+    animation: painelChegadasSpin 0.9s linear infinite;
+}
+
+@keyframes painelChegadasSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.painel-chegadas-vehicle-block {
+    margin: 14px 16px 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-radius: 16px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg) 14%, var(--card) 86%);
+}
+
+.painel-chegadas-vehicle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--primary) 4%, var(--card) 96%);
+    flex-wrap: wrap;
+}
