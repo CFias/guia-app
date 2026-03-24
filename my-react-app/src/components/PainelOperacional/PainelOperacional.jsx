@@ -635,13 +635,99 @@ const extrairFornecedor = (item) =>
   item?.auxRoadmapService?.roadmap?.driver?.name ||
   "Fornecedor não informado";
 
+const extrairFornecedorNickname = (item) =>
+  item?.roadmapService?.roadmap?.driver?.nickname ||
+  item?.auxRoadmapService?.roadmap?.driver?.nickname ||
+  item?.roadmapService?.roadmap?.driver?.name ||
+  item?.auxRoadmapService?.roadmap?.driver?.name ||
+  item?.driver?.nickname ||
+  item?.driver?.name ||
+  "Fornecedor não informado";
+
+const extrairVeiculoPrincipalOut = (item) =>
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.vehicle?.nickname ||
+  item?.vehicle?.name ||
+  item?.vehicle?.plate ||
+  "FORA DE ESCALA";
+
+const extrairPrimeiroHorarioValido = (lista = []) => {
+  const horarios = lista
+    .map((item) => formatarHora(item))
+    .filter((h) => h && h !== "--:--")
+    .sort(ordenarHora);
+
+  return horarios[0] || "--:--";
+};
+
+const extrairNumeroEscala = (item) =>
+  item?.roadmapService?.roadmap?.id ||
+  item?.auxRoadmapService?.roadmap?.id ||
+  item?.roadmap?.id ||
+  item?.scale_id ||
+  item?.escala_id ||
+  "Sem escala";
+
+const extrairVooRetornoTexto = (item) => {
+  const codigo =
+    item?.reserve?.flight?.code ||
+    item?.reserve?.flight_code ||
+    item?.schedule?.name ||
+    item?.flight?.code ||
+    item?.flight_code ||
+    "-";
+
+  const horario =
+    formatarHora(
+      item?.reserve?.flight?.departure_time ||
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
+    ) || "--:--";
+
+  if (codigo === "-" && horario === "--:--") return "-";
+  if (codigo === "-") return horario;
+  if (horario === "--:--") return codigo;
+
+  return `${codigo} • ${horario}`;
+};
+
+const abrirBuscaVooPratica = (item) => {
+  const codigo =
+    item?.reserve?.flight?.code ||
+    item?.reserve?.flight_code ||
+    item?.flight?.code ||
+    item?.flight_code ||
+    item?.schedule?.name ||
+    "";
+
+  const codigoLimpo = String(codigo || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+  if (!codigoLimpo) return;
+
+  window.open(
+    `https://www.google.com/search?q=${encodeURIComponent(codigoLimpo)}`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+};
+
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -892,6 +978,9 @@ export default function PainelOperacionalUnificado() {
           "pousado-antecipado",
         ].includes(v.statusKey),
       ).length,
+      veiculos: new Set(
+        voos.flatMap((voo) => voo.gruposPorVeiculo.map((g) => g.veiculo)),
+      ).size,
     }),
     [voos],
   );
@@ -900,41 +989,56 @@ export default function PainelOperacionalUnificado() {
     const mapa = {};
 
     itensOuts.forEach((item, index) => {
-      const veiculo = extrairVeiculoOut(item);
-      const presentationHour = extrairPresentationHour(item);
-      const horario = formatarHora(presentationHour);
-      const motorista = extrairMotorista(item);
-      const regiao = extrairRegiao(item);
-      const grupoKey = `${veiculo}__${horario}`;
+      const escalaId = extrairNumeroEscala(item);
+      const veiculo = extrairVeiculoPrincipalOut(item);
+      const fornecedor = extrairFornecedorNickname(item);
+      const hotelOrigem = extrairHotel(item);
+      const horarioApresentacao = formatarHora(extrairPresentationHour(item));
+      const contato = formatarContato(extrairContatoPax(item));
+      const nomePax = extrairNomeCliente(item);
+      const reservaCodigo = extrairCodigoReserva(item);
+      const quantidade = extrairPax(item);
+      const adultos = extrairAdultos(item);
+      const criancas = extrairCriancas(item);
+      const infantes = extrairInfantes(item);
+      const observacao = extrairObservacao(item);
+      const vooRetorno = extrairVooRetornoTexto(item);
+
+      const grupoKey = `${escalaId}__${veiculo}`;
 
       if (!mapa[grupoKey]) {
         mapa[grupoKey] = {
           id: grupoKey,
+          escalaId,
           veiculo,
-          horario,
-          motorista,
-          regiao,
+          fornecedor,
           reservas: [],
         };
       }
 
       mapa[grupoKey].reservas.push({
-        id: `${extrairCodigoReserva(item)}_${index}`,
-        hotel: extrairHotel(item),
-        horarioHotel: horario,
-        reserva: extrairCodigoReserva(item),
-        cliente: extrairNomeCliente(item),
-        pax: extrairPax(item),
-        adultos: extrairAdultos(item),
-        criancas: extrairCriancas(item),
-        infantes: extrairInfantes(item),
-        operadora: extrairOperadora(item),
-        telefone: formatarContato(extrairContatoPax(item)),
+        id: `${reservaCodigo}_${index}`,
+        raw: item,
+        hotel: hotelOrigem,
+        horarioHotel: horarioApresentacao,
+        reserva: reservaCodigo,
+        cliente: nomePax,
+        pax: quantidade,
+        adultos,
+        criancas,
+        infantes,
+        telefone: contato,
+        observacao,
+        vooRetorno,
       });
     });
 
     return Object.values(mapa)
       .map((grupo) => {
+        const primeiroHorario = extrairPrimeiroHorarioValido(
+          grupo.reservas.map((r) => r.horarioHotel),
+        );
+
         const hoteisMap = {};
 
         grupo.reservas.forEach((reserva) => {
@@ -952,12 +1056,22 @@ export default function PainelOperacionalUnificado() {
           hoteisMap[chaveHotel].reservas.push(reserva);
         });
 
-        const hoteis = Object.values(hoteisMap).sort((a, b) =>
-          ordenarHora(a.horario, b.horario),
-        );
+        const hoteis = Object.values(hoteisMap)
+          .map((hotel) => ({
+            ...hotel,
+            totalPax: hotel.reservas.reduce(
+              (acc, item) => acc + Number(item.pax || 0),
+              0,
+            ),
+          }))
+          .sort((a, b) => ordenarHora(a.horario, b.horario));
+
+        const hotelPrincipal = hoteis[0]?.hotel || "Hotel não informado";
 
         return {
           ...grupo,
+          hotelPrincipal,
+          primeiroHorario,
           hoteis,
           totalReservas: grupo.reservas.length,
           totalPax: grupo.reservas.reduce(
@@ -967,7 +1081,7 @@ export default function PainelOperacionalUnificado() {
         };
       })
       .sort((a, b) => {
-        const horaCompare = ordenarHora(a.horario, b.horario);
+        const horaCompare = ordenarHora(a.primeiroHorario, b.primeiroHorario);
         if (horaCompare !== 0) return horaCompare;
         return String(a.veiculo).localeCompare(String(b.veiculo), "pt-BR", {
           sensitivity: "base",
@@ -1513,6 +1627,22 @@ export default function PainelOperacionalUnificado() {
 
                 <div className="painel-chegadas-kpi">
                   <div className="painel-chegadas-kpi-icon">
+                    <DirectionsBusRounded fontSize="small" />
+                  </div>
+                  <div>
+                    <span>Veículos</span>
+                    <strong>
+                      {carregando ? (
+                        <SyncRounded className="spin" fontSize="small" />
+                      ) : (
+                        resumoChegadas.veiculos
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="painel-chegadas-kpi">
+                  <div className="painel-chegadas-kpi-icon">
                     <GroupsRounded fontSize="small" />
                   </div>
                   <div>
@@ -1852,15 +1982,15 @@ export default function PainelOperacionalUnificado() {
                             <div className="painel-chegadas-flight-main">
                               <div className="painel-chegadas-flight-code-wrap">
                                 <strong className="painel-chegadas-flight-code">
-                                  {grupo.veiculo}
+                                  OUT - {grupo.hotelPrincipal}
                                 </strong>
                               </div>
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
-                              <span>{grupo.horario}</span>
-                              <span>{grupo.motorista}</span>
-                              <span>{grupo.regiao}</span>
+                              <span>Horário de apanha: {grupo.primeiroHorario}</span>
+                              <span>Fornecedor: {grupo.fornecedor}</span>
+                              <span>Veículo: {grupo.veiculo}</span>
                               <span>Reservas: {grupo.totalReservas}</span>
                               <span>Pax: {grupo.totalPax}</span>
                             </div>
@@ -1873,6 +2003,26 @@ export default function PainelOperacionalUnificado() {
                               )}
                             </div>
                           </button>
+
+                          <div
+                            className="painel-chegadas-driver-block"
+                            style={{ borderTop: "1px solid var(--border)", borderRadius: 0 }}
+                          >
+                            {/* <div
+                              className="painel-chegadas-driver-meta"
+                              style={{ padding: "10px 14px 0 14px", flexWrap: "wrap" }}
+                            >
+                              {grupo.reservas.map((reserva) => (
+                                <span key={`resumo_${reserva.id}`}>
+                                  {reserva.cliente} • {formatarQuantidadeDetalhada(
+                                    reserva.adultos,
+                                    reserva.criancas,
+                                    reserva.infantes,
+                                  )}
+                                </span>
+                              ))}
+                            </div> */}
+                          </div>
 
                           {expandido && (
                             <div className="painel-chegadas-flight-expanded">
@@ -1889,9 +2039,8 @@ export default function PainelOperacionalUnificado() {
 
                                     <div className="painel-chegadas-driver-meta">
                                       <span>{hotel.horario}</span>
-                                      <span>
-                                        Reservas: {hotel.reservas.length}
-                                      </span>
+                                      <span>Reservas: {hotel.reservas.length}</span>
+                                      <span>Pax: {hotel.totalPax}</span>
                                     </div>
                                   </div>
 
@@ -1899,18 +2048,22 @@ export default function PainelOperacionalUnificado() {
                                     <table className="painel-chegadas-table">
                                       <thead>
                                         <tr>
-                                          <th>Cliente</th>
                                           <th>Reserva</th>
-                                          <th>Pax</th>
-                                          <th>Operadora</th>
-                                          <th>Telefone</th>
+                                          <th>Contato</th>
+                                          <th>Nome do Pax</th>
+                                          <th>Quantidade</th>
+                                          <th>Hotel Origem</th>
+                                          <th>Voo Retorno</th>
+                                          <th>Buscar</th>
+                                          <th>OBS</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {hotel.reservas.map((reserva) => (
                                           <tr key={reserva.id}>
-                                            <td>{reserva.cliente}</td>
                                             <td>{reserva.reserva}</td>
+                                            <td>{reserva.telefone}</td>
+                                            <td>{reserva.cliente}</td>
                                             <td>
                                               {formatarQuantidadeDetalhada(
                                                 reserva.adultos,
@@ -1918,8 +2071,22 @@ export default function PainelOperacionalUnificado() {
                                                 reserva.infantes,
                                               )}
                                             </td>
-                                            <td>{reserva.operadora}</td>
-                                            <td>{reserva.telefone}</td>
+                                            <td>{reserva.hotel}</td>
+                                            <td>{reserva.vooRetorno}</td>
+                                            <td>
+                                              <button
+                                                type="button"
+                                                className="painel-chegadas-google-btn"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  abrirBuscaVooPratica(reserva.raw);
+                                                }}
+                                              >
+                                                <SearchRounded fontSize="small" />
+                                                Buscar voo
+                                              </button>
+                                            </td>
+                                            <td>{reserva.observacao || "-"}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -2124,83 +2291,67 @@ export default function PainelOperacionalUnificado() {
                                     </div>
 
                                     <div className="painel-chegadas-driver-meta">
-                                      <span>
-                                        Veículos: {passeio.totalVeiculos}
-                                      </span>
-                                      <span>
-                                        Reservas: {passeio.totalReservasPasseio}
-                                      </span>
-                                      <span>
-                                        Pax: {passeio.totalPaxPasseio}
-                                      </span>
+                                      <span>Veículos: {passeio.totalVeiculos}</span>
+                                      <span>Reservas: {passeio.totalReservasPasseio}</span>
+                                      <span>Pax: {passeio.totalPaxPasseio}</span>
                                       {passeio.pontoDeApoio ? (
-                                        <span>
-                                          Ponto de apoio: {passeio.pontoDeApoio}
-                                        </span>
+                                        <span>Ponto de apoio: {passeio.pontoDeApoio}</span>
                                       ) : null}
                                     </div>
                                   </div>
 
-                                  {passeio.veiculos.map((veiculo, idx) => (
+                                  <div
+                                    className="painel-chegadas-driver-meta"
+                                    style={{ padding: "0 14px 12px 14px", flexWrap: "wrap" }}
+                                  >
+                                    {passeio.veiculos.map((veiculo) => (
+                                      <span key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}`}>
+                                        {veiculo.veiculo} • {veiculo.totalPax} pax
+                                      </span>
+                                    ))}
+                                  </div>
+
+                                  {passeio.veiculos.map((veiculo) => (
                                     <div
-                                      key={`${passeio.passeio}_${veiculo.veiculo}`}
-                                      className="painel-chegadas-vehicle-block"
+                                      key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}_bloco`}
+                                      className="painel-chegadas-table-wrap"
+                                      style={{ marginBottom: 12 }}
                                     >
-                                      <div className="painel-chegadas-vehicle-header">
-                                        <div className="painel-chegadas-driver-title">
-                                          <DirectionsBusRounded fontSize="small" />
-                                          <strong>
-                                            {veiculo.veiculo}
-                                            {idx === 0 ? " • Principal" : ""}
-                                            {idx ===
-                                              passeio.veiculos.length - 1 &&
-                                            passeio.veiculos.length > 1
-                                              ? " • Apoio"
-                                              : ""}
-                                          </strong>
-                                        </div>
-
-                                        <div className="painel-chegadas-driver-meta">
-                                          <span>
-                                            Fornecedor: {veiculo.fornecedor}
-                                          </span>
-                                          <span>
-                                            Reservas: {veiculo.totalReservas}
-                                          </span>
-                                          <span>Pax: {veiculo.totalPax}</span>
-                                        </div>
+                                      <div
+                                        className="painel-chegadas-driver-meta"
+                                        style={{ padding: "0 14px 10px 14px" }}
+                                      >
+                                        <span><strong>Veículo:</strong> {veiculo.veiculo}</span>
+                                        <span><strong>Fornecedor:</strong> {veiculo.fornecedor}</span>
+                                        <span><strong>Primeiro horário:</strong> {veiculo.primeiraHora}</span>
                                       </div>
 
-                                      <div className="painel-chegadas-table-wrap">
-                                        <table className="painel-chegadas-table">
-                                          <thead>
-                                            <tr>
-                                              <th>Pax</th>
-                                              <th>Reserva</th>
-                                              <th>Quantidade</th>
-                                              <th>Hotel</th>
-                                              <th>Horário</th>
-                                              <th>Contato</th>
+                                      <table className="painel-chegadas-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Nome do Pax</th>
+                                            <th>Reserva</th>
+                                            <th>Contato</th>
+                                            <th>Quantidade</th>
+                                            <th>Hotel</th>
+                                            <th>Horário</th>
+                                            <th>OBS</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {veiculo.reservas.map((reserva) => (
+                                            <tr key={reserva.id}>
+                                              <td>{reserva.nomePax}</td>
+                                              <td>{reserva.numeroReserva}</td>
+                                              <td>{reserva.contato}</td>
+                                              <td>{reserva.quantidadeDetalhada}</td>
+                                              <td>{reserva.hotel}</td>
+                                              <td>{reserva.horarioApresentacao}</td>
+                                              <td>{reserva.observacao || "-"}</td>
                                             </tr>
-                                          </thead>
-                                          <tbody>
-                                            {veiculo.reservas.map((reserva) => (
-                                              <tr key={reserva.id}>
-                                                <td>{reserva.nomePax}</td>
-                                                <td>{reserva.numeroReserva}</td>
-                                                <td>
-                                                  {reserva.quantidadeDetalhada}
-                                                </td>
-                                                <td>{reserva.hotel}</td>
-                                                <td>
-                                                  {reserva.horarioApresentacao}
-                                                </td>
-                                                <td>{reserva.contato}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
+                                          ))}
+                                        </tbody>
+                                      </table>
                                     </div>
                                   ))}
                                 </div>

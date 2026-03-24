@@ -834,7 +834,7 @@
     border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     border-radius: 20px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
+    background: color-mix(in srgb, var(--bg) 100%, var(--input) 20%);
 }
 
 .painel-chegadas-flight-top {
@@ -844,7 +844,7 @@
     padding: 16px 18px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
+            color-mix(in srgb, var(--primary) 45%, var(--card) 55%),
             color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
     cursor: pointer;
     position: relative;
@@ -945,6 +945,18 @@
     font-weight: 500;
 }
 
+.painel-chegadas-flight-code-wrap span {
+        display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+
 .painel-chegadas-expand-icon {
     position: absolute;
     right: 16px;
@@ -982,7 +994,7 @@
     gap: 12px;
     padding: 14px 16px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+    background: color-mix(in srgb, var(--primary) 60%, var(--card) 94%);
     flex-wrap: wrap;
 }
 
