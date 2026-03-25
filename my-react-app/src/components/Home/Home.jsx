@@ -78,6 +78,7 @@ const SERVICOS_IGNORADOS = [
   "HOTEL SALVADOR/ TERMINAL NAUTICO",
   "TERMINAL NAUTICO / HOTEL SALVADOR",
   "HOTEL LITORAL NORTE / HOTEL SALVADOR",
+  "HOTEL SALVADOR / HOTEL SALVADOR",
 ];
 
 const TERMOS_IGNORADOS = [];
@@ -142,6 +143,12 @@ const LABEL_OCUPACAO = (valor) => {
   if (valor >= 60) return "Boa";
   if (valor >= 30) return "Moderada";
   return "Baixa";
+};
+
+const truncarTexto = (texto = "", limite = 28) => {
+  const valor = String(texto || "");
+  if (valor.length <= limite) return valor;
+  return `${valor.slice(0, limite - 1)}…`;
 };
 
 const getSemanaPorOffset = (offset = 0) => {
@@ -370,12 +377,6 @@ const formatarDelta = (valor) => {
   return `${valor}`;
 };
 
-const truncarTexto = (texto = "", limite = 28) => {
-  const valor = String(texto || "");
-  if (valor.length <= limite) return valor;
-  return `${valor.slice(0, limite - 1)}…`;
-};
-
 const getAlertaComparativoPax = (atual, anterior) => {
   const delta = atual - anterior;
   const percentual = calcularDeltaPercentual(atual, anterior);
@@ -386,7 +387,7 @@ const getAlertaComparativoPax = (atual, anterior) => {
       titulo: "Aumento de pax em relação à semana anterior",
       descricao: `A demanda subiu ${delta} pax (${formatarDelta(
         percentual,
-      )}%) versus a semana passada. Vale reforçar acompanhamento operacional, guias disponíveis e capacidade dos passeios.`,
+      )}%) versus a semana passada.`,
       icone: "up",
     };
   }
@@ -395,7 +396,7 @@ const getAlertaComparativoPax = (atual, anterior) => {
     return {
       tipo: "info",
       titulo: "Queda de pax em relação à semana anterior",
-      descricao: `A demanda caiu ${Math.abs(delta)} pax (${percentual}%) versus a semana passada. O cenário pode indicar janela para reorganizar equipe e redistribuir disponibilidade.`,
+      descricao: `A demanda caiu ${Math.abs(delta)} pax (${percentual}%) versus a semana passada.`,
       icone: "down",
     };
   }
@@ -444,10 +445,7 @@ const Home = () => {
   const [ordenacaoPaxDia, setOrdenacaoPaxDia] = useState("maior");
   const [semanaOffset, setSemanaOffset] = useState(0);
 
-  const semana = useMemo(
-    () => getSemanaPorOffset(semanaOffset),
-    [semanaOffset],
-  );
+  const semana = useMemo(() => getSemanaPorOffset(semanaOffset), [semanaOffset]);
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
@@ -693,7 +691,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -702,11 +700,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -771,13 +769,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -819,6 +817,69 @@ const Home = () => {
         };
       })
       .sort((a, b) => b.ocupacao - a.ocupacao);
+
+    const distribuicaoGuias = guiasAtivos
+      .map((guia) => {
+        const disponibilidadeSemana = Array.isArray(mapaDisponibilidade[guia.id])
+          ? mapaDisponibilidade[guia.id]
+          : [];
+
+        const diasDisponiveisLista = disponibilidadeSemana.filter(
+          (d) => d.status !== "BLOCKED",
+        );
+
+        const diasDisponiveis = diasDisponiveisLista.length;
+
+        const diasUtilizadosSet = new Set(
+          servicosExecutivos
+            .filter((servico) => !servico.fechado)
+            .filter(
+              (servico) =>
+                servico.guiaId === guia.id ||
+                normalizarTexto(servico.guiaNome || "") ===
+                normalizarTexto(guia.nome || ""),
+            )
+            .map((servico) => servico.date),
+        );
+
+        const diasUtilizados = diasUtilizadosSet.size;
+
+        const percentualUso = diasDisponiveis
+          ? Math.round((diasUtilizados / diasDisponiveis) * 100)
+          : 0;
+
+        let statusDistribuicao = "Ocioso";
+        if (percentualUso >= 85) statusDistribuicao = "Muito utilizado";
+        else if (percentualUso >= 60) statusDistribuicao = "Equilibrado";
+        else if (percentualUso >= 30) statusDistribuicao = "Moderado";
+
+        return {
+          id: guia.id,
+          nome: guia.nome,
+          nomeCurto: truncarTexto(guia.nome, 26),
+          diasDisponiveis,
+          diasUtilizados,
+          percentualUso,
+          statusDistribuicao,
+        };
+      })
+      .sort((a, b) => b.percentualUso - a.percentualUso);
+
+    const mediaUsoDistribuicao = distribuicaoGuias.length
+      ? Math.round(
+        distribuicaoGuias.reduce(
+          (acc, guia) => acc + Number(guia.percentualUso || 0),
+          0,
+        ) / distribuicaoGuias.length,
+      )
+      : 0;
+
+    let statusGeralDistribuicao = "Ociosa";
+    if (mediaUsoDistribuicao >= 85) statusGeralDistribuicao = "Muito carregada";
+    else if (mediaUsoDistribuicao >= 60)
+      statusGeralDistribuicao = "Equilibrada";
+    else if (mediaUsoDistribuicao >= 30)
+      statusGeralDistribuicao = "Moderada";
 
     const guiasSobrecarga = [...resumoGuias]
       .filter((g) => g.ocupacao >= 80)
@@ -863,8 +924,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -973,6 +1034,8 @@ const Home = () => {
       mapaPasseiosAtual[nome].pax += Number(item.passengers || 0);
     });
 
+
+
     const mapaPasseiosAnterior = {};
     apiSemanaAnterior.forEach((item) => {
       const nome = item.serviceName || "Passeio";
@@ -1045,13 +1108,13 @@ const Home = () => {
 
     alertas.push(alertaComparativoPax);
 
-    if (servicosSemGuia.length > 0) {
-      alertas.push({
-        tipo: "critico",
-        titulo: "Serviços reais sem guia",
-        descricao: `${servicosSemGuia.length} serviço(s) da API ainda estão sem guia alocado nesta semana.`,
-      });
-    }
+    // if (servicosSemGuia.length > 0) {
+    //   alertas.push({
+    //     tipo: "critico",
+    //     titulo: "Serviços reais sem guia",
+    //     descricao: `${servicosSemGuia.length} serviço(s) da API ainda estão sem guia alocado nesta semana.`,
+    //   });
+    // }
 
     if (comparativoGeral.deltaServicos > 0) {
       alertas.push({
@@ -1071,21 +1134,21 @@ const Home = () => {
       });
     }
 
-    if (guiasSobrecarga.length > 0) {
-      alertas.push({
-        tipo: "info",
-        titulo: "Guias com alta ocupação",
-        descricao: `${guiasSobrecarga.length} guia(s) aparecem com ocupação elevada.`,
-      });
-    }
+    // if (guiasSobrecarga.length > 0) {
+    //   alertas.push({
+    //     tipo: "info",
+    //     titulo: "Guias com alta ocupação",
+    //     descricao: `${guiasSobrecarga.length} guia(s) aparecem com ocupação elevada.`,
+    //   });
+    // }
 
-    if (guiasOciosos.length > 0) {
-      alertas.push({
-        tipo: "info",
-        titulo: "Capacidade ociosa detectada",
-        descricao: `${guiasOciosos.length} guia(s) têm baixa ocupação e podem absorver mais demanda.`,
-      });
-    }
+    // if (guiasOciosos.length > 0) {
+    //   alertas.push({
+    //     tipo: "info",
+    //     titulo: "Capacidade ociosa detectada",
+    //     descricao: `${guiasOciosos.length} guia(s) têm baixa ocupação e podem absorver mais demanda.`,
+    //   });
+    // }
 
     const reservasSemHotel = alertasApiBrutos
       .filter((item) => !deveIgnorarServico(item?._serviceNameCanonico || ""))
@@ -1124,6 +1187,9 @@ const Home = () => {
       disponibilidadeMedia,
       distribuicaoSemana,
       resumoGuias,
+      distribuicaoGuias,
+      mediaUsoDistribuicao,
+      statusGeralDistribuicao,
       guiasSobrecarga,
       guiasOciosos,
       topPasseios,
@@ -1149,6 +1215,36 @@ const Home = () => {
     fimSemana,
   ]);
 
+  const getAlertaSemaforo = (alerta) => {
+    const texto = `${alerta?.titulo || ""} ${alerta?.descricao || ""}`.toLowerCase();
+
+    const matchPercent = texto.match(/-?\d+%/);
+    const percentual = matchPercent
+      ? parseInt(matchPercent[0].replace("%", ""), 10)
+      : null;
+
+    if (percentual !== null && percentual <= -15) {
+      return "semaforo-vermelho";
+    }
+
+    if (percentual !== null && percentual < 0) {
+      return "semaforo-amarelo";
+    }
+
+    if (percentual !== null && percentual > 0) {
+      return "semaforo-verde";
+    }
+
+    if (texto.includes("queda") || texto.includes("redução")) {
+      return "semaforo-amarelo";
+    }
+
+    if (texto.includes("aumento") || texto.includes("crescimento")) {
+      return "semaforo-verde";
+    }
+
+    return "semaforo-neutro";
+  };
   const servicosDoDiaBase = useMemo(() => {
     if (!diaSelecionadoHome) return [];
 
@@ -1409,7 +1505,7 @@ Operacional - Luck Receptivo
         >
           Operação
         </button>
-        <button
+        {/* <button
           className={`home-tab ${abaAtiva === "guias" ? "active" : ""}`}
           onClick={() => setAbaAtiva("guias")}
         >
@@ -1420,7 +1516,7 @@ Operacional - Luck Receptivo
           onClick={() => setAbaAtiva("passeios")}
         >
           Passeios
-        </button>
+        </button> */}
         <button
           className={`home-tab ${abaAtiva === "comparativo" ? "active" : ""}`}
           onClick={() => setAbaAtiva("comparativo")}
@@ -1444,7 +1540,7 @@ Operacional - Luck Receptivo
                   className={carregandoCards ? "spin" : ""}
                 />
                 {carregandoCards
-                  ? "Atualizando Phoenix..."
+                  ? "Puxando dados do Phoenix..."
                   : "Atualizar dados do Phoenix"}
               </button>
             </div>
@@ -1573,9 +1669,8 @@ Operacional - Luck Receptivo
                     <button
                       key={dia.date}
                       type="button"
-                      className={`home-day-chip ${
-                        diaSelecionadoHome === dia.date ? "active" : ""
-                      }`}
+                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
+                        }`}
                       onClick={() => setDiaSelecionadoHome(dia.date)}
                       disabled={carregandoCards}
                     >
@@ -1648,13 +1743,12 @@ Operacional - Luck Receptivo
                           <tr key={item.chave}>
                             <td>
                               <span
-                                className={`home-service-status ${
-                                  item.statusOperacional === "Fechado"
-                                    ? "fechado"
-                                    : item.statusOperacional === "Alocado"
-                                      ? "alocado"
-                                      : "sem-guia"
-                                }`}
+                                className={`home-service-status ${item.statusOperacional === "Fechado"
+                                  ? "fechado"
+                                  : item.statusOperacional === "Alocado"
+                                    ? "alocado"
+                                    : "sem-guia"
+                                  }`}
                               >
                                 {item.statusOperacional}
                               </span>
@@ -1662,15 +1756,14 @@ Operacional - Luck Receptivo
 
                             <td>
                               <span
-                                className={`home-service-status ${
-                                  item.statusGrupo === "Fechado"
-                                    ? "fechado"
-                                    : item.statusGrupo === "Grupo formado"
-                                      ? "alocado"
-                                      : item.statusGrupo === "Privativo"
-                                        ? "privativo"
-                                        : "sem-guia"
-                                }`}
+                                className={`home-service-status ${item.statusGrupo === "Fechado"
+                                  ? "fechado"
+                                  : item.statusGrupo === "Grupo formado"
+                                    ? "alocado"
+                                    : item.statusGrupo === "Privativo"
+                                      ? "privativo"
+                                      : "sem-guia"
+                                  }`}
                               >
                                 {item.statusGrupo}
                               </span>
@@ -1679,24 +1772,17 @@ Operacional - Luck Receptivo
                             <td>
                               <div className="home-service-main-cell">
                                 <strong>{item.serviceName}</strong>
-                                <small>{formatarDataBr(item.date)}</small>
                               </div>
                             </td>
 
                             <td>
                               <div className="home-service-main-cell">
                                 <strong>{item.guiaNome || "-"}</strong>
-                                <small>
-                                  {item.hasWeeklyRecord
-                                    ? "Com registro no sistema"
-                                    : "Sem registro no sistema"}
-                                </small>
                               </div>
                             </td>
 
                             <td>
                               <div className="home-service-main-cell">
-                                <strong>{item.passengers}</strong>
                                 <small>
                                   ADT {item.adultCount || 0} • CHD{" "}
                                   {item.childCount || 0} • INF{" "}
@@ -1748,15 +1834,22 @@ Operacional - Luck Receptivo
                       Nenhum alerta crítico detectado nesta semana.
                     </div>
                   ) : (
-                    dashboard.alertas.map((alerta, index) => (
-                      <div
-                        key={`${alerta.titulo}-${index}`}
-                        className={`home-alert-item ${alerta.tipo}`}
-                      >
-                        <strong>{alerta.titulo}</strong>
-                        <span>{alerta.descricao}</span>
-                      </div>
-                    ))
+                    dashboard.alertas.map((alerta, index) => {
+                      const classeSemaforo = getAlertaSemaforo(alerta);
+
+                      return (
+                        <div
+                          key={`${alerta.titulo}-${index}`}
+                          className={`home-alert-item ${classeSemaforo}`}
+                        >
+                          <div className="home-alert-dot" />
+                          <div className="home-alert-content">
+                            <strong>{alerta.titulo}</strong>
+                            <span>{alerta.descricao}</span>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -1820,14 +1913,14 @@ Operacional - Luck Receptivo
 
                         <div className="ranking-meta">
                           <span>
-                            {operadora.reservas} reserva(s)/ocorrência(s)
+                            {operadora.reservas} reserva(s)
                           </span>
                           <span>
                             Participação:{" "}
                             {totalPaxOperadoras
                               ? Math.round(
-                                  (operadora.pax / totalPaxOperadoras) * 100,
-                                )
+                                (operadora.pax / totalPaxOperadoras) * 100,
+                              )
                               : 0}
                             %
                           </span>
@@ -1843,12 +1936,12 @@ Operacional - Luck Receptivo
               <div className="home-dashboard-card-header">
                 <div className="home-dashboard-card-title">
                   <CalendarMonthRounded fontSize="small" />
-                  <h3>Demanda real da semana</h3>
+                  <h3>Demanda da semana</h3>
                 </div>
               </div>
 
               {carregandoCards ? (
-                renderCardLoading("Atualizando demanda real da semana...")
+                renderCardLoading("Atualizando demanda da semana...")
               ) : (
                 <div style={{ width: "100%", height: 340 }}>
                   <ResponsiveContainer>
@@ -1925,7 +2018,7 @@ Operacional - Luck Receptivo
         </>
       )}
 
-      {abaAtiva === "guias" && (
+      {/* {abaAtiva === "guias" && (
         <div className="home-dashboard-grid">
           <div className="home-dashboard-card home-dashboard-card-large">
             <div className="home-dashboard-card-header">
@@ -2096,67 +2189,144 @@ Operacional - Luck Receptivo
             )}
           </div>
         </div>
-      )}
+      )} */}
 
-      {abaAtiva === "passeios" && (
+      {/* {abaAtiva === "passeios" && (
         <div className="home-dashboard-grid">
           <div className="home-dashboard-card home-dashboard-card-large">
             <div className="home-dashboard-card-header">
               <div className="home-dashboard-card-title">
                 <TravelExploreRounded fontSize="small" />
-                <h3>Passeios com maior volume real</h3>
+                <h3>Uso da disponibilidade dos guias</h3>
               </div>
             </div>
 
             {carregandoCards ? (
-              renderCardLoading("Atualizando passeios...")
-            ) : dashboard.topPasseios.length === 0 ? (
+              renderCardLoading("Atualizando distribuição dos guias...")
+            ) : dashboard.distribuicaoGuias.length === 0 ? (
               <div className="empty-state">
-                Sem volume registrado nesta semana.
+                Sem dados de distribuição dos guias nesta semana.
               </div>
             ) : (
-              <div style={{ width: "100%", height: 380 }}>
-                <ResponsiveContainer>
-                  <BarChart
-                    data={dashboard.topPasseios}
-                    layout="vertical"
-                    margin={{ top: 10, right: 20, left: 30, bottom: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      dataKey="nomeCurto"
-                      type="category"
-                      width={180}
-                      tick={{ fontSize: 12 }}
+              <div className="home-guias-uso-card">
+                <div className="home-guias-uso-list">
+                  {dashboard.distribuicaoGuias.map((guia) => (
+                    <div key={guia.id} className="home-guia-uso-item">
+                      <div className="home-guia-uso-top">
+                        <strong className="home-guia-uso-nome">
+                          {guia.nome}
+                        </strong>
+                        <span
+                          className={`home-guia-uso-status ${guia.statusDistribuicao
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`}
+                        >
+                          {guia.statusDistribuicao}
+                        </span>
+                      </div>
+
+                      <div className="home-guia-uso-grid">
+                        <div className="home-guia-uso-metric">
+                          <span className="home-guia-uso-label">
+                            Disponibilidade
+                          </span>
+                          <div className="home-guia-uso-bar">
+                            <div
+                              className="home-guia-uso-fill disponibilidade"
+                              style={{
+                                width: `${Math.min(
+                                  (guia.diasDisponiveis / 7) * 100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <strong className="home-guia-uso-value">
+                            {guia.diasDisponiveis} dia(s)
+                          </strong>
+                        </div>
+
+                        <div className="home-guia-uso-metric">
+                          <span className="home-guia-uso-label">
+                            Dias utilizados
+                          </span>
+                          <div className="home-guia-uso-bar">
+                            <div
+                              className="home-guia-uso-fill utilizados"
+                              style={{
+                                width: `${Math.min(
+                                  (guia.diasUtilizados / 7) * 100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <strong className="home-guia-uso-value">
+                            {guia.diasUtilizados} dia(s)
+                          </strong>
+                        </div>
+
+                        <div className="home-guia-uso-metric">
+                          <span className="home-guia-uso-label">
+                            Porcentagem de uso
+                          </span>
+                          <div className="home-guia-uso-bar">
+                            <div
+                              className={`home-guia-uso-fill percentual ${guia.percentualUso >= 85
+                                  ? "alto"
+                                  : guia.percentualUso >= 60
+                                    ? "equilibrado"
+                                    : guia.percentualUso >= 30
+                                      ? "moderado"
+                                      : "baixo"
+                                }`}
+                              style={{
+                                width: `${Math.min(guia.percentualUso, 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <strong className="home-guia-uso-value">
+                            {guia.percentualUso}%
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="home-distribuicao-geral-box">
+                  <div className="home-distribuicao-geral-top">
+                    <strong>Medidor geral de distribuição</strong>
+                    <span>{dashboard.statusGeralDistribuicao}</span>
+                  </div>
+
+                  <div className="home-distribuicao-geral-bar">
+                    <div
+                      className={`home-distribuicao-geral-fill ${dashboard.mediaUsoDistribuicao >= 85
+                          ? "alto"
+                          : dashboard.mediaUsoDistribuicao >= 60
+                            ? "equilibrado"
+                            : dashboard.mediaUsoDistribuicao >= 30
+                              ? "moderado"
+                              : "baixo"
+                        }`}
+                      style={{
+                        width: `${Math.min(
+                          dashboard.mediaUsoDistribuicao,
+                          100,
+                        )}%`,
+                      }}
                     />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      labelFormatter={(label, items) =>
-                        items?.[0]?.payload?.nome || label
-                      }
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="comGuia"
-                      stackId="a"
-                      name="Com guia"
-                      fill="#14b8a6"
-                    />
-                    <Bar
-                      dataKey="semGuia"
-                      stackId="a"
-                      name="Sem guia"
-                      fill="#f59e0b"
-                    />
-                    <Bar
-                      dataKey="fechados"
-                      stackId="a"
-                      name="Fechados"
-                      fill="#ef4444"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                  </div>
+
+                  <div className="home-distribuicao-geral-legenda">
+                    <span>0%</span>
+                    <span>
+                      {dashboard.mediaUsoDistribuicao}% de uso médio
+                    </span>
+                    <span>100%</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -2175,9 +2345,7 @@ Operacional - Luck Receptivo
               <div className="home-dashboard-summary-grid">
                 <div className="summary-box">
                   <span className="summary-label">Serviços reais</span>
-                  <strong>
-                    {renderValorCard(dashboard.totalServicosReais)}
-                  </strong>
+                  <strong>{renderValorCard(dashboard.totalServicosReais)}</strong>
                 </div>
 
                 <div className="summary-box">
@@ -2245,7 +2413,7 @@ Operacional - Luck Receptivo
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {abaAtiva === "comparativo" && (
         <div className="home-dashboard-grid">
@@ -2319,12 +2487,15 @@ Operacional - Luck Receptivo
               renderCardLoading("Atualizando card...")
             ) : (
               <div
-                className={`home-alert-item ${
-                  dashboard.alertaComparativoPax?.tipo || "info"
-                }`}
+                className={`home-alert-item ${getAlertaSemaforo(
+                  dashboard.alertaComparativoPax
+                )}`}
               >
-                <strong>{dashboard.alertaComparativoPax?.titulo}</strong>
-                <span>{dashboard.alertaComparativoPax?.descricao}</span>
+                <div className="home-alert-dot" />
+                <div className="home-alert-content">
+                  <strong>{dashboard.alertaComparativoPax?.titulo}</strong>
+                  <span>{dashboard.alertaComparativoPax?.descricao}</span>
+                </div>
               </div>
             )}
           </div>
