@@ -16,6 +16,7 @@ import {
   FlightTakeoffRounded,
   LocalShippingRounded,
   AssignmentRounded,
+  AssessmentRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -46,6 +47,10 @@ const Dashboard = ({ loading }) => {
           <div className="sidebar-group">
             <span className="sidebar-group-title">Operação</span>
 
+            <NavLink to="relatorios" className={getNavClass}>
+              <AssessmentRounded fontSize="small" className="sidebar-icon" />
+              <span>Analytics - beta</span>
+            </NavLink>
             <NavLink to="guias" className={getNavClass}>
               <DnsRounded fontSize="small" className="sidebar-icon" />
               <span>Lista de Guias</span>

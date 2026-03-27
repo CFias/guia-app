@@ -9,7 +9,6 @@ import DisponibilidadeGuia from "./components/DisponibilidadeGuia/Disponibilidad
 import GerarEscalaSemanal from "./components/EscalaSemanal/EscalaSemanal";
 import ListaGuias from "./components/Guias/ListaGuias";
 import ListaPasseios from "./components/ListaPasseios/ListaPasseios";
-import RelatoriosGuias from "./components/RelatoriosGuias/RelatoriosGuias";
 import Home from "./components/Home/Home";
 import Configuracoes from "./pages/Configuracoes/Configuracoes";
 import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGuias";
@@ -19,6 +18,7 @@ import CadastroFornecedores from "./components/CadastroFornecedores/CadastroForn
 import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
 import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
+import RelatoriosOperacionais from "./components/RelatoriosOp/RelatoriosOp";
 
 function App() {
   return (
@@ -38,12 +38,12 @@ function App() {
         <Route path="resumo" element={<ResumoOperacionalGuias />} />
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
         <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
+        <Route path="relatorios" element={<RelatoriosOperacionais />} />
         <Route path="/" element={<Home />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         {/* rotas futuras */}
         <Route path="guias" element={<ListaGuias />} />
         <Route path="passeios" element={<ListaPasseios />} />
-        <Route path="relatorios-guias" element={<RelatoriosGuias />} />
 
       </Route>
     </Routes>

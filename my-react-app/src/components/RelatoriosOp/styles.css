@@ -1,0 +1,445 @@
+.relatorios-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.relatorios-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.home-page-title {
+    margin: 0 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.home-page-subtitle {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.relatorios-filtros-card {
+    overflow: hidden;
+}
+
+.relatorios-filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.relatorios-filtros-especificos {
+    margin-bottom: 0;
+    padding-top: 4px;
+}
+
+.home-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.home-filter-field span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+}
+
+.home-filter-field input,
+.home-filter-field select {
+    min-height: 42px;
+    width: 100%;
+    padding: 0 14px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.home-filter-field input:focus,
+.home-filter-field select:focus {
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border) 72%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent 90%);
+}
+
+.home-filter-checkbox {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.home-filter-checkbox input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--text-dist);
+}
+
+.relatorios-range-shortcuts {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.home-chip-btn,
+.home-collapse-btn,
+.relatorios-tab-btn {
+    transition: all 0.25s ease;
+}
+
+.home-chip-btn {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.home-chip-btn:hover,
+.home-collapse-btn:hover,
+.relatorios-tab-btn:hover {
+    transform: translateY(-1px);
+}
+
+.home-collapse-btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.relatorios-tabs-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.relatorios-tab-btn {
+    min-height: 40px;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.relatorios-tab-btn.active {
+    background: color-mix(in srgb, var(--primary) 14%, var(--card) 86%);
+    border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
+    color: var(--text-dist);
+}
+
+.home-kpis-grid.relatorios-kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.home-kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+}
+
+.home-kpi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--text) 66%, transparent 34%);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.home-kpi-card strong {
+    font-size: 24px;
+    line-height: 1;
+    color: var(--text);
+}
+
+.home-kpi-card small {
+    font-size: 11px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.home-kpi-card.positivo {
+    border-color: color-mix(in srgb, #22c55e 28%, var(--border) 72%);
+    background: linear-gradient(180deg, color-mix(in srgb, #22c55e 8%, var(--card) 92%), var(--card));
+}
+
+.home-kpi-card.negativo,
+.home-kpi-card.alerta {
+    border-color: color-mix(in srgb, #f59e0b 28%, var(--border) 72%);
+    background: linear-gradient(180deg, color-mix(in srgb, #f59e0b 8%, var(--card) 92%), var(--card));
+}
+
+.home-kpi-card.negativo strong,
+.home-kpi-card.alerta strong {
+    color: color-mix(in srgb, #b45309 72%, var(--text) 28%);
+}
+
+.home-kpi-card.neutro {
+    border-color: color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+}
+
+.home-dashboard-card-subtitle {
+    margin: -6px 0 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+}
+
+.home-table-wrap {
+    overflow-x: auto;
+}
+
+.home-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+.home-table thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+    padding: 0 14px 8px;
+    white-space: nowrap;
+}
+
+.home-table tbody tr {
+    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+}
+
+.home-table tbody td {
+    padding: 14px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+    font-size: 11px;
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.home-table tbody td:first-child {
+    border-left: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+}
+
+.home-table tbody td:last-child {
+    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-pill.ok {
+    background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
+    color: var(--text-dist);
+}
+
+.status-pill.alerta {
+    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    color: #9a7a00;
+}
+
+.status-pill.neutro {
+    background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+    color: var(--text);
+}
+
+.home-alert-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid transparent;
+}
+
+.home-alert-item strong {
+    font-size: 12px;
+    color: var(--text);
+}
+
+.home-alert-item span {
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.home-alert-item.critico {
+    background: color-mix(in srgb, var(--p1) 10%, transparent 90%);
+    border-color: color-mix(in srgb, var(--p1) 18%, transparent 82%);
+    color: var(--p1);
+}
+
+.home-alert-item.info {
+    background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+    border-color: color-mix(in srgb, var(--primary) 16%, var(--border) 84%);
+    color: var(--text);
+}
+
+.empty-state {
+    padding: 16px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent 30%);
+    color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+    font-size: 14px;
+    text-align: center;
+}
+
+.spin {
+    animation: relatoriosSpin 1s linear infinite;
+}
+
+@keyframes relatoriosSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.relatorios-page .recharts-default-tooltip {
+    border-radius: 12px;
+}
+
+.relatorios-page .recharts-legend-item {
+    font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+
+    .home-kpis-grid.relatorios-kpis-grid,
+    .relatorios-filtros-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .relatorios-page {
+        max-width: 100%;
+    }
+
+    .home-kpis-grid.relatorios-kpis-grid,
+    .relatorios-filtros-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .relatorios-tabs-nav,
+    .relatorios-range-shortcuts {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .relatorios-tab-btn,
+    .home-chip-btn,
+    .home-collapse-btn,
+    .home-refresh-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .relatorios-page {
+        padding: 4px;
+    }
+
+    .home-page-title {
+        font-size: 24px;
+    }
+
+    .home-page-subtitle {
+        font-size: 13px;
+    }
+
+    .home-dashboard-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .home-dashboard-card-title h3 {
+        font-size: 18px;
+    }
+
+    .home-table {
+        min-width: 760px;
+    }
+}
