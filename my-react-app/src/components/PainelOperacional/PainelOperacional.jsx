@@ -33,7 +33,11 @@ const SERVICOS_IGNORADOS = [
   "PASSEIO PRAIA DO FORTE 4H (LTN-VOLTA)",
   "IN  - LITORAL NORTE",
   "CITY TOUR PANORAMICO",
-  "VOLTA FRADES COM ITAPARICA"
+  "VOLTA FRADES COM ITAPARICA",
+  "OUT -  LITORAL NORTE",
+  "COORDENADOR LTN 04H OU 08H",
+  "COORDENADOR SSA 08H",
+  
 ];
 
 /**
@@ -47,7 +51,10 @@ const PONTOS_DE_APOIO_CONFIG = {
   // "praia do forte": "Posto Shell - Paralela",
   "tour a praia do forte e guarajuba": "Barraca do Carlinhos",
   "tour morro de sao paulo": "Sambass",
-  "tour de ilhas frades e itaparica": "Manguezal"
+  "tour de ilhas frades e itaparica": "Manguezal",
+  "praias do litoral norte": "Zoião",
+  "city tour salvador saindo do litoral": "Coliseu",
+  "city tour historico panoramico": "",
 };
 
 const ABAS = {
@@ -1271,7 +1278,9 @@ export default function PainelOperacionalUnificado() {
   );
 
   const montarResumoTexto = () => {
-    const linhas = [`${formatarDataBr(dataSelecionada)}`, ""];
+    const linhas = [`Lista de Passeios: ${formatarDataBr(dataSelecionada)}`, ""];
+    linhas.push("");
+
 
     gruposGuiasFiltrados.forEach((grupo) => {
       grupo.passeios.forEach((passeio) => {
@@ -1290,8 +1299,8 @@ export default function PainelOperacionalUnificado() {
         const pontoDeApoio = passeio.pontoDeApoio || "";
 
         linhas.push(`*${passeio.passeio}*`);
-        linhas.push(`GUIA: ${grupo.guia}`);
-        linhas.push(`QUANTIDADE DE PAX: ${passeio.totalPaxPasseio}`);
+        linhas.push(`${grupo.guia}`);
+        linhas.push(`PAX: ${passeio.totalPaxPasseio}`);
         linesPushIfValue(
           linhas,
           `VEÍCULO PRINCIPAL: ${veiculoPrincipal}`,
@@ -1308,8 +1317,10 @@ export default function PainelOperacionalUnificado() {
           pontoDeApoio,
         );
         linhas.push("");
+        linhas.push("");
       });
     });
+    linhas.push("Pontos de apoio informados!");
 
     return linhas.join("\n").trim();
   };
