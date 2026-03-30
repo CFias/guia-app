@@ -37,7 +37,7 @@ const SERVICOS_IGNORADOS = [
   "OUT -  LITORAL NORTE",
   "COORDENADOR LTN 04H OU 08H",
   "COORDENADOR SSA 08H",
-  
+
 ];
 
 /**
@@ -54,7 +54,7 @@ const PONTOS_DE_APOIO_CONFIG = {
   "tour de ilhas frades e itaparica": "Manguezal",
   "praias do litoral norte": "Zoião",
   "city tour salvador saindo do litoral": "Coliseu",
-  "city tour historico panoramico": "",
+  "city tour historico e panoramico": "alternar",
 };
 
 const ABAS = {
@@ -1277,50 +1277,93 @@ export default function PainelOperacionalUnificado() {
     [gruposGuiasBase],
   );
 
-  const montarResumoTexto = () => {
-    const linhas = [`Lista de Passeios: ${formatarDataBr(dataSelecionada)}`, ""];
-    linhas.push("");
 
+
+  const formatarNomeVeiculo = (nome) => {
+    if (!nome) return "-";
+
+    const nomeBase = String(nome).split("-")[0].trim();
+    const partes = nomeBase.split(/\s+/).filter(Boolean);
+
+    return partes.slice(0, 2).join(" ").toUpperCase();
+  };
+
+  const formatarNomeGuia = (nome) => {
+    if (!nome) return "-";
+
+    return String(nome)
+      .replace(/\s*-\s*GUIA\s*$/i, "")
+      .trim()
+      .toUpperCase();
+  };
+
+  const formatarNomePasseio = (nome) => {
+    if (!nome) return "-";
+    return String(nome).trim().toUpperCase();
+  };
+
+  const formatarTextoApoio = (texto) => {
+    if (!texto) return "";
+    return String(texto).trim().toUpperCase();
+  };
+
+  const montarResumoTexto = () => {
+    const linhas = [`LISTA DE PASSEIOS: ${formatarDataBr(dataSelecionada)}`, ""];
 
     gruposGuiasFiltrados.forEach((grupo) => {
       grupo.passeios.forEach((passeio) => {
         if (deveIgnorarServico(passeio.passeio)) return;
 
-        const veiculosOrdenados = [...passeio.veiculos].sort((a, b) => {
-          if (b.totalPax !== a.totalPax) return b.totalPax - a.totalPax;
+        const veiculosOrdenados = [...(passeio.veiculos || [])].sort((a, b) => {
+          if ((b.totalPax || 0) !== (a.totalPax || 0)) {
+            return (b.totalPax || 0) - (a.totalPax || 0);
+          }
           return ordenarHora(a.primeiraHora, b.primeiraHora);
         });
 
-        const veiculoPrincipal = veiculosOrdenados[0]?.veiculo || "-";
+        const veiculoPrincipal = formatarNomeVeiculo(
+          veiculosOrdenados[0]?.veiculo
+        );
+
         const veiculoApoio =
           veiculosOrdenados.length > 1
-            ? veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo || "-"
+            ? formatarNomeVeiculo(
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo
+            )
             : "";
-        const pontoDeApoio = passeio.pontoDeApoio || "";
 
-        linhas.push(`*${passeio.passeio}*`);
-        linhas.push(`${grupo.guia}`);
-        linhas.push(`PAX: ${passeio.totalPaxPasseio}`);
+        const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
+        const nomePasseio = formatarNomePasseio(passeio.passeio);
+        const nomeGuia = formatarNomeGuia(grupo.guia);
+
+        linhas.push(`*${nomePasseio}*`);
+        linhas.push(`GUIA: ${nomeGuia}`);
+        linhas.push(`PAX: ${passeio.totalPaxPasseio || 0}`);
+
         linesPushIfValue(
           linhas,
           `VEÍCULO PRINCIPAL: ${veiculoPrincipal}`,
-          veiculoPrincipal && veiculoPrincipal !== "-",
+          veiculoPrincipal && veiculoPrincipal !== "-"
         );
+
         linesPushIfValue(
           linhas,
           `VEÍCULO DE APOIO: ${veiculoApoio}`,
-          veiculoApoio,
+          veiculoApoio && veiculoApoio !== "-"
         );
+
         linesPushIfValue(
           linhas,
           `PONTO DE APOIO: ${pontoDeApoio}`,
-          pontoDeApoio,
+          pontoDeApoio
         );
+
         linhas.push("");
         linhas.push("");
       });
     });
-    linhas.push("Pontos de apoio informados!");
+
+    linhas.push("PONTOS DE APOIO INFORMADOS!🍀");
 
     return linhas.join("\n").trim();
   };

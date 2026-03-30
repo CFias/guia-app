@@ -1212,4 +1212,24 @@
   color: #3730a3;
   border: 1px solid #c7d2fe;
   font-weight: 700;
-} 
+}
+
+.mini-bar.neutro {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mini-bar.bloqueado {
+  background: #ef4444;
+  opacity: 0.85;
+}
+
+.mini-bar.ativo {
+  background: #22c55e;
+}
+
+.mini-bar.disponivel-nao-usado {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.55);
+  transform: scale(1.12);
+  border-radius: 3px;
+}
