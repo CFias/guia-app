@@ -449,6 +449,56 @@ const Home = () => {
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
+  const ehObservacaoCancelada = (observacao = "") => {
+    const texto = normalizarTexto(String(observacao || ""));
+
+    if (!texto) return false;
+
+    return (
+      texto === "cld" ||
+      texto.includes(" cld") ||
+      texto.startsWith("cld ") ||
+      texto.includes("cancelado")
+    );
+  };
+
+  const itemEstaCancelado = (item) => {
+    const observacao =
+      item?.observation ||
+      item?.observations ||
+      item?.notes ||
+      item?.note ||
+      item?.reserve?.observation ||
+      item?.reserve?.observations ||
+      item?.reserve?.notes ||
+      item?.reserve?.note ||
+      "";
+
+    return ehObservacaoCancelada(observacao);
+  };
+
+  const extrairContagemPax = (item) => {
+    if (itemEstaCancelado(item)) {
+      return {
+        adultos: 0,
+        criancas: 0,
+        infants: 0,
+        total: 0,
+      };
+    }
+
+    const adultos = Number(item?.is_adult_count || 0);
+    const criancas = Number(item?.is_child_count || 0);
+    const infants = Number(item?.is_infant_count || 0);
+
+    return {
+      adultos,
+      criancas,
+      infants,
+      total: adultos + criancas,
+    };
+  };
+
   const carregarSemanaApi = async (listaSemana) => {
     const respostasApi = await Promise.all(
       listaSemana.map(async (dia) => {
@@ -469,10 +519,14 @@ const Home = () => {
       }),
     );
 
+    
+
     const itensApiAgrupados = {};
     const itensBrutos = [];
 
     respostasApi.flat().forEach((item) => {
+      if (itemEstaCancelado(item)) return;
+
       const nomeOriginal = extrairNomePasseio(item);
       const externalServiceId = extrairServiceIdExterno(item);
       const date = extrairDataServico(item);
@@ -1287,6 +1341,7 @@ const Home = () => {
       a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
     );
   }, [servicosDoDiaBase]);
+
 
   const servicosDoDia = useMemo(() => {
     const listaFiltrada = servicosDoDiaBase.filter((item) => {

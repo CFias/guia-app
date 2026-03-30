@@ -37,7 +37,6 @@ const SERVICOS_IGNORADOS = [
   "OUT -  LITORAL NORTE",
   "COORDENADOR LTN 04H OU 08H",
   "COORDENADOR SSA 08H",
-
 ];
 
 /**
@@ -46,9 +45,6 @@ const SERVICOS_IGNORADOS = [
  * O valor é o texto que deve sair na cópia.
  */
 const PONTOS_DE_APOIO_CONFIG = {
-  // exemplos:
-  // "city tour historico": "Clube Espanhol",
-  // "praia do forte": "Posto Shell - Paralela",
   "tour a praia do forte e guarajuba": "Barraca do Carlinhos",
   "tour morro de sao paulo": "Sambass",
   "tour de ilhas frades e itaparica": "Manguezal",
@@ -90,16 +86,6 @@ const extrairListaResposta = (json) => {
   return [];
 };
 
-const normalizarNomePasseio = (nome = "") => {
-  return normalizarTexto(nome)
-    .replace(/\b4h\b/g, "")
-    .replace(/\bvolta\b/g, "volta")
-    .replace(/\bin\b/g, "in")
-    .replace(/\bltn\b/g, "ltn")
-    .replace(/\s+/g, " ")
-    .trim();
-};
-
 const normalizarTexto = (texto = "") =>
   String(texto)
     .normalize("NFD")
@@ -110,6 +96,16 @@ const normalizarTexto = (texto = "") =>
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+
+const normalizarNomePasseio = (nome = "") => {
+  return normalizarTexto(nome)
+    .replace(/\b4h\b/g, "")
+    .replace(/\bvolta\b/g, "volta")
+    .replace(/\bin\b/g, "in")
+    .replace(/\bltn\b/g, "ltn")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 const formatarDataBr = (dataIso) => {
   if (!dataIso) return "";
@@ -133,11 +129,11 @@ const formatarHora = (valor = "") => {
 };
 
 const SERVICOS_IGNORADOS_NORMALIZADOS = SERVICOS_IGNORADOS.map((item) =>
-  normalizarNomePasseio(item),
+  normalizarNomePasseio(item)
 );
 
 const PONTOS_DE_APOIO_CONFIG_NORMALIZADO = Object.entries(
-  PONTOS_DE_APOIO_CONFIG,
+  PONTOS_DE_APOIO_CONFIG
 ).reduce((acc, [chave, valor]) => {
   acc[normalizarNomePasseio(chave)] = valor;
   return acc;
@@ -165,12 +161,13 @@ const extrairAdultos = (item) => Number(item?.is_adult_count || 0);
 const extrairCriancas = (item) => Number(item?.is_child_count || 0);
 const extrairInfantes = (item) =>
   Number(item?.is_baby_count || item?.is_infant_count || 0);
-const extrairPax = (item) => extrairAdultos(item) + extrairCriancas(item);
+const extrairPax = (item) =>
+  extrairAdultos(item) + extrairCriancas(item) + extrairInfantes(item);
 
 const formatarQuantidadeDetalhada = (
   adultos = 0,
   criancas = 0,
-  infantes = 0,
+  infantes = 0
 ) => {
   const partes = [];
   if (adultos > 0) partes.push(`${adultos} ADT`);
@@ -457,7 +454,7 @@ const extrairAdicionais = (item) => {
 
   const adicionais = item.additionalReserveServices
     .map(
-      (add) => add?.additional?.name || add?.provider?.name || add?.name || "",
+      (add) => add?.additional?.name || add?.provider?.name || add?.name || ""
     )
     .filter(Boolean);
 
@@ -470,7 +467,7 @@ const abrirBuscaGoogleVoo = (codigoVoo) => {
   window.open(
     `https://www.google.com/search?q=${query}`,
     "_blank",
-    "noopener,noreferrer",
+    "noopener,noreferrer"
   );
 };
 
@@ -590,7 +587,7 @@ const somarReservas = (reservas = []) =>
       totalCriancas: 0,
       totalInfantes: 0,
       totalReservas: 0,
-    },
+    }
   );
 
 const normalizarCodigoVoo = (valor = "") =>
@@ -607,8 +604,8 @@ const deveIgnorarServico = (nome = "") => {
       ignorado
         .toUpperCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""),
-    ),
+        .replace(/[\u0300-\u036f]/g, "")
+    )
   );
 };
 
@@ -695,7 +692,7 @@ const extrairVooRetornoTexto = (item) => {
       item?.flight?.departure_time ||
       item?.flight?.scheduled_departure ||
       item?.fly_hour ||
-      "",
+      ""
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -724,7 +721,7 @@ const abrirBuscaVooPratica = (item) => {
   window.open(
     `https://www.google.com/search?q=${encodeURIComponent(codigoLimpo)}`,
     "_blank",
-    "noopener,noreferrer",
+    "noopener,noreferrer"
   );
 };
 
@@ -734,12 +731,33 @@ const extrairHorarioApresentacao = (item) =>
     item?.schedule?.presentation_hour ||
     item?.our_schedule ||
     item?.fly_hour ||
-    "",
+    ""
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
   const chave = normalizarTexto(nomePasseio);
-  return PONTOS_DE_APOIO_CONFIG[chave] || "";
+  return (
+    PONTOS_DE_APOIO_CONFIG_NORMALIZADO[normalizarNomePasseio(chave)] ||
+    PONTOS_DE_APOIO_CONFIG_NORMALIZADO[normalizarNomePasseio(nomePasseio)] ||
+    ""
+  );
+};
+
+const extrairTipoOutOuTransfer = (item) => {
+  const tipoBruto =
+    item?.service_type ??
+    item?.serviceType ??
+    item?.service?.type ??
+    item?.service?.service_type;
+
+  const tipo = String(tipoBruto || "").trim();
+
+  if (tipo === "2") return "OUT";
+  if (tipo === "4") return "TRANSFER";
+
+  const nomeServico = normalizarTexto(extrairNomePasseio(item));
+  if (nomeServico.includes("out")) return "OUT";
+  return "TRANSFER";
 };
 
 export default function PainelOperacionalUnificado() {
@@ -776,27 +794,69 @@ export default function PainelOperacionalUnificado() {
 
       setErro("");
 
-      let url = "";
+      if (aba === ABAS.CHEGADAS) {
+        const response = await fetch(montarUrlApi(dataSelecionada, 1), {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        });
 
-      if (aba === ABAS.CHEGADAS) url = montarUrlApi(dataSelecionada, 1);
-      else if (aba === ABAS.OUTS) url = montarUrlApi(dataSelecionada, 2);
-      else url = montarUrlApi(dataSelecionada, null);
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}`);
+        }
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+        const json = await response.json();
+        setItensChegadas(extrairListaResposta(json));
+      } else if (aba === ABAS.OUTS) {
+        const [responseOuts, responseTransfers] = await Promise.all([
+          fetch(montarUrlApi(dataSelecionada, 2), {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          }),
+          fetch(montarUrlApi(dataSelecionada, 4), {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          }),
+        ]);
 
-      if (!response.ok) {
-        throw new Error(`Erro HTTP ${response.status}`);
+        if (!responseOuts.ok) {
+          throw new Error(`Erro HTTP ${responseOuts.status} ao carregar OUTs`);
+        }
+
+        if (!responseTransfers.ok) {
+          throw new Error(
+            `Erro HTTP ${responseTransfers.status} ao carregar Transfers`
+          );
+        }
+
+        const [jsonOuts, jsonTransfers] = await Promise.all([
+          responseOuts.json(),
+          responseTransfers.json(),
+        ]);
+
+        const listaOuts = extrairListaResposta(jsonOuts).map((item) => ({
+          ...item,
+          __tipoPainel: "OUT",
+        }));
+
+        const listaTransfers = extrairListaResposta(jsonTransfers).map((item) => ({
+          ...item,
+          __tipoPainel: "TRANSFER",
+        }));
+
+        setItensOuts([...listaOuts, ...listaTransfers]);
+      } else {
+        const response = await fetch(montarUrlApi(dataSelecionada, null), {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        setItensGuias(extrairListaResposta(json));
       }
-
-      const json = await response.json();
-      const lista = extrairListaResposta(json);
-
-      if (aba === ABAS.CHEGADAS) setItensChegadas(lista);
-      if (aba === ABAS.OUTS) setItensOuts(lista);
-      if (aba === ABAS.GUIAS) setItensGuias(lista);
 
       setUltimaAtualizacao(new Date());
     } catch (err) {
@@ -850,7 +910,7 @@ export default function PainelOperacionalUnificado() {
         resumoPax: formatarQuantidadeDetalhada(
           extrairAdultos(item),
           extrairCriancas(item),
-          extrairInfantes(item),
+          extrairInfantes(item)
         ),
         criancas: extrairCriancas(item),
         infantes: extrairInfantes(item),
@@ -861,7 +921,7 @@ export default function PainelOperacionalUnificado() {
     });
 
     return Object.values(mapa).sort((a, b) =>
-      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
+      ordenarHora(a.horarioPrevisto, b.horarioPrevisto)
     );
   }, [itensChegadas]);
 
@@ -877,10 +937,10 @@ export default function PainelOperacionalUnificado() {
       });
 
       const reservasEscaladas = voo.reservas.filter(
-        (reserva) => reserva.escalaId,
+        (reserva) => reserva.escalaId
       );
       const reservasNaoEscaladas = voo.reservas.filter(
-        (reserva) => !reserva.escalaId,
+        (reserva) => !reserva.escalaId
       );
 
       const gruposPorVeiculo = Object.values(
@@ -914,11 +974,11 @@ export default function PainelOperacionalUnificado() {
           }
 
           return acc;
-        }, {}),
+        }, {})
       ).sort((a, b) =>
         String(a.veiculo).localeCompare(String(b.veiculo), "pt-BR", {
           sensitivity: "base",
-        }),
+        })
       );
 
       const totaisNaoEscalados = somarReservas(reservasNaoEscaladas);
@@ -933,11 +993,11 @@ export default function PainelOperacionalUnificado() {
         totalReservas: voo.reservas.length,
         totalCriancas: voo.reservas.reduce(
           (acc, r) => acc + Number(r.criancas || 0),
-          0,
+          0
         ),
         totalInfantes: voo.reservas.reduce(
           (acc, r) => acc + Number(r.infantes || 0),
-          0,
+          0
         ),
         statusBruto: calculoStatus.status,
         statusKey: classificarStatusVoo(calculoStatus.status),
@@ -966,9 +1026,7 @@ export default function PainelOperacionalUnificado() {
     if (filtroEscala === "somente-nao-escalados")
       lista = lista.filter((v) => v.totalmenteNaoEscalado);
 
-    return lista.sort((a, b) =>
-      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
-    );
+    return lista.sort((a, b) => ordenarHora(a.horarioPrevisto, b.horarioPrevisto));
   }, [voos, filtroStatus, filtroEscala]);
 
   const resumoChegadas = useMemo(
@@ -983,13 +1041,13 @@ export default function PainelOperacionalUnificado() {
           "cancelado",
           "pousado-atrasado",
           "pousado-antecipado",
-        ].includes(v.statusKey),
+        ].includes(v.statusKey)
       ).length,
       veiculos: new Set(
-        voos.flatMap((voo) => voo.gruposPorVeiculo.map((g) => g.veiculo)),
+        voos.flatMap((voo) => voo.gruposPorVeiculo.map((g) => g.veiculo))
       ).size,
     }),
-    [voos],
+    [voos]
   );
 
   const gruposOutBase = useMemo(() => {
@@ -1010,8 +1068,10 @@ export default function PainelOperacionalUnificado() {
       const infantes = extrairInfantes(item);
       const observacao = extrairObservacao(item);
       const vooRetorno = extrairVooRetornoTexto(item);
+      const modalidade = extrairModalidadeServico(item);
+      const tipoServico = extrairTipoOutOuTransfer(item);
 
-      const grupoKey = `${escalaId}__${veiculo}`;
+      const grupoKey = `${escalaId}__${veiculo}__${tipoServico}__${modalidade}`;
 
       if (!mapa[grupoKey]) {
         mapa[grupoKey] = {
@@ -1019,6 +1079,8 @@ export default function PainelOperacionalUnificado() {
           escalaId,
           veiculo,
           fornecedor,
+          modalidade,
+          tipoServico,
           reservas: [],
         };
       }
@@ -1037,13 +1099,15 @@ export default function PainelOperacionalUnificado() {
         telefone: contato,
         observacao,
         vooRetorno,
+        modalidade,
+        tipoServico,
       });
     });
 
     return Object.values(mapa)
       .map((grupo) => {
         const primeiroHorario = extrairPrimeiroHorarioValido(
-          grupo.reservas.map((r) => r.horarioHotel),
+          grupo.reservas.map((r) => r.horarioHotel)
         );
 
         const hoteisMap = {};
@@ -1068,7 +1132,7 @@ export default function PainelOperacionalUnificado() {
             ...hotel,
             totalPax: hotel.reservas.reduce(
               (acc, item) => acc + Number(item.pax || 0),
-              0,
+              0
             ),
           }))
           .sort((a, b) => ordenarHora(a.horario, b.horario));
@@ -1083,7 +1147,7 @@ export default function PainelOperacionalUnificado() {
           totalReservas: grupo.reservas.length,
           totalPax: grupo.reservas.reduce(
             (acc, item) => acc + Number(item.pax || 0),
-            0,
+            0
           ),
         };
       })
@@ -1099,9 +1163,9 @@ export default function PainelOperacionalUnificado() {
   const veiculosDisponiveis = useMemo(
     () =>
       [...new Set(gruposOutBase.map((item) => item.veiculo))].sort((a, b) =>
-        String(a).localeCompare(String(b), "pt-BR", { sensitivity: "base" }),
+        String(a).localeCompare(String(b), "pt-BR", { sensitivity: "base" })
       ),
-    [gruposOutBase],
+    [gruposOutBase]
   );
 
   const gruposOutFiltrados = useMemo(() => {
@@ -1115,8 +1179,10 @@ export default function PainelOperacionalUnificado() {
       reservas: gruposOutBase.reduce((acc, g) => acc + g.totalReservas, 0),
       pax: gruposOutBase.reduce((acc, g) => acc + g.totalPax, 0),
       hoteis: gruposOutBase.reduce((acc, g) => acc + g.hoteis.length, 0),
+      transfers: gruposOutBase.filter((g) => g.tipoServico === "TRANSFER").length,
+      outs: gruposOutBase.filter((g) => g.tipoServico === "OUT").length,
     }),
-    [gruposOutBase],
+    [gruposOutBase]
   );
 
   const gruposGuiasBase = useMemo(() => {
@@ -1165,7 +1231,7 @@ export default function PainelOperacionalUnificado() {
         quantidadeDetalhada: formatarQuantidadeDetalhada(
           extrairAdultos(item),
           extrairCriancas(item),
-          extrairInfantes(item),
+          extrairInfantes(item)
         ),
         hotel: extrairHotel(item),
         horarioApresentacao: extrairHorarioApresentacao(item),
@@ -1183,7 +1249,7 @@ export default function PainelOperacionalUnificado() {
                 ...veiculoItem,
                 totalPax: veiculoItem.reservas.reduce(
                   (acc, reserva) => acc + Number(reserva.quantidade || 0),
-                  0,
+                  0
                 ),
                 totalReservas: veiculoItem.reservas.length,
                 primeiraHora:
@@ -1198,11 +1264,11 @@ export default function PainelOperacionalUnificado() {
 
             const totalPaxPasseio = veiculos.reduce(
               (acc, v) => acc + v.totalPax,
-              0,
+              0
             );
             const totalReservasPasseio = veiculos.reduce(
               (acc, v) => acc + v.totalReservas,
-              0,
+              0
             );
 
             return {
@@ -1220,7 +1286,7 @@ export default function PainelOperacionalUnificado() {
           .sort((a, b) => {
             const horaCompare = ordenarHora(
               a.primeiraHoraPasseio,
-              b.primeiraHoraPasseio,
+              b.primeiraHoraPasseio
             );
             if (horaCompare !== 0) return horaCompare;
             return String(a.passeio).localeCompare(String(b.passeio), "pt-BR");
@@ -1228,7 +1294,7 @@ export default function PainelOperacionalUnificado() {
 
         const passeiosNomes = passeios.map((p) => p.passeio);
         const totalVeiculosUtilizados = new Set(
-          passeios.flatMap((p) => p.veiculos.map((v) => v.veiculo)),
+          passeios.flatMap((p) => p.veiculos.map((v) => v.veiculo))
         ).size;
 
         return {
@@ -1241,7 +1307,7 @@ export default function PainelOperacionalUnificado() {
           totalPax: passeios.reduce((acc, p) => acc + p.totalPaxPasseio, 0),
           totalReservas: passeios.reduce(
             (acc, p) => acc + p.totalReservasPasseio,
-            0,
+            0
           ),
         };
       })
@@ -1250,7 +1316,7 @@ export default function PainelOperacionalUnificado() {
 
   const guiasDisponiveis = useMemo(
     () => gruposGuiasBase.map((item) => item.guia),
-    [gruposGuiasBase],
+    [gruposGuiasBase]
   );
 
   const gruposGuiasFiltrados = useMemo(() => {
@@ -1264,20 +1330,18 @@ export default function PainelOperacionalUnificado() {
       veiculos: new Set(
         gruposGuiasBase.flatMap((item) =>
           item.passeios.flatMap((passeio) =>
-            passeio.veiculos.map((veiculo) => veiculo.veiculo),
-          ),
-        ),
+            passeio.veiculos.map((veiculo) => veiculo.veiculo)
+          )
+        )
       ).size,
       pax: gruposGuiasBase.reduce((acc, item) => acc + item.totalPax, 0),
       reservas: gruposGuiasBase.reduce(
         (acc, item) => acc + item.totalReservas,
-        0,
+        0
       ),
     }),
-    [gruposGuiasBase],
+    [gruposGuiasBase]
   );
-
-
 
   const formatarNomeVeiculo = (nome) => {
     if (!nome) return "-";
@@ -1826,8 +1890,10 @@ export default function PainelOperacionalUnificado() {
                                     <div className="painel-chegadas-driver-meta">
                                       <span>Motorista: {grupo.motorista}</span>
                                       <span>
-                                        Reservas: {grupo.totalReservas}
+                                        Modalidade:{" "}
+                                        {grupo.reservas[0]?.modalidadeServico || "Não informado"}
                                       </span>
+                                      <span>Reservas: {grupo.totalReservas}</span>
                                       <span>Pax: {grupo.totalPax}</span>
                                     </div>
                                   </div>
@@ -1840,6 +1906,7 @@ export default function PainelOperacionalUnificado() {
                                           <th>Reserva</th>
                                           <th>Pax</th>
                                           <th>Operadora</th>
+                                          <th>Modalidade</th>
                                           <th>Contato</th>
                                           <th>Destino</th>
                                         </tr>
@@ -1851,6 +1918,7 @@ export default function PainelOperacionalUnificado() {
                                             <td>{reserva.codigoReserva}</td>
                                             <td>{reserva.resumoPax}</td>
                                             <td>{reserva.operadora}</td>
+                                            <td>{reserva.modalidadeServico || "Não informado"}</td>
                                             <td>{reserva.contatoPax}</td>
                                             <td>{reserva.destino}</td>
                                           </tr>
@@ -1899,7 +1967,7 @@ export default function PainelOperacionalUnificado() {
                                               <td>{reserva.resumoPax}</td>
                                               <td>{reserva.operadora}</td>
                                             </tr>
-                                          ),
+                                          )
                                         )}
                                       </tbody>
                                     </table>
@@ -1924,7 +1992,7 @@ export default function PainelOperacionalUnificado() {
               <div className="painel-chegadas-card-header">
                 <div className="painel-chegadas-card-title-row">
                   <h3>Resumo do dia</h3>
-                  <span className="painel-chegadas-badge">outs</span>
+                  <span className="painel-chegadas-badge">outs + transfers</span>
                 </div>
               </div>
 
@@ -1934,12 +2002,44 @@ export default function PainelOperacionalUnificado() {
                     <DirectionsBusRounded fontSize="small" />
                   </div>
                   <div>
-                    <span>Veículos</span>
+                    <span>Grupos</span>
                     <strong>
                       {carregando ? (
                         <SyncRounded className="spin" fontSize="small" />
                       ) : (
                         resumoOuts.veiculos
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="painel-chegadas-kpi">
+                  <div className="painel-chegadas-kpi-icon">
+                    <FlightTakeoffRounded fontSize="small" />
+                  </div>
+                  <div>
+                    <span>OUTs</span>
+                    <strong>
+                      {carregando ? (
+                        <SyncRounded className="spin" fontSize="small" />
+                      ) : (
+                        resumoOuts.outs
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="painel-chegadas-kpi">
+                  <div className="painel-chegadas-kpi-icon">
+                    <DirectionsBusRounded fontSize="small" />
+                  </div>
+                  <div>
+                    <span>Transfers</span>
+                    <strong>
+                      {carregando ? (
+                        <SyncRounded className="spin" fontSize="small" />
+                      ) : (
+                        resumoOuts.transfers
                       )}
                     </strong>
                   </div>
@@ -2036,15 +2136,15 @@ export default function PainelOperacionalUnificado() {
                             <div className="painel-chegadas-flight-main">
                               <div className="painel-chegadas-flight-code-wrap">
                                 <strong className="painel-chegadas-flight-code">
-                                  OUT - {grupo.hotelPrincipal}
+                                  {grupo.tipoServico} - {grupo.hotelPrincipal}
                                 </strong>
                               </div>
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
                               <span>Horário de apanha: {grupo.primeiroHorario}</span>
-                              <span>Fornecedor: {grupo.fornecedor}</span>
-                              <span>Veículo: {grupo.veiculo}</span>
+                              <span>Motorista: {grupo.fornecedor}</span>
+                              <span>Modalidade: {grupo.modalidade}</span>
                               <span>Reservas: {grupo.totalReservas}</span>
                               <span>Pax: {grupo.totalPax}</span>
                             </div>
@@ -2060,23 +2160,11 @@ export default function PainelOperacionalUnificado() {
 
                           <div
                             className="painel-chegadas-driver-block"
-                            style={{ borderTop: "1px solid var(--border)", borderRadius: 0 }}
-                          >
-                            {/* <div
-                              className="painel-chegadas-driver-meta"
-                              style={{ padding: "10px 14px 0 14px", flexWrap: "wrap" }}
-                            >
-                              {grupo.reservas.map((reserva) => (
-                                <span key={`resumo_${reserva.id}`}>
-                                  {reserva.cliente} • {formatarQuantidadeDetalhada(
-                                    reserva.adultos,
-                                    reserva.criancas,
-                                    reserva.infantes,
-                                  )}
-                                </span>
-                              ))}
-                            </div> */}
-                          </div>
+                            style={{
+                              borderTop: "1px solid var(--border)",
+                              borderRadius: 0,
+                            }}
+                          ></div>
 
                           {expandido && (
                             <div className="painel-chegadas-flight-expanded">
@@ -2093,6 +2181,8 @@ export default function PainelOperacionalUnificado() {
 
                                     <div className="painel-chegadas-driver-meta">
                                       <span>{hotel.horario}</span>
+                                      <span>Tipo: {grupo.tipoServico}</span>
+                                      <span>Modalidade: {grupo.modalidade}</span>
                                       <span>Reservas: {hotel.reservas.length}</span>
                                       <span>Pax: {hotel.totalPax}</span>
                                     </div>
@@ -2108,6 +2198,8 @@ export default function PainelOperacionalUnificado() {
                                           <th>Quantidade</th>
                                           <th>Hotel Origem</th>
                                           <th>Voo Retorno</th>
+                                          <th>Tipo</th>
+                                          <th>Modalidade</th>
                                           <th>Buscar</th>
                                           <th>OBS</th>
                                         </tr>
@@ -2122,11 +2214,13 @@ export default function PainelOperacionalUnificado() {
                                               {formatarQuantidadeDetalhada(
                                                 reserva.adultos,
                                                 reserva.criancas,
-                                                reserva.infantes,
+                                                reserva.infantes
                                               )}
                                             </td>
                                             <td>{reserva.hotel}</td>
                                             <td>{reserva.vooRetorno}</td>
+                                            <td>{reserva.tipoServico}</td>
+                                            <td>{reserva.modalidade}</td>
                                             <td>
                                               <button
                                                 type="button"
@@ -2346,10 +2440,14 @@ export default function PainelOperacionalUnificado() {
 
                                     <div className="painel-chegadas-driver-meta">
                                       <span>Veículos: {passeio.totalVeiculos}</span>
-                                      <span>Reservas: {passeio.totalReservasPasseio}</span>
+                                      <span>
+                                        Reservas: {passeio.totalReservasPasseio}
+                                      </span>
                                       <span>Pax: {passeio.totalPaxPasseio}</span>
                                       {passeio.pontoDeApoio ? (
-                                        <span>Ponto de apoio: {passeio.pontoDeApoio}</span>
+                                        <span>
+                                          Ponto de apoio: {passeio.pontoDeApoio}
+                                        </span>
                                       ) : null}
                                     </div>
                                   </div>
@@ -2359,7 +2457,9 @@ export default function PainelOperacionalUnificado() {
                                     style={{ padding: "0 14px 12px 14px", flexWrap: "wrap" }}
                                   >
                                     {passeio.veiculos.map((veiculo) => (
-                                      <span key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}`}>
+                                      <span
+                                        key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}`}
+                                      >
                                         {veiculo.veiculo} • {veiculo.totalPax} pax
                                       </span>
                                     ))}
