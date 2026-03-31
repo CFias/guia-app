@@ -946,7 +946,7 @@
 }
 
 .painel-chegadas-flight-code-wrap span {
-        display: inline-flex;
+    display: inline-flex;
     align-items: center;
     padding: 0 10px;
     border-radius: 999px;
@@ -1505,4 +1505,95 @@
     border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
     background: color-mix(in srgb, var(--primary) 4%, var(--card) 96%);
     flex-wrap: wrap;
+}
+
+.status-select {
+    min-width: 140px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    outline: none;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.painel-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 150px;
+}
+
+.painel-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.painel-status-row {
+    position: relative;
+}
+
+.painel-status-row td:first-child {
+    position: relative;
+    padding-left: 14px !important;
+}
+
+.painel-status-row td:first-child::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 5px;
+    border-radius: 999px;
+    background: transparent;
+}
+
+.painel-status-row.status-semaforo-verde td:first-child::before {
+    background: #22c55e;
+}
+
+.painel-status-row.status-semaforo-amarelo td:first-child::before {
+    background: #facc15;
+}
+
+.painel-status-row.status-semaforo-vermelho td:first-child::before {
+    background: #ef4444;
+}
+
+.painel-status-row.status-semaforo-verde-fraco td:first-child::before {
+    background: #86efac;
+}
+
+.painel-status-badge.status-semaforo-verde {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.painel-status-badge.status-semaforo-amarelo {
+    background: rgba(250, 204, 21, 0.14);
+    color: #ca8a04;
+    border-color: rgba(250, 204, 21, 0.35);
+}
+
+.painel-status-badge.status-semaforo-vermelho {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.painel-status-badge.status-semaforo-verde-fraco {
+    background: rgba(134, 239, 172, 0.18);
+    color: #15803d;
+    border-color: rgba(134, 239, 172, 0.45);
 }

@@ -59,6 +59,28 @@ const ABAS = {
   GUIAS: "guias",
 };
 
+const STATUS_OPERACIONAL = {
+  CHEGOU: { label: "Chegou", cor: "verde" },
+  VOO_ATRASADO: { label: "Voo atrasado", cor: "amarelo" },
+  NO_SHOW: { label: "No show", cor: "vermelho" },
+  MONITORADO: { label: "Monitorado", cor: "verde-fraco" },
+  REALIZADO: { label: "Realizado", cor: "verde" },
+  ATRASADO: { label: "Atrasado", cor: "amarelo" },
+};
+
+const OPCOES_STATUS_CHEGADAS = [
+  { value: "CHEGOU", label: "Chegou" },
+  { value: "VOO_ATRASADO", label: "Voo atrasado" },
+  { value: "NO_SHOW", label: "No show" },
+];
+
+const OPCOES_STATUS_OUT = [
+  { value: "MONITORADO", label: "Monitorado" },
+  { value: "REALIZADO", label: "Realizado" },
+  { value: "ATRASADO", label: "Atrasado" },
+  { value: "NO_SHOW", label: "No show" },
+];
+
 const getHojeIso = () => {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -760,6 +782,26 @@ const extrairTipoOutOuTransfer = (item) => {
   return "TRANSFER";
 };
 
+const getCorStatusClass = (status = "") => {
+  switch (status) {
+    case "REALIZADO":
+    case "CHEGOU":
+      return "status-semaforo-verde";
+    case "ATRASADO":
+    case "VOO_ATRASADO":
+      return "status-semaforo-amarelo";
+    case "NO_SHOW":
+      return "status-semaforo-vermelho";
+    case "MONITORADO":
+      return "status-semaforo-verde-fraco";
+    default:
+      return "";
+  }
+};
+
+const getLabelStatusOperacional = (status = "") =>
+  STATUS_OPERACIONAL[status]?.label || "Sem status";
+
 export default function PainelOperacionalUnificado() {
   const [abaAtiva, setAbaAtiva] = useState(ABAS.CHEGADAS);
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
@@ -784,8 +826,16 @@ export default function PainelOperacionalUnificado() {
   const [gruposExpandidosGuia, setGruposExpandidosGuia] = useState({});
 
   const [copiado, setCopiado] = useState(false);
+  const [statusOperacionalMap, setStatusOperacionalMap] = useState({});
 
   const carregando = loadingInicial || atualizando;
+
+  const atualizarStatusOperacional = (id, status) => {
+    setStatusOperacionalMap((prev) => ({
+      ...prev,
+      [id]: status,
+    }));
+  };
 
   const carregarDados = async (aba = abaAtiva, manual = false) => {
     try {
@@ -917,6 +967,7 @@ export default function PainelOperacionalUnificado() {
         escalaId: extrairEscalaId(item),
         motorista: extrairMotorista(item),
         veiculo: extrairVeiculoEscalado(item),
+        observacao: extrairObservacao(item),
       });
     });
 
@@ -1796,7 +1847,9 @@ export default function PainelOperacionalUnificado() {
             <div className="painel-chegadas-card painel-chegadas-card-full">
               <div className="painel-chegadas-card-header">
                 <div className="painel-chegadas-card-title-row">
-                  <h3>Serviços do dia</h3>
+                  <h3>Mapa de Chegadas -  <span className="painel-chegadas-badge">
+                    {formatarDataBr(dataSelecionada)}
+                  </span></h3>
                   <span className="painel-chegadas-badge">
                     {voosFiltrados.length} voo(s)
                   </span>
@@ -1891,7 +1944,8 @@ export default function PainelOperacionalUnificado() {
                                       <span>Motorista: {grupo.motorista}</span>
                                       <span>
                                         Modalidade:{" "}
-                                        {grupo.reservas[0]?.modalidadeServico || "Não informado"}
+                                        {grupo.reservas[0]?.modalidadeServico ||
+                                          "Não informado"}
                                       </span>
                                       <span>Reservas: {grupo.totalReservas}</span>
                                       <span>Pax: {grupo.totalPax}</span>
@@ -1902,6 +1956,7 @@ export default function PainelOperacionalUnificado() {
                                     <table className="painel-chegadas-table">
                                       <thead>
                                         <tr>
+                                          <th>Status</th>
                                           <th>Cliente</th>
                                           <th>Reserva</th>
                                           <th>Pax</th>
@@ -1909,20 +1964,72 @@ export default function PainelOperacionalUnificado() {
                                           <th>Modalidade</th>
                                           <th>Contato</th>
                                           <th>Destino</th>
+                                          <th>OBS</th>
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {grupo.reservas.map((reserva) => (
-                                          <tr key={reserva.id}>
-                                            <td>{reserva.cliente}</td>
-                                            <td>{reserva.codigoReserva}</td>
-                                            <td>{reserva.resumoPax}</td>
-                                            <td>{reserva.operadora}</td>
-                                            <td>{reserva.modalidadeServico || "Não informado"}</td>
-                                            <td>{reserva.contatoPax}</td>
-                                            <td>{reserva.destino}</td>
-                                          </tr>
-                                        ))}
+                                        {grupo.reservas.map((reserva) => {
+                                          const statusAtual =
+                                            statusOperacionalMap[reserva.id] || "";
+                                          return (
+                                            <tr
+                                              key={reserva.id}
+                                              className={`painel-status-row ${getCorStatusClass(
+                                                statusAtual
+                                              )}`}
+                                            >
+                                              <td>
+                                                <div className="painel-status-cell">
+                                                  <select
+                                                    className="status-select"
+                                                    value={statusAtual}
+                                                    onChange={(e) =>
+                                                      atualizarStatusOperacional(
+                                                        reserva.id,
+                                                        e.target.value
+                                                      )
+                                                    }
+                                                  >
+                                                    <option value="">Selecionar</option>
+                                                    {OPCOES_STATUS_CHEGADAS.map(
+                                                      (opcao) => (
+                                                        <option
+                                                          key={opcao.value}
+                                                          value={opcao.value}
+                                                        >
+                                                          {opcao.label}
+                                                        </option>
+                                                      )
+                                                    )}
+                                                  </select>
+
+                                                  {statusAtual ? (
+                                                    <span
+                                                      className={`painel-status-badge ${getCorStatusClass(
+                                                        statusAtual
+                                                      )}`}
+                                                    >
+                                                      {getLabelStatusOperacional(
+                                                        statusAtual
+                                                      )}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
+                                              </td>
+                                              <td>{reserva.cliente}</td>
+                                              <td>{reserva.codigoReserva}</td>
+                                              <td>{reserva.resumoPax}</td>
+                                              <td>{reserva.operadora}</td>
+                                              <td>
+                                                {reserva.modalidadeServico ||
+                                                  "Não informado"}
+                                              </td>
+                                              <td>{reserva.contatoPax}</td>
+                                              <td>{reserva.destino}</td>
+                                              <td>{reserva.observacao || "-"}</td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -1952,6 +2059,7 @@ export default function PainelOperacionalUnificado() {
                                     <table className="painel-chegadas-table">
                                       <thead>
                                         <tr>
+                                          <th>Status</th>
                                           <th>Cliente</th>
                                           <th>Reserva</th>
                                           <th>Pax</th>
@@ -1960,14 +2068,63 @@ export default function PainelOperacionalUnificado() {
                                       </thead>
                                       <tbody>
                                         {voo.reservasNaoEscaladas.map(
-                                          (reserva) => (
-                                            <tr key={reserva.id}>
-                                              <td>{reserva.cliente}</td>
-                                              <td>{reserva.codigoReserva}</td>
-                                              <td>{reserva.resumoPax}</td>
-                                              <td>{reserva.operadora}</td>
-                                            </tr>
-                                          )
+                                          (reserva) => {
+                                            const statusAtual =
+                                              statusOperacionalMap[reserva.id] || "";
+                                            return (
+                                              <tr
+                                                key={reserva.id}
+                                                className={`painel-status-row ${getCorStatusClass(
+                                                  statusAtual
+                                                )}`}
+                                              >
+                                                <td>
+                                                  <div className="painel-status-cell">
+                                                    <select
+                                                      className="status-select"
+                                                      value={statusAtual}
+                                                      onChange={(e) =>
+                                                        atualizarStatusOperacional(
+                                                          reserva.id,
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    >
+                                                      <option value="">
+                                                        Selecionar
+                                                      </option>
+                                                      {OPCOES_STATUS_CHEGADAS.map(
+                                                        (opcao) => (
+                                                          <option
+                                                            key={opcao.value}
+                                                            value={opcao.value}
+                                                          >
+                                                            {opcao.label}
+                                                          </option>
+                                                        )
+                                                      )}
+                                                    </select>
+
+                                                    {statusAtual ? (
+                                                      <span
+                                                        className={`painel-status-badge ${getCorStatusClass(
+                                                          statusAtual
+                                                        )}`}
+                                                      >
+                                                        {getLabelStatusOperacional(
+                                                          statusAtual
+                                                        )}
+                                                      </span>
+                                                    ) : null}
+                                                  </div>
+                                                </td>
+                                                <td>{reserva.cliente}</td>
+                                                <td>{reserva.codigoReserva}</td>
+                                                <td>{reserva.resumoPax}</td>
+                                                <td>{reserva.operadora}</td>
+                                              </tr>
+                                            );
+                                          }
                                         )}
                                       </tbody>
                                     </table>
@@ -2098,7 +2255,9 @@ export default function PainelOperacionalUnificado() {
             <div className="painel-chegadas-card painel-chegadas-card-full">
               <div className="painel-chegadas-card-header">
                 <div className="painel-chegadas-card-title-row">
-                  <h3>Serviços do dia</h3>
+                  <h3>Mapa de OUT + Transfer -  <span className="painel-chegadas-badge">
+                    {formatarDataBr(dataSelecionada)}
+                  </span></h3>
                   <span className="painel-chegadas-badge">
                     {gruposOutFiltrados.length} grupo(s)
                   </span>
@@ -2192,6 +2351,7 @@ export default function PainelOperacionalUnificado() {
                                     <table className="painel-chegadas-table">
                                       <thead>
                                         <tr>
+                                          <th>Status</th>
                                           <th>Reserva</th>
                                           <th>Contato</th>
                                           <th>Nome do Pax</th>
@@ -2205,38 +2365,87 @@ export default function PainelOperacionalUnificado() {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {hotel.reservas.map((reserva) => (
-                                          <tr key={reserva.id}>
-                                            <td>{reserva.reserva}</td>
-                                            <td>{reserva.telefone}</td>
-                                            <td>{reserva.cliente}</td>
-                                            <td>
-                                              {formatarQuantidadeDetalhada(
-                                                reserva.adultos,
-                                                reserva.criancas,
-                                                reserva.infantes
-                                              )}
-                                            </td>
-                                            <td>{reserva.hotel}</td>
-                                            <td>{reserva.vooRetorno}</td>
-                                            <td>{reserva.tipoServico}</td>
-                                            <td>{reserva.modalidade}</td>
-                                            <td>
-                                              <button
-                                                type="button"
-                                                className="painel-chegadas-google-btn"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  abrirBuscaVooPratica(reserva.raw);
-                                                }}
-                                              >
-                                                <SearchRounded fontSize="small" />
-                                                Buscar voo
-                                              </button>
-                                            </td>
-                                            <td>{reserva.observacao || "-"}</td>
-                                          </tr>
-                                        ))}
+                                        {hotel.reservas.map((reserva) => {
+                                          const statusAtual =
+                                            statusOperacionalMap[reserva.id] || "";
+                                          return (
+                                            <tr
+                                              key={reserva.id}
+                                              className={`painel-status-row ${getCorStatusClass(
+                                                statusAtual
+                                              )}`}
+                                            >
+                                              <td>
+                                                <div className="painel-status-cell">
+                                                  <select
+                                                    className="status-select"
+                                                    value={statusAtual}
+                                                    onChange={(e) =>
+                                                      atualizarStatusOperacional(
+                                                        reserva.id,
+                                                        e.target.value
+                                                      )
+                                                    }
+                                                  >
+                                                    <option value="">Selecionar</option>
+                                                    {OPCOES_STATUS_OUT.map(
+                                                      (opcao) => (
+                                                        <option
+                                                          key={opcao.value}
+                                                          value={opcao.value}
+                                                        >
+                                                          {opcao.label}
+                                                        </option>
+                                                      )
+                                                    )}
+                                                  </select>
+
+                                                  {statusAtual ? (
+                                                    <span
+                                                      className={`painel-status-badge ${getCorStatusClass(
+                                                        statusAtual
+                                                      )}`}
+                                                    >
+                                                      {getLabelStatusOperacional(
+                                                        statusAtual
+                                                      )}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
+                                              </td>
+                                              <td>{reserva.reserva}</td>
+                                              <td>{reserva.telefone}</td>
+                                              <td>{reserva.cliente}</td>
+                                              <td>
+                                                {formatarQuantidadeDetalhada(
+                                                  reserva.adultos,
+                                                  reserva.criancas,
+                                                  reserva.infantes
+                                                )}
+                                              </td>
+                                              <td>{reserva.hotel}</td>
+                                              <td>{reserva.vooRetorno}</td>
+                                              <td>{reserva.tipoServico}</td>
+                                              <td>{reserva.modalidade}</td>
+                                              <td>
+                                                <button
+                                                  type="button"
+                                                  className="painel-chegadas-google-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    abrirBuscaVooPratica(
+                                                      reserva.raw
+                                                    );
+                                                  }}
+                                                >
+                                                  <SearchRounded fontSize="small" />
+                                                  Buscar voo
+                                                </button>
+                                              </td>
+                                              <td>{reserva.observacao || "-"}</td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -2334,7 +2543,9 @@ export default function PainelOperacionalUnificado() {
             <div className="painel-chegadas-card painel-chegadas-card-full">
               <div className="painel-chegadas-card-header">
                 <div className="painel-chegadas-card-title-row">
-                  <h3>Serviços do dia</h3>
+                  <h3>Mapa de Passeios - <span className="painel-chegadas-badge">
+                    {formatarDataBr(dataSelecionada)}
+                  </span></h3>
 
                   <div
                     style={{
@@ -2406,9 +2617,7 @@ export default function PainelOperacionalUnificado() {
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
-                              <span>
-                                {grupo.passeiosResumo || "Sem passeio"}
-                              </span>
+                              <span>{grupo.passeiosResumo || "Sem passeio"}</span>
                               <span>Passeios: {grupo.totalPasseios}</span>
                               <span>
                                 Veículos: {grupo.totalVeiculosUtilizados}
@@ -2454,7 +2663,10 @@ export default function PainelOperacionalUnificado() {
 
                                   <div
                                     className="painel-chegadas-driver-meta"
-                                    style={{ padding: "0 14px 12px 14px", flexWrap: "wrap" }}
+                                    style={{
+                                      padding: "0 14px 12px 14px",
+                                      flexWrap: "wrap",
+                                    }}
                                   >
                                     {passeio.veiculos.map((veiculo) => (
                                       <span
@@ -2475,9 +2687,17 @@ export default function PainelOperacionalUnificado() {
                                         className="painel-chegadas-driver-meta"
                                         style={{ padding: "0 14px 10px 14px" }}
                                       >
-                                        <span><strong>Veículo:</strong> {veiculo.veiculo}</span>
-                                        <span><strong>Fornecedor:</strong> {veiculo.fornecedor}</span>
-                                        <span><strong>Primeiro horário:</strong> {veiculo.primeiraHora}</span>
+                                        <span>
+                                          <strong>Veículo:</strong> {veiculo.veiculo}
+                                        </span>
+                                        <span>
+                                          <strong>Fornecedor:</strong>{" "}
+                                          {veiculo.fornecedor}
+                                        </span>
+                                        <span>
+                                          <strong>Primeiro horário:</strong>{" "}
+                                          {veiculo.primeiraHora}
+                                        </span>
                                       </div>
 
                                       <table className="painel-chegadas-table">
