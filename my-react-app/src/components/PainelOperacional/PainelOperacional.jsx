@@ -282,7 +282,6 @@ const abreviarHotel = (nome = "") => {
   if (!texto) return "HOTEL NÃO INFORMADO";
 
   const limpo = texto
-    .replace(/\bhotel\b/gi, "")
     .replace(/\bpousada\b/gi, "Pous.")
     .replace(/\bresort\b/gi, "Resort")
     .replace(/\bapart\b/gi, "Apart")
