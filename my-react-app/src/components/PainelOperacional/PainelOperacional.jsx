@@ -21,6 +21,8 @@ import {
   CheckRounded,
   TourRounded,
 } from "@mui/icons-material";
+import jsPDF from "jspdf";
+import logoLuck from "../../assets/clover.png";
 import "./styles.css";
 
 const API_BASE =
@@ -129,11 +131,11 @@ const formatarHora = (valor = "") => {
 };
 
 const SERVICOS_IGNORADOS_NORMALIZADOS = SERVICOS_IGNORADOS.map((item) =>
-  normalizarNomePasseio(item)
+  normalizarNomePasseio(item),
 );
 
 const PONTOS_DE_APOIO_CONFIG_NORMALIZADO = Object.entries(
-  PONTOS_DE_APOIO_CONFIG
+  PONTOS_DE_APOIO_CONFIG,
 ).reduce((acc, [chave, valor]) => {
   acc[normalizarNomePasseio(chave)] = valor;
   return acc;
@@ -167,7 +169,7 @@ const extrairPax = (item) =>
 const formatarQuantidadeDetalhada = (
   adultos = 0,
   criancas = 0,
-  infantes = 0
+  infantes = 0,
 ) => {
   const partes = [];
   if (adultos > 0) partes.push(`${adultos} ADT`);
@@ -454,7 +456,7 @@ const extrairAdicionais = (item) => {
 
   const adicionais = item.additionalReserveServices
     .map(
-      (add) => add?.additional?.name || add?.provider?.name || add?.name || ""
+      (add) => add?.additional?.name || add?.provider?.name || add?.name || "",
     )
     .filter(Boolean);
 
@@ -467,7 +469,7 @@ const abrirBuscaGoogleVoo = (codigoVoo) => {
   window.open(
     `https://www.google.com/search?q=${query}`,
     "_blank",
-    "noopener,noreferrer"
+    "noopener,noreferrer",
   );
 };
 
@@ -587,7 +589,7 @@ const somarReservas = (reservas = []) =>
       totalCriancas: 0,
       totalInfantes: 0,
       totalReservas: 0,
-    }
+    },
   );
 
 const normalizarCodigoVoo = (valor = "") =>
@@ -604,8 +606,8 @@ const deveIgnorarServico = (nome = "") => {
       ignorado
         .toUpperCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-    )
+        .replace(/[\u0300-\u036f]/g, ""),
+    ),
   );
 };
 
@@ -687,12 +689,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-      item?.reserve?.flight?.scheduled_departure ||
-      item?.reserve?.departure_flight_time ||
-      item?.flight?.departure_time ||
-      item?.flight?.scheduled_departure ||
-      item?.fly_hour ||
-      ""
+        item?.reserve?.flight?.scheduled_departure ||
+        item?.reserve?.departure_flight_time ||
+        item?.flight?.departure_time ||
+        item?.flight?.scheduled_departure ||
+        item?.fly_hour ||
+        "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -721,17 +723,17 @@ const abrirBuscaVooPratica = (item) => {
   window.open(
     `https://www.google.com/search?q=${encodeURIComponent(codigoLimpo)}`,
     "_blank",
-    "noopener,noreferrer"
+    "noopener,noreferrer",
   );
 };
 
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-    item?.schedule?.presentation_hour ||
-    item?.our_schedule ||
-    item?.fly_hour ||
-    ""
+      item?.schedule?.presentation_hour ||
+      item?.our_schedule ||
+      item?.fly_hour ||
+      "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -760,6 +762,378 @@ const extrairTipoOutOuTransfer = (item) => {
   return "TRANSFER";
 };
 
+const carregarImagemComoDataURL = (src) =>
+  new Promise((resolve) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (error) {
+        console.error("Erro ao converter logo:", error);
+        resolve(null);
+      }
+    };
+
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+const quebrarTextoCentralizado = (doc, texto = "", larguraMax = 220) => {
+  const linhas = doc.splitTextToSize(String(texto || ""), larguraMax);
+  return Array.isArray(linhas) ? linhas : [String(texto || "")];
+};
+
+const extrairTextoVooPlaca = (voo = "") =>
+  String(voo || "")
+    .trim()
+    .toUpperCase() || "VOO NÃO INFORMADO";
+
+const extrairTextoNomePlaca = (nome = "") =>
+  String(nome || "")
+    .trim()
+    .toUpperCase() || "NOME NÃO INFORMADO";
+
+const desenharMolduraProfissional = ({ doc, config }) => {
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(...(config?.fundoPlaca || [246, 248, 246]));
+  doc.rect(0, 0, largura, altura, "F");
+
+  doc.setFillColor(...(config?.fundoHeader || [255, 255, 255]));
+  doc.roundedRect(12, 12, largura - 24, 30, 4, 4, "F");
+
+  doc.setDrawColor(...(config?.linhaDivisoria || [220, 232, 225]));
+  doc.setLineWidth(0.6);
+  doc.line(14, 52, largura - 14, 52);
+
+  doc.line(18, altura - 24, largura - 18, altura - 24);
+
+  return { largura, altura };
+};
+
+const desenharLogoProfissional = ({
+  doc,
+  logoDataUrl,
+  config,
+  larguraMax = 52,
+  alturaMax = 24,
+  margemDireita = 14,
+  margemInferior = 10,
+}) => {
+  if (config?.mostrarLogoNasPlacas && logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+
+      const larguraOriginal = props?.width || 1;
+      const alturaOriginal = props?.height || 1;
+      const formato = String(
+        props?.fileType || props?.format || "PNG",
+      ).toUpperCase();
+
+      const proporcao = larguraOriginal / alturaOriginal;
+
+      const larguraMax = 50;
+      const alturaMax = 50;
+
+      let larguraFinal = larguraMax;
+      let alturaFinal = larguraFinal / proporcao;
+
+      if (alturaFinal > alturaMax) {
+        alturaFinal = alturaMax;
+        larguraFinal = alturaFinal * proporcao;
+      }
+
+      const x = largura - larguraFinal - 18;
+      const y = 14;
+
+      doc.addImage(logoDataUrl, formato, x, y, larguraFinal, alturaFinal);
+    } catch (error) {
+      console.error("Erro ao desenhar logo no cabeçalho da coleção:", error);
+    }
+  }
+};
+
+const desenharSeloRecepcao = ({ doc, config }) => {
+  doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("RECEPÇÃO AEROPORTO", 18, 22);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Luck Receptivo", 18, 28);
+
+  doc.setDrawColor(...(config?.corDestaque || [0, 133, 102]));
+  doc.setLineWidth(1.4);
+  doc.line(18, 32, 44, 32);
+};
+
+const desenharTextoVooTopo = ({ doc, voo, config }) => {
+  const largura = doc.internal.pageSize.getWidth();
+
+  doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("VOO", largura / 2, 23, { align: "center" });
+
+  doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(40);
+  doc.text(extrairTextoVooPlaca(voo), largura / 2, 39, {
+    align: "center",
+  });
+};
+
+const desenharTextoNomeBase = ({ doc, nome, config }) => {
+  const largura = doc.internal.pageSize.getWidth();
+  const texto = extrairTextoNomePlaca(nome);
+
+  doc.setTextColor(...(config?.corTitulo || [18, 88, 74]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+
+  let fontSize = 34;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
+
+  let linhas = quebrarTextoCentralizado(doc, texto, 225);
+
+  while (linhas.length > 2 && fontSize > 20) {
+    fontSize -= 2;
+    doc.setFontSize(fontSize);
+    linhas = quebrarTextoCentralizado(doc, texto, 225);
+  }
+
+  doc.setFontSize(fontSize);
+
+  const baseY = 98;
+  const espacamento = fontSize * 0.42;
+
+  if (linhas.length === 1) {
+    doc.text(linhas[0], largura / 2, baseY, { align: "center" });
+    return;
+  }
+
+  const blocoAltura = (linhas.length - 1) * espacamento;
+  let y = baseY - blocoAltura / 2;
+
+  linhas.slice(0, 2).forEach((linha) => {
+    doc.text(linha, largura / 2, y, { align: "center" });
+    y += espacamento;
+  });
+};
+
+const desenharDataDiscreta = ({ doc, data, config }) => {
+  const altura = doc.internal.pageSize.getHeight();
+  const textoData = formatarDataPlaca(data);
+
+  if (!textoData) return;
+
+  doc.setTextColor(...(config?.corData || [90, 90, 90]));
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text(`Data: ${textoData}`, 16, altura - 7);
+};
+
+const desenharRodapeElegante = ({ doc, config }) => {
+  const altura = doc.internal.pageSize.getHeight();
+
+  doc.setTextColor(...(config?.corData || [90, 90, 90]));
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Operacional • Luck Receptivo", 16, altura - 13);
+};
+
+const desenharPlacaIndividual = ({
+  doc,
+  reserva,
+  voo,
+  data,
+  config,
+  logoDataUrl,
+}) => {
+  desenharMolduraProfissional({ doc, config });
+  desenharSeloRecepcao({ doc, config });
+  desenharTextoVooTopo({ doc, voo, config });
+  desenharTextoNomeBase({ doc, nome: reserva?.cliente, config });
+  desenharRodapeElegante({ doc, config });
+  desenharDataDiscreta({ doc, data, config });
+  desenharLogoProfissional({
+    doc,
+    logoDataUrl,
+    config,
+    larguraMax: 50,
+    alturaMax: 50,
+    margemDireita: 14,
+    margemInferior: 10,
+  });
+};
+
+const desenharCabecalhoColecao = ({ doc, voo, data, config, logoDataUrl }) => {
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+
+  const margemX = 14;
+  const larguraUtil = largura - margemX * 2;
+
+  doc.setFillColor(...(config?.fundoPlaca || [238, 238, 238]));
+  doc.rect(0, 0, largura, altura, "F");
+
+  const headerY = 12;
+  const headerH = 48;
+
+  doc.setFillColor(...(config?.fundoHeader || [209, 209, 209]));
+  doc.rect(margemX, headerY, larguraUtil, headerH, "F");
+
+  if (config?.mostrarLogoNasPlacas && logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      const larguraOriginal = props?.width || 1;
+      const alturaOriginal = props?.height || 1;
+      const formato = String(
+        props?.fileType || props?.format || "PNG",
+      ).toUpperCase();
+
+      const proporcao = larguraOriginal / alturaOriginal;
+
+      const larguraMax = 16;
+      const alturaMax = 16;
+
+      let larguraFinal = larguraMax;
+      let alturaFinal = larguraFinal / proporcao;
+
+      if (alturaFinal > alturaMax) {
+        alturaFinal = alturaMax;
+        larguraFinal = alturaFinal * proporcao;
+      }
+
+      const xLogo = margemX + 6;
+      const yLogo = headerY + 9;
+
+      doc.addImage(
+        logoDataUrl,
+        formato,
+        xLogo,
+        yLogo,
+        larguraFinal,
+        alturaFinal,
+      );
+    } catch (error) {
+      console.error("Erro ao desenhar logo no cabeçalho da coleção:", error);
+    }
+  }
+
+  const inicioTextoEsquerda = margemX + 30;
+
+  doc.setTextColor(...(config?.corTitulo || [65, 74, 95]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("RECEPÇÃO AEROPORTO", inicioTextoEsquerda, headerY + 15);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Luck Receptivo", inicioTextoEsquerda, headerY + 24);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("VOO", largura - 52, headerY + 10);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(34);
+  doc.text(extrairTextoVooPlaca(voo), largura - 18, headerY + 28, {
+    align: "right",
+  });
+
+  return 60;
+};
+
+const desenharItemColecao = ({
+  doc,
+  nome,
+  indice,
+  inicioY,
+  totalPorPagina,
+  config,
+}) => {
+  const largura = doc.internal.pageSize.getWidth();
+
+  const margemX = 14;
+  const larguraUtil = largura - margemX * 2;
+
+  const alturaRodape = 18;
+  const areaUtil = 118;
+  const alturaBox = areaUtil / totalPorPagina;
+
+  const y = inicioY + indice * alturaBox;
+
+  doc.setFillColor(245, 245, 245);
+  doc.rect(margemX, y, larguraUtil, alturaBox, "F");
+
+  doc.setDrawColor(...(config?.linhaDivisoria || [196, 196, 196]));
+  doc.setLineWidth(0.5);
+  doc.rect(margemX, y, larguraUtil, alturaBox);
+
+  let fontSize = totalPorPagina >= 5 ? 26 : totalPorPagina === 4 ? 28 : 30;
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
+
+  let linhas = quebrarTextoCentralizado(
+    doc,
+    String(nome || "").toUpperCase(),
+    larguraUtil - 28,
+  );
+
+  while (linhas.length > 2 && fontSize > 18) {
+    fontSize -= 2;
+    doc.setFontSize(fontSize);
+    linhas = quebrarTextoCentralizado(
+      doc,
+      String(nome || "").toUpperCase(),
+      larguraUtil - 28,
+    );
+  }
+
+  doc.setFontSize(fontSize);
+
+  const centroY = y + alturaBox / 2 + 4;
+  const espacamentoLinhas = fontSize * 0.42;
+
+  if (linhas.length === 1) {
+    doc.text(linhas[0], largura / 2, centroY, { align: "center" });
+    return;
+  }
+
+  const blocoAltura = (linhas.length - 1) * espacamentoLinhas;
+  let linhaY = centroY - blocoAltura / 2;
+
+  linhas.slice(0, 2).forEach((linha) => {
+    doc.text(String(linha).toUpperCase(), largura / 2, linhaY, {
+      align: "center",
+    });
+    linhaY += espacamentoLinhas;
+  });
+};
+
+const formatarDataPlaca = (dataIso = "") => {
+  if (!dataIso) return "";
+  const [ano, mes, dia] = String(dataIso).split("-");
+  return `${dia}/${mes}/${ano}`;
+};
+
 export default function PainelOperacionalUnificado() {
   const [abaAtiva, setAbaAtiva] = useState(ABAS.CHEGADAS);
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
@@ -784,6 +1158,42 @@ export default function PainelOperacionalUnificado() {
   const [gruposExpandidosGuia, setGruposExpandidosGuia] = useState({});
 
   const [copiado, setCopiado] = useState(false);
+  const [configPlacas, setConfigPlacas] = useState(() => {
+    try {
+      const salvo = localStorage.getItem("painel_operacional_config_placas");
+      return salvo
+        ? { ...JSON.parse(salvo), logoUrl: logoLuck }
+        : {
+            repetirCabecalhoVooAoQuebrarPagina: true,
+            mostrarLogoNasPlacas: true,
+            quantidadePorPaginaColecao: 4,
+            logoUrl: logoLuck,
+            fundoPlaca: [238, 238, 238],
+            fundoHeader: [209, 209, 209],
+            bordaPlaca: [196, 196, 196],
+            linhaDivisoria: [196, 196, 196],
+            corTitulo: [65, 74, 95],
+            corTexto: [65, 74, 95],
+            corDestaque: [65, 74, 95],
+            corData: [90, 90, 90],
+          };
+    } catch {
+      return {
+        repetirCabecalhoVooAoQuebrarPagina: true,
+        mostrarLogoNasPlacas: true,
+        quantidadePorPaginaColecao: 5,
+        logoUrl: logoLuck,
+        fundoPlaca: [238, 238, 238],
+        fundoHeader: [209, 209, 209],
+        bordaPlaca: [196, 196, 196],
+        linhaDivisoria: [196, 196, 196],
+        corTitulo: [65, 74, 95],
+        corTexto: [65, 74, 95],
+        corDestaque: [65, 74, 95],
+        corData: [90, 90, 90],
+      };
+    }
+  });
 
   const carregando = loadingInicial || atualizando;
 
@@ -824,7 +1234,7 @@ export default function PainelOperacionalUnificado() {
 
         if (!responseTransfers.ok) {
           throw new Error(
-            `Erro HTTP ${responseTransfers.status} ao carregar Transfers`
+            `Erro HTTP ${responseTransfers.status} ao carregar Transfers`,
           );
         }
 
@@ -838,10 +1248,12 @@ export default function PainelOperacionalUnificado() {
           __tipoPainel: "OUT",
         }));
 
-        const listaTransfers = extrairListaResposta(jsonTransfers).map((item) => ({
-          ...item,
-          __tipoPainel: "TRANSFER",
-        }));
+        const listaTransfers = extrairListaResposta(jsonTransfers).map(
+          (item) => ({
+            ...item,
+            __tipoPainel: "TRANSFER",
+          }),
+        );
 
         setItensOuts([...listaOuts, ...listaTransfers]);
       } else {
@@ -867,6 +1279,13 @@ export default function PainelOperacionalUnificado() {
       setAtualizando(false);
     }
   };
+
+  useEffect(() => {
+    localStorage.setItem(
+      "painel_operacional_config_placas",
+      JSON.stringify(configPlacas),
+    );
+  }, [configPlacas]);
 
   useEffect(() => {
     carregarDados(abaAtiva, false);
@@ -910,7 +1329,7 @@ export default function PainelOperacionalUnificado() {
         resumoPax: formatarQuantidadeDetalhada(
           extrairAdultos(item),
           extrairCriancas(item),
-          extrairInfantes(item)
+          extrairInfantes(item),
         ),
         criancas: extrairCriancas(item),
         infantes: extrairInfantes(item),
@@ -922,7 +1341,7 @@ export default function PainelOperacionalUnificado() {
     });
 
     return Object.values(mapa).sort((a, b) =>
-      ordenarHora(a.horarioPrevisto, b.horarioPrevisto)
+      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
     );
   }, [itensChegadas]);
 
@@ -938,10 +1357,10 @@ export default function PainelOperacionalUnificado() {
       });
 
       const reservasEscaladas = voo.reservas.filter(
-        (reserva) => reserva.escalaId
+        (reserva) => reserva.escalaId,
       );
       const reservasNaoEscaladas = voo.reservas.filter(
-        (reserva) => !reserva.escalaId
+        (reserva) => !reserva.escalaId,
       );
 
       const gruposPorVeiculo = Object.values(
@@ -975,11 +1394,11 @@ export default function PainelOperacionalUnificado() {
           }
 
           return acc;
-        }, {})
+        }, {}),
       ).sort((a, b) =>
         String(a.veiculo).localeCompare(String(b.veiculo), "pt-BR", {
           sensitivity: "base",
-        })
+        }),
       );
 
       const totaisNaoEscalados = somarReservas(reservasNaoEscaladas);
@@ -994,11 +1413,11 @@ export default function PainelOperacionalUnificado() {
         totalReservas: voo.reservas.length,
         totalCriancas: voo.reservas.reduce(
           (acc, r) => acc + Number(r.criancas || 0),
-          0
+          0,
         ),
         totalInfantes: voo.reservas.reduce(
           (acc, r) => acc + Number(r.infantes || 0),
-          0
+          0,
         ),
         statusBruto: calculoStatus.status,
         statusKey: classificarStatusVoo(calculoStatus.status),
@@ -1027,7 +1446,9 @@ export default function PainelOperacionalUnificado() {
     if (filtroEscala === "somente-nao-escalados")
       lista = lista.filter((v) => v.totalmenteNaoEscalado);
 
-    return lista.sort((a, b) => ordenarHora(a.horarioPrevisto, b.horarioPrevisto));
+    return lista.sort((a, b) =>
+      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
+    );
   }, [voos, filtroStatus, filtroEscala]);
 
   const resumoChegadas = useMemo(
@@ -1042,13 +1463,13 @@ export default function PainelOperacionalUnificado() {
           "cancelado",
           "pousado-atrasado",
           "pousado-antecipado",
-        ].includes(v.statusKey)
+        ].includes(v.statusKey),
       ).length,
       veiculos: new Set(
-        voos.flatMap((voo) => voo.gruposPorVeiculo.map((g) => g.veiculo))
+        voos.flatMap((voo) => voo.gruposPorVeiculo.map((g) => g.veiculo)),
       ).size,
     }),
-    [voos]
+    [voos],
   );
 
   const gruposOutBase = useMemo(() => {
@@ -1111,7 +1532,7 @@ export default function PainelOperacionalUnificado() {
     return Object.values(mapa)
       .map((grupo) => {
         const primeiroHorario = extrairPrimeiroHorarioValido(
-          grupo.reservas.map((r) => r.horarioHotel)
+          grupo.reservas.map((r) => r.horarioHotel),
         );
 
         const hoteisMap = {};
@@ -1141,7 +1562,7 @@ export default function PainelOperacionalUnificado() {
             ...hotel,
             totalPax: hotel.reservas.reduce(
               (acc, item) => acc + Number(item.pax || 0),
-              0
+              0,
             ),
           }))
           .sort((a, b) => ordenarHora(a.horario, b.horario));
@@ -1156,7 +1577,7 @@ export default function PainelOperacionalUnificado() {
           totalReservas: grupo.reservas.length,
           totalPax: grupo.reservas.reduce(
             (acc, item) => acc + Number(item.pax || 0),
-            0
+            0,
           ),
         };
       })
@@ -1172,9 +1593,9 @@ export default function PainelOperacionalUnificado() {
   const veiculosDisponiveis = useMemo(
     () =>
       [...new Set(gruposOutBase.map((item) => item.veiculo))].sort((a, b) =>
-        String(a).localeCompare(String(b), "pt-BR", { sensitivity: "base" })
+        String(a).localeCompare(String(b), "pt-BR", { sensitivity: "base" }),
       ),
-    [gruposOutBase]
+    [gruposOutBase],
   );
 
   const gruposOutFiltrados = useMemo(() => {
@@ -1188,10 +1609,11 @@ export default function PainelOperacionalUnificado() {
       reservas: gruposOutBase.reduce((acc, g) => acc + g.totalReservas, 0),
       pax: gruposOutBase.reduce((acc, g) => acc + g.totalPax, 0),
       hoteis: gruposOutBase.reduce((acc, g) => acc + g.hoteis.length, 0),
-      transfers: gruposOutBase.filter((g) => g.tipoServico === "TRANSFER").length,
+      transfers: gruposOutBase.filter((g) => g.tipoServico === "TRANSFER")
+        .length,
       outs: gruposOutBase.filter((g) => g.tipoServico === "OUT").length,
     }),
-    [gruposOutBase]
+    [gruposOutBase],
   );
 
   const gruposGuiasBase = useMemo(() => {
@@ -1240,7 +1662,7 @@ export default function PainelOperacionalUnificado() {
         quantidadeDetalhada: formatarQuantidadeDetalhada(
           extrairAdultos(item),
           extrairCriancas(item),
-          extrairInfantes(item)
+          extrairInfantes(item),
         ),
         hotel: extrairHotel(item),
         horarioApresentacao: extrairHorarioApresentacao(item),
@@ -1258,7 +1680,7 @@ export default function PainelOperacionalUnificado() {
                 ...veiculoItem,
                 totalPax: veiculoItem.reservas.reduce(
                   (acc, reserva) => acc + Number(reserva.quantidade || 0),
-                  0
+                  0,
                 ),
                 totalReservas: veiculoItem.reservas.length,
                 primeiraHora:
@@ -1273,11 +1695,11 @@ export default function PainelOperacionalUnificado() {
 
             const totalPaxPasseio = veiculos.reduce(
               (acc, v) => acc + v.totalPax,
-              0
+              0,
             );
             const totalReservasPasseio = veiculos.reduce(
               (acc, v) => acc + v.totalReservas,
-              0
+              0,
             );
 
             return {
@@ -1295,7 +1717,7 @@ export default function PainelOperacionalUnificado() {
           .sort((a, b) => {
             const horaCompare = ordenarHora(
               a.primeiraHoraPasseio,
-              b.primeiraHoraPasseio
+              b.primeiraHoraPasseio,
             );
             if (horaCompare !== 0) return horaCompare;
             return String(a.passeio).localeCompare(String(b.passeio), "pt-BR");
@@ -1303,7 +1725,7 @@ export default function PainelOperacionalUnificado() {
 
         const passeiosNomes = passeios.map((p) => p.passeio);
         const totalVeiculosUtilizados = new Set(
-          passeios.flatMap((p) => p.veiculos.map((v) => v.veiculo))
+          passeios.flatMap((p) => p.veiculos.map((v) => v.veiculo)),
         ).size;
 
         return {
@@ -1316,7 +1738,7 @@ export default function PainelOperacionalUnificado() {
           totalPax: passeios.reduce((acc, p) => acc + p.totalPaxPasseio, 0),
           totalReservas: passeios.reduce(
             (acc, p) => acc + p.totalReservasPasseio,
-            0
+            0,
           ),
         };
       })
@@ -1325,7 +1747,7 @@ export default function PainelOperacionalUnificado() {
 
   const guiasDisponiveis = useMemo(
     () => gruposGuiasBase.map((item) => item.guia),
-    [gruposGuiasBase]
+    [gruposGuiasBase],
   );
 
   const gruposGuiasFiltrados = useMemo(() => {
@@ -1339,17 +1761,17 @@ export default function PainelOperacionalUnificado() {
       veiculos: new Set(
         gruposGuiasBase.flatMap((item) =>
           item.passeios.flatMap((passeio) =>
-            passeio.veiculos.map((veiculo) => veiculo.veiculo)
-          )
-        )
+            passeio.veiculos.map((veiculo) => veiculo.veiculo),
+          ),
+        ),
       ).size,
       pax: gruposGuiasBase.reduce((acc, item) => acc + item.totalPax, 0),
       reservas: gruposGuiasBase.reduce(
         (acc, item) => acc + item.totalReservas,
-        0
+        0,
       ),
     }),
-    [gruposGuiasBase]
+    [gruposGuiasBase],
   );
 
   const formatarNomeVeiculo = (nome) => {
@@ -1381,7 +1803,10 @@ export default function PainelOperacionalUnificado() {
   };
 
   const montarResumoTexto = () => {
-    const linhas = [`LISTA DE PASSEIOS: ${formatarDataBr(dataSelecionada)}`, ""];
+    const linhas = [
+      `LISTA DE PASSEIOS: ${formatarDataBr(dataSelecionada)}`,
+      "",
+    ];
 
     gruposGuiasFiltrados.forEach((grupo) => {
       grupo.passeios.forEach((passeio) => {
@@ -1395,14 +1820,14 @@ export default function PainelOperacionalUnificado() {
         });
 
         const veiculoPrincipal = formatarNomeVeiculo(
-          veiculosOrdenados[0]?.veiculo
+          veiculosOrdenados[0]?.veiculo,
         );
 
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo
-            )
+                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+              )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -1416,19 +1841,19 @@ export default function PainelOperacionalUnificado() {
         linesPushIfValue(
           linhas,
           `VEÍCULO PRINCIPAL: ${veiculoPrincipal}`,
-          veiculoPrincipal && veiculoPrincipal !== "-"
+          veiculoPrincipal && veiculoPrincipal !== "-",
         );
 
         linesPushIfValue(
           linhas,
           `VEÍCULO DE APOIO: ${veiculoApoio}`,
-          veiculoApoio && veiculoApoio !== "-"
+          veiculoApoio && veiculoApoio !== "-",
         );
 
         linesPushIfValue(
           linhas,
           `PONTO DE APOIO: ${pontoDeApoio}`,
-          pontoDeApoio
+          pontoDeApoio,
         );
 
         linhas.push("");
@@ -1462,6 +1887,105 @@ export default function PainelOperacionalUnificado() {
 
   const toggleExpandirGrupoGuia = (grupoId) => {
     setGruposExpandidosGuia((prev) => ({ ...prev, [grupoId]: !prev[grupoId] }));
+  };
+
+  const gerarPdfPlacasIndividuais = async (voo) => {
+    try {
+      if (!voo?.reservas?.length) return;
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
+
+      voo.reservas.forEach((reserva, index) => {
+        if (index > 0) doc.addPage();
+
+        desenharPlacaIndividual({
+          doc,
+          reserva,
+          voo: voo.voo,
+          data: dataSelecionada,
+          config: configPlacas,
+          logoDataUrl,
+        });
+      });
+
+      doc.save(
+        `placas-individuais-${String(voo.voo || "voo").replace(/\s+/g, "-")}.pdf`,
+      );
+    } catch (error) {
+      console.error("Erro ao gerar PDF individual:", error);
+      alert("Não foi possível gerar o PDF das placas individuais.");
+    }
+  };
+
+  const gerarPdfPlacasColecao = async (voo) => {
+    try {
+      if (!voo?.reservas?.length) return;
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
+      const porPagina = Number(configPlacas?.quantidadePorPaginaColecao || 5);
+      const inicioYBase = 60;
+
+      voo.reservas.forEach((reserva, index) => {
+        const indiceNaPagina = index % porPagina;
+        const novaPagina = index > 0 && indiceNaPagina === 0;
+
+        if (novaPagina) {
+          doc.addPage();
+        }
+
+        if (
+          indiceNaPagina === 0 &&
+          (index === 0 || configPlacas.repetirCabecalhoVooAoQuebrarPagina)
+        ) {
+          desenharCabecalhoColecao({
+            doc,
+            voo: voo.voo,
+            data: dataSelecionada,
+            config: configPlacas,
+            logoDataUrl,
+          });
+
+          desenharRodapeElegante({
+            doc,
+            config: configPlacas,
+          });
+
+          desenharDataDiscreta({
+            doc,
+            data: dataSelecionada,
+            config: configPlacas,
+          });
+        }
+
+        desenharItemColecao({
+          doc,
+          nome: reserva?.cliente || "-",
+          indice: indiceNaPagina,
+          inicioY: inicioYBase,
+          totalPorPagina: porPagina,
+          config: configPlacas,
+        });
+      });
+
+      doc.save(
+        `placas-colecao-${String(voo.voo || "voo").replace(/\s+/g, "-")}.pdf`,
+      );
+    } catch (error) {
+      console.error("Erro ao gerar PDF coleção:", error);
+      alert("Não foi possível gerar o PDF da coleção de placas.");
+    }
   };
 
   return (
@@ -1713,9 +2237,80 @@ export default function PainelOperacionalUnificado() {
           <>
             <div className="painel-chegadas-card painel-chegadas-card-full">
               <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>Resumo do dia</h3>
-                  <span className="painel-chegadas-badge">chegadas</span>
+                <div className="painel-chegadas-card painel-chegadas-card-full">
+                  <div className="painel-chegadas-card-header">
+                    <div className="painel-chegadas-card-title-row">
+                      <h3>Configurações das placas PDF</h3>
+                      <span className="painel-chegadas-badge">chegadas</span>
+                    </div>
+                    <p>
+                      Ajuste o comportamento da impressão individual e da
+                      coleção.
+                    </p>
+                  </div>
+
+                  <div className="painel-chegadas-toolbar">
+                    <div className="painel-chegadas-field">
+                      <label>Qtd. por página na coleção</label>
+                      <select
+                        className="painel-chegadas-input"
+                        value={configPlacas.quantidadePorPaginaColecao}
+                        onChange={(e) =>
+                          setConfigPlacas((prev) => ({
+                            ...prev,
+                            quantidadePorPaginaColecao: Number(e.target.value),
+                          }))
+                        }
+                      >
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                        <option value={4}>4</option>
+                        <option value={5}>5</option>
+                        <option value={6}>6</option>
+                      </select>
+                    </div>
+
+                    <div className="painel-chegadas-field">
+                      <label>Mostrar logo</label>
+                      <select
+                        className="painel-chegadas-input"
+                        value={
+                          configPlacas.mostrarLogoNasPlacas ? "sim" : "nao"
+                        }
+                        onChange={(e) =>
+                          setConfigPlacas((prev) => ({
+                            ...prev,
+                            mostrarLogoNasPlacas: e.target.value === "sim",
+                          }))
+                        }
+                      >
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </div>
+
+                    <div className="painel-chegadas-field">
+                      <label>Repetir cabeçalho do voo em nova página</label>
+                      <select
+                        className="painel-chegadas-input"
+                        value={
+                          configPlacas.repetirCabecalhoVooAoQuebrarPagina
+                            ? "sim"
+                            : "nao"
+                        }
+                        onChange={(e) =>
+                          setConfigPlacas((prev) => ({
+                            ...prev,
+                            repetirCabecalhoVooAoQuebrarPagina:
+                              e.target.value === "sim",
+                          }))
+                        }
+                      >
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1850,17 +2445,50 @@ export default function PainelOperacionalUnificado() {
                                 </span>
                               </div>
 
-                              <button
-                                type="button"
-                                className="painel-chegadas-google-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  abrirBuscaGoogleVoo(voo.voo);
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  flexWrap: "wrap",
                                 }}
                               >
-                                <SearchRounded fontSize="small" />
-                                Buscar voo
-                              </button>
+                                <button
+                                  type="button"
+                                  className="painel-chegadas-google-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    abrirBuscaGoogleVoo(voo.voo);
+                                  }}
+                                >
+                                  <SearchRounded fontSize="small" />
+                                  Buscar voo
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="painel-chegadas-google-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    gerarPdfPlacasIndividuais(voo);
+                                  }}
+                                >
+                                  <AssignmentRounded fontSize="small" />
+                                  Placas individuais
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="painel-chegadas-google-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    gerarPdfPlacasColecao(voo);
+                                  }}
+                                >
+                                  <Inventory2Rounded fontSize="small" />
+                                  Placa coleção
+                                </button>
+                              </div>
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
@@ -1900,9 +2528,12 @@ export default function PainelOperacionalUnificado() {
                                       <span>Motorista: {grupo.motorista}</span>
                                       <span>
                                         Modalidade:{" "}
-                                        {grupo.reservas[0]?.modalidadeServico || "Não informado"}
+                                        {grupo.reservas[0]?.modalidadeServico ||
+                                          "Não informado"}
                                       </span>
-                                      <span>Reservas: {grupo.totalReservas}</span>
+                                      <span>
+                                        Reservas: {grupo.totalReservas}
+                                      </span>
                                       <span>Pax: {grupo.totalPax}</span>
                                     </div>
                                   </div>
@@ -1928,7 +2559,10 @@ export default function PainelOperacionalUnificado() {
                                             <td>{reserva.codigoReserva}</td>
                                             <td>{reserva.resumoPax}</td>
                                             <td>{reserva.operadora}</td>
-                                            <td>{reserva.modalidadeServico || "Não informado"}</td>
+                                            <td>
+                                              {reserva.modalidadeServico ||
+                                                "Não informado"}
+                                            </td>
                                             <td>{reserva.contatoPax}</td>
                                             <td>{reserva.destino}</td>
                                             <td>{reserva.observacao || "-"}</td>
@@ -1978,7 +2612,7 @@ export default function PainelOperacionalUnificado() {
                                               <td>{reserva.resumoPax}</td>
                                               <td>{reserva.operadora}</td>
                                             </tr>
-                                          )
+                                          ),
                                         )}
                                       </tbody>
                                     </table>
@@ -2003,7 +2637,9 @@ export default function PainelOperacionalUnificado() {
               <div className="painel-chegadas-card-header">
                 <div className="painel-chegadas-card-title-row">
                   <h3>Resumo do dia</h3>
-                  <span className="painel-chegadas-badge">outs + transfers</span>
+                  <span className="painel-chegadas-badge">
+                    outs + transfers
+                  </span>
                 </div>
               </div>
 
@@ -2153,7 +2789,9 @@ export default function PainelOperacionalUnificado() {
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
-                              <span>Horário de apanha: {grupo.primeiroHorario}</span>
+                              <span>
+                                Horário de apanha: {grupo.primeiroHorario}
+                              </span>
                               <span>Motorista: {grupo.fornecedor}</span>
                               <span>Modalidade: {grupo.modalidade}</span>
                               <span>Reservas: {grupo.totalReservas}</span>
@@ -2193,8 +2831,12 @@ export default function PainelOperacionalUnificado() {
                                     <div className="painel-chegadas-driver-meta">
                                       <span>{hotel.horario}</span>
                                       <span>Tipo: {grupo.tipoServico}</span>
-                                      <span>Modalidade: {grupo.modalidade}</span>
-                                      <span>Reservas: {hotel.reservas.length}</span>
+                                      <span>
+                                        Modalidade: {grupo.modalidade}
+                                      </span>
+                                      <span>
+                                        Reservas: {hotel.reservas.length}
+                                      </span>
                                       <span>Pax: {hotel.totalPax}</span>
                                     </div>
                                   </div>
@@ -2208,7 +2850,9 @@ export default function PainelOperacionalUnificado() {
                                           <th>Nome do Pax</th>
                                           <th>Quantidade</th>
                                           <th>Hotel Origem</th>
-                                          {grupo.tipoServico === "TRANSFER" && <th>Hotel Destino</th>}
+                                          {grupo.tipoServico === "TRANSFER" && (
+                                            <th>Hotel Destino</th>
+                                          )}
                                           <th>Voo Retorno</th>
                                           <th>Tipo</th>
                                           <th>Modalidade</th>
@@ -2226,11 +2870,14 @@ export default function PainelOperacionalUnificado() {
                                               {formatarQuantidadeDetalhada(
                                                 reserva.adultos,
                                                 reserva.criancas,
-                                                reserva.infantes
+                                                reserva.infantes,
                                               )}
                                             </td>
                                             <td>{reserva.hotelOrigem}</td>
-                                            {grupo.tipoServico === "TRANSFER" && <td>{reserva.hotelDestino}</td>}
+                                            {grupo.tipoServico ===
+                                              "TRANSFER" && (
+                                              <td>{reserva.hotelDestino}</td>
+                                            )}
                                             <td>{reserva.vooRetorno}</td>
                                             <td>{reserva.tipoServico}</td>
                                             <td>{reserva.modalidade}</td>
@@ -2240,7 +2887,9 @@ export default function PainelOperacionalUnificado() {
                                                 className="painel-chegadas-google-btn"
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  abrirBuscaVooPratica(reserva.raw);
+                                                  abrirBuscaVooPratica(
+                                                    reserva.raw,
+                                                  );
                                                 }}
                                               >
                                                 <SearchRounded fontSize="small" />
@@ -2452,11 +3101,15 @@ export default function PainelOperacionalUnificado() {
                                     </div>
 
                                     <div className="painel-chegadas-driver-meta">
-                                      <span>Veículos: {passeio.totalVeiculos}</span>
+                                      <span>
+                                        Veículos: {passeio.totalVeiculos}
+                                      </span>
                                       <span>
                                         Reservas: {passeio.totalReservasPasseio}
                                       </span>
-                                      <span>Pax: {passeio.totalPaxPasseio}</span>
+                                      <span>
+                                        Pax: {passeio.totalPaxPasseio}
+                                      </span>
                                       {passeio.pontoDeApoio ? (
                                         <span>
                                           Ponto de apoio: {passeio.pontoDeApoio}
@@ -2467,13 +3120,17 @@ export default function PainelOperacionalUnificado() {
 
                                   <div
                                     className="painel-chegadas-driver-meta"
-                                    style={{ padding: "0 14px 12px 14px", flexWrap: "wrap" }}
+                                    style={{
+                                      padding: "0 14px 12px 14px",
+                                      flexWrap: "wrap",
+                                    }}
                                   >
                                     {passeio.veiculos.map((veiculo) => (
                                       <span
                                         key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}`}
                                       >
-                                        {veiculo.veiculo} • {veiculo.totalPax} pax
+                                        {veiculo.veiculo} • {veiculo.totalPax}{" "}
+                                        pax
                                       </span>
                                     ))}
                                   </div>
@@ -2488,9 +3145,18 @@ export default function PainelOperacionalUnificado() {
                                         className="painel-chegadas-driver-meta"
                                         style={{ padding: "0 14px 10px 14px" }}
                                       >
-                                        <span><strong>Veículo:</strong> {veiculo.veiculo}</span>
-                                        <span><strong>Fornecedor:</strong> {veiculo.fornecedor}</span>
-                                        <span><strong>Primeiro horário:</strong> {veiculo.primeiraHora}</span>
+                                        <span>
+                                          <strong>Veículo:</strong>{" "}
+                                          {veiculo.veiculo}
+                                        </span>
+                                        <span>
+                                          <strong>Fornecedor:</strong>{" "}
+                                          {veiculo.fornecedor}
+                                        </span>
+                                        <span>
+                                          <strong>Primeiro horário:</strong>{" "}
+                                          {veiculo.primeiraHora}
+                                        </span>
                                       </div>
 
                                       <table className="painel-chegadas-table">
@@ -2511,10 +3177,16 @@ export default function PainelOperacionalUnificado() {
                                               <td>{reserva.nomePax}</td>
                                               <td>{reserva.numeroReserva}</td>
                                               <td>{reserva.contato}</td>
-                                              <td>{reserva.quantidadeDetalhada}</td>
+                                              <td>
+                                                {reserva.quantidadeDetalhada}
+                                              </td>
                                               <td>{reserva.hotel}</td>
-                                              <td>{reserva.horarioApresentacao}</td>
-                                              <td>{reserva.observacao || "-"}</td>
+                                              <td>
+                                                {reserva.horarioApresentacao}
+                                              </td>
+                                              <td>
+                                                {reserva.observacao || "-"}
+                                              </td>
                                             </tr>
                                           ))}
                                         </tbody>
