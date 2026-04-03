@@ -46,16 +46,14 @@ const Dashboard = ({ loading }) => {
         <div className="sidebar-menu">
           <div className="sidebar-group">
             <span className="sidebar-group-title">Operação</span>
-
-            <NavLink to="relatorios" className={getNavClass}>
-              <AssessmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Analytics - beta</span>
+            <NavLink to="op" className={getNavClass}>
+              <AssignmentRounded fontSize="small" className="sidebar-icon" />
+              <span>Painel Operacional</span>
             </NavLink>
-            <NavLink to="guias" className={getNavClass}>
-              <DnsRounded fontSize="small" className="sidebar-icon" />
-              <span>Lista de Guias</span>
+            <NavLink to="previas" className={getNavClass}>
+              <ViewModuleRounded fontSize="small" className="sidebar-icon" />
+              <span>Prévia de Transfers</span>
             </NavLink>
-
             <NavLink to="mapear-guias" className={getNavClass}>
               <MapRounded fontSize="small" className="sidebar-icon" />
               <span>Mapear Guias</span>
@@ -65,15 +63,20 @@ const Dashboard = ({ loading }) => {
               <AnalyticsRounded fontSize="small" className="sidebar-icon" />
               <span>Gerar Escala</span>
             </NavLink>
+            <NavLink to="guias" className={getNavClass}>
+              <DnsRounded fontSize="small" className="sidebar-icon" />
+              <span>Lista de Guias</span>
+            </NavLink>
 
             <NavLink to="disponibilidade-guia" className={getNavClass}>
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Disponibilidade da Semana</span>
             </NavLink>
-            <NavLink to="previas" className={getNavClass}>
-              <ViewModuleRounded fontSize="small" className="sidebar-icon" />
-              <span>Prévia de Transfers</span>
+            <NavLink to="relatorios" className={getNavClass}>
+              <AssessmentRounded fontSize="small" className="sidebar-icon" />
+              <span>Analytics - beta</span>
             </NavLink>
+
             {/* <NavLink to="chegadas" className={getNavClass}>
               <FlightLandRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de Chegadas</span>
@@ -86,10 +89,6 @@ const Dashboard = ({ loading }) => {
               <AssignmentRounded fontSize="small" className="sidebar-icon" />
               <span>Painel de Passeios</span>
             </NavLink> */}
-            <NavLink to="op" className={getNavClass}>
-              <AssignmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel Operacional</span>
-            </NavLink>
           </div>
 
           <div className="sidebar-group">

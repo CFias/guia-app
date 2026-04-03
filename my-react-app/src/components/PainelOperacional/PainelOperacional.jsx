@@ -905,7 +905,7 @@ const desenharTextoNomeBase = ({ doc, nome, config }) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
 
-  let fontSize = 34;
+  let fontSize = 55;
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
 
@@ -965,99 +965,64 @@ const desenharPlacaIndividual = ({
   config,
   logoDataUrl,
 }) => {
-  desenharMolduraProfissional({ doc, config });
-  desenharSeloRecepcao({ doc, config });
-  desenharTextoVooTopo({ doc, voo, config });
-  desenharTextoNomeBase({ doc, nome: reserva?.cliente, config });
-  desenharRodapeElegante({ doc, config });
-  desenharDataDiscreta({ doc, data, config });
-  desenharLogoProfissional({
+  const { largura, altura } = desenharCabecalhoPadraoPlaca({
     doc,
-    logoDataUrl,
+    voo,
     config,
-    larguraMax: 50,
-    alturaMax: 50,
-    margemDireita: 14,
-    margemInferior: 10,
+    logoDataUrl,
+  });
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
+
+  let fontSize = 55;
+  let linhas = quebrarTextoCentralizado(
+    doc,
+    String(reserva?.cliente || "").toUpperCase(),
+    largura - 60,
+  );
+
+  while (linhas.length > 2 && fontSize > 24) {
+    fontSize -= 2;
+    doc.setFontSize(fontSize);
+    linhas = quebrarTextoCentralizado(
+      doc,
+      String(reserva?.cliente || "").toUpperCase(),
+      largura - 60,
+    );
+  }
+
+  doc.setFontSize(fontSize);
+
+  const centroY = (34 + (altura - 14)) / 2 + 4;
+  const espacamentoLinhas = fontSize * 0.42;
+
+  if (linhas.length === 1) {
+    doc.text(linhas[0], largura / 2, centroY, { align: "center" });
+  } else {
+    const blocoAltura = (linhas.length - 1) * espacamentoLinhas;
+    let linhaY = centroY - blocoAltura / 2;
+
+    linhas.slice(0, 2).forEach((linha) => {
+      doc.text(linha, largura / 2, linhaY, { align: "center" });
+      linhaY += espacamentoLinhas;
+    });
+  }
+
+  desenharRodapePadraoPlaca({
+    doc,
+    data,
+    config,
   });
 };
 
 const desenharCabecalhoColecao = ({ doc, voo, data, config, logoDataUrl }) => {
-  const largura = doc.internal.pageSize.getWidth();
-  const altura = doc.internal.pageSize.getHeight();
-
-  const margemX = 14;
-  const larguraUtil = largura - margemX * 2;
-
-  doc.setFillColor(...(config?.fundoPlaca || [238, 238, 238]));
-  doc.rect(0, 0, largura, altura, "F");
-
-  const headerY = 12;
-  const headerH = 48;
-
-  doc.setFillColor(...(config?.fundoHeader || [209, 209, 209]));
-  doc.rect(margemX, headerY, larguraUtil, headerH, "F");
-
-  if (config?.mostrarLogoNasPlacas && logoDataUrl) {
-    try {
-      const props = doc.getImageProperties(logoDataUrl);
-      const larguraOriginal = props?.width || 1;
-      const alturaOriginal = props?.height || 1;
-      const formato = String(
-        props?.fileType || props?.format || "PNG",
-      ).toUpperCase();
-
-      const proporcao = larguraOriginal / alturaOriginal;
-
-      const larguraMax = 16;
-      const alturaMax = 16;
-
-      let larguraFinal = larguraMax;
-      let alturaFinal = larguraFinal / proporcao;
-
-      if (alturaFinal > alturaMax) {
-        alturaFinal = alturaMax;
-        larguraFinal = alturaFinal * proporcao;
-      }
-
-      const xLogo = margemX + 6;
-      const yLogo = headerY + 9;
-
-      doc.addImage(
-        logoDataUrl,
-        formato,
-        xLogo,
-        yLogo,
-        larguraFinal,
-        alturaFinal,
-      );
-    } catch (error) {
-      console.error("Erro ao desenhar logo no cabeçalho da coleção:", error);
-    }
-  }
-
-  const inicioTextoEsquerda = margemX + 30;
-
-  doc.setTextColor(...(config?.corTitulo || [65, 74, 95]));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("RECEPÇÃO AEROPORTO", inicioTextoEsquerda, headerY + 15);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("Luck Receptivo", inicioTextoEsquerda, headerY + 24);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("VOO", largura - 52, headerY + 10);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(34);
-  doc.text(extrairTextoVooPlaca(voo), largura - 18, headerY + 28, {
-    align: "right",
+  return desenharCabecalhoPadraoPlaca({
+    doc,
+    voo,
+    config,
+    logoDataUrl,
   });
-
-  return 60;
 };
 
 const desenharItemColecao = ({
@@ -1069,24 +1034,21 @@ const desenharItemColecao = ({
   config,
 }) => {
   const largura = doc.internal.pageSize.getWidth();
-
   const margemX = 14;
   const larguraUtil = largura - margemX * 2;
-
-  const alturaRodape = 18;
-  const areaUtil = 118;
+  const areaUtil = 112;
   const alturaBox = areaUtil / totalPorPagina;
 
   const y = inicioY + indice * alturaBox;
 
-  doc.setFillColor(245, 245, 245);
+  doc.setFillColor(238, 238, 238);
   doc.rect(margemX, y, larguraUtil, alturaBox, "F");
 
-  doc.setDrawColor(...(config?.linhaDivisoria || [196, 196, 196]));
+  doc.setDrawColor(...(config?.bordaPlaca || [196, 196, 196]));
   doc.setLineWidth(0.5);
   doc.rect(margemX, y, larguraUtil, alturaBox);
 
-  let fontSize = totalPorPagina >= 5 ? 26 : totalPorPagina === 4 ? 28 : 30;
+  let fontSize = totalPorPagina >= 5 ? 38 : totalPorPagina === 4 ? 42 : 46;
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
@@ -1094,7 +1056,7 @@ const desenharItemColecao = ({
   let linhas = quebrarTextoCentralizado(
     doc,
     String(nome || "").toUpperCase(),
-    larguraUtil - 28,
+    larguraUtil - 40,
   );
 
   while (linhas.length > 2 && fontSize > 18) {
@@ -1103,7 +1065,7 @@ const desenharItemColecao = ({
     linhas = quebrarTextoCentralizado(
       doc,
       String(nome || "").toUpperCase(),
-      larguraUtil - 28,
+      larguraUtil - 40,
     );
   }
 
@@ -1121,9 +1083,7 @@ const desenharItemColecao = ({
   let linhaY = centroY - blocoAltura / 2;
 
   linhas.slice(0, 2).forEach((linha) => {
-    doc.text(String(linha).toUpperCase(), largura / 2, linhaY, {
-      align: "center",
-    });
+    doc.text(linha, largura / 2, linhaY, { align: "center" });
     linhaY += espacamentoLinhas;
   });
 };
@@ -1132,6 +1092,101 @@ const formatarDataPlaca = (dataIso = "") => {
   if (!dataIso) return "";
   const [ano, mes, dia] = String(dataIso).split("-");
   return `${dia}/${mes}/${ano}`;
+};
+
+const desenharCabecalhoPadraoPlaca = ({ doc, voo, config, logoDataUrl }) => {
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+
+  const margemX = 14;
+  const larguraUtil = largura - margemX * 2;
+
+  doc.setFillColor(...(config?.fundoPlaca || [238, 238, 238]));
+  doc.rect(0, 0, largura, altura, "F");
+
+  if (config?.mostrarLogoNasPlacas && logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      const larguraOriginal = props?.width || 1;
+      const alturaOriginal = props?.height || 1;
+      const formato = String(
+        props?.fileType || props?.format || "PNG",
+      ).toUpperCase();
+
+      const proporcao = larguraOriginal / alturaOriginal;
+
+      const larguraMax = 25;
+      const alturaMax = 25;
+
+      let larguraFinal = larguraMax;
+      let alturaFinal = larguraFinal / proporcao;
+
+      if (alturaFinal > alturaMax) {
+        alturaFinal = alturaMax;
+        larguraFinal = alturaFinal * proporcao;
+      }
+
+      const xLogo = margemX + 1;
+      const yLogo = 8;
+
+      doc.addImage(
+        logoDataUrl,
+        formato,
+        xLogo,
+        yLogo,
+        larguraFinal,
+        alturaFinal,
+      );
+    } catch (error) {
+      console.error("Erro ao desenhar logo:", error);
+    }
+  }
+
+  doc.setTextColor(...(config?.corTitulo || [65, 74, 95]));
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("LUCK RECEPTIVO", margemX + 22, 18);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Base SSA", margemX + 22, 25);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("VOO", largura - 48, 13);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(30);
+  doc.text(extrairTextoVooPlaca(voo), largura - 18, 28, {
+    align: "right",
+  });
+
+  doc.setDrawColor(...(config?.linhaDivisoria || [90, 90, 90]));
+  doc.setLineWidth(0.8);
+  doc.line(margemX, 34, largura - margemX, 34);
+
+  return {
+    largura,
+    altura,
+    margemX,
+    larguraUtil,
+  };
+};
+
+const desenharRodapePadraoPlaca = ({ doc, data, config }) => {
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+  const margemX = 14;
+
+  doc.setDrawColor(...(config?.linhaDivisoria || [90, 90, 90]));
+  doc.setLineWidth(0.8);
+  doc.line(margemX, altura - 14, largura - margemX, altura - 14);
+
+  doc.setTextColor(...(config?.corData || [90, 90, 90]));
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Operacional • Luck Receptivo", margemX, altura - 9);
+  doc.text(`Data: ${formatarDataPlaca(data)}`, margemX, altura - 4);
 };
 
 export default function PainelOperacionalUnificado() {
@@ -1166,12 +1221,11 @@ export default function PainelOperacionalUnificado() {
         : {
             repetirCabecalhoVooAoQuebrarPagina: true,
             mostrarLogoNasPlacas: true,
-            quantidadePorPaginaColecao: 4,
-            logoUrl: logoLuck,
+            quantidadePorPaginaColecao: 5,
             fundoPlaca: [238, 238, 238],
-            fundoHeader: [209, 209, 209],
+            fundoHeader: [238, 238, 238],
             bordaPlaca: [196, 196, 196],
-            linhaDivisoria: [196, 196, 196],
+            linhaDivisoria: [90, 90, 90],
             corTitulo: [65, 74, 95],
             corTexto: [65, 74, 95],
             corDestaque: [65, 74, 95],
@@ -1182,11 +1236,10 @@ export default function PainelOperacionalUnificado() {
         repetirCabecalhoVooAoQuebrarPagina: true,
         mostrarLogoNasPlacas: true,
         quantidadePorPaginaColecao: 5,
-        logoUrl: logoLuck,
         fundoPlaca: [238, 238, 238],
-        fundoHeader: [209, 209, 209],
+        fundoHeader: [238, 238, 238],
         bordaPlaca: [196, 196, 196],
-        linhaDivisoria: [196, 196, 196],
+        linhaDivisoria: [90, 90, 90],
         corTitulo: [65, 74, 95],
         corTexto: [65, 74, 95],
         corDestaque: [65, 74, 95],
@@ -1935,7 +1988,7 @@ export default function PainelOperacionalUnificado() {
 
       const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
       const porPagina = Number(configPlacas?.quantidadePorPaginaColecao || 5);
-      const inicioYBase = 60;
+      const inicioYBase = 44;
 
       voo.reservas.forEach((reserva, index) => {
         const indiceNaPagina = index % porPagina;
@@ -1957,12 +2010,7 @@ export default function PainelOperacionalUnificado() {
             logoDataUrl,
           });
 
-          desenharRodapeElegante({
-            doc,
-            config: configPlacas,
-          });
-
-          desenharDataDiscreta({
+          desenharRodapePadraoPlaca({
             doc,
             data: dataSelecionada,
             config: configPlacas,
