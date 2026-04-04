@@ -1213,7 +1213,7 @@ const desenharItemColecao = ({
   const y = inicioY + indice * alturaBox;
   const nomePlaca = extrairTextoNomePlaca(nome);
 
-  doc.setFillColor(238, 238, 238);
+  doc.setFillColor(255, 255, 255);
   doc.rect(margemX, y, larguraUtil, alturaBox, "F");
 
   doc.setDrawColor(...(config?.bordaPlaca || [196, 196, 196]));
@@ -1265,7 +1265,7 @@ const desenharCabecalhoPadraoPlaca = ({ doc, voo, config, logoDataUrl }) => {
   const margemX = 14;
   const larguraUtil = largura - margemX * 2;
 
-  doc.setFillColor(...(config?.fundoPlaca || [238, 238, 238]));
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, largura, altura, "F");
 
   if (config?.mostrarLogoNasPlacas && logoDataUrl) {
@@ -1386,7 +1386,7 @@ export default function PainelOperacionalUnificado() {
           repetirCabecalhoVooAoQuebrarPagina: true,
           mostrarLogoNasPlacas: true,
           quantidadePorPaginaColecao: 5,
-          fundoPlaca: [238, 238, 238],
+          fundoPlaca: [255, 255, 255],
           fundoHeader: [238, 238, 238],
           bordaPlaca: [196, 196, 196],
           linhaDivisoria: [90, 90, 90],
@@ -1400,7 +1400,7 @@ export default function PainelOperacionalUnificado() {
         repetirCabecalhoVooAoQuebrarPagina: true,
         mostrarLogoNasPlacas: true,
         quantidadePorPaginaColecao: 5,
-        fundoPlaca: [238, 238, 238],
+        fundoPlaca: [255, 255, 255],
         fundoHeader: [238, 238, 238],
         bordaPlaca: [196, 196, 196],
         linhaDivisoria: [90, 90, 90],
