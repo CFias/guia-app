@@ -93,6 +93,70 @@ const formatarDataTitulo = (dataIso) => {
   return `${dia}/${mes}/${ano}`;
 };
 
+const extrairDataIsoDeValor = (valor = "") => {
+  if (!valor) return "";
+
+  const str = String(valor).trim();
+
+  const matchIso = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (matchIso) return matchIso[1];
+
+  const matchBr = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (matchBr) {
+    const [, dd, mm, yyyy] = matchBr;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return "";
+};
+
+const extrairDataServicoReal = (item) =>
+  extrairDataIsoDeValor(
+    item?.presentation_hour ||
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
+  ) || "";
+
+const formatarDataCurtaBr = (dataIso = "") => {
+  if (!dataIso) return "";
+  const [, mes, dia] = String(dataIso).split("-");
+  return `${dia}/${mes}`;
+};
+
+const montarMarcadorHoje = (dataServico, dataMapa) => {
+  if (!dataServico || !dataMapa) return "";
+
+  const servicoVeioDoDiaAnterior = dataServico < dataMapa;
+
+  if (!servicoVeioDoDiaAnterior) return "";
+
+  return `*HOJE ${formatarDataCurtaBr(dataServico)}*`;
+};
+
+const compararDataHoraServico = (a, b) => {
+  const dataA = String(a?.dataServico || "9999-99-99");
+  const dataB = String(b?.dataServico || "9999-99-99");
+
+  if (dataA !== dataB) {
+    return dataA.localeCompare(dataB, "pt-BR", { sensitivity: "base" });
+  }
+
+  return String(a?.hora || "").localeCompare(String(b?.hora || ""));
+};
+
+const montarTagHojeData = (dataServico, dataOperacional) => {
+  if (!dataServico || !dataOperacional) return "";
+
+  if (dataServico === dataOperacional) {
+    return `HOJE ${formatarDataTitulo(dataServico)}`;
+  }
+
+  return formatarDataTitulo(dataServico);
+};
+
 const normalizarTexto = (texto = "") =>
   String(texto)
     .normalize("NFD")
@@ -382,8 +446,7 @@ const deveEntrarNaPrevia = (item) => {
   return !!String(veiculo || "").trim() && !!escalaId;
 };
 
-const ordenarHora = (a, b) =>
-  String(a.hora || "").localeCompare(String(b.hora || ""));
+const ordenarHora = (a, b) => compararDataHoraServico(a, b);
 
 const getIndiceOrdemVeiculo = (nomeVeiculo, ordemManual = []) => {
   const alvo = normalizarNomeVeiculo(nomeVeiculo);
@@ -418,12 +481,16 @@ const extrairVeiculosFornecedor = (fornecedor) => {
     .filter(Boolean);
 };
 
+
+
 const construirLinhaMensagem = (linha) => {
+  const sufixoHoje = linha.marcadorHoje ? ` ${linha.marcadorHoje}` : "";
+
   if (linha.tipo === "PASSEIO") {
-    return `${linha.passeio || linha.texto} - ${linha.guia || "SEM GUIA"} - ${linha.paxDetalhado}`;
+    return `${linha.passeio || linha.texto} - ${linha.guia || "SEM GUIA"} - ${linha.paxDetalhado}${sufixoHoje}`;
   }
 
-  return `${linha.tipo} - ${formatarHoraMensagem(linha.hora)} - ${linha.texto} - ${linha.paxDetalhado}`;
+  return `${linha.tipo} - ${formatarHoraMensagem(linha.hora)} - ${linha.texto} - ${linha.paxDetalhado}${sufixoHoje}`;
 };
 
 const montarMensagemFornecedor = ({
@@ -545,12 +612,16 @@ const PreviaEscalasPlanilha = () => {
       const jsonBase = await responseBase.json();
       const jsonPasseios = await responsePasseios.json();
 
-      const listaBase = extrairListaResposta(jsonBase);
+      const listaBase = extrairListaResposta(jsonBase).map((item) => ({
+        ...item,
+        __dataMapa: dataSelecionada,
+      }));
       const listaPasseios = extrairListaResposta(jsonPasseios);
 
       const passeiosMarcados = listaPasseios.map((item) => ({
         ...item,
         service_type: String(item?.service_type || SERVICE_TYPE_PASSEIO),
+        __dataMapa: dataSelecionada,
       }));
 
       setItensBrutos([...listaBase, ...passeiosMarcados]);
@@ -579,6 +650,8 @@ const PreviaEscalasPlanilha = () => {
       if (tipo === "IGNORAR") return;
 
       const horaAtual = extrairHorario(item);
+      const dataMapaAtual = item?.__dataMapa || dataSelecionada;
+      const dataServicoAtual = extrairDataServicoReal(item) || dataMapaAtual;
       const adt = extrairAdultos(item);
       const chd = extrairCriancas(item);
       const inf = extrairInfantes(item);
@@ -599,6 +672,9 @@ const PreviaEscalasPlanilha = () => {
           escalaId: chaveEscala,
           tipo,
           hora: horaAtual,
+          dataServico: dataServicoAtual,
+          dataMapa: dataMapaAtual,
+          marcadorHoje: montarMarcadorHoje(dataServicoAtual, dataMapaAtual),
           texto:
             tipo === "PASSEIO"
               ? extrairPasseio(item)
@@ -630,16 +706,18 @@ const PreviaEscalasPlanilha = () => {
         mapa[veiculo].linhasPorEscala[chaveEscala].hora = horaAtual;
       }
 
-      if (!mapa[veiculo].motorista) {
-        mapa[veiculo].motorista = extrairMotorista(item);
-      }
+      const dataSalva = mapa[veiculo].linhasPorEscala[chaveEscala].dataServico;
 
       if (
-        tipo === "PASSEIO" &&
-        !mapa[veiculo].linhasPorEscala[chaveEscala].guia
+        dataServicoAtual &&
+        (!dataSalva ||
+          `${dataServicoAtual} ${horaAtual || "99:99"}` <
+          `${dataSalva} ${horaSalva || "99:99"}`)
       ) {
-        mapa[veiculo].linhasPorEscala[chaveEscala].guia =
-          extrairGuia(item) || "";
+        mapa[veiculo].linhasPorEscala[chaveEscala].dataServico = dataServicoAtual;
+        mapa[veiculo].linhasPorEscala[chaveEscala].dataMapa = dataMapaAtual;
+        mapa[veiculo].linhasPorEscala[chaveEscala].marcadorHoje =
+          montarMarcadorHoje(dataServicoAtual, dataMapaAtual);
       }
     });
 
@@ -1238,13 +1316,12 @@ const PreviaEscalasPlanilha = () => {
                         return (
                           <div
                             key={grupo.chave}
-                            className={`previa-operacional-coluna ${
-                              draggingVehicle &&
+                            className={`previa-operacional-coluna ${draggingVehicle &&
                               normalizarNomeVeiculo(draggingVehicle) ===
-                                normalizarNomeVeiculo(grupo.veiculo)
-                                ? "dragging"
-                                : ""
-                            }`}
+                              normalizarNomeVeiculo(grupo.veiculo)
+                              ? "dragging"
+                              : ""
+                              }`}
                             draggable
                             onDragStart={() =>
                               setDraggingVehicle(grupo.veiculo)
@@ -1273,8 +1350,8 @@ const PreviaEscalasPlanilha = () => {
                                 >
                                   <span className="texto-linha">
                                     {linhaItem.tipo === "PASSEIO"
-                                      ? `${linhaItem.passeio || linhaItem.texto} - ${linhaItem.guia || "SEM GUIA"} - ${linhaItem.paxDetalhado}`
-                                      : `${linhaItem.tipo} - ${linhaItem.hora || "--:--"} - ${linhaItem.texto} - ${linhaItem.paxDetalhado}`}
+                                      ? `${linhaItem.passeio || linhaItem.texto} - ${linhaItem.guia || "SEM GUIA"} - ${linhaItem.paxDetalhado}${linhaItem.marcadorHoje ? ` ${linhaItem.marcadorHoje}` : ""}`
+                                      : `${linhaItem.tipo} - ${linhaItem.hora || "--:--"} - ${linhaItem.texto} - ${linhaItem.paxDetalhado}${linhaItem.marcadorHoje ? ` ${linhaItem.marcadorHoje}` : ""}`}
                                   </span>
                                 </div>
                               ))}

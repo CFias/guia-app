@@ -983,8 +983,8 @@ const extrairTextoNomePlaca = (nome = "") => {
     return partes.join(" ").toUpperCase();
   }
 
-  const segundaPalavra = String(partes[1] || "").toLowerCase();
   const conectores = ["de", "da", "do", "dos", "das"];
+  const segundaPalavra = String(partes[1] || "").toLowerCase();
 
   if (conectores.includes(segundaPalavra) && partes.length >= 3) {
     return partes.slice(0, 3).join(" ").toUpperCase();
@@ -3504,7 +3504,7 @@ export default function PainelOperacionalUnificado() {
 
                                   {grupo.alertaServicoHoje && (
                                     <span className="painel-chegadas-status atrasado">
-                                      O SERVIÇO SERÁ REALIZADO HOJE
+                                      O SERVIÇO SERÁ REALIZADO HOJE ({formatarDataBr(grupo.dataServicoReal)})
                                     </span>
                                   )}
                                 </div>
