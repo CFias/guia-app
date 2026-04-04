@@ -242,21 +242,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -859,12 +859,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -900,10 +900,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -970,10 +970,17 @@ const extrairTextoVooPlaca = (voo = "") =>
     .trim()
     .toUpperCase() || "VOO NÃO INFORMADO";
 
-const extrairTextoNomePlaca = (nome = "") =>
-  String(nome || "")
+const extrairTextoNomePlaca = (nome = "") => {
+  if (!nome) return "NOME NÃO INFORMADO";
+
+  const partes = String(nome)
     .trim()
-    .toUpperCase() || "NOME NÃO INFORMADO";
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean);
+
+  return partes.slice(0, 2).join(" ").toUpperCase();
+};
 
 const desenharMolduraProfissional = ({ doc, config }) => {
   const largura = doc.internal.pageSize.getWidth();
@@ -1142,24 +1149,18 @@ const desenharPlacaIndividual = ({
     logoDataUrl,
   });
 
+  const nomePlaca = extrairTextoNomePlaca(reserva?.cliente || "");
+
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
 
   let fontSize = 55;
-  let linhas = quebrarTextoCentralizado(
-    doc,
-    String(reserva?.cliente || "").toUpperCase(),
-    largura - 60,
-  );
+  let linhas = quebrarTextoCentralizado(doc, nomePlaca, largura - 60);
 
   while (linhas.length > 2 && fontSize > 24) {
     fontSize -= 2;
     doc.setFontSize(fontSize);
-    linhas = quebrarTextoCentralizado(
-      doc,
-      String(reserva?.cliente || "").toUpperCase(),
-      largura - 60,
-    );
+    linhas = quebrarTextoCentralizado(doc, nomePlaca, largura - 60);
   }
 
   doc.setFontSize(fontSize);
@@ -1210,6 +1211,7 @@ const desenharItemColecao = ({
   const alturaBox = areaUtil / totalPorPagina;
 
   const y = inicioY + indice * alturaBox;
+  const nomePlaca = extrairTextoNomePlaca(nome);
 
   doc.setFillColor(238, 238, 238);
   doc.rect(margemX, y, larguraUtil, alturaBox, "F");
@@ -1223,20 +1225,12 @@ const desenharItemColecao = ({
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
 
-  let linhas = quebrarTextoCentralizado(
-    doc,
-    String(nome || "").toUpperCase(),
-    larguraUtil - 40,
-  );
+  let linhas = quebrarTextoCentralizado(doc, nomePlaca, larguraUtil - 40);
 
   while (linhas.length > 2 && fontSize > 18) {
     fontSize -= 2;
     doc.setFontSize(fontSize);
-    linhas = quebrarTextoCentralizado(
-      doc,
-      String(nome || "").toUpperCase(),
-      larguraUtil - 40,
-    );
+    linhas = quebrarTextoCentralizado(doc, nomePlaca, larguraUtil - 40);
   }
 
   doc.setFontSize(fontSize);
@@ -1389,18 +1383,18 @@ export default function PainelOperacionalUnificado() {
       return salvo
         ? { ...JSON.parse(salvo), logoUrl: logoLuck }
         : {
-            repetirCabecalhoVooAoQuebrarPagina: true,
-            mostrarLogoNasPlacas: true,
-            quantidadePorPaginaColecao: 5,
-            fundoPlaca: [238, 238, 238],
-            fundoHeader: [238, 238, 238],
-            bordaPlaca: [196, 196, 196],
-            linhaDivisoria: [90, 90, 90],
-            corTitulo: [65, 74, 95],
-            corTexto: [65, 74, 95],
-            corDestaque: [65, 74, 95],
-            corData: [90, 90, 90],
-          };
+          repetirCabecalhoVooAoQuebrarPagina: true,
+          mostrarLogoNasPlacas: true,
+          quantidadePorPaginaColecao: 5,
+          fundoPlaca: [238, 238, 238],
+          fundoHeader: [238, 238, 238],
+          bordaPlaca: [196, 196, 196],
+          linhaDivisoria: [90, 90, 90],
+          corTitulo: [65, 74, 95],
+          corTexto: [65, 74, 95],
+          corDestaque: [65, 74, 95],
+          corData: [90, 90, 90],
+        };
     } catch {
       return {
         repetirCabecalhoVooAoQuebrarPagina: true,
@@ -1866,7 +1860,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2127,8 +2121,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -3643,12 +3637,12 @@ export default function PainelOperacionalUnificado() {
                                               </td>
                                               {grupo.tipoServico ===
                                                 "TRANSFER" && (
-                                                <td>
-                                                  {
-                                                    reserva.hotelDestinoAbreviado
-                                                  }
-                                                </td>
-                                              )}
+                                                  <td>
+                                                    {
+                                                      reserva.hotelDestinoAbreviado
+                                                    }
+                                                  </td>
+                                                )}
                                               <td>{reserva.vooRetorno}</td>
                                               <td>{reserva.modalidade}</td>
                                               <td>
