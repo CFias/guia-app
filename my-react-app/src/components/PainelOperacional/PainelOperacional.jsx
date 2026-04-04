@@ -1211,54 +1211,62 @@ const desenharItemColecao = ({
   totalPorPagina,
   config,
 }) => {
-  const largura = doc.internal.pageSize.getWidth();
+  const larguraPagina = doc.internal.pageSize.getWidth();
   const margemX = 14;
-  const larguraUtil = largura - margemX * 2;
-  const areaUtil = 112;
-  const alturaBox = areaUtil / totalPorPagina;
+  const larguraUtil = larguraPagina - margemX * 2;
+  const areaUtil = 150;
 
-  const y = inicioY + indice * alturaBox;
+  const alturaBox = areaUtil / totalPorPagina;
+  const posY = inicioY + indice * alturaBox;
+
   const nomePlaca = extrairTextoNomePlaca(nome);
 
+  // fundo
   doc.setFillColor(255, 255, 255);
-  doc.rect(margemX, y, larguraUtil, alturaBox, "F");
+  doc.rect(margemX, posY, larguraUtil, alturaBox, "F");
 
+  // borda
   doc.setDrawColor(...(config?.bordaPlaca || [196, 196, 196]));
   doc.setLineWidth(0.5);
-  doc.rect(margemX, y, larguraUtil, alturaBox);
+  doc.rect(margemX, posY, larguraUtil, alturaBox);
 
-  let fontSize = totalPorPagina >= 5 ? 52 : totalPorPagina === 4 ? 56 : 64;
+  // 🔥 PADDING PADRÃO (aqui está o segredo)
+  const paddingHorizontal = 20;
+
+  let fontSize = totalPorPagina >= 5 ? 44 : totalPorPagina === 4 ? 50 : 58;
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
-
-  let linhas = quebrarTextoCentralizado(doc, nomePlaca, larguraUtil - 40);
-
-  while (linhas.length > 2 && fontSize > 18) {
-    fontSize -= 2;
-    doc.setFontSize(fontSize);
-    linhas = quebrarTextoCentralizado(doc, nomePlaca, larguraUtil - 40);
-  }
-
   doc.setFontSize(fontSize);
 
-  const centroY = y + alturaBox / 2 + 4;
-  const espacamentoLinhas = fontSize * 0.42;
+  let linhas = doc.splitTextToSize(nomePlaca, larguraUtil - paddingHorizontal * 2);
 
-  if (linhas.length === 1) {
-    doc.text(linhas[0], largura / 2, centroY, { align: "center" });
-    return;
+  // limita a 2 linhas
+  while (linhas.length > 2 && fontSize > 20) {
+    fontSize -= 2;
+    doc.setFontSize(fontSize);
+    linhas = doc.splitTextToSize(nomePlaca, larguraUtil - paddingHorizontal * 2);
   }
 
-  const blocoAltura = (linhas.length - 1) * espacamentoLinhas;
-  let linhaY = centroY - blocoAltura / 2;
+  if (linhas.length > 2) {
+    linhas = linhas.slice(0, 2);
+  }
 
-  linhas.slice(0, 2).forEach((linha) => {
-    doc.text(linha, largura / 2, linhaY, { align: "center" });
-    linhaY += espacamentoLinhas;
+  // 🔥 CENTRALIZAÇÃO REAL DO BLOCO
+  const lineHeight = fontSize * 0.4;
+  const blocoAltura = linhas.length * lineHeight;
+
+  const centroY = posY + alturaBox / 2;
+
+  let yTexto = centroY - blocoAltura / 2 + lineHeight * 0.8;
+
+  linhas.forEach((linha) => {
+    doc.text(linha, larguraPagina / 2, yTexto, {
+      align: "center",
+    });
+    yTexto += lineHeight;
   });
 };
-
 const formatarDataPlaca = (dataIso = "") => {
   if (!dataIso) return "";
   const [ano, mes, dia] = String(dataIso).split("-");
