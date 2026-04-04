@@ -979,6 +979,17 @@ const extrairTextoNomePlaca = (nome = "") => {
     .split(" ")
     .filter(Boolean);
 
+  if (partes.length <= 2) {
+    return partes.join(" ").toUpperCase();
+  }
+
+  const segundaPalavra = String(partes[1] || "").toLowerCase();
+  const conectores = ["de", "da", "do", "dos", "das"];
+
+  if (conectores.includes(segundaPalavra) && partes.length >= 3) {
+    return partes.slice(0, 3).join(" ").toUpperCase();
+  }
+
   return partes.slice(0, 2).join(" ").toUpperCase();
 };
 
