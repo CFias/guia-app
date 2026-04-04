@@ -508,7 +508,7 @@ const montarMensagemFornecedor = ({
   linhas.push("");
 
   gruposFornecedor.forEach((grupo, index) => {
-    linhas.push(`VEÍCULO: ${grupo.veiculo}`);
+    linhas.push(`*VEÍCULO: ${grupo.veiculo}*`);
 
     grupo.linhas.forEach((linha) => {
       linhas.push(construirLinhaMensagem(linha));
