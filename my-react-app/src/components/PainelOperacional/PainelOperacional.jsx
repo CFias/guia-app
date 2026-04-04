@@ -1074,38 +1074,34 @@ const desenharTextoVooTopo = ({ doc, voo, config }) => {
   });
 };
 
-const desenharTextoNomeBase = ({ doc, nome, config }) => {
+const desenharNomePremium = ({ doc, nome, config }) => {
   const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+
   const texto = extrairTextoNomePlaca(nome);
 
-  doc.setTextColor(...(config?.corTitulo || [18, 88, 74]));
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setTextColor(...(config?.corTexto || [40, 40, 40]));
 
-  let fontSize = 55;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...(config?.corTexto || [55, 65, 81]));
+  // 🔥 COMEÇA GRANDE (impacto visual)
+  let fontSize = 95;
 
-  let linhas = quebrarTextoCentralizado(doc, texto, 225);
+  let linhas = doc.splitTextToSize(texto, largura - 40);
 
-  while (linhas.length > 2 && fontSize > 20) {
+  // 🔽 Reduz até caber em no máximo 2 linhas
+  while (linhas.length > 2 && fontSize > 40) {
     fontSize -= 2;
     doc.setFontSize(fontSize);
-    linhas = quebrarTextoCentralizado(doc, texto, 225);
+    linhas = doc.splitTextToSize(texto, largura - 40);
   }
 
   doc.setFontSize(fontSize);
 
-  const baseY = 98;
-  const espacamento = fontSize * 0.42;
+  // 🎯 CENTRALIZAÇÃO REAL (vertical + horizontal)
+  const espacamento = fontSize * 0.40;
+  const alturaBloco = (linhas.length - 1) * espacamento;
 
-  if (linhas.length === 1) {
-    doc.text(linhas[0], largura / 2, baseY, { align: "center" });
-    return;
-  }
-
-  const blocoAltura = (linhas.length - 1) * espacamento;
-  let y = baseY - blocoAltura / 2;
+  let y = altura / 2 - alturaBloco / 2;
 
   linhas.slice(0, 2).forEach((linha) => {
     doc.text(linha, largura / 2, y, { align: "center" });
@@ -1154,7 +1150,7 @@ const desenharPlacaIndividual = ({
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
 
-  let fontSize = 55;
+  let fontSize = 60;
   let linhas = quebrarTextoCentralizado(doc, nomePlaca, largura - 60);
 
   while (linhas.length > 2 && fontSize > 24) {
@@ -1220,7 +1216,7 @@ const desenharItemColecao = ({
   doc.setLineWidth(0.5);
   doc.rect(margemX, y, larguraUtil, alturaBox);
 
-  let fontSize = totalPorPagina >= 5 ? 38 : totalPorPagina === 4 ? 42 : 46;
+  let fontSize = totalPorPagina >= 5 ? 52 : totalPorPagina === 4 ? 56 : 64;
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
