@@ -79,6 +79,8 @@ const SERVICOS_IGNORADOS = [
   "TERMINAL NAUTICO / HOTEL SALVADOR",
   "HOTEL LITORAL NORTE / HOTEL SALVADOR",
   "HOTEL SALVADOR / HOTEL SALVADOR",
+  "TERMINAL NAUTICO / HOTEL LITORAL NORTE",
+  "MASSARANDUPIÓ X COSTA DO SAUIPE",
 ];
 
 const TERMOS_IGNORADOS = [];
@@ -519,7 +521,7 @@ const Home = () => {
       }),
     );
 
-    
+
 
     const itensApiAgrupados = {};
     const itensBrutos = [];
