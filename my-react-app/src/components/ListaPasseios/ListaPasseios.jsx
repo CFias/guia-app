@@ -22,6 +22,7 @@ import {
   getClasseStatusServico,
   formatarPeriodoSemana,
   aplicarPaxDaApiNosRegistros,
+  normalizarTexto,
 } from "../../Services/Services/plannerUtils";
 
 import {
@@ -160,7 +161,7 @@ const ListaPasseiosSemana = () => {
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
 
-      await sincronizarPasseiosDaApiNaSemana(semanaAtual, base.services);
+      await sincronizarPasseiosDaApiNaSemana(semanaAtual, base.services, normalizarTexto);
 
       const weeklyServices = await carregarWeeklyServicesDaSemana(semanaAtual);
       setExtras(weeklyServices);
@@ -178,7 +179,7 @@ const ListaPasseiosSemana = () => {
     try {
       setLoadingSemana(true);
 
-      await sincronizarPasseiosDaApiNaSemana(semana, services);
+      await sincronizarPasseiosDaApiNaSemana(semana, services, normalizarTexto);
 
       const [apiAgrupada, weeklyServices] = await Promise.all([
         carregarSemanaApiListaPasseios(semana),

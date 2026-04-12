@@ -198,16 +198,30 @@ export const montarUrlApi = (date) => {
 export const encontrarServiceCatalogo = (
     serviceIdExterno,
     nomeApi,
-    listaServices,
-    normalizarTexto,
+    listaServices = [],
+    normalizarTextoFn,
 ) => {
+    const normalizar =
+        typeof normalizarTextoFn === "function"
+            ? normalizarTextoFn
+            : (texto) =>
+                String(texto || "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[^\w\s-]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim()
+                    .toLowerCase();
+
+    const services = Array.isArray(listaServices) ? listaServices : [];
+
     return (
-        listaServices.find(
-            (s) => Number(s.externalServiceId || 0) === Number(serviceIdExterno || 0),
+        services.find(
+            (s) => Number(s?.externalServiceId || 0) === Number(serviceIdExterno || 0),
         ) ||
-        listaServices.find((s) => {
-            const nomeService = normalizarTexto(s.externalName || s.nome || "");
-            const nomeComparado = normalizarTexto(nomeApi || "");
+        services.find((s) => {
+            const nomeService = normalizar(s?.externalName || s?.nome || "");
+            const nomeComparado = normalizar(nomeApi || "");
 
             return (
                 nomeService === nomeComparado ||
