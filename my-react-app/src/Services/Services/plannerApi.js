@@ -300,6 +300,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
     servicesData,
     normalizarTexto,
 ) => {
+    const servicesSeguros = Array.isArray(servicesData) ? servicesData : [];
     for (const dia of semanaAtual) {
         try {
             const response = await fetch(montarUrlApi(dia.date), {
@@ -385,7 +386,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
                 const serviceCatalogo = encontrarServiceCatalogo(
                     passeioApi.serviceIdExterno,
                     passeioApi.nome,
-                    servicesData,
+                    servicesSeguros,
                     normalizarTexto,
                 );
 
