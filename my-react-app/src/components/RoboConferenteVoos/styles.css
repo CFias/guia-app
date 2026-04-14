@@ -1,0 +1,521 @@
+.painel-chegadas-page {
+    width: 100%;
+    max-width: 65vw;
+    margin: 0 auto;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.painel-chegadas-header {
+    margin-bottom: 24px;
+}
+
+.painel-chegadas-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.03em;
+}
+
+.painel-chegadas-title svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-subtitle {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.painel-chegadas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+    min-height: 25vh;
+}
+
+.painel-chegadas-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.painel-chegadas-card-large {
+    grid-column: span 2;
+}
+
+.painel-chegadas-card-full {
+    grid-column: 1 / -1;
+}
+
+.painel-chegadas-card-header {
+    margin-bottom: 20px;
+}
+
+.painel-chegadas-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.painel-chegadas-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.painel-chegadas-card-header p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-dist);
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+}
+
+.painel-chegadas-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: end;
+}
+
+.painel-chegadas-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.painel-chegadas-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.painel-chegadas-field label svg {
+    color: var(--text-dist);
+}
+
+.painel-chegadas-input {
+    width: 100%;
+    height: 50px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    color: var(--text);
+    font-size: 12px;
+    padding: 0 14px;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.painel-chegadas-input:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+}
+
+.painel-chegadas-input:focus {
+    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.painel-chegadas-google-btn {
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 500;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+}
+
+.painel-chegadas-google-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+}
+
+.painel-chegadas-google-btn:disabled,
+.painel-chegadas-input:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.painel-chegadas-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.painel-chegadas-kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-chegadas-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.painel-chegadas-kpi span {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+}
+
+.painel-chegadas-kpi strong {
+    font-size: 18px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.painel-chegadas-inline-empty {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-soft, #64748b);
+    font-weight: 500;
+}
+
+.painel-chegadas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.painel-chegadas-flight-card {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.painel-chegadas-flight-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.04);
+}
+
+.painel-chegadas-flight-top-trigger {
+    padding: 16px 18px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+    outline: none;
+}
+
+.painel-chegadas-flight-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.painel-chegadas-flight-code-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.painel-chegadas-flight-code {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.painel-chegadas-flight-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.painel-chegadas-flight-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 76%, transparent 24%);
+}
+
+.painel-chegadas-expand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 14%, transparent 86%);
+    color: var(--text-dist);
+}
+
+.painel-chegadas-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-semaforo-verde {
+    background: color-mix(in srgb, #16a34a 12%, transparent 88%);
+    color: #15803d;
+    border-color: color-mix(in srgb, #16a34a 20%, transparent 80%);
+}
+
+.status-semaforo-amarelo {
+    background: color-mix(in srgb, #f59e0b 14%, transparent 86%);
+    color: #b45309;
+    border-color: color-mix(in srgb, #f59e0b 22%, transparent 78%);
+}
+
+.status-semaforo-vermelho {
+    background: color-mix(in srgb, #ef4444 12%, transparent 88%);
+    color: #b91c1c;
+    border-color: color-mix(in srgb, #ef4444 22%, transparent 78%);
+}
+
+.status-semaforo-cinza {
+    background: color-mix(in srgb, #94a3b8 14%, transparent 86%);
+    color: #64748b;
+    border-color: color-mix(in srgb, #94a3b8 22%, transparent 78%);
+}
+
+.painel-chegadas-flight-expanded {
+    padding: 0 18px 18px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
+}
+
+.painel-chegadas-driver-block {
+    margin-top: 16px;
+    border-radius: 18px;
+    padding: 16px;
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.painel-chegadas-driver-header {
+    margin-bottom: 12px;
+}
+
+.painel-chegadas-driver-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.painel-chegadas-driver-title strong {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.painel-chegadas-driver-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.painel-chegadas-driver-meta span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text);
+    background: color-mix(in srgb, var(--card) 88%, var(--bg) 12%);
+    border: 1px solid color-mix(in srgb, var(--border) 76%, transparent 24%);
+}
+
+.painel-chegadas-reservations {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.painel-chegadas-reservation-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--card) 88%, var(--bg) 12%);
+    border: 1px solid color-mix(in srgb, var(--border) 76%, transparent 24%);
+}
+
+.painel-chegadas-reservation-item strong {
+    width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.painel-chegadas-reservation-item span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text);
+    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1200px) {
+    .painel-chegadas-kpis {
+        grid-template-columns: repeat(3, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 1024px) {
+    .painel-chegadas-card-large {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 900px) {
+    .painel-chegadas-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-chegadas-card-full {
+        grid-column: auto;
+    }
+
+    .painel-chegadas-kpis {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .painel-chegadas-page {
+        padding: 4px;
+        max-width: 100%;
+    }
+
+    .painel-chegadas-title {
+        font-size: 25px;
+    }
+
+    .painel-chegadas-subtitle {
+        font-size: 13px;
+    }
+
+    .painel-chegadas-card {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .painel-chegadas-card-header h3 {
+        font-size: 19px;
+    }
+
+    .painel-chegadas-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-chegadas-google-btn {
+        width: 100%;
+    }
+
+    .painel-chegadas-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-chegadas-flight-top-trigger {
+        flex-direction: column;
+    }
+
+    .painel-chegadas-expand-icon {
+        align-self: flex-end;
+    }
+}

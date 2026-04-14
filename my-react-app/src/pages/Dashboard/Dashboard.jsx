@@ -72,6 +72,10 @@ const Dashboard = ({ loading }) => {
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Disponibilidade da Semana</span>
             </NavLink>
+            <NavLink to="conferencia" className={getNavClass}>
+              <FactCheckRounded fontSize="small" className="sidebar-icon" />
+              <span>Conferência</span>
+            </NavLink>
             <NavLink to="relatorios" className={getNavClass}>
               <AssessmentRounded fontSize="small" className="sidebar-icon" />
               <span>Analytics - beta</span>

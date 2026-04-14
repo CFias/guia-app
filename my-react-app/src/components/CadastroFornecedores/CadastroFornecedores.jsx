@@ -92,6 +92,39 @@ const formatarTelefone = (valor) => {
   return valor;
 };
 
+const normalizarVeiculoParaObjeto = (veiculo) => {
+  if (typeof veiculo === "string") {
+    return {
+      id: normalizarTexto(veiculo),
+      nome: veiculo,
+      capacidade: "",
+    };
+  }
+
+  return {
+    id: veiculo?.id || normalizarTexto(veiculo?.nome || ""),
+    nome: veiculo?.nome || "",
+    capacidade:
+      veiculo?.capacidade !== undefined &&
+      veiculo?.capacidade !== null &&
+      veiculo?.capacidade !== ""
+        ? String(veiculo.capacidade)
+        : "",
+  };
+};
+
+const atualizarCapacidadeVeiculo = (id, capacidade) => {
+  return (lista = []) =>
+    lista.map((veiculo) =>
+      veiculo.id === id
+        ? {
+            ...veiculo,
+            capacidade: capacidade.replace(/\D/g, ""),
+          }
+        : veiculo,
+    );
+};
+
 const CadastroFornecedores = () => {
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -180,9 +213,14 @@ const CadastroFornecedores = () => {
         }
       });
 
-      const formatados = Array.from(mapaUnico.values()).sort((a, b) =>
-        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
-      );
+      const formatados = Array.from(mapaUnico.values())
+        .map((item) => ({
+          ...item,
+          capacidade: "",
+        }))
+        .sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
+        );
 
       setVeiculosDisponiveis(formatados);
     } catch (error) {
@@ -199,7 +237,19 @@ const CadastroFornecedores = () => {
 
   const adicionarVeiculo = (veiculo) => {
     if (veiculosSelecionados.find((v) => v.id === veiculo.id)) return;
-    setVeiculosSelecionados((prev) => [...prev, veiculo]);
+
+    setVeiculosSelecionados((prev) => [
+      ...prev,
+      {
+        id: veiculo.id,
+        nome: veiculo.nome,
+        capacidade:
+          veiculo?.capacidade !== undefined && veiculo?.capacidade !== null
+            ? String(veiculo.capacidade)
+            : "",
+      },
+    ]);
+
     setDropdownVeiculosOpen(false);
   };
 
@@ -225,14 +275,7 @@ const CadastroFornecedores = () => {
     setAtivo(fornecedor.ativo !== false);
 
     const veiculosNormalizados = Array.isArray(fornecedor.veiculos)
-      ? fornecedor.veiculos.map((v) =>
-          typeof v === "string"
-            ? { id: normalizarTexto(v), nome: v }
-            : {
-                id: v?.id || normalizarTexto(v?.nome || ""),
-                nome: v?.nome || "",
-              },
-        )
+      ? fornecedor.veiculos.map(normalizarVeiculoParaObjeto)
       : [];
 
     setVeiculosSelecionados(veiculosNormalizados);
@@ -261,6 +304,12 @@ const CadastroFornecedores = () => {
         veiculos: veiculosSelecionados.map((v) => ({
           id: v.id,
           nome: v.nome,
+          capacidade:
+            v.capacidade !== undefined &&
+            v.capacidade !== null &&
+            String(v.capacidade).trim() !== ""
+              ? Number(v.capacidade)
+              : null,
         })),
         updatedAt: Timestamp.now(),
       };
@@ -316,7 +365,11 @@ const CadastroFornecedores = () => {
   }, [fornecedores, busca]);
 
   const previewVeiculos = veiculosSelecionados.length
-    ? veiculosSelecionados.map((v) => v.nome).join(", ")
+    ? veiculosSelecionados
+        .map(
+          (v) => `${v.nome}${v.capacidade ? ` (${v.capacidade} lugares)` : ""}`,
+        )
+        .join(", ")
     : "Nenhum selecionado";
 
   const bloqueado = salvando || loadingInicial;
@@ -480,20 +533,87 @@ const CadastroFornecedores = () => {
                     )}
                   </div>
 
-                  <div className="cadastro-fornecedor-tags">
+                  <div
+                    className="cadastro-fornecedor-tags"
+                    style={{
+                      gap: 12,
+                      flexDirection: "column",
+                      alignItems: "stretch",
+                    }}
+                  >
                     {veiculosSelecionados.map((veiculo) => (
                       <div
-                        className="cadastro-fornecedor-tag cadastro-fornecedor-tag-vehicle"
                         key={veiculo.id}
+                        className="cadastro-fornecedor-tag cadastro-fornecedor-tag-vehicle"
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          width: "100%",
+                        }}
                       >
-                        {veiculo.nome}
-                        <span
-                          onClick={() =>
-                            !bloqueado && removerVeiculo(veiculo.id)
-                          }
+                        <div style={{ fontWeight: 600 }}>{veiculo.nome}</div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
                         >
-                          ×
-                        </span>
+                          <label
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#5f6b7a",
+                            }}
+                          >
+                            Capacidade
+                          </label>
+
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Ex: 15"
+                            value={veiculo.capacidade || ""}
+                            onChange={(e) =>
+                              setVeiculosSelecionados(
+                                atualizarCapacidadeVeiculo(
+                                  veiculo.id,
+                                  e.target.value,
+                                ),
+                              )
+                            }
+                            disabled={bloqueado}
+                            style={{
+                              width: 90,
+                              height: 36,
+                              borderRadius: 10,
+                              border: "1px solid #d7dee7",
+                              padding: "0 10px",
+                              outline: "none",
+                              fontWeight: 600,
+                            }}
+                          />
+
+                          <span
+                            onClick={() =>
+                              !bloqueado && removerVeiculo(veiculo.id)
+                            }
+                            style={{
+                              cursor: "pointer",
+                              fontWeight: 700,
+                              fontSize: 18,
+                              lineHeight: 1,
+                              padding: "0 6px",
+                            }}
+                          >
+                            ×
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -667,7 +787,12 @@ const CadastroFornecedores = () => {
                 {fornecedoresFiltrados.map((fornecedor) => {
                   const veiculos = Array.isArray(fornecedor.veiculos)
                     ? fornecedor.veiculos.map((v) =>
-                        typeof v === "string" ? v : v?.nome || "",
+                        typeof v === "string"
+                          ? { nome: v, capacidade: null }
+                          : {
+                              nome: v?.nome || "",
+                              capacidade: v?.capacidade ?? null,
+                            },
                       )
                     : [];
 
@@ -703,12 +828,15 @@ const CadastroFornecedores = () => {
 
                       <div className="cadastro-fornecedor-item-veiculos">
                         {veiculos.length > 0 ? (
-                          veiculos.map((nomeVeiculo) => (
+                          veiculos.map((veiculo) => (
                             <span
-                              key={`${fornecedor.id}-${nomeVeiculo}`}
+                              key={`${fornecedor.id}-${veiculo.nome}`}
                               className="cadastro-fornecedor-veiculo-chip"
                             >
-                              {nomeVeiculo}
+                              {veiculo.nome}
+                              {veiculo.capacidade
+                                ? ` • ${veiculo.capacidade} lugares`
+                                : ""}
                             </span>
                           ))
                         ) : (

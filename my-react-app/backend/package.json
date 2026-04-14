@@ -1,0 +1,14 @@
+{
+  "name": "backend-conferente",
+  "version": "1.0.0",
+  "description": "Robô conferente de voos Phoenix x Aeroporto",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

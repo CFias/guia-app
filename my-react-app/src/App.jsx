@@ -19,6 +19,8 @@ import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
 import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
 import RelatoriosOperacionais from "./components/RelatoriosOp/RelatoriosOp";
+import RoboConferenteVoos from "./components/RoboConferenteVoos/RoboConferenteVoos";
+
 
 function App() {
   return (
@@ -39,6 +41,7 @@ function App() {
         <Route path="disponibilidade-guia" element={<DisponibilidadeGuia />} />
         <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
         <Route path="relatorios" element={<RelatoriosOperacionais />} />
+        <Route path="conferencia" element={<RoboConferenteVoos />} />
         <Route path="/" element={<Home />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         {/* rotas futuras */}
