@@ -53,6 +53,15 @@ function normalizeText(value = "") {
     .toLowerCase();
 }
 
+function normalizeStrict(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .trim();
+}
+
 function extractIso(value = "") {
   const str = String(value || "").trim();
   const match = str.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
@@ -323,6 +332,33 @@ function extractVehicleFromRoadmapItem(item = {}) {
   );
 }
 
+function extractVehiclePlate(item = {}) {
+  return item?.serviceOrder?.vehicle?.plate || "";
+}
+
+function extractVehiclePrefix(item = {}) {
+  return item?.serviceOrder?.vehicle?.prefix || "";
+}
+
+function buildScaleLabel(item = {}) {
+  const nickname =
+    item?.serviceOrder?.vehicle?.nickname ||
+    item?.serviceOrder?.vehicle?.name ||
+    "";
+  const prefix = extractVehiclePrefix(item);
+  const plate = extractVehiclePlate(item);
+
+  const partes = [nickname, prefix, plate]
+    .map((v) => String(v || "").trim())
+    .filter(Boolean);
+
+  if (partes.length) {
+    return partes.join(" - ");
+  }
+
+  return `ESCALA ${extractRoadmapId(item) || "-"}`;
+}
+
 function extractDriverFromRoadmapItem(item = {}) {
   return item?.driver?.nickname || item?.driver?.name || "";
 }
@@ -331,17 +367,88 @@ function extractRoadmapId(item = {}) {
   return item?.id || item?.roadmap_id || item?.roadmapId || "";
 }
 
+function extractDigits(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function normalizeDigits(value = "") {
-  const digits = String(value || "").replace(/\D/g, "");
+  const digits = extractDigits(value);
   if (!digits) return "";
   return String(Number(digits));
 }
 
-function extractFlightNumberForMatch(code = "") {
-  const digits = String(code || "").replace(/\D/g, "");
-  if (!digits) return "";
-  const last4 = digits.slice(-4);
-  return String(Number(last4));
+function extractFlightParts(value = "") {
+  const strict = normalizeStrict(value);
+  if (!strict) {
+    return {
+      raw: "",
+      airline: "",
+      number: "",
+      numberNormalized: "",
+      variants: [],
+    };
+  }
+
+  const match =
+    strict.match(/^([A-Z]{2,3})(\d{1,5})$/) ||
+    strict.match(/([A-Z]{2,3})(\d{1,5})/);
+
+  let airline = "";
+  let number = "";
+
+  if (match) {
+    airline = match[1] || "";
+    number = match[2] || "";
+  } else {
+    airline = (strict.match(/[A-Z]+/g) || []).join("");
+    number = (strict.match(/\d+/g) || []).join("");
+  }
+
+  const numberNormalized = number ? String(Number(number)) : "";
+
+  const variants = Array.from(
+    new Set(
+      [
+        strict,
+        airline && number ? `${airline}${number}` : "",
+        airline && numberNormalized ? `${airline}${numberNormalized}` : "",
+        number,
+        numberNormalized,
+        number ? number.slice(-4) : "",
+        numberNormalized ? numberNormalized.slice(-4) : "",
+      ].filter(Boolean),
+    ),
+  );
+
+  return {
+    raw: strict,
+    airline,
+    number,
+    numberNormalized,
+    variants,
+  };
+}
+
+function generateFlightMatchKeys(value = "") {
+  return extractFlightParts(value).variants;
+}
+
+function buildAirportFlightKeys(flight = {}) {
+  const fontes = [
+    flight?.Number,
+    flight?.Route,
+    flight?.Observations,
+    flight?.StatusT,
+  ];
+
+  const keys = new Set();
+
+  for (const fonte of fontes) {
+    const variants = generateFlightMatchKeys(fonte);
+    variants.forEach((v) => keys.add(v));
+  }
+
+  return Array.from(keys);
 }
 
 function classifyDifference(diff) {
@@ -379,35 +486,52 @@ function classifyDifference(diff) {
 }
 
 function buildAirportMap(airportFlights = []) {
-  return airportFlights.reduce((acc, flight) => {
-    const number = normalizeDigits(flight?.Number || "");
-    if (!number) return acc;
-    if (!acc[number]) acc[number] = [];
-    acc[number].push(flight);
-    return acc;
-  }, {});
+  const acc = {};
+
+  for (const flight of airportFlights) {
+    const keys = buildAirportFlightKeys(flight);
+
+    for (const key of keys) {
+      if (!key) continue;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(flight);
+    }
+  }
+
+  return acc;
 }
 
 function findBestAirportMatch({ flightCode, systemTime, airportMap }) {
-  const normalizedFlightNumber = extractFlightNumberForMatch(flightCode);
-  const candidates = airportMap[normalizedFlightNumber] || [];
+  const keys = generateFlightMatchKeys(flightCode);
+
+  let candidates = [];
+
+  for (const key of keys) {
+    const encontrados = airportMap[key] || [];
+    if (encontrados.length) {
+      candidates = [...candidates, ...encontrados];
+    }
+  }
+
+  candidates = Array.from(new Set(candidates));
 
   if (!candidates.length) {
     return {
-      normalizedFlightNumber,
+      normalizedFlightNumber: keys[0] || "",
       bestMatch: null,
       candidates: [],
+      triedKeys: keys,
     };
   }
 
   const bestMatch = [...candidates].sort((a, b) => {
     const diffA = Math.abs(
-      diffMinutes(systemTime, a?.ScheduleTime || a?.OperationTime || "") ??
+      diffMinutes(systemTime, a?.OperationTime || a?.ScheduleTime || "") ??
         9999,
     );
 
     const diffB = Math.abs(
-      diffMinutes(systemTime, b?.ScheduleTime || b?.OperationTime || "") ??
+      diffMinutes(systemTime, b?.OperationTime || b?.ScheduleTime || "") ??
         9999,
     );
 
@@ -415,9 +539,10 @@ function findBestAirportMatch({ flightCode, systemTime, airportMap }) {
   })[0];
 
   return {
-    normalizedFlightNumber,
+    normalizedFlightNumber: keys[0] || "",
     bestMatch,
     candidates,
+    triedKeys: keys,
   };
 }
 
@@ -454,6 +579,7 @@ function buildRoadmapConferenceRows(roadmaps = []) {
         tipo,
         roadmapId: extractRoadmapId(roadmap),
         escalaId: extractRoadmapId(roadmap),
+        escalaLabel: buildScaleLabel(roadmap),
         veiculo: extractVehicleFromRoadmapItem(roadmap),
         motorista: extractDriverFromRoadmapItem(roadmap),
         raw: reserveService,
@@ -475,6 +601,7 @@ function groupConferenceRowsByScale(rows = []) {
       grouped[key] = {
         id: key,
         escalaId,
+        escalaLabel: row.escalaLabel || `ESCALA ${escalaId}`,
         tipo: row.tipo,
         vooSistema: row.vooSistema,
         numeroNormalizado: row.numeroNormalizado,
@@ -489,6 +616,7 @@ function groupConferenceRowsByScale(rows = []) {
         aeroportoOrigemDestino: row.aeroportoOrigemDestino,
         companhia: row.companhia,
         observacoes: row.observacoes,
+        chavesTentadas: row.chavesTentadas || [],
         reservas: [],
         totalPax: 0,
         veiculo: row.veiculo || "",
@@ -518,6 +646,10 @@ function groupConferenceRowsByScale(rows = []) {
       grouped[key].vooSistema = row.vooSistema;
     }
 
+    if (!grouped[key].escalaLabel && row.escalaLabel) {
+      grouped[key].escalaLabel = row.escalaLabel;
+    }
+
     if (
       (row.classificacao?.severity || 0) >
       (grouped[key].classificacao?.severity || 0)
@@ -534,6 +666,7 @@ function groupConferenceRowsByScale(rows = []) {
       grouped[key].companhia = row.companhia;
       grouped[key].observacoes = row.observacoes;
       grouped[key].matchEncontrado = row.matchEncontrado;
+      grouped[key].chavesTentadas = row.chavesTentadas || [];
     }
   }
 
@@ -544,7 +677,9 @@ function groupConferenceRowsByScale(rows = []) {
       );
     }
 
-    return String(a.escalaId).localeCompare(String(b.escalaId));
+    return String(a.escalaLabel || a.escalaId).localeCompare(
+      String(b.escalaLabel || b.escalaId),
+    );
   });
 }
 
@@ -565,16 +700,12 @@ function buildConferenceRowsFromOperationalRows({ rows, airportFlights }) {
         ? systemTimeRaw
         : item?.schedule?.presentation_hour || "";
 
-    const { normalizedFlightNumber, bestMatch } = findBestAirportMatch({
-      flightCode,
-      systemTime,
-      airportMap,
-    });
-
-    const horarioValido = (valor = "") => {
-      const hora = String(valor || "").trim();
-      return hora && hora !== "--:--" && hora !== "00:00";
-    };
+    const { normalizedFlightNumber, bestMatch, triedKeys } =
+      findBestAirportMatch({
+        flightCode,
+        systemTime,
+        airportMap,
+      });
 
     const airportScheduled = bestMatch?.ScheduleTime || "";
     const airportOperational = bestMatch?.OperationTime || "";
@@ -582,23 +713,41 @@ function buildConferenceRowsFromOperationalRows({ rows, airportFlights }) {
       ? diffMinutes(systemTime, airportOperational || airportScheduled)
       : null;
 
-    const classification = bestMatch
-      ? {
-          key: "ok",
-          label: "Voo localizado",
-          severity: 1,
-        }
-      : {
-          key: "divergencia",
-          label: "Voo não localizado",
-          severity: 2,
-        };
+    const differenceStatus = classifyDifference(diff);
+
+    let classification;
+    if (!String(flightCode || "").trim()) {
+      classification = {
+        key: "critico",
+        label: "Serviço sem voo informado",
+        severity: 3,
+      };
+    } else if (!bestMatch) {
+      classification = {
+        key: "critico",
+        label: "Voo não opera na data selecionada",
+        severity: 3,
+      };
+    } else if (differenceStatus.key === "critico") {
+      classification = {
+        key: "divergencia",
+        label: "Voo localizado com divergência de horário",
+        severity: 2,
+      };
+    } else {
+      classification = {
+        key: "ok",
+        label: "Voo localizado",
+        severity: 1,
+      };
+    }
 
     const status = normalizeAirportStatus(bestMatch?.Status || "");
 
     return {
       id: `${row.tipo}_${row.roadmapId}_${extractReservationCode(item)}`,
       escalaId: row.roadmapId || "",
+      escalaLabel: row.escalaLabel || `ESCALA ${row.roadmapId || "-"}`,
       tipo: row.tipo,
       vooSistema:
         String(flightCode || "")
@@ -612,7 +761,9 @@ function buildConferenceRowsFromOperationalRows({ rows, airportFlights }) {
       classificacao: classification,
       matchEncontrado: !!bestMatch,
       statusAeroporto: bestMatch?.Status || "",
-      statusAeroportoLabel: status.label,
+      statusAeroportoLabel: bestMatch
+        ? status.label
+        : "Voo não opera na data selecionada",
       aeroportoOrigemDestino: bestMatch?.Airport || "-",
       companhia: bestMatch?.Airliner || "-",
       observacoes: bestMatch?.Observations || "",
@@ -621,6 +772,7 @@ function buildConferenceRowsFromOperationalRows({ rows, airportFlights }) {
       pax: extractPax(item),
       motorista: row.motorista || "",
       veiculo: row.veiculo || "",
+      chavesTentadas: triedKeys || [],
     };
   });
 
@@ -637,6 +789,20 @@ function buildSummary(rows = []) {
     semMatch: rows.filter((r) => !r.matchEncontrado).length,
   };
 }
+
+app.get("/", (req, res) => {
+  return res.json({
+    ok: true,
+    service: "robo-conferente-voos",
+    rotas: [
+      "/health",
+      "/api/aeroporto/arrivals",
+      "/api/aeroporto/departures",
+      "/api/conferente-voos?date=YYYY-MM-DD",
+    ],
+    now: new Date().toISOString(),
+  });
+});
 
 app.get("/health", (req, res) => {
   return res.json({
@@ -677,6 +843,7 @@ app.get("/api/aeroporto/departures", async (req, res) => {
 app.get("/api/conferente-voos", async (req, res) => {
   try {
     const date = String(req.query.date || "").trim();
+    const forceRefresh = String(req.query.refresh || "").trim() === "1";
 
     if (!date) {
       return res.status(400).json({
@@ -687,8 +854,8 @@ app.get("/api/conferente-voos", async (req, res) => {
 
     const [roadmaps, airportArrivals, airportDepartures] = await Promise.all([
       fetchPhoenixRoadmap(date),
-      getAirportData("arrivals"),
-      getAirportData("departures"),
+      getAirportData("arrivals", forceRefresh),
+      getAirportData("departures", forceRefresh),
     ]);
 
     const operationalRows = buildRoadmapConferenceRows(roadmaps);
@@ -714,7 +881,10 @@ app.get("/api/conferente-voos", async (req, res) => {
           (b.classificacao?.severity || 0) - (a.classificacao?.severity || 0)
         );
       }
-      return String(a.escalaId).localeCompare(String(b.escalaId));
+
+      return String(a.escalaLabel || a.escalaId).localeCompare(
+        String(b.escalaLabel || b.escalaId),
+      );
     });
 
     return res.json({
