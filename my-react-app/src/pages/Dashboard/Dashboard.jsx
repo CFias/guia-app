@@ -74,25 +74,12 @@ const Dashboard = ({ loading }) => {
             </NavLink>
             <NavLink to="conferencia" className={getNavClass}>
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
-              <span>Conferência</span>
+              <span>Robô de Conferência</span>
             </NavLink>
             <NavLink to="relatorios" className={getNavClass}>
               <AssessmentRounded fontSize="small" className="sidebar-icon" />
               <span>Analytics - beta</span>
             </NavLink>
-
-            {/* <NavLink to="chegadas" className={getNavClass}>
-              <FlightLandRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel de Chegadas</span>
-            </NavLink>
-            <NavLink to="outs" className={getNavClass}>
-              <FlightTakeoffRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel de OUT's</span>
-            </NavLink>
-            <NavLink to="resumo" className={getNavClass}>
-              <AssignmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel de Passeios</span>
-            </NavLink> */}
           </div>
 
           <div className="sidebar-group">

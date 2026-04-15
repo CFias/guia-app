@@ -38,6 +38,73 @@ const getHojeIso = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const abrirBuscaGoogleVoo = (codigoOuHorario = "") => {
+  const termo = String(codigoOuHorario || "").trim();
+  if (!termo) return;
+
+  const query = encodeURIComponent(
+    termo.replace(/\s*-\s*/g, " ").replace(/\s+/g, " "),
+  );
+
+  window.open(
+    `https://www.google.com/search?q=${query}`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+};
+
+const extrairCodigoEscala = (roadmap = {}) =>
+  String(roadmap?.code || "").trim() ||
+  (roadmap?.id ? `ESCALA-${roadmap.id}` : "ESCALA-SEM-ID");
+
+const extrairPaxBreakdown = (item = {}) => {
+  const adt = Number(item?.is_adult_count || 0);
+  const chd = Number(item?.is_child_count || 0);
+  const inf = Number(item?.is_infant_count || item?.is_baby_count || 0);
+
+  return {
+    adt,
+    chd,
+    inf,
+    total: adt + chd + inf,
+  };
+};
+
+const formatarQuantidadeDetalhada = (adultos = 0, criancas = 0, infantes = 0) => {
+  const partes = [];
+  if (adultos > 0) partes.push(`${adultos} ADT`);
+  if (criancas > 0) partes.push(`${criancas} CHD`);
+  if (infantes > 0) partes.push(`${infantes} INF`);
+  return partes.length ? partes.join(" | ") : "0 ADT";
+};
+
+const extrairNumeroVooPrincipal = (item = {}) =>
+  item?.reserve?.flight_code ||
+  item?.reserve?.flight?.code ||
+  item?.reserve?.arrival_flight_code ||
+  item?.reserve?.departure_flight_code ||
+  item?.flight_code ||
+  item?.flight?.code ||
+  item?.flightNumber ||
+  "";
+
+const extrairHorarioVooPhoenix = (item = {}) =>
+  item?.fly_hour ||
+  item?.our_schedule ||
+  item?.reserve?.flight?.scheduled_time ||
+  item?.reserve?.flight?.arrival_time ||
+  item?.reserve?.flight?.departure_time ||
+  item?.presentation_hour ||
+  item?.schedule?.presentation_hour ||
+  "";
+
+const extrairObservacao = (item = {}) =>
+  item?.observation ||
+  item?.observations ||
+  item?.reserve?.observation ||
+  item?.reserve?.observations ||
+  "-";
+
 const formatarDataBr = (dataIso = "") => {
   if (!dataIso) return "";
   const [ano, mes, dia] = String(dataIso).split("-");
@@ -304,18 +371,18 @@ const buildVehicleIndex = (fornecedores = []) => {
         typeof veiculo === "string"
           ? veiculo
           : veiculo?.nome ||
-            veiculo?.name ||
-            veiculo?.prefix ||
-            veiculo?.placa ||
-            veiculo?.plate ||
-            "";
+          veiculo?.name ||
+          veiculo?.prefix ||
+          veiculo?.placa ||
+          veiculo?.plate ||
+          "";
 
       const capacidade =
         typeof veiculo === "string"
           ? null
           : veiculo?.capacidade !== undefined &&
-              veiculo?.capacidade !== null &&
-              veiculo?.capacidade !== ""
+            veiculo?.capacidade !== null &&
+            veiculo?.capacidade !== ""
             ? Number(veiculo.capacidade)
             : null;
 
@@ -422,72 +489,87 @@ const buildGroupedServices = (roadmaps = []) => {
 
   (Array.isArray(roadmaps) ? roadmaps : []).forEach((roadmap) => {
     const reserveServices = extractReserveServicesFromRoadmapItem(roadmap);
+    const escalaCodigo = extrairCodigoEscala(roadmap);
+    const escalaId = String(extractRoadmapId(roadmap) || "");
+    const veiculo = extractVehicleDisplay(roadmap);
+    const motorista = extractDriverDisplay(roadmap);
+    const origem = extractOriginLabel(roadmap) || "-";
+    const destino = extractDestinationLabel(roadmap) || "-";
 
     reserveServices.forEach((reserveService) => {
       if (!reserveService || typeof reserveService !== "object") return;
 
       const tipo = classifyServiceType(reserveService, roadmap);
-      const escalaId = String(extractRoadmapId(roadmap) || "sem-escala");
-      const key = `${tipo}__${escalaId}`;
+      const key = `${tipo}__${escalaCodigo}`;
 
       if (!grouped.has(key)) {
         grouped.set(key, {
           id: key,
           escalaId,
-          escalaLabel: buildScaleLabel(roadmap),
+          escalaCodigo,
+          escalaLabel: escalaCodigo,
           tipo,
-          veiculo: extractVehicleDisplay(roadmap),
-          motorista: extractDriverDisplay(roadmap),
-          origem: extractOriginLabel(roadmap) || "-",
-          destino: extractDestinationLabel(roadmap) || "-",
+          veiculo,
+          motorista,
+          origem,
+          destino,
           reservas: [],
           totalPax: 0,
           paxBreakdown: { adt: 0, chd: 0, inf: 0 },
-          flightCode: "",
-          observationFlightCode: "",
-          horarioPhoenix: "",
           serviceName:
             reserveService?.service?.name ||
             reserveService?.service_name ||
             "-",
+          vooPrincipal: "",
+          horarioPhoenix: "",
+          observacoesEscala: [],
         });
       }
 
-      const item = grouped.get(key);
-      const pax = extractPaxBreakdown(reserveService);
-      const voo = extractFlightCode(reserveService);
-      const vooObs = extractObservationFlightCode(reserveService);
-      const horario = extractPhoenixFlightTime(reserveService);
+      const grupo = grouped.get(key);
+      const pax = extrairPaxBreakdown(reserveService);
+      const voo = extrairNumeroVooPrincipal(reserveService);
+      const horarioVooPhoenix = formatHour(extrairHorarioVooPhoenix(reserveService));
+      const observacao = extrairObservacao(reserveService);
 
-      item.totalPax += pax.total;
-      item.paxBreakdown.adt += pax.adt;
-      item.paxBreakdown.chd += pax.chd;
-      item.paxBreakdown.inf += pax.inf;
+      grupo.totalPax += pax.total;
+      grupo.paxBreakdown.adt += pax.adt;
+      grupo.paxBreakdown.chd += pax.chd;
+      grupo.paxBreakdown.inf += pax.inf;
 
-      item.reservas.push({
+      if (!grupo.vooPrincipal && voo) {
+        grupo.vooPrincipal = String(voo).trim().toUpperCase();
+      }
+
+      if (!grupo.horarioPhoenix && horarioValido(horarioVooPhoenix)) {
+        grupo.horarioPhoenix = horarioVooPhoenix;
+      }
+
+      if (observacao && observacao !== "-" && !grupo.observacoesEscala.includes(observacao)) {
+        grupo.observacoesEscala.push(observacao);
+      }
+
+      grupo.reservas.push({
+        id: reserveService?.id || `${extractReservationCode(reserveService)}_${grupo.reservas.length}`,
+        raw: reserveService,
         reserva: extractReservationCode(reserveService),
         cliente: extractPassengerName(reserveService),
         pax: pax.total,
-        paxLabel: `${pax.adt}/${pax.chd}/${pax.inf}`,
-        vooReserva: voo || vooObs || "-",
+        adultos: pax.adt,
+        criancas: pax.chd,
+        infantes: pax.inf,
+        paxLabel: formatarQuantidadeDetalhada(pax.adt, pax.chd, pax.inf),
+        vooReserva: voo || "-",
+        horarioPhoenix: horarioVooPhoenix || "--:--",
+        observacao,
       });
-
-      if (!item.flightCode && voo)
-        item.flightCode = String(voo).trim().toUpperCase();
-      if (!item.observationFlightCode && vooObs)
-        item.observationFlightCode = vooObs;
-      if (!item.horarioPhoenix && horarioValido(formatHour(horario))) {
-        item.horarioPhoenix = formatHour(horario);
-      }
     });
   });
 
   return Array.from(grouped.values()).sort((a, b) =>
-    String(a.escalaLabel || a.escalaId).localeCompare(
-      String(b.escalaLabel || b.escalaId),
-      "pt-BR",
-      { sensitivity: "base" },
-    ),
+    String(a.escalaCodigo || "").localeCompare(String(b.escalaCodigo || ""), "pt-BR", {
+      sensitivity: "base",
+    }),
   );
 };
 
@@ -501,10 +583,7 @@ const buildDiagnostico = ({
   const veiculo = item?.veiculo || "";
   const totalPax = Number(item?.totalPax || 0);
 
-  const { match: vehicleMatch, triedKeys: vehicleKeys } = findVehicleMatch(
-    vehicleIndex,
-    veiculo,
-  );
+  const { match: vehicleMatch } = findVehicleMatch(vehicleIndex, veiculo);
 
   const capacidade =
     vehicleMatch?.capacidade !== undefined ? vehicleMatch.capacidade : null;
@@ -525,8 +604,8 @@ const buildDiagnostico = ({
 
   if (item.tipo === "IN" || item.tipo === "OUT") {
     const result = findBestAirportMatch({
-      flightCode: item.flightCode,
-      observationFlightCode: item.observationFlightCode,
+      flightCode: item.vooPrincipal,
+      observationFlightCode: "",
       systemTime: item.horarioPhoenix,
       airportFlights,
       airportMapByNumber,
@@ -538,23 +617,19 @@ const buildDiagnostico = ({
 
     if (!airportMatch) {
       motivos.push(
-        `Nenhum voo compatível foi localizado para a escala. Critérios tentados: ${flightKeys.join(", ") || "sem chave válida"}.`,
+        `Nenhum voo compatível foi localizado para a escala ${item.escalaCodigo}. Critérios tentados: ${flightKeys.join(", ") || "sem chave válida"}.`,
       );
     } else {
       horarioAeroportoPrevisto = formatHour(airportMatch?.ScheduleTime || "");
-      horarioAeroportoOperacional = formatHour(
-        airportMatch?.OperationTime || "",
-      );
+      horarioAeroportoOperacional = formatHour(airportMatch?.OperationTime || "");
       statusAeroportoLabel = normalizeAirportStatus(airportMatch?.Status || "");
       companhia = airportMatch?.Airliner || "-";
       aeroportoOrigemDestino = airportMatch?.Airport || "-";
 
       detalhes.push(
         matchMode === "flight_number"
-          ? `Voo localizado pelo número ${item.flightCode || "-"}`
-          : matchMode === "observation_flight_number"
-            ? `Voo localizado pelo código encontrado na observação (${item.observationFlightCode})`
-            : `Voo localizado por janela de horário (${item.horarioPhoenix})`,
+          ? `Voo localizado pelo número ${item.vooPrincipal || "-"}`
+          : `Voo localizado por janela de horário (${item.horarioPhoenix || "--:--"})`,
       );
 
       if (
@@ -562,16 +637,19 @@ const buildDiagnostico = ({
         (horarioValido(horarioAeroportoOperacional) ||
           horarioValido(horarioAeroportoPrevisto))
       ) {
-        diff = diffMinutes(
-          item.horarioPhoenix,
-          horarioValido(horarioAeroportoOperacional)
-            ? horarioAeroportoOperacional
-            : horarioAeroportoPrevisto,
-        );
+        const horarioCorretoAeroporto = horarioValido(horarioAeroportoOperacional)
+          ? horarioAeroportoOperacional
+          : horarioAeroportoPrevisto;
+
+        diff = diffMinutes(item.horarioPhoenix, horarioCorretoAeroporto);
 
         if (diff !== null && Math.abs(diff) > 30 && Math.abs(diff) <= 240) {
           alertas.push(
-            `Diferença relevante entre Phoenix e aeroporto: ${formatarDiff(diff)}.`,
+            `Phoenix diverge do aeroporto em ${formatarDiff(diff)}. Foi considerado o horário da API do aeroporto como correto.`,
+          );
+        } else if (diff !== null) {
+          detalhes.push(
+            `Horário Phoenix compatível com aeroporto (${formatarDiff(diff)}).`,
           );
         }
       }
@@ -584,19 +662,17 @@ const buildDiagnostico = ({
     alertas.push(`Veículo escalado (${veiculo}) sem capacidade cadastrada.`);
   } else if (totalPax > capacidade) {
     motivos.push(
-      `OVER na escala: ${totalPax} pax para capacidade ${capacidade}. Excesso de ${totalPax - capacidade} pax.`,
+      `OVER na escala ${item.escalaCodigo}: ${totalPax} pax para capacidade ${capacidade}. Excesso de ${totalPax - capacidade} pax.`,
     );
   } else {
-    detalhes.push(
-      `Capacidade compatível na escala: ${totalPax}/${capacidade}.`,
-    );
+    detalhes.push(`Capacidade compatível na escala: ${totalPax}/${capacidade}.`);
   }
 
   if (!reservas.length) {
     alertas.push("Escala sem reservas vinculadas.");
   } else {
     detalhes.push(
-      `Pax da escala: ${totalPax} (${item.paxBreakdown.adt}/${item.paxBreakdown.chd}/${item.paxBreakdown.inf}).`,
+      `Escala ${item.escalaCodigo} com ${reservas.length} reserva(s) e ${totalPax} pax.`,
     );
   }
 
@@ -624,7 +700,6 @@ const buildDiagnostico = ({
     matchEncontrado: !!airportMatch,
     matchMode,
     chavesTentadas: flightKeys,
-    vehicleKeys,
     horarioAeroportoPrevisto,
     horarioAeroportoOperacional,
     diferencaMinutos: diff,
@@ -820,12 +895,10 @@ function ListaServicosEscalados({
                   <div className="painel-chegadas-flight-main">
                     <div className="painel-chegadas-flight-code-wrap">
                       <strong className="painel-chegadas-flight-code">
-                        {item.escalaLabel || `ESCALA ${item.escalaId || "-"}`}
+                        {item.escalaCodigo || item.escalaLabel || `ESCALA ${item.escalaId || "-"}`}
                       </strong>
 
-                      <span
-                        className={`painel-chegadas-status ${getClasse(statusFinal)}`}
-                      >
+                      <span className={`painel-chegadas-status ${getClasse(statusFinal)}`}>
                         {getRotuloStatus(statusFinal)}
                       </span>
 
@@ -834,6 +907,65 @@ function ListaServicosEscalados({
                           Analisando...
                         </span>
                       )}
+                    </div>
+
+                    <div className="painel-chegadas-scale-summary">
+                      {resumoFinal}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flexWrap: "wrap",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {(item.tipo === "IN" || item.tipo === "OUT") && (
+                        <button
+                          type="button"
+                          className="painel-chegadas-google-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirBuscaGoogleVoo(
+                              item.vooPrincipal ||
+                              item.horarioPhoenix ||
+                              `${item.escalaCodigo || ""} ${item.serviceName || ""}`,
+                            );
+                          }}
+                        >
+                          <SearchRounded fontSize="small" />
+                          Buscar voo
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="painel-chegadas-flight-meta">
+                      <span>Tipo: {item.tipo}</span>
+                      <span>Serviço: {item.serviceName || "-"}</span>
+                      <span>Escala: {item.escalaCodigo || "-"}</span>
+
+                      {(item.tipo === "IN" || item.tipo === "OUT") && (
+                        <>
+                          <span>Voo: {item.vooPrincipal || "-"}</span>
+                          {horarioValido(item.horarioPhoenix) && (
+                            <span>Phoenix: {item.horarioPhoenix}</span>
+                          )}
+                          <span>API previsto: {roboResultado?.horarioAeroportoPrevisto || "--:--"}</span>
+                          <span>API operacional: {roboResultado?.horarioAeroportoOperacional || "--:--"}</span>
+                          <span>Diferença: {formatarDiff(roboResultado?.diferencaMinutos)}</span>
+                          <span>Status API: {roboResultado?.statusAeroportoLabel || "-"}</span>
+                          <span>Match: {roboResultado?.matchEncontrado ? "Sim" : "Não"}</span>
+                        </>
+                      )}
+
+                      <span>Veículo: {item.veiculo || "-"}</span>
+                      <span>Motorista: {item.motorista || "-"}</span>
+                      <span>Pax escala: {item.totalPax || 0}</span>
+                      <span>
+                        ADT/CHD/INF: {item.paxBreakdown.adt}/{item.paxBreakdown.chd}/{item.paxBreakdown.inf}
+                      </span>
                     </div>
 
                     <div className="painel-chegadas-scale-summary">
@@ -990,6 +1122,8 @@ function ListaServicosEscalados({
                             <span>Pax: {r.pax}</span>
                             <span>ADT/CHD/INF: {r.paxLabel}</span>
                             <span>Voo reserva: {r.vooReserva || "-"}</span>
+                            <span>Horário Phoenix: {r.horarioPhoenix || "--:--"}</span>
+                            <span>OBS: {r.observacao || "-"}</span>
                           </div>
                         ))}
                       </div>
