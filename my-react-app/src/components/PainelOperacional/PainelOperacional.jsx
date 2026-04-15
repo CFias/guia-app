@@ -56,6 +56,19 @@ const PONTOS_DE_APOIO_CONFIG = {
   "city tour historico e panoramico": "alternar",
 };
 
+const resolverQuantidadePorPaginaColecao = (
+  totalNomes,
+  quantidadeSelecionada,
+) => {
+  const qtdSelecionada = Number(quantidadeSelecionada || 5);
+  const total = Number(totalNomes || 0);
+
+  if ([1, 2, 3, 4, 5, 6].includes(total)) {
+    return total;
+  }
+
+  return qtdSelecionada;
+};
 const ABAS = {
   CHEGADAS: "chegadas",
   OUTS: "outs",
@@ -193,17 +206,17 @@ const montarTextoMonitoramentoGrupo = (grupo) => {
 
       const contatos = Array.isArray(hotel.reservas)
         ? hotel.reservas
-            .map((reserva) => {
-              const codigoReserva = String(reserva?.reserva || "").trim();
-              const telefone = String(reserva?.telefone || "").trim();
+          .map((reserva) => {
+            const codigoReserva = String(reserva?.reserva || "").trim();
+            const telefone = String(reserva?.telefone || "").trim();
 
-              if (!codigoReserva && !telefone) return null;
-              if (!codigoReserva) return telefone;
-              if (!telefone || telefone === "-") return `"${codigoReserva}"`;
+            if (!codigoReserva && !telefone) return null;
+            if (!codigoReserva) return telefone;
+            if (!telefone || telefone === "-") return `"${codigoReserva}"`;
 
-              return `"${codigoReserva}" - ${telefone}`;
-            })
-            .filter(Boolean)
+            return `"${codigoReserva}" - ${telefone}`;
+          })
+          .filter(Boolean)
         : [];
 
       linhas.push("CONTATOS:");
@@ -274,21 +287,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -891,12 +904,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -932,10 +945,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1436,18 +1449,18 @@ export default function PainelOperacionalUnificado() {
       return salvo
         ? { ...JSON.parse(salvo), logoUrl: logoLuck }
         : {
-            repetirCabecalhoVooAoQuebrarPagina: true,
-            mostrarLogoNasPlacas: true,
-            quantidadePorPaginaColecao: 5,
-            fundoPlaca: [255, 255, 255],
-            fundoHeader: [238, 238, 238],
-            bordaPlaca: [196, 196, 196],
-            linhaDivisoria: [90, 90, 90],
-            corTitulo: [65, 74, 95],
-            corTexto: [65, 74, 95],
-            corDestaque: [65, 74, 95],
-            corData: [90, 90, 90],
-          };
+          repetirCabecalhoVooAoQuebrarPagina: true,
+          mostrarLogoNasPlacas: true,
+          quantidadePorPaginaColecao: 5,
+          fundoPlaca: [255, 255, 255],
+          fundoHeader: [238, 238, 238],
+          bordaPlaca: [196, 196, 196],
+          linhaDivisoria: [90, 90, 90],
+          corTitulo: [65, 74, 95],
+          corTexto: [65, 74, 95],
+          corDestaque: [65, 74, 95],
+          corData: [90, 90, 90],
+        };
     } catch {
       return {
         repetirCabecalhoVooAoQuebrarPagina: true,
@@ -1913,7 +1926,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2174,8 +2187,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2282,7 +2295,13 @@ export default function PainelOperacionalUnificado() {
       });
 
       const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
-      const porPagina = Number(configPlacas?.quantidadePorPaginaColecao || 5);
+
+      const totalNomes = voo.reservas.length;
+      const porPagina = resolverQuantidadePorPaginaColecao(
+        totalNomes,
+        configPlacas?.quantidadePorPaginaColecao,
+      );
+
       const inicioYBase = 44;
 
       voo.reservas.forEach((reserva, index) => {
@@ -3691,12 +3710,12 @@ export default function PainelOperacionalUnificado() {
                                               </td>
                                               {grupo.tipoServico ===
                                                 "TRANSFER" && (
-                                                <td>
-                                                  {
-                                                    reserva.hotelDestinoAbreviado
-                                                  }
-                                                </td>
-                                              )}
+                                                  <td>
+                                                    {
+                                                      reserva.hotelDestinoAbreviado
+                                                    }
+                                                  </td>
+                                                )}
                                               <td>{reserva.vooRetorno}</td>
                                               <td>{reserva.modalidade}</td>
                                               <td>

@@ -401,6 +401,51 @@ const buildVehicleIndex = (fornecedores = []) => {
   return index;
 };
 
+const extrairNumeroVooPhoenix = (item = {}) =>
+  item?.schedule?.name ||
+  item?.reserve?.flight_code ||
+  item?.reserve?.flight?.code ||
+  item?.reserve?.arrival_flight_code ||
+  item?.reserve?.departure_flight_code ||
+  item?.flight_code ||
+  item?.flight?.code ||
+  item?.flightNumber ||
+  "";
+
+const formatarCodigoVooExibicao = (codigo = "") => {
+  const bruto = String(codigo || "").trim().toUpperCase();
+  if (!bruto) return "-";
+
+  const semEspacos = bruto.replace(/\s+/g, "").replace(/[–—]/g, "-");
+  const match = semEspacos.match(/^([A-Z]{2})(\d{3,5})$/);
+
+  if (match) {
+    return `${match[1]} - ${match[2]}`;
+  }
+
+  const matchFlex = semEspacos.match(/^([A-Z]{2})[- ]?(\d{3,5})$/);
+  if (matchFlex) {
+    return `${matchFlex[1]} - ${matchFlex[2]}`;
+  }
+
+  return bruto.replace(/-/g, " - ");
+};
+
+const abrirBuscaGoogleVooPhoenix = (codigo = "") => {
+  const codigoLimpo = String(codigo || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+  if (!codigoLimpo) return;
+
+  window.open(
+    `https://www.google.com/search?q=${encodeURIComponent(codigoLimpo)}`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+};
+
 const findVehicleMatch = (vehicleIndex, vehicleName = "") => {
   const keys = gerarVariacoesVeiculo(vehicleName);
   for (const key of keys) {
@@ -528,7 +573,7 @@ const buildGroupedServices = (roadmaps = []) => {
 
       const grupo = grouped.get(key);
       const pax = extrairPaxBreakdown(reserveService);
-      const voo = extrairNumeroVooPrincipal(reserveService);
+      const voo = extrairNumeroVooPhoenix(reserveService);
       const horarioVooPhoenix = formatHour(extrairHorarioVooPhoenix(reserveService));
       const observacao = extrairObservacao(reserveService);
 
@@ -559,7 +604,7 @@ const buildGroupedServices = (roadmaps = []) => {
         criancas: pax.chd,
         infantes: pax.inf,
         paxLabel: formatarQuantidadeDetalhada(pax.adt, pax.chd, pax.inf),
-        vooReserva: voo || "-",
+        vooReserva: String(voo || "").trim().toUpperCase() || "-",
         horarioPhoenix: horarioVooPhoenix || "--:--",
         observacao,
       });
@@ -602,55 +647,68 @@ const buildDiagnostico = ({
   let companhia = "-";
   let aeroportoOrigemDestino = "-";
 
+  const vooPhoenix = String(item?.vooPrincipal || "").trim().toUpperCase();
+  const horarioPhoenix = item?.horarioPhoenix || "";
+
   if (item.tipo === "IN" || item.tipo === "OUT") {
-    const result = findBestAirportMatch({
-      flightCode: item.vooPrincipal,
-      observationFlightCode: "",
-      systemTime: item.horarioPhoenix,
-      airportFlights,
-      airportMapByNumber,
-    });
-
-    airportMatch = result.bestMatch;
-    matchMode = result.matchMode;
-    flightKeys = result.triedKeys || [];
-
-    if (!airportMatch) {
-      motivos.push(
-        `Nenhum voo compatível foi localizado para a escala ${item.escalaCodigo}. Critérios tentados: ${flightKeys.join(", ") || "sem chave válida"}.`,
+    if (!vooPhoenix && !horarioPhoenix) {
+      alertas.push(
+        "Escala sem número de voo e sem horário de voo no Phoenix. Não foi possível validar o voo.",
       );
     } else {
-      horarioAeroportoPrevisto = formatHour(airportMatch?.ScheduleTime || "");
-      horarioAeroportoOperacional = formatHour(airportMatch?.OperationTime || "");
-      statusAeroportoLabel = normalizeAirportStatus(airportMatch?.Status || "");
-      companhia = airportMatch?.Airliner || "-";
-      aeroportoOrigemDestino = airportMatch?.Airport || "-";
+      const result = findBestAirportMatch({
+        flightCode: vooPhoenix,
+        observationFlightCode: "",
+        systemTime: horarioPhoenix,
+        airportFlights,
+        airportMapByNumber,
+      });
 
-      detalhes.push(
-        matchMode === "flight_number"
-          ? `Voo localizado pelo número ${item.vooPrincipal || "-"}`
-          : `Voo localizado por janela de horário (${item.horarioPhoenix || "--:--"})`,
-      );
+      airportMatch = result?.bestMatch || null;
+      matchMode = result?.matchMode || "none";
+      flightKeys = result?.triedKeys || [];
 
-      if (
-        horarioValido(item.horarioPhoenix) &&
-        (horarioValido(horarioAeroportoOperacional) ||
-          horarioValido(horarioAeroportoPrevisto))
-      ) {
+      if (!airportMatch) {
+        detalhes.push(
+          vooPhoenix
+            ? `Voo ${formatarCodigoVooExibicao(vooPhoenix)} identificado no Phoenix, mas não retornado pela API do aeroporto. Escala mantida com validação parcial.`
+            : `Horário ${horarioPhoenix || "--:--"} identificado no Phoenix, mas sem retorno correspondente na API do aeroporto. Escala mantida com validação parcial.`,
+        );
+      } else {
+        horarioAeroportoPrevisto = formatHour(airportMatch?.ScheduleTime || "");
+        horarioAeroportoOperacional = formatHour(
+          airportMatch?.OperationTime || "",
+        );
+        statusAeroportoLabel = normalizeAirportStatus(
+          airportMatch?.Status || "",
+        );
+        companhia = airportMatch?.Airliner || "-";
+        aeroportoOrigemDestino = airportMatch?.Airport || "-";
+
+        detalhes.push(
+          matchMode === "flight_number"
+            ? `Voo ${formatarCodigoVooExibicao(vooPhoenix)} validado na API do aeroporto.`
+            : matchMode === "observation_flight_number"
+              ? `Voo validado pela observação operacional do Phoenix.`
+              : `Voo validado por janela de horário (${horarioPhoenix || "--:--"}).`,
+        );
+
         const horarioCorretoAeroporto = horarioValido(horarioAeroportoOperacional)
           ? horarioAeroportoOperacional
           : horarioAeroportoPrevisto;
 
-        diff = diffMinutes(item.horarioPhoenix, horarioCorretoAeroporto);
+        if (horarioValido(horarioPhoenix) && horarioValido(horarioCorretoAeroporto)) {
+          diff = diffMinutes(horarioPhoenix, horarioCorretoAeroporto);
 
-        if (diff !== null && Math.abs(diff) > 30 && Math.abs(diff) <= 240) {
-          alertas.push(
-            `Phoenix diverge do aeroporto em ${formatarDiff(diff)}. Foi considerado o horário da API do aeroporto como correto.`,
-          );
-        } else if (diff !== null) {
-          detalhes.push(
-            `Horário Phoenix compatível com aeroporto (${formatarDiff(diff)}).`,
-          );
+          if (diff !== null && Math.abs(diff) > 30 && Math.abs(diff) <= 240) {
+            alertas.push(
+              `Diferença entre Phoenix e aeroporto: ${formatarDiff(diff)}. Foi considerado o horário da API do aeroporto como referência.`,
+            );
+          } else if (diff !== null) {
+            detalhes.push(
+              `Horário compatível entre Phoenix e aeroporto (${formatarDiff(diff)}).`,
+            );
+          }
         }
       }
     }
@@ -677,15 +735,25 @@ const buildDiagnostico = ({
   }
 
   let status = "ok";
-  let resumo = "Escala validada sem inconsistências.";
+  let resumo = "Escala validada com base no Phoenix.";
 
   if (motivos.length) {
     status = "critico";
     resumo = motivos[0];
-  } else if (alertas.length) {
+  } else if (
+    alertas.some((texto) =>
+      String(texto).includes("Diferença entre Phoenix e aeroporto"),
+    )
+  ) {
     status = "divergencia";
+    resumo = alertas.find((texto) =>
+      String(texto).includes("Diferença entre Phoenix e aeroporto"),
+    );
+  } else if (alertas.length) {
+    status = "ok";
     resumo = alertas[0];
   } else if (detalhes.length) {
+    status = "ok";
     resumo = detalhes[0];
   }
 
@@ -928,11 +996,7 @@ function ListaServicosEscalados({
                           className="painel-chegadas-google-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            abrirBuscaGoogleVoo(
-                              item.vooPrincipal ||
-                              item.horarioPhoenix ||
-                              `${item.escalaCodigo || ""} ${item.serviceName || ""}`,
-                            );
+                            abrirBuscaGoogleVooPhoenix(item.vooPrincipal);
                           }}
                         >
                           <SearchRounded fontSize="small" />
@@ -948,7 +1012,7 @@ function ListaServicosEscalados({
 
                       {(item.tipo === "IN" || item.tipo === "OUT") && (
                         <>
-                          <span>Voo: {item.vooPrincipal || "-"}</span>
+                          <span>Voo: {formatarCodigoVooExibicao(item.vooPrincipal)}</span>
                           {horarioValido(item.horarioPhoenix) && (
                             <span>Phoenix: {item.horarioPhoenix}</span>
                           )}
@@ -973,54 +1037,48 @@ function ListaServicosEscalados({
                     </div>
 
                     <div className="painel-chegadas-flight-meta">
+
+                      {/* TIPO */}
                       <span>Tipo: {item.tipo}</span>
-                      <span>Serviço: {item.serviceName || "-"}</span>
+
+                      {/* ESCALA */}
+                      <span>Escala: {item.escalaCodigo}</span>
+
+                      {/* 🚀 VOO (PRINCIPAL) */}
                       {(item.tipo === "IN" || item.tipo === "OUT") && (
-                        <span>
-                          Voo:{" "}
-                          {item.flightCode ||
-                            item.observationFlightCode ||
-                            item.horarioPhoenix ||
-                            "-"}
+                        <span style={{ fontWeight: 600 }}>
+                          ✈ {item.vooPrincipal || "Sem voo"}
                         </span>
                       )}
-                      <span>Veículo: {item.veiculo || "-"}</span>
-                      <span>Motorista: {item.motorista || "-"}</span>
-                      <span>Pax escala: {item.totalPax || 0}</span>
-                      <span>
-                        ADT/CHD/INF: {item.paxBreakdown.adt}/
-                        {item.paxBreakdown.chd}/{item.paxBreakdown.inf}
-                      </span>
 
+                      {/* ⏱ HORÁRIO */}
                       {horarioValido(item.horarioPhoenix) && (
                         <span>Phoenix: {item.horarioPhoenix}</span>
                       )}
 
-                      {(item.tipo === "IN" || item.tipo === "OUT") && (
-                        <>
-                          <span>
-                            API previsto:{" "}
-                            {roboResultado?.horarioAeroportoPrevisto || "--:--"}
+                      {/* 🚨 ALERTA DE DIFERENÇA (SÓ SE EXISTIR) */}
+                      {roboResultado?.diferencaMinutos !== null &&
+                        Math.abs(roboResultado.diferencaMinutos) > 30 && (
+                          <span className="robo-chip-alerta">
+                            ⚠ Diferença: {formatarDiff(roboResultado.diferencaMinutos)}
                           </span>
-                          <span>
-                            API operacional:{" "}
-                            {roboResultado?.horarioAeroportoOperacional ||
-                              "--:--"}
-                          </span>
-                          <span>
-                            Diferença:{" "}
-                            {formatarDiff(roboResultado?.diferencaMinutos)}
-                          </span>
-                          <span>
-                            Status API:{" "}
-                            {roboResultado?.statusAeroportoLabel || "-"}
-                          </span>
-                          <span>
-                            Match:{" "}
-                            {roboResultado?.matchEncontrado ? "Sim" : "Não"}
-                          </span>
-                        </>
+                        )}
+
+                      {/* ❌ CRÍTICO */}
+                      {statusFinal === "critico" && (
+                        <span className="robo-chip-critico">
+                          ❌ {roboResultado?.resumo}
+                        </span>
                       )}
+
+                      {/* VEÍCULO */}
+                      <span>🚐 {item.veiculo || "-"}</span>
+
+                      {/* PAX */}
+                      <span>
+                        👥 {item.totalPax} pax
+                      </span>
+
                     </div>
                   </div>
 
@@ -1121,7 +1179,7 @@ function ListaServicosEscalados({
                             <span>Reserva: {r.reserva}</span>
                             <span>Pax: {r.pax}</span>
                             <span>ADT/CHD/INF: {r.paxLabel}</span>
-                            <span>Voo reserva: {r.vooReserva || "-"}</span>
+                            <span>Voo reserva: {formatarCodigoVooExibicao(r.vooReserva)}</span>
                             <span>Horário Phoenix: {r.horarioPhoenix || "--:--"}</span>
                             <span>OBS: {r.observacao || "-"}</span>
                           </div>
