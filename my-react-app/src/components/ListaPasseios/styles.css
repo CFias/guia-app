@@ -16,6 +16,235 @@
   box-sizing: border-box;
 }
 
+/* ===== LOADING ROBO (USANDO SUA PALETA) ===== */
+
+.planner-status-pill.robo {
+  background: var(--primary-2);
+  color: var(--text-btn);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* CARD */
+.robo-loading-card {
+  width: 100%;
+  margin: 18px 0 22px;
+  border-radius: 18px;
+  padding: 20px;
+
+  background: var(--card);
+  border: 1px solid var(--border);
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* brilho animado */
+.robo-loading-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent);
+  transform: translateX(-100%);
+  animation: roboShine 2.2s linear infinite;
+}
+
+/* TOPO */
+.robo-loading-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+  z-index: 1;
+  position: relative;
+}
+
+/* SPINNER */
+.robo-spinner-orb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+/* RINGS */
+.robo-spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 3px solid transparent;
+}
+
+.robo-ring-1 {
+  border-top-color: var(--primary-2);
+  border-right-color: rgba(0, 199, 152, 0.25);
+  animation: roboSpin 1.2s linear infinite;
+}
+
+.robo-ring-2 {
+  inset: 8px;
+  border-bottom-color: var(--primary-1);
+  border-left-color: rgba(0, 199, 152, 0.2);
+  animation: roboSpinReverse 1.8s linear infinite;
+}
+
+/* CORE */
+.robo-spinner-core {
+  position: absolute;
+  inset: 18px;
+  border-radius: 999px;
+  background: var(--primary-2);
+  box-shadow: 0 0 12px rgba(0, 199, 152, 0.35);
+}
+
+/* TEXTOS */
+.robo-loading-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.robo-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dist);
+}
+
+.robo-loading-texts h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.robo-loading-texts p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(128, 128, 128, 0.8);
+}
+
+/* STEPS */
+.robo-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* STEP */
+.robo-step {
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 80px;
+  transition: all 0.2s ease;
+}
+
+/* ATIVO */
+.robo-step.active {
+  background: var(--primary-2);
+  color: var(--text-btn);
+  border-color: transparent;
+  transform: translateY(-2px);
+}
+
+/* FINALIZADO */
+.robo-step.done {
+  background: rgba(0, 199, 152, 0.08);
+  border-color: var(--primary-2);
+}
+
+/* TEXTO STEP */
+.robo-step span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.robo-step.active span {
+  color: var(--text-btn);
+}
+
+/* BOLINHA */
+.robo-step-bullet {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+
+  background: var(--primary-1);
+  color: var(--text-btn);
+}
+
+.robo-step.done .robo-step-bullet {
+  background: var(--primary-2);
+}
+
+.robo-step.active .robo-step-bullet {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ANIMAÇÕES */
+@keyframes roboSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes roboSpinReverse {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes roboShine {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
+  }
+}
+
+/* RESPONSIVO */
+@media (max-width: 1100px) {
+  .robo-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .robo-loading-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .robo-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
 .page-container h2 {
   margin: 0 0 24px;
   font-size: 20px;

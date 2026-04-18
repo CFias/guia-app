@@ -59,6 +59,14 @@ import {
 
 import { abrirEscalaEmNovaAba } from "../../Services/Services/plannerExport";
 
+const ETAPAS_ROBO_ESCALA = [
+  "Verificando a disponibilidade dos guias",
+  "Verificando a afinidade dos guias",
+  "Alocando guias",
+  "Verificando equilíbrio de escala",
+  "Finalizando escala",
+];
+
 const ListaPasseiosSemana = () => {
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [semana, setSemana] = useState([]);
@@ -70,7 +78,9 @@ const ListaPasseiosSemana = () => {
   const [resumoGuias, setResumoGuias] = useState([]);
   const [modoVisualizacao, setModoVisualizacao] = useState(true);
   const [modoGeradoSemana, setModoGeradoSemana] = useState(null);
-  const [guiasDisponiveisSemServico, setGuiasDisponiveisSemServico] = useState([]);
+  const [guiasDisponiveisSemServico, setGuiasDisponiveisSemServico] = useState(
+    [],
+  );
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
     useState("equilibrado");
   const [usarAfinidadeGuiaPasseio, setUsarAfinidadeGuiaPasseio] =
@@ -83,10 +93,24 @@ const ListaPasseiosSemana = () => {
   const [loadingSemana, setLoadingSemana] = useState(false);
   const [processandoAcao, setProcessandoAcao] = useState(false);
 
+  const [gerandoEscala, setGerandoEscala] = useState(false);
+  const [etapaRoboAtual, setEtapaRoboAtual] = useState("");
+  const [indiceEtapaRobo, setIndiceEtapaRobo] = useState(0);
+  const [animacaoPontos, setAnimacaoPontos] = useState("");
+
   const primeiraCargaRef = useRef(true);
   const paxTimers = useRef({});
+  const roboDotsIntervalRef = useRef(null);
 
   const carregandoEstrutura = loadingInicial || loadingSemana;
+
+  const modoPrioridadeAtivo =
+    modoDistribuicaoGuias === "prioridade" ||
+    modoDistribuicaoGuias === "seguir_nivel_selecionado";
+
+  const modoGeradoPrioridade =
+    modoGeradoSemana === "prioridade" ||
+    modoGeradoSemana === "seguir_nivel_selecionado";
 
   const semanaMap = useMemo(() => {
     const mapa = {};
@@ -139,6 +163,50 @@ const ListaPasseiosSemana = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!gerandoEscala) {
+      setAnimacaoPontos("");
+      if (roboDotsIntervalRef.current) {
+        clearInterval(roboDotsIntervalRef.current);
+        roboDotsIntervalRef.current = null;
+      }
+      return;
+    }
+
+    roboDotsIntervalRef.current = setInterval(() => {
+      setAnimacaoPontos((prev) => {
+        if (prev === "...") return "";
+        return `${prev}.`;
+      });
+    }, 420);
+
+    return () => {
+      if (roboDotsIntervalRef.current) {
+        clearInterval(roboDotsIntervalRef.current);
+        roboDotsIntervalRef.current = null;
+      }
+    };
+  }, [gerandoEscala]);
+
+  const iniciarRoboEscala = () => {
+    setGerandoEscala(true);
+    setIndiceEtapaRobo(0);
+    setEtapaRoboAtual(ETAPAS_ROBO_ESCALA[0]);
+  };
+
+  const avancarEtapaRobo = (indice) => {
+    const idx = Math.max(0, Math.min(indice, ETAPAS_ROBO_ESCALA.length - 1));
+    setIndiceEtapaRobo(idx);
+    setEtapaRoboAtual(ETAPAS_ROBO_ESCALA[idx]);
+  };
+
+  const finalizarRoboEscala = () => {
+    setGerandoEscala(false);
+    setIndiceEtapaRobo(0);
+    setEtapaRoboAtual("");
+    setAnimacaoPontos("");
+  };
+
   const carregarDados = async ({ initial = false } = {}) => {
     try {
       if (initial) setLoadingInicial(true);
@@ -161,7 +229,11 @@ const ListaPasseiosSemana = () => {
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
 
-      await sincronizarPasseiosDaApiNaSemana(semanaAtual, base.services, normalizarTexto);
+      await sincronizarPasseiosDaApiNaSemana(
+        semanaAtual,
+        base.services,
+        normalizarTexto,
+      );
 
       const weeklyServices = await carregarWeeklyServicesDaSemana(semanaAtual);
       setExtras(weeklyServices);
@@ -206,13 +278,13 @@ const ListaPasseiosSemana = () => {
           novo[date] = novo[date].map((r) =>
             r.id === registroId
               ? {
-                ...r,
-                allocationStatus: status,
-                ...(status === "CLOSED" && {
-                  guiaId: null,
-                  guiaNome: null,
-                }),
-              }
+                  ...r,
+                  allocationStatus: status,
+                  ...(status === "CLOSED" && {
+                    guiaId: null,
+                    guiaNome: null,
+                  }),
+                }
               : r,
           );
         });
@@ -283,10 +355,10 @@ const ListaPasseiosSemana = () => {
         novo[dia.date] = (novo[dia.date] || []).map((item) =>
           item.id === registroId
             ? {
-              ...item,
-              guiaId: guia?.id || null,
-              guiaNome: guia?.nome || null,
-            }
+                ...item,
+                guiaId: guia?.id || null,
+                guiaNome: guia?.nome || null,
+              }
             : item,
         );
         return novo;
@@ -342,18 +414,23 @@ const ListaPasseiosSemana = () => {
   const alocarGuiasSemana = async () => {
     try {
       setProcessandoAcao(true);
+      iniciarRoboEscala();
 
       if (!guias.length || !semana.length) return;
 
+      avancarEtapaRobo(0);
       const base = await carregarBasePlanner();
+
       const registrosSemanaMap = await carregarWeeklyServicesDaSemana(semana);
       const registrosSemana = Object.values(registrosSemanaMap).flat();
 
+      avancarEtapaRobo(1);
       const mapaAfinidade = construirMapaAfinidade(base.afinidades);
       const mapaDisponibilidade = construirMapaDisponibilidade(
         base.disponibilidades,
       );
 
+      avancarEtapaRobo(2);
       const { atualizacoes } = gerarPlanoAlocacaoSemana({
         semana,
         guias: base.guias.filter((g) => g.ativo),
@@ -364,15 +441,19 @@ const ListaPasseiosSemana = () => {
         modoDistribuicaoGuias: base.modoDistribuicaoGuias,
         usarAfinidadeGuiaPasseio: base.usarAfinidadeGuiaPasseio,
         agruparRegistrosPorServico,
-        normalizarTexto: base.normalizarTexto,
+        normalizarTexto: base.normalizarTexto || normalizarTexto,
       });
 
+      avancarEtapaRobo(3);
       await aplicarPlanoDeAlocacao(atualizacoes);
+
+      avancarEtapaRobo(4);
       await salvarModoGeradoSemana(semana, base.modoDistribuicaoGuias);
       await carregarDados();
     } catch (err) {
       console.error("Erro ao alocar guias da semana:", err);
     } finally {
+      finalizarRoboEscala();
       setProcessandoAcao(false);
     }
   };
@@ -398,7 +479,9 @@ const ListaPasseiosSemana = () => {
     const inicioSemana = semana[0].date;
     const fimSemana = semana[semana.length - 1].date;
 
-    const registrosSemana = Object.values(await carregarWeeklyServicesDaSemana(semana))
+    const registrosSemana = Object.values(
+      await carregarWeeklyServicesDaSemana(semana),
+    )
       .flat()
       .filter((r) => r.date >= inicioSemana && r.date <= fimSemana);
 
@@ -516,21 +599,69 @@ Operacional - Luck Receptivo 🍀
       <div className="planner-header-row">
         <h2>Planejamento Semanal de Passeios</h2>
 
-        {(processandoAcao || loadingSemana) && (
-          <div className="planner-status-pill">
-            {processandoAcao
-              ? "Processando alterações..."
-              : "Atualizando semana..."}
+        {(processandoAcao || loadingSemana || gerandoEscala) && (
+          <div className={`planner-status-pill ${gerandoEscala ? "robo" : ""}`}>
+            {gerandoEscala
+              ? `Robô em execução: ${etapaRoboAtual}${animacaoPontos}`
+              : processandoAcao
+                ? "Processando alterações..."
+                : "Atualizando semana..."}
           </div>
         )}
       </div>
+
+      {gerandoEscala && (
+        <div className="robo-loading-card">
+          <div className="robo-loading-top">
+            <div className="robo-spinner-orb">
+              <div className="robo-spinner-ring robo-ring-1" />
+              <div className="robo-spinner-ring robo-ring-2" />
+              <div className="robo-spinner-core" />
+            </div>
+
+            <div className="robo-loading-texts">
+              <span className="robo-kicker">Robô de alocação ativo</span>
+              <h3>
+                {etapaRoboAtual}
+                {animacaoPontos}
+              </h3>
+              <p>
+                O sistema está analisando disponibilidade, afinidade,
+                distribuição e equilíbrio da escala para montar a melhor
+                alocação possível da semana.
+              </p>
+            </div>
+          </div>
+
+          <div className="robo-steps">
+            {ETAPAS_ROBO_ESCALA.map((etapa, index) => {
+              const concluida = index < indiceEtapaRobo;
+              const ativa = index === indiceEtapaRobo;
+
+              return (
+                <div
+                  key={etapa}
+                  className={`robo-step ${concluida ? "done" : ""} ${
+                    ativa ? "active" : ""
+                  }`}
+                >
+                  <div className="robo-step-bullet">
+                    {concluida ? "✓" : index + 1}
+                  </div>
+                  <span>{etapa}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="header-tours">
         <div className="mode-toggle">
           <button
             className="btn-list"
             onClick={() => setModoVisualizacao(true)}
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Visualizar <Visibility fontSize="10" />
           </button>
@@ -538,7 +669,7 @@ Operacional - Luck Receptivo 🍀
           <button
             className="btn-list-edt"
             onClick={() => setModoVisualizacao(false)}
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Editar escala <ModeEdit fontSize="10" />
           </button>
@@ -546,7 +677,7 @@ Operacional - Luck Receptivo 🍀
           <button
             className="btn-list-gerar"
             onClick={alocarGuiasSemana}
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Gerar escala de Guias <ManageAccounts fontSize="10" />
           </button>
@@ -554,7 +685,7 @@ Operacional - Luck Receptivo 🍀
           <button
             className="btn-list-cld"
             onClick={desfazerGuiasSemana}
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Desfazer escala de Guias <Undo fontSize="10" />
           </button>
@@ -570,7 +701,7 @@ Operacional - Luck Receptivo 🍀
                 getClasseStatusServico,
               })
             }
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Abrir planilha
           </button>
@@ -578,7 +709,7 @@ Operacional - Luck Receptivo 🍀
           <button
             className="btn-list-send"
             onClick={enviarWhatsappGuiasSemana_FIRESTORE}
-            disabled={processandoAcao || carregandoEstrutura}
+            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Enviar todos os Bloqueios{" "}
             <WhatsApp className="icon-zap" fontSize="10" />
@@ -590,7 +721,7 @@ Operacional - Luck Receptivo 🍀
             <button
               className="btn-list"
               onClick={() => setSemanaOffset((o) => o - 1)}
-              disabled={processandoAcao}
+              disabled={processandoAcao || gerandoEscala}
             >
               ⬅ Semana anterior
             </button>
@@ -598,7 +729,7 @@ Operacional - Luck Receptivo 🍀
             <button
               className="btn-list"
               onClick={() => setSemanaOffset(0)}
-              disabled={processandoAcao}
+              disabled={processandoAcao || gerandoEscala}
             >
               Semana atual
             </button>
@@ -606,7 +737,7 @@ Operacional - Luck Receptivo 🍀
             <button
               className="btn-list"
               onClick={() => setSemanaOffset((o) => o + 1)}
-              disabled={processandoAcao}
+              disabled={processandoAcao || gerandoEscala}
             >
               Semana seguinte ➡
             </button>
@@ -614,25 +745,27 @@ Operacional - Luck Receptivo 🍀
             <button
               className="btn-list"
               onClick={atualizarSomentePlanilha}
-              disabled={processandoAcao}
+              disabled={processandoAcao || gerandoEscala}
             >
               Atualizar dados (Phoenix) <RefreshRounded fontSize="10" />
             </button>
 
-            <span className="counter-info">{formatarPeriodoSemana(semana)}</span>
+            <span className="counter-info">
+              {formatarPeriodoSemana(semana)}
+            </span>
 
             <p className="counter-info">
               Modo de distribuição:{" "}
               <strong>
-                {modoDistribuicaoGuias === "seguir_nivel_selecionado"
-                  ? "Prioridade"
-                  : "Equilibrado"}
+                {modoPrioridadeAtivo ? "Prioridade" : "Equilibrado"}
               </strong>
             </p>
 
             <p className="counter-info">
               Afinidade:{" "}
-              <strong>{usarAfinidadeGuiaPasseio ? "Ativada" : "Desativada"}</strong>
+              <strong>
+                {usarAfinidadeGuiaPasseio ? "Ativada" : "Desativada"}
+              </strong>
             </p>
           </div>
         </div>
@@ -640,7 +773,7 @@ Operacional - Luck Receptivo 🍀
 
       <div className="resumo-modo-global">
         {modoGeradoSemana
-          ? modoGeradoSemana === "seguir_nivel_selecionado"
+          ? modoGeradoPrioridade
             ? "Essa escala foi gerada com a regra: Prioridade"
             : "Essa escala foi gerada com a regra: Equilibrada"
           : "Escala ainda não gerada para esta semana"}{" "}
@@ -660,8 +793,10 @@ Operacional - Luck Receptivo 🍀
                 <div className="resumo-header">
                   <h4 className="resumo-nome">
                     <span className="resumo-nome-main">
-                      {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
-                        <span className={`priority-pill p-${g.nivelPrioridade || 2}`}>
+                      {modoPrioridadeAtivo && (
+                        <span
+                          className={`priority-pill p-${g.nivelPrioridade || 2}`}
+                        >
                           P{g.nivelPrioridade || 2}
                         </span>
                       )}
@@ -675,12 +810,13 @@ Operacional - Luck Receptivo 🍀
                   </h4>
 
                   <span
-                    className={`resumo-percent ${g.ocupacao >= 80
-                      ? "alta"
-                      : g.ocupacao >= 50
-                        ? "media"
-                        : "baixa"
-                      }`}
+                    className={`resumo-percent ${
+                      g.ocupacao >= 80
+                        ? "alta"
+                        : g.ocupacao >= 50
+                          ? "media"
+                          : "baixa"
+                    }`}
                   >
                     {g.ocupacao}%
                   </span>
@@ -688,12 +824,13 @@ Operacional - Luck Receptivo 🍀
 
                 <div className="resumo-bar">
                   <div
-                    className={`resumo-bar-fill ${g.ocupacao >= 80
-                      ? "alta"
-                      : g.ocupacao >= 50
-                        ? "media"
-                        : "baixa"
-                      }`}
+                    className={`resumo-bar-fill ${
+                      g.ocupacao >= 80
+                        ? "alta"
+                        : g.ocupacao >= 50
+                          ? "media"
+                          : "baixa"
+                    }`}
                     style={{ width: `${g.ocupacao}%` }}
                   />
                 </div>
@@ -712,7 +849,7 @@ Operacional - Luck Receptivo 🍀
                     <button
                       className="btn-whatsapp-guia"
                       onClick={() => enviarWhatsappGuiaIndividual(g)}
-                      disabled={processandoAcao}
+                      disabled={processandoAcao || gerandoEscala}
                     >
                       <Send fontSize="12" /> Enviar
                     </button>
@@ -725,20 +862,28 @@ Operacional - Luck Receptivo 🍀
               </div>
             ))}
           </div>
+
           <div className="resumo-modo-global">
             Guias que deram disponibilidade e ficaram sem serviço:{" "}
             <strong>{guiasDisponiveisSemServico.length}</strong>
           </div>
-          {guiasDisponiveisSemServico.length > 0 && (
 
+          {guiasDisponiveisSemServico.length > 0 && (
             <div className="resumo-container resumo-container-sem-servico">
               {guiasDisponiveisSemServico.map((guia) => (
-                <div key={guia.guiaId} className="resumo-card resumo-card-sem-servico">
+                <div
+                  key={guia.guiaId}
+                  className="resumo-card resumo-card-sem-servico"
+                >
                   <div className="resumo-header">
                     <h4 className="resumo-nome">
                       <span className="resumo-nome-main">
-                        {modoDistribuicaoGuias === "seguir_nivel_selecionado" && (
-                          <span className={`priority-pill p-${guia.nivelPrioridade || 2}`}>
+                        {modoPrioridadeAtivo && (
+                          <span
+                            className={`priority-pill p-${
+                              guia.nivelPrioridade || 2
+                            }`}
+                          >
                             P{guia.nivelPrioridade || 2}
                           </span>
                         )}
@@ -757,14 +902,17 @@ Operacional - Luck Receptivo 🍀
                   </div>
 
                   <p className="resumo-info">
-                    Disponível em <strong>{guia.diasDisponiveis}</strong> dia(s) e ficou sem serviço
+                    Disponível em <strong>{guia.diasDisponiveis}</strong> dia(s)
+                    e ficou sem serviço
                   </p>
 
                   <div className="mini-chart">
                     {semana.map((dia) => {
                       const bloqueado = guia.bloqueios?.includes(dia.date);
                       const trabalhou = guia.datas?.has(dia.date);
-                      const estavaDisponivel = guia.datasDisponiveis?.has(dia.date);
+                      const estavaDisponivel = guia.datasDisponiveis?.has(
+                        dia.date,
+                      );
 
                       let classe = "neutro";
                       let label = `${dia.day}`;
@@ -796,6 +944,7 @@ Operacional - Luck Receptivo 🍀
               ))}
             </div>
           )}
+
           {semana.map((dia) => {
             const registrosOrdenados = registrosPorDia[dia.date] || [];
 
@@ -854,7 +1003,7 @@ Operacional - Luck Receptivo 🍀
                           onChange={(e) =>
                             alterarPaxManual(item.id, e.target.value)
                           }
-                          disabled={processandoAcao}
+                          disabled={processandoAcao || gerandoEscala}
                         />
 
                         <select
@@ -862,7 +1011,7 @@ Operacional - Luck Receptivo 🍀
                           onChange={(e) =>
                             alterarStatusAlocacao(item.id, e.target.value)
                           }
-                          disabled={processandoAcao}
+                          disabled={processandoAcao || gerandoEscala}
                         >
                           <option value="OPEN">Aberto</option>
                           <option value="CLOSED">Fechado</option>
@@ -870,7 +1019,7 @@ Operacional - Luck Receptivo 🍀
 
                         <select
                           value={item.guiaId || ""}
-                          disabled={processandoAcao}
+                          disabled={processandoAcao || gerandoEscala}
                           onChange={async (e) => {
                             const guia = guias.find(
                               (g) => g.id === e.target.value,
@@ -897,7 +1046,7 @@ Operacional - Luck Receptivo 🍀
                           <button
                             className="btn-remove"
                             onClick={() => removerPasseio(item.id)}
-                            disabled={processandoAcao}
+                            disabled={processandoAcao || gerandoEscala}
                           >
                             🗑️
                           </button>
@@ -913,7 +1062,7 @@ Operacional - Luck Receptivo 🍀
                       type="text"
                       placeholder="Nome do serviço"
                       value={novoServico[dia.date]?.nome || ""}
-                      disabled={processandoAcao}
+                      disabled={processandoAcao || gerandoEscala}
                       onChange={(e) =>
                         setNovoServico((prev) => ({
                           ...prev,
@@ -930,7 +1079,7 @@ Operacional - Luck Receptivo 🍀
                       min="0"
                       placeholder="Pax"
                       value={novoServico[dia.date]?.pax || ""}
-                      disabled={processandoAcao}
+                      disabled={processandoAcao || gerandoEscala}
                       onChange={(e) =>
                         setNovoServico((prev) => ({
                           ...prev,
@@ -944,7 +1093,7 @@ Operacional - Luck Receptivo 🍀
 
                     <select
                       value={novoServico[dia.date]?.guiaId || ""}
-                      disabled={processandoAcao}
+                      disabled={processandoAcao || gerandoEscala}
                       onChange={(e) => {
                         const guia = guias.find((g) => g.id === e.target.value);
                         setNovoServico((prev) => ({
@@ -968,7 +1117,7 @@ Operacional - Luck Receptivo 🍀
                     <button
                       className="btn-add"
                       onClick={() => adicionarPasseioManual(dia)}
-                      disabled={processandoAcao}
+                      disabled={processandoAcao || gerandoEscala}
                     >
                       ➕
                     </button>
