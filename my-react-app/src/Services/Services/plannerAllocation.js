@@ -11,9 +11,7 @@ const compareText = (a, b) =>
   });
 
 const isModoPrioridade = (modoDistribuicaoGuias = "") => {
-  const modo = String(modoDistribuicaoGuias || "")
-    .trim()
-    .toLowerCase();
+  const modo = String(modoDistribuicaoGuias || "").trim().toLowerCase();
   return modo === "prioridade" || modo === "seguir_nivel_selecionado";
 };
 
@@ -355,8 +353,6 @@ const normalizarNumeroPositivo = (value) => {
 const getPesoOperacionalServico = (item) => {
   const pax = Number(item?.passengers || 0);
 
-  // Mantém simples e operacional:
-  // serviço maior pesa um pouco mais, sem explodir a distribuição.
   if (pax >= 25) return 1.35;
   if (pax >= 15) return 1.2;
   if (pax >= 8) return 1.1;
@@ -409,9 +405,6 @@ const calcularMinimoAceitavelGuia = ({
 
   if (oportunidades <= 0 || diasUteis <= 0) return 0;
 
-  // Regra operacional:
-  // - se o guia teve oportunidade real, tentamos ao menos 1
-  // - se a meta dele já é robusta e ele teve muitos dias úteis, tentamos 2
   if (meta >= 2.6 && diasUteis >= 4 && oportunidades >= 2) return 2;
   return 1;
 };
@@ -501,8 +494,6 @@ const construirMetricasEquilibrioSemana = ({
     const diasUteis = Number(diasUteisSemana[guia.id] || 0);
     const pesoOportunidade = Number(pesoOportunidadeSemana[guia.id] || 0);
 
-    // Meta baseada em disponibilidade útil + oportunidade real.
-    // Isso aproxima do pensamento operacional.
     const peso = diasUteis * 0.7 + pesoOportunidade * 0.3;
 
     pesosMeta[guia.id] = peso;
@@ -626,12 +617,6 @@ const calcularPontuacaoPrioridade = ({
     indicadores.atual - Math.max(indicadores.meta + 0.75, limiteEquilibrio),
   );
 
-  // Prioridade como proteção, não privilégio:
-  // 1) abaixo do mínimo pesa muito
-  // 2) abaixo da meta pesa forte
-  // 3) prioridade ajuda
-  // 4) afinidade melhora encaixe
-  // 5) concentração derruba
   const score =
     indicadores.gapMinimo * 5000 +
     indicadores.gapMeta * 2200 +
@@ -728,9 +713,6 @@ export const ordenarGuiasParaServico = ({
       diasUteisSemana,
     });
 
-    // =========================
-    // MODO EQUILIBRADO
-    // =========================
     if (!modoPrioridade) {
       if (opB.gapMinimo !== opA.gapMinimo) {
         return opB.gapMinimo - opA.gapMinimo;
@@ -763,9 +745,6 @@ export const ordenarGuiasParaServico = ({
       return compareText(a?.nome, b?.nome);
     }
 
-    // =========================
-    // MODO PRIORIDADE
-    // =========================
     const metaA = calcularPontuacaoPrioridade({
       guia: a,
       item,
@@ -951,6 +930,357 @@ export const atualizarEstadoAposAlocacao = ({
   diasTrabalhadosSemana[guiaSelecionado.id].add(date);
 };
 
+const upsertAtualizacao = (atualizacoes, payload) => {
+  const index = atualizacoes.findIndex(
+    (item) => item.registroId === payload.registroId,
+  );
+
+  if (index >= 0) {
+    atualizacoes[index] = {
+      ...atualizacoes[index],
+      ...payload,
+    };
+    return;
+  }
+
+  atualizacoes.push(payload);
+};
+
+const construirMapaAtualizacoes = (atualizacoes = []) => {
+  const mapa = {};
+
+  atualizacoes.forEach((item) => {
+    if (!item?.registroId) return;
+    mapa[item.registroId] = item;
+  });
+
+  return mapa;
+};
+
+const coletarItensProjetadosSemana = ({
+  semana = [],
+  registrosSemana = [],
+  agruparRegistrosPorServico,
+  atualizacoes = [],
+}) => {
+  const mapaAtualizacoes = construirMapaAtualizacoes(atualizacoes);
+  const itens = [];
+
+  for (const dia of semana) {
+    const registrosDia = registrosSemana.filter((r) => r.date === dia.date);
+    const agrupados = agruparRegistrosPorServico(registrosDia);
+
+    agrupados.forEach((item) => {
+      const override = mapaAtualizacoes[item.id];
+
+      itens.push({
+        ...item,
+        date: dia.date,
+        guiaIdFinal:
+          override?.guiaId !== undefined ? override.guiaId : item.guiaId || null,
+        guiaNomeFinal:
+          override?.guiaNome !== undefined
+            ? override.guiaNome
+            : item.guiaNome || null,
+      });
+    });
+  }
+
+  return itens;
+};
+
+const construirMapaContagemGuiaDia = (itensProjetados = []) => {
+  const mapa = {};
+
+  itensProjetados.forEach((item) => {
+    if (!item?.guiaIdFinal || !item?.date) return;
+    if (item.allocationStatus === "CLOSED") return;
+
+    if (!mapa[item.guiaIdFinal]) {
+      mapa[item.guiaIdFinal] = {};
+    }
+
+    mapa[item.guiaIdFinal][item.date] =
+      Number(mapa[item.guiaIdFinal][item.date] || 0) + 1;
+  });
+
+  return mapa;
+};
+
+const removerUsoProjetadoDoDia = ({
+  guiaId,
+  date,
+  contagemGuiaDia,
+  usedByDate,
+  diasTrabalhadosSemana,
+}) => {
+  if (!guiaId || !date) return;
+
+  if (!contagemGuiaDia[guiaId]) {
+    contagemGuiaDia[guiaId] = {};
+  }
+
+  const atual = Number(contagemGuiaDia[guiaId][date] || 0);
+  const proximo = Math.max(0, atual - 1);
+  contagemGuiaDia[guiaId][date] = proximo;
+
+  if (proximo <= 0) {
+    delete contagemGuiaDia[guiaId][date];
+    usedByDate[date]?.delete(guiaId);
+    diasTrabalhadosSemana[guiaId]?.delete(date);
+  }
+};
+
+const adicionarUsoProjetadoNoDia = ({
+  guiaId,
+  date,
+  contagemGuiaDia,
+  usedByDate,
+  diasTrabalhadosSemana,
+}) => {
+  if (!guiaId || !date) return;
+
+  if (!contagemGuiaDia[guiaId]) {
+    contagemGuiaDia[guiaId] = {};
+  }
+
+  contagemGuiaDia[guiaId][date] =
+    Number(contagemGuiaDia[guiaId][date] || 0) + 1;
+
+  if (!usedByDate[date]) {
+    usedByDate[date] = new Set();
+  }
+  usedByDate[date].add(guiaId);
+
+  if (!diasTrabalhadosSemana[guiaId]) {
+    diasTrabalhadosSemana[guiaId] = new Set();
+  }
+  diasTrabalhadosSemana[guiaId].add(date);
+};
+
+const rebalancearGuiasSemServicoAoFinal = ({
+  semana = [],
+  guias = [],
+  registrosSemana = [],
+  atualizacoes = [],
+  estado,
+  mapaAfinidade = {},
+  mapaDisponibilidade = {},
+  servicesData = [],
+  usarAfinidadeGuiaPasseio = false,
+  modoDistribuicaoGuias = "equilibrado",
+  agruparRegistrosPorServico,
+  normalizarTexto,
+  metricasSemana = {},
+}) => {
+  const guiaById = {};
+  guias.forEach((g) => {
+    if (g?.id) guiaById[g.id] = g;
+  });
+
+  const itensProjetados = coletarItensProjetadosSemana({
+    semana,
+    registrosSemana,
+    agruparRegistrosPorServico,
+    atualizacoes,
+  });
+
+  const contagemGuiaDia = construirMapaContagemGuiaDia(itensProjetados);
+
+  const guiasSemServico = guias
+    .filter((guia) => {
+      if (!guia?.id || !guia.ativo) return false;
+
+      const indicadores = calcularIndicadoresOperacionaisGuia({
+        guiaId: guia.id,
+        contadorSemana: estado.contadorSemana,
+        metasSemana: metricasSemana.metasSemana,
+        minimosSemana: metricasSemana.minimosSemana,
+        oportunidadesSemana: metricasSemana.oportunidadesSemana,
+        diasUteisSemana: metricasSemana.diasUteisSemana,
+      });
+
+      return indicadores.oportunidades > 0 && indicadores.atual === 0;
+    })
+    .sort((a, b) => {
+      const ia = calcularIndicadoresOperacionaisGuia({
+        guiaId: a.id,
+        contadorSemana: estado.contadorSemana,
+        metasSemana: metricasSemana.metasSemana,
+        minimosSemana: metricasSemana.minimosSemana,
+        oportunidadesSemana: metricasSemana.oportunidadesSemana,
+        diasUteisSemana: metricasSemana.diasUteisSemana,
+      });
+
+      const ib = calcularIndicadoresOperacionaisGuia({
+        guiaId: b.id,
+        contadorSemana: estado.contadorSemana,
+        metasSemana: metricasSemana.metasSemana,
+        minimosSemana: metricasSemana.minimosSemana,
+        oportunidadesSemana: metricasSemana.oportunidadesSemana,
+        diasUteisSemana: metricasSemana.diasUteisSemana,
+      });
+
+      if (ib.gapMinimo !== ia.gapMinimo) {
+        return ib.gapMinimo - ia.gapMinimo;
+      }
+
+      if (ib.gapMeta !== ia.gapMeta) {
+        return ib.gapMeta - ia.gapMeta;
+      }
+
+      if (isModoPrioridade(modoDistribuicaoGuias)) {
+        const prioridadeA = normalizarPrioridade(a?.nivelPrioridade);
+        const prioridadeB = normalizarPrioridade(b?.nivelPrioridade);
+        if (prioridadeB !== prioridadeA) {
+          return prioridadeB - prioridadeA;
+        }
+      }
+
+      return compareText(a?.nome, b?.nome);
+    });
+
+  for (const guiaSemServico of guiasSemServico) {
+    let itemEscolhido = null;
+    let guiaDoadorId = null;
+
+    const candidatosSwap = itensProjetados
+      .filter((item) => {
+        if (!item?.id || !item?.date) return false;
+        if (item.allocationStatus === "CLOSED") return false;
+        if (!item.guiaIdFinal) return false;
+        if (item.guiaIdFinal === guiaSemServico.id) return false;
+
+        const guiaDoador = guiaById[item.guiaIdFinal];
+        if (!guiaDoador?.id) return false;
+
+        const indicadoresDoador = calcularIndicadoresOperacionaisGuia({
+          guiaId: guiaDoador.id,
+          contadorSemana: estado.contadorSemana,
+          metasSemana: metricasSemana.metasSemana,
+          minimosSemana: metricasSemana.minimosSemana,
+          oportunidadesSemana: metricasSemana.oportunidadesSemana,
+          diasUteisSemana: metricasSemana.diasUteisSemana,
+        });
+
+        // Só aceita tirar de quem está mais carregado
+        if (indicadoresDoador.atual <= 1) return false;
+
+        const protecaoDoador = Math.max(indicadoresDoador.minimo, 1);
+        if (indicadoresDoador.atual <= protecaoDoador) return false;
+
+        const usadosNoDiaSemDoador = new Set(estado.usedByDate[item.date] || []);
+        usadosNoDiaSemDoador.delete(guiaDoador.id);
+
+        const recipientElegivel = filtrarGuiasElegiveisParaServico({
+          item,
+          guiasDisponiveis: [guiaSemServico],
+          usadosNoDia: usadosNoDiaSemDoador,
+          mapaAfinidade,
+          servicesData,
+          usarAfinidadeGuiaPasseio,
+          normalizarTexto,
+        });
+
+        return recipientElegivel.length > 0;
+      })
+      .map((item) => {
+        const doador = guiaById[item.guiaIdFinal];
+        const indicadoresDoador = calcularIndicadoresOperacionaisGuia({
+          guiaId: doador.id,
+          contadorSemana: estado.contadorSemana,
+          metasSemana: metricasSemana.metasSemana,
+          minimosSemana: metricasSemana.minimosSemana,
+          oportunidadesSemana: metricasSemana.oportunidadesSemana,
+          diasUteisSemana: metricasSemana.diasUteisSemana,
+        });
+
+        const afinidadeNovoGuia = usarAfinidadeGuiaPasseio
+          ? obterNivelAfinidade(
+              mapaAfinidade,
+              guiaSemServico.id,
+              item,
+              servicesData,
+              normalizarTexto,
+            )
+          : 0;
+
+        return {
+          item,
+          doador,
+          indicadoresDoador,
+          afinidadeNovoGuia,
+          excessoDoador:
+            indicadoresDoador.atual -
+            Math.max(indicadoresDoador.minimo, indicadoresDoador.meta, 1),
+        };
+      })
+      .sort((a, b) => {
+        if (b.excessoDoador !== a.excessoDoador) {
+          return b.excessoDoador - a.excessoDoador;
+        }
+
+        if (b.indicadoresDoador.atual !== a.indicadoresDoador.atual) {
+          return b.indicadoresDoador.atual - a.indicadoresDoador.atual;
+        }
+
+        if (usarAfinidadeGuiaPasseio && b.afinidadeNovoGuia !== a.afinidadeNovoGuia) {
+          return b.afinidadeNovoGuia - a.afinidadeNovoGuia;
+        }
+
+        return compareText(a.item?.serviceName, b.item?.serviceName);
+      });
+
+    if (!candidatosSwap.length) {
+      continue;
+    }
+
+    itemEscolhido = candidatosSwap[0].item;
+    guiaDoadorId = candidatosSwap[0].doador.id;
+
+    upsertAtualizacao(atualizacoes, {
+      registroId: itemEscolhido.id,
+      guiaId: guiaSemServico.id,
+      guiaNome: guiaSemServico.nome,
+      date: itemEscolhido.date,
+      serviceName: itemEscolhido.serviceName,
+      externalServiceId: itemEscolhido.externalServiceId || null,
+    });
+
+    estado.contadorSemana[guiaDoadorId] = Math.max(
+      0,
+      Number(estado.contadorSemana[guiaDoadorId] || 0) - 1,
+    );
+
+    estado.contadorSemana[guiaSemServico.id] =
+      Number(estado.contadorSemana[guiaSemServico.id] || 0) + 1;
+
+    removerUsoProjetadoDoDia({
+      guiaId: guiaDoadorId,
+      date: itemEscolhido.date,
+      contagemGuiaDia,
+      usedByDate: estado.usedByDate,
+      diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
+    });
+
+    adicionarUsoProjetadoNoDia({
+      guiaId: guiaSemServico.id,
+      date: itemEscolhido.date,
+      contagemGuiaDia,
+      usedByDate: estado.usedByDate,
+      diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
+    });
+
+    itemEscolhido.guiaIdFinal = guiaSemServico.id;
+    itemEscolhido.guiaNomeFinal = guiaSemServico.nome;
+  }
+
+  return {
+    atualizacoes,
+    estado,
+  };
+};
+
 export const gerarPlanoAlocacaoSemana = ({
   semana = [],
   guias = [],
@@ -1039,7 +1369,7 @@ export const gerarPlanoAlocacaoSemana = ({
 
       if (!guiaSelecionado) continue;
 
-      atualizacoes.push({
+      upsertAtualizacao(atualizacoes, {
         registroId: item.id,
         guiaId: guiaSelecionado.id,
         guiaNome: guiaSelecionado.nome,
@@ -1059,6 +1389,22 @@ export const gerarPlanoAlocacaoSemana = ({
       usadosNoDia.add(guiaSelecionado.id);
     }
   }
+
+  rebalancearGuiasSemServicoAoFinal({
+    semana,
+    guias,
+    registrosSemana,
+    atualizacoes,
+    estado,
+    mapaAfinidade,
+    mapaDisponibilidade,
+    servicesData,
+    usarAfinidadeGuiaPasseio,
+    modoDistribuicaoGuias,
+    agruparRegistrosPorServico,
+    normalizarTexto,
+    metricasSemana,
+  });
 
   return {
     atualizacoes,

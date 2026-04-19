@@ -18,10 +18,11 @@ import { db } from "../../Services/Services/firebase";
 import "./styles.css";
 
 const API_AEROPORTO = "https://guia-app.onrender.com";
-const PHOENIX_ROADMAP_URL =
-  "https://driversalvador.phoenix.comeialabs.com/scale/roadmap";
+const PHOENIX_RESERVE_SERVICE_URL =
+  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
+
 const PHOENIX_EXPAND =
-  "driver,serviceOrder,serviceOrder.vehicle,regionOrigin,regionDestination,reserveService,reserveService.service,reserveService.reserve,reserveService.reserve.customer,reserveService.schedule";
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
 
 const TABS = [
   { key: "IN", label: "IN" },
@@ -36,6 +37,25 @@ const getHojeIso = () => {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+};
+
+const montarUrlPhoenixReserveService = (date, tipo = null) => {
+  const params = new URLSearchParams();
+  params.append("execution_date", date);
+  params.append("expand", PHOENIX_EXPAND);
+
+  if (tipo) {
+    params.append("service_type[]", String(tipo));
+  }
+
+  return `${PHOENIX_RESERVE_SERVICE_URL}?${params.toString()}`;
+};
+
+const extrairListaResposta = (json) => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.results)) return json.results;
+  return [];
 };
 
 const abrirBuscaGoogleVoo = (codigoOuHorario = "") => {
@@ -208,6 +228,175 @@ const extractReserveServicesFromRoadmapItem = (item = {}) => {
   if (value && typeof value === "object") return [value];
   return [];
 };
+
+const extractScaleIdFromItem = (item = {}) =>
+  item?.roadmapService?.roadmap?.id ||
+  item?.auxRoadmapService?.roadmap?.id ||
+  item?.roadmap?.id ||
+  item?.scale_id ||
+  item?.escala_id ||
+  null;
+
+const extractScaleCodeFromItem = (item = {}) =>
+  String(
+    item?.roadmapService?.roadmap?.code ||
+      item?.auxRoadmapService?.roadmap?.code ||
+      item?.roadmap?.code ||
+      "",
+  ).trim();
+
+const extractVehicleFromItem = (item = {}) =>
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  item?.vehicle?.nickname ||
+  item?.vehicle?.name ||
+  item?.vehicle?.prefix ||
+  item?.vehicle?.plate ||
+  "";
+
+const extractVehicleIdentityFromItem = (item = {}) => {
+  const vehicle =
+    item?.roadmapService?.roadmap?.serviceOrder?.vehicle ||
+    item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle ||
+    item?.vehicle ||
+    {};
+
+  const raw =
+    vehicle?.id ||
+    vehicle?.plate ||
+    vehicle?.prefix ||
+    vehicle?.nickname ||
+    vehicle?.name ||
+    "";
+
+  return String(raw || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[–—]/g, "-");
+};
+
+const extractDriverFromItem = (item = {}) =>
+  item?.roadmapService?.roadmap?.driver?.nickname ||
+  item?.auxRoadmapService?.roadmap?.driver?.nickname ||
+  item?.roadmapService?.roadmap?.driver?.name ||
+  item?.auxRoadmapService?.roadmap?.driver?.name ||
+  item?.driver?.nickname ||
+  item?.driver?.name ||
+  "";
+
+const extractOriginFromItem = (item = {}) =>
+  item?.establishmentOrigin?.name ||
+  item?.origin?.name ||
+  item?.reserve?.origin?.name ||
+  item?.regionOrigin?.name ||
+  "-";
+
+const extractDestinationFromItem = (item = {}) =>
+  item?.establishmentDestination?.name ||
+  item?.destination?.name ||
+  item?.reserve?.destination?.name ||
+  item?.regionDestination?.name ||
+  "-";
+
+const flattenRoadmapReserveServices = (roadmaps = []) => {
+  const rows = [];
+
+  (Array.isArray(roadmaps) ? roadmaps : []).forEach((roadmap, roadmapIndex) => {
+    const reserveServices = extractReserveServicesFromRoadmapItem(roadmap);
+
+    reserveServices.forEach((reserveService, reserveIndex) => {
+      if (!reserveService || typeof reserveService !== "object") return;
+
+      rows.push({
+        __rowId:
+          reserveService?.id ||
+          `${roadmap?.id || "rm"}_${roadmapIndex}_${reserveIndex}`,
+        roadmap,
+        reserveService,
+      });
+    });
+  });
+
+  return rows;
+};
+
+const extractScaleIdFromReserveService = (reserveService = {}, roadmap = {}) =>
+  reserveService?.roadmapService?.roadmap?.id ||
+  reserveService?.auxRoadmapService?.roadmap?.id ||
+  reserveService?.roadmap?.id ||
+  reserveService?.scale_id ||
+  reserveService?.escala_id ||
+  roadmap?.id ||
+  null;
+
+const extractScaleCodeFromReserveService = (reserveService = {}, roadmap = {}) =>
+  String(
+    reserveService?.roadmapService?.roadmap?.code ||
+      reserveService?.auxRoadmapService?.roadmap?.code ||
+      reserveService?.roadmap?.code ||
+      roadmap?.code ||
+      "",
+  ).trim();
+
+const extractVehicleFromReserveService = (reserveService = {}, roadmap = {}) =>
+  reserveService?.roadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  reserveService?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.nickname ||
+  reserveService?.roadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  reserveService?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
+  reserveService?.roadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  reserveService?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.prefix ||
+  reserveService?.roadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  reserveService?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle?.plate ||
+  roadmap?.serviceOrder?.vehicle?.nickname ||
+  roadmap?.serviceOrder?.vehicle?.name ||
+  roadmap?.serviceOrder?.vehicle?.prefix ||
+  roadmap?.serviceOrder?.vehicle?.plate ||
+  "";
+
+const extractDriverFromReserveService = (reserveService = {}, roadmap = {}) =>
+  reserveService?.roadmapService?.roadmap?.driver?.nickname ||
+  reserveService?.auxRoadmapService?.roadmap?.driver?.nickname ||
+  reserveService?.roadmapService?.roadmap?.driver?.name ||
+  reserveService?.auxRoadmapService?.roadmap?.driver?.name ||
+  roadmap?.driver?.nickname ||
+  roadmap?.driver?.name ||
+  "";
+
+const extractVehicleIdentity = (reserveService = {}, roadmap = {}) => {
+  const vehicle =
+    reserveService?.roadmapService?.roadmap?.serviceOrder?.vehicle ||
+    reserveService?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle ||
+    roadmap?.serviceOrder?.vehicle ||
+    {};
+
+  const raw =
+    vehicle?.id ||
+    vehicle?.plate ||
+    vehicle?.prefix ||
+    vehicle?.nickname ||
+    vehicle?.name ||
+    "";
+
+  return String(raw || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[–—]/g, "-");
+};
+
+const sortReservasByHora = (reservas = []) =>
+  [...reservas].sort((a, b) => {
+    const ma = toMinutes(a?.horarioPhoenix || a?.hora || "") ?? 999999;
+    const mb = toMinutes(b?.horarioPhoenix || b?.hora || "") ?? 999999;
+    return ma - mb;
+  });
 
 const extractPassengerName = (item = {}) =>
   item?.reserve?.customer?.name ||
@@ -462,6 +651,212 @@ const findVehicleMatch = (vehicleIndex, vehicleName = "") => {
   };
 };
 
+const normalizeScaleCode = (value = "") =>
+  String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+const normalizeVehicleKey = (value = "") =>
+  normalizarEstrito(value || "");
+
+const extrairCodigoEscalaRobusto = (roadmap = {}, reserveService = {}) => {
+  const bruto =
+    roadmap?.code ||
+    roadmap?.roadmap_code ||
+    reserveService?.roadmap?.code ||
+    reserveService?.roadmap_code ||
+    reserveService?.scale_code ||
+    reserveService?.reserve?.scale_code ||
+    reserveService?.serviceOrder?.roadmap_code ||
+    reserveService?.service_order?.roadmap_code ||
+    "";
+
+  const normalizado = String(bruto || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[–—]/g, "-");
+
+  if (normalizado) return normalizado;
+
+  const roadmapId =
+    roadmap?.id ||
+    roadmap?.roadmap_id ||
+    reserveService?.roadmap_id ||
+    reserveService?.roadmap?.id ||
+    "";
+
+  return roadmapId ? `ESCALA-${roadmapId}` : "ESCALA-SEM-ID";
+};
+
+const extrairEscalaLabel = (roadmap = {}, reserveService = {}) =>
+  String(
+    roadmap?.code ||
+      roadmap?.roadmap_code ||
+      reserveService?.roadmap?.code ||
+      reserveService?.roadmap_code ||
+      reserveService?.scale_code ||
+      reserveService?.reserve?.scale_code ||
+      reserveService?.serviceOrder?.roadmap_code ||
+      reserveService?.service_order?.roadmap_code ||
+      roadmap?.id ||
+      reserveService?.roadmap_id ||
+      "ESCALA-SEM-ID",
+  ).trim();
+
+const extrairVeiculoIdentidade = (roadmap = {}) => {
+  const vehicle = roadmap?.serviceOrder?.vehicle || {};
+
+  const idSeguro =
+    vehicle?.id ||
+    vehicle?.vehicle_id ||
+    vehicle?.plate ||
+    vehicle?.prefix ||
+    vehicle?.nickname ||
+    vehicle?.name ||
+    "";
+
+  return String(idSeguro || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[–—]/g, "-");
+};
+
+const extrairVeiculoDisplayRobusto = (roadmap = {}) =>
+  roadmap?.serviceOrder?.vehicle?.nickname ||
+  roadmap?.serviceOrder?.vehicle?.name ||
+  roadmap?.serviceOrder?.vehicle?.prefix ||
+  roadmap?.serviceOrder?.vehicle?.plate ||
+  roadmap?.vehicle?.nickname ||
+  roadmap?.vehicle?.name ||
+  roadmap?.vehicle?.prefix ||
+  roadmap?.vehicle?.plate ||
+  "";
+
+const mergeGruposOperacionais = (grupos = []) => {
+  const merged = new Map();
+
+  grupos.forEach((grupo) => {
+    const key = [
+      grupo?.tipo || "SEM-TIPO",
+      grupo?.escalaCodigoNormalizado || "SEM-ESCALA",
+      grupo?.veiculoIdentidade || grupo?.veiculoKey || "SEM-VEICULO",
+    ].join("__");
+
+    if (!merged.has(key)) {
+      merged.set(key, {
+        ...grupo,
+        reservas: [...(grupo?.reservas || [])],
+        observacoesEscala: [...(grupo?.observacoesEscala || [])],
+        roadmapsRelacionados: [...(grupo?.roadmapsRelacionados || [])],
+        paxBreakdown: {
+          adt: Number(grupo?.paxBreakdown?.adt || 0),
+          chd: Number(grupo?.paxBreakdown?.chd || 0),
+          inf: Number(grupo?.paxBreakdown?.inf || 0),
+        },
+        totalPax: Number(grupo?.totalPax || 0),
+      });
+      return;
+    }
+
+    const atual = merged.get(key);
+
+    atual.totalPax += Number(grupo?.totalPax || 0);
+    atual.paxBreakdown.adt += Number(grupo?.paxBreakdown?.adt || 0);
+    atual.paxBreakdown.chd += Number(grupo?.paxBreakdown?.chd || 0);
+    atual.paxBreakdown.inf += Number(grupo?.paxBreakdown?.inf || 0);
+
+    atual.reservas.push(...(grupo?.reservas || []));
+
+    atual.observacoesEscala = Array.from(
+      new Set([...(atual.observacoesEscala || []), ...(grupo?.observacoesEscala || [])]),
+    );
+
+    atual.roadmapsRelacionados = Array.from(
+      new Set([...(atual.roadmapsRelacionados || []), ...(grupo?.roadmapsRelacionados || [])]),
+    );
+
+    if (!atual.vooPrincipal && grupo?.vooPrincipal) {
+      atual.vooPrincipal = grupo.vooPrincipal;
+    }
+
+    const horarioAtual = toMinutes(atual?.horarioPhoenix || "");
+    const horarioNovo = toMinutes(grupo?.horarioPhoenix || "");
+
+    if (
+      (!atual.horarioPhoenix || atual.horarioPhoenix === "--:--") &&
+      grupo?.horarioPhoenix
+    ) {
+      atual.horarioPhoenix = grupo.horarioPhoenix;
+    } else if (
+      horarioNovo !== null &&
+      (horarioAtual === null || horarioNovo < horarioAtual)
+    ) {
+      atual.horarioPhoenix = grupo.horarioPhoenix;
+    }
+  });
+
+  return Array.from(merged.values()).map((grupo) => ({
+    ...grupo,
+    reservas: sortReservasPorHorario(
+      (grupo?.reservas || []).filter(
+        (r, idx, arr) =>
+          arr.findIndex(
+            (x) =>
+              String(x?.reserva || "") === String(r?.reserva || "") &&
+              String(x?.cliente || "") === String(r?.cliente || "") &&
+              String(x?.hora || "") === String(r?.hora || ""),
+          ) === idx,
+      ),
+    ),
+    quantidadeReservas: (grupo?.reservas || []).length,
+  }));
+};
+
+const extrairModalidade = (reserveService = {}) =>
+  reserveService?.serviceModeAsText ||
+  reserveService?.service_mode_as_text ||
+  reserveService?.service_mode ||
+  reserveService?.mode ||
+  reserveService?.reserve?.serviceModeAsText ||
+  reserveService?.reserve?.service_mode_as_text ||
+  "Não informado";
+
+const extrairContatoReserva = (reserveService = {}) =>
+  reserveService?.reserve?.customer?.phone ||
+  reserveService?.reserve?.customer?.telephone ||
+  reserveService?.reserve?.customer?.cellphone ||
+  reserveService?.reserve?.phone ||
+  reserveService?.reserve?.telephone ||
+  reserveService?.reserve?.cellphone ||
+  reserveService?.customer?.phone ||
+  reserveService?.customer?.telephone ||
+  reserveService?.customer?.cellphone ||
+  "-";
+
+const extrairHoraPrincipalReserva = (reserveService = {}) =>
+  formatHour(
+    reserveService?.presentation_hour ||
+      reserveService?.presentation_hour_end ||
+      reserveService?.schedule?.presentation_hour ||
+      reserveService?.schedule?.presentation_hour_end ||
+      reserveService?.fly_hour ||
+      reserveService?.our_schedule ||
+      reserveService?.reserve?.flight?.scheduled_time ||
+      reserveService?.reserve?.flight?.arrival_time ||
+      reserveService?.reserve?.flight?.departure_time ||
+      "",
+  );
+
+const sortReservasPorHorario = (reservas = []) =>
+  [...reservas].sort((a, b) => {
+    const ma = toMinutes(a?.hora || "") ?? 999999;
+    const mb = toMinutes(b?.hora || "") ?? 999999;
+    return ma - mb;
+  });
+
 const findBestAirportMatch = ({
   flightCode,
   observationFlightCode,
@@ -529,95 +924,119 @@ const findBestAirportMatch = ({
   };
 };
 
-const buildGroupedServices = (roadmaps = []) => {
+const buildGroupedServices = (items = []) => {
   const grouped = new Map();
 
-  (Array.isArray(roadmaps) ? roadmaps : []).forEach((roadmap) => {
-    const reserveServices = extractReserveServicesFromRoadmapItem(roadmap);
-    const escalaCodigo = extrairCodigoEscala(roadmap);
-    const escalaId = String(extractRoadmapId(roadmap) || "");
-    const veiculo = extractVehicleDisplay(roadmap);
-    const motorista = extractDriverDisplay(roadmap);
-    const origem = extractOriginLabel(roadmap) || "-";
-    const destino = extractDestinationLabel(roadmap) || "-";
+  (Array.isArray(items) ? items : []).forEach((item, index) => {
+    if (!item || typeof item !== "object") return;
 
-    reserveServices.forEach((reserveService) => {
-      if (!reserveService || typeof reserveService !== "object") return;
+    const tipo = classifyServiceType(item);
 
-      const tipo = classifyServiceType(reserveService, roadmap);
-      const key = `${tipo}__${escalaCodigo}`;
+    const escalaId = extractScaleIdFromItem(item);
+    const escalaCodigoBruto = extractScaleCodeFromItem(item);
+    const escalaCodigo =
+      String(escalaCodigoBruto || "").trim() ||
+      (escalaId ? `ESCALA-${escalaId}` : "ESCALA-SEM-ID");
 
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          id: key,
-          escalaId,
-          escalaCodigo,
-          escalaLabel: escalaCodigo,
-          tipo,
-          veiculo,
-          motorista,
-          origem,
-          destino,
-          reservas: [],
-          totalPax: 0,
-          paxBreakdown: { adt: 0, chd: 0, inf: 0 },
-          serviceName:
-            reserveService?.service?.name ||
-            reserveService?.service_name ||
-            "-",
-          vooPrincipal: "",
-          horarioPhoenix: "",
-          observacoesEscala: [],
-        });
-      }
+    const veiculo = extractVehicleFromItem(item);
+    const veiculoIdentidade =
+      extractVehicleIdentityFromItem(item) ||
+      normalizeVehicleKey(veiculo) ||
+      "SEM-VEICULO";
 
-      const grupo = grouped.get(key);
-      const pax = extrairPaxBreakdown(reserveService);
-      const voo = extrairNumeroVooPhoenix(reserveService);
-      const horarioVooPhoenix = formatHour(extrairHorarioVooPhoenix(reserveService));
-      const observacao = extrairObservacao(reserveService);
+    const motorista = extractDriverFromItem(item);
+    const origem = extractOriginFromItem(item);
+    const destino = extractDestinationFromItem(item);
 
-      grupo.totalPax += pax.total;
-      grupo.paxBreakdown.adt += pax.adt;
-      grupo.paxBreakdown.chd += pax.chd;
-      grupo.paxBreakdown.inf += pax.inf;
+    const pax = extractPaxBreakdown(item);
+    const voo = extrairNumeroVooPhoenix(item);
+    const horarioPhoenix = formatHour(extrairHorarioVooPhoenix(item));
+    const observacao = extrairObservacao(item);
+    const modalidade = extrairModalidade(item);
 
-      if (!grupo.vooPrincipal && voo) {
-        grupo.vooPrincipal = String(voo).trim().toUpperCase();
-      }
+    const key = `${escalaId || escalaCodigo}__${veiculoIdentidade}__${tipo}`;
 
-      if (!grupo.horarioPhoenix && horarioValido(horarioVooPhoenix)) {
-        grupo.horarioPhoenix = horarioVooPhoenix;
-      }
-
-      if (observacao && observacao !== "-" && !grupo.observacoesEscala.includes(observacao)) {
-        grupo.observacoesEscala.push(observacao);
-      }
-
-      grupo.reservas.push({
-        id: reserveService?.id || `${extractReservationCode(reserveService)}_${grupo.reservas.length}`,
-        raw: reserveService,
-        reserva: extractReservationCode(reserveService),
-        cliente: extractPassengerName(reserveService),
-        pax: pax.total,
-        adultos: pax.adt,
-        criancas: pax.chd,
-        infantes: pax.inf,
-        paxLabel: formatarQuantidadeDetalhada(pax.adt, pax.chd, pax.inf),
-        vooReserva: String(voo || "").trim().toUpperCase() || "-",
-        horarioPhoenix: horarioVooPhoenix || "--:--",
-        observacao,
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        id: key,
+        escalaId: escalaId || "",
+        escalaCodigo,
+        escalaLabel: escalaCodigo,
+        tipo,
+        veiculo,
+        veiculoIdentidade,
+        motorista,
+        origem,
+        destino,
+        modalidade,
+        reservas: [],
+        totalPax: 0,
+        paxBreakdown: { adt: 0, chd: 0, inf: 0 },
+        serviceName: item?.service?.name || item?.service_name || "-",
+        vooPrincipal: "",
+        horarioPhoenix: "",
+        observacoesEscala: [],
       });
+    }
+
+    const grupo = grouped.get(key);
+
+    grupo.totalPax += pax.total;
+    grupo.paxBreakdown.adt += pax.adt;
+    grupo.paxBreakdown.chd += pax.chd;
+    grupo.paxBreakdown.inf += pax.inf;
+
+    if (!grupo.vooPrincipal && voo) {
+      grupo.vooPrincipal = String(voo).trim().toUpperCase();
+    }
+
+    const horaGrupo = toMinutes(grupo.horarioPhoenix || "");
+    const horaAtual = toMinutes(horarioPhoenix || "");
+    if (horaAtual !== null && (horaGrupo === null || horaAtual < horaGrupo)) {
+      grupo.horarioPhoenix = horarioPhoenix;
+    }
+
+    if (observacao && observacao !== "-" && !grupo.observacoesEscala.includes(observacao)) {
+      grupo.observacoesEscala.push(observacao);
+    }
+
+    grupo.reservas.push({
+      id: item?.id || `res_${index}`,
+      raw: item,
+      reserva: extractReservationCode(item),
+      cliente: extractPassengerName(item),
+      contato: extrairContatoReserva(item),
+      pax: pax.total,
+      adultos: pax.adt,
+      criancas: pax.chd,
+      infantes: pax.inf,
+      paxLabel: formatarQuantidadeDetalhada(pax.adt, pax.chd, pax.inf),
+      vooReserva: String(voo || "").trim().toUpperCase() || "-",
+      horarioPhoenix: horarioPhoenix || "--:--",
+      modalidade,
+      observacao,
+      origem,
+      destino,
     });
   });
 
-  return Array.from(grouped.values()).sort((a, b) =>
-    String(a.escalaCodigo || "").localeCompare(String(b.escalaCodigo || ""), "pt-BR", {
-      sensitivity: "base",
-    }),
-  );
-};
+  return Array.from(grouped.values())
+    .map((grupo) => ({
+      ...grupo,
+      reservas: sortReservasByHora(grupo.reservas),
+      quantidadeReservas: grupo.reservas.length,
+    }))
+    .sort((a, b) => {
+      const ea = String(a.escalaCodigo || "");
+      const eb = String(b.escalaCodigo || "");
+      const byEscala = ea.localeCompare(eb, "pt-BR", { sensitivity: "base" });
+      if (byEscala !== 0) return byEscala;
 
+      return String(a.veiculo || "").localeCompare(String(b.veiculo || ""), "pt-BR", {
+        sensitivity: "base",
+      });
+    });
+};
 const buildDiagnostico = ({
   item,
   vehicleIndex,
@@ -671,17 +1090,13 @@ const buildDiagnostico = ({
       if (!airportMatch) {
         detalhes.push(
           vooPhoenix
-            ? `Voo ${formatarCodigoVooExibicao(vooPhoenix)} identificado no Phoenix, mas não retornado pela API do aeroporto. Escala mantida com validação parcial.`
-            : `Horário ${horarioPhoenix || "--:--"} identificado no Phoenix, mas sem retorno correspondente na API do aeroporto. Escala mantida com validação parcial.`,
+            ? `Voo ${formatarCodigoVooExibicao(vooPhoenix)} identificado no Phoenix, mas não retornado pela API do aeroporto.`
+            : `Horário ${horarioPhoenix || "--:--"} identificado no Phoenix, mas sem retorno correspondente na API do aeroporto.`,
         );
       } else {
         horarioAeroportoPrevisto = formatHour(airportMatch?.ScheduleTime || "");
-        horarioAeroportoOperacional = formatHour(
-          airportMatch?.OperationTime || "",
-        );
-        statusAeroportoLabel = normalizeAirportStatus(
-          airportMatch?.Status || "",
-        );
+        horarioAeroportoOperacional = formatHour(airportMatch?.OperationTime || "");
+        statusAeroportoLabel = normalizeAirportStatus(airportMatch?.Status || "");
         companhia = airportMatch?.Airliner || "-";
         aeroportoOrigemDestino = airportMatch?.Airport || "-";
 
@@ -689,7 +1104,7 @@ const buildDiagnostico = ({
           matchMode === "flight_number"
             ? `Voo ${formatarCodigoVooExibicao(vooPhoenix)} validado na API do aeroporto.`
             : matchMode === "observation_flight_number"
-              ? `Voo validado pela observação operacional do Phoenix.`
+              ? `Voo validado pela observação operacional.`
               : `Voo validado por janela de horário (${horarioPhoenix || "--:--"}).`,
         );
 
@@ -702,12 +1117,10 @@ const buildDiagnostico = ({
 
           if (diff !== null && Math.abs(diff) > 30 && Math.abs(diff) <= 240) {
             alertas.push(
-              `Diferença entre Phoenix e aeroporto: ${formatarDiff(diff)}. Foi considerado o horário da API do aeroporto como referência.`,
+              `Diferença entre Phoenix e aeroporto: ${formatarDiff(diff)}.`,
             );
           } else if (diff !== null) {
-            detalhes.push(
-              `Horário compatível entre Phoenix e aeroporto (${formatarDiff(diff)}).`,
-            );
+            detalhes.push(`Horário compatível entre Phoenix e aeroporto (${formatarDiff(diff)}).`);
           }
         }
       }
@@ -720,22 +1133,28 @@ const buildDiagnostico = ({
     alertas.push(`Veículo escalado (${veiculo}) sem capacidade cadastrada.`);
   } else if (totalPax > capacidade) {
     motivos.push(
-      `OVER na escala ${item.escalaCodigo}: ${totalPax} pax para capacidade ${capacidade}. Excesso de ${totalPax - capacidade} pax.`,
+      `OVER detectado no veículo ${veiculo}: ${totalPax} pax para capacidade ${capacidade}. Excesso de ${totalPax - capacidade} pax.`,
     );
   } else {
-    detalhes.push(`Capacidade compatível na escala: ${totalPax}/${capacidade}.`);
+    detalhes.push(`Capacidade compatível no veículo: ${totalPax}/${capacidade}.`);
   }
 
-  if (!reservas.length) {
-    alertas.push("Escala sem reservas vinculadas.");
+   if (!reservas.length) {
+    alertas.push("Bloco operacional sem reservas vinculadas.");
   } else {
     detalhes.push(
-      `Escala ${item.escalaCodigo} com ${reservas.length} reserva(s) e ${totalPax} pax.`,
+      `Bloco operacional ${item.escalaCodigo} / ${item.veiculo || "-"} com ${reservas.length} reserva(s) e ${totalPax} pax.`,
+    );
+  }
+
+  if (reservas.length > 1) {
+    detalhes.push(
+      `Mais de uma reserva foi consolidada no mesmo veículo e na mesma escala para validar a lotação real do carro.`,
     );
   }
 
   let status = "ok";
-  let resumo = "Escala validada com base no Phoenix.";
+  let resumo = "Bloco operacional validado.";
 
   if (motivos.length) {
     status = "critico";
@@ -753,7 +1172,6 @@ const buildDiagnostico = ({
     status = "ok";
     resumo = alertas[0];
   } else if (detalhes.length) {
-    status = "ok";
     resumo = detalhes[0];
   }
 
@@ -919,10 +1337,10 @@ function ListaServicosEscalados({
             {lista.length} serviço(s)
           </span>
         </div>
-        <p>
-          Conferência por escala operacional, sem unificar todos os serviços do
-          fornecedor.
-        </p>
+       <p>
+  Conferência consolidada por veículo escalado + número da escala, mantendo
+  as reservas agrupadas no mesmo bloco operacional.
+</p>
       </div>
 
       {!lista.length ? (
@@ -1210,69 +1628,59 @@ export default function RoboConferenteOperacional() {
     arrivals: [],
     departures: [],
   });
-  const [roadmaps, setRoadmaps] = useState([]);
+ const [servicosPhoenix, setServicosPhoenix] = useState([]);
 
-  const carregar = useCallback(async () => {
-    try {
-      setLoading(true);
-      setErro("");
+const carregar = useCallback(async () => {
+  try {
+    setLoading(true);
+    setErro("");
 
-      const urlPhoenix = new URL(PHOENIX_ROADMAP_URL);
-      urlPhoenix.searchParams.append("expand", PHOENIX_EXPAND);
-      urlPhoenix.searchParams.append("date", dataSelecionada);
+    const [respPhoenix, respArrivals, respDepartures] = await Promise.all([
+      fetch(montarUrlPhoenixReserveService(dataSelecionada), {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+      fetch(`${API_AEROPORTO}/api/aeroporto/arrivals`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+      fetch(`${API_AEROPORTO}/api/aeroporto/departures`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    ]);
 
-      const [respPhoenix, respArrivals, respDepartures] = await Promise.all([
-        fetch(urlPhoenix.toString(), {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        }),
-        fetch(`${API_AEROPORTO}/api/aeroporto/arrivals`, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        }),
-        fetch(`${API_AEROPORTO}/api/aeroporto/departures`, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        }),
-      ]);
-
-      if (!respPhoenix.ok) {
-        const txt = await respPhoenix.text().catch(() => "");
-        throw new Error(`Falha ao consultar Phoenix. ${txt}`);
-      }
-
-      if (!respArrivals.ok || !respDepartures.ok) {
-        throw new Error("Falha ao consultar dados do aeroporto.");
-      }
-
-      const jsonPhoenix = await respPhoenix.json();
-      const jsonArrivals = await respArrivals.json();
-      const jsonDepartures = await respDepartures.json();
-
-      const listaRoadmaps = Array.isArray(jsonPhoenix)
-        ? jsonPhoenix
-        : Array.isArray(jsonPhoenix?.data)
-          ? jsonPhoenix.data
-          : Array.isArray(jsonPhoenix?.results)
-            ? jsonPhoenix.results
-            : [];
-
-      setRoadmaps(listaRoadmaps);
-      setAirportData({
-        arrivals: normalizeAirportPayload(jsonArrivals?.data || []),
-        departures: normalizeAirportPayload(jsonDepartures?.data || []),
-      });
-
-      setResultadoPorServico({});
-      setIndiceAtualRobo(-1);
-      setRoboRodando(false);
-    } catch (error) {
-      console.error("Erro ao carregar conferente:", error);
-      setErro(error.message || "Não foi possível carregar os dados do robô.");
-    } finally {
-      setLoading(false);
+    if (!respPhoenix.ok) {
+      const txt = await respPhoenix.text().catch(() => "");
+      throw new Error(`Falha ao consultar Phoenix. ${txt}`);
     }
-  }, [dataSelecionada]);
+
+    if (!respArrivals.ok || !respDepartures.ok) {
+      throw new Error("Falha ao consultar dados do aeroporto.");
+    }
+
+    const jsonPhoenix = await respPhoenix.json();
+    const jsonArrivals = await respArrivals.json();
+    const jsonDepartures = await respDepartures.json();
+
+    const listaServicos = extrairListaResposta(jsonPhoenix);
+
+    setServicosPhoenix(listaServicos);
+    setAirportData({
+      arrivals: normalizeAirportPayload(jsonArrivals?.data || []),
+      departures: normalizeAirportPayload(jsonDepartures?.data || []),
+    });
+
+    setResultadoPorServico({});
+    setIndiceAtualRobo(-1);
+    setRoboRodando(false);
+  } catch (error) {
+    console.error("Erro ao carregar conferente:", error);
+    setErro(error.message || "Não foi possível carregar os dados do robô.");
+  } finally {
+    setLoading(false);
+  }
+}, [dataSelecionada]);
 
   useEffect(() => {
     carregar();
@@ -1313,10 +1721,10 @@ export default function RoboConferenteOperacional() {
     [airportData.departures],
   );
 
-  const servicosAgrupados = useMemo(
-    () => buildGroupedServices(roadmaps),
-    [roadmaps],
-  );
+const servicosAgrupados = useMemo(
+  () => buildGroupedServices(servicosPhoenix),
+  [servicosPhoenix],
+);
 
   const servicosBase = useMemo(() => {
     return servicosAgrupados.map((item, index) => ({
