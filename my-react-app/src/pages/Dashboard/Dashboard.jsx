@@ -54,10 +54,6 @@ const Dashboard = ({ loading }) => {
               <ViewModuleRounded fontSize="small" className="sidebar-icon" />
               <span>Prévia de Transfers</span>
             </NavLink>
-            <NavLink to="mapear-guias" className={getNavClass}>
-              <MapRounded fontSize="small" className="sidebar-icon" />
-              <span>Mapear Guias</span>
-            </NavLink>
 
             <NavLink to="passeios" className={getNavClass}>
               <AnalyticsRounded fontSize="small" className="sidebar-icon" />
@@ -67,40 +63,44 @@ const Dashboard = ({ loading }) => {
               <DnsRounded fontSize="small" className="sidebar-icon" />
               <span>Lista de Guias</span>
             </NavLink>
+            <NavLink to="mapear-guias" className={getNavClass}>
+              <MapRounded fontSize="small" className="sidebar-icon" />
+              <span>Mapear Guias</span>
+            </NavLink>
 
             <NavLink to="disponibilidade-guia" className={getNavClass}>
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Disponibilidade da Semana</span>
             </NavLink>
-            <NavLink to="conferencia" className={getNavClass}>
+            {/* <NavLink to="conferencia" className={getNavClass}>
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Robô de Conferência</span>
-            </NavLink>
-            <NavLink to="relatorios" className={getNavClass}>
+            </NavLink> */}
+            {/* <NavLink to="relatorios" className={getNavClass}>
               <AssessmentRounded fontSize="small" className="sidebar-icon" />
               <span>Analytics - beta</span>
-            </NavLink>
+            </NavLink> */}
           </div>
 
           <div className="sidebar-group">
             <span className="sidebar-group-title">Cadastros</span>
 
-            <NavLink to="register-guias" className={getNavClass}>
+            {/* <NavLink to="register-guias" className={getNavClass}>
               <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
               <span>Cadastrar Guias</span>
-            </NavLink>
+            </NavLink> */}
 
             <NavLink to="register-fornecedores" className={getNavClass}>
               <LocalShippingRounded fontSize="small" className="sidebar-icon" />
               <span>Cadastrar Fornecedores</span>
             </NavLink>
-            <NavLink to="register-tours" className={getNavClass}>
+            {/* <NavLink to="register-tours" className={getNavClass}>
               <PlaylistAddCheckCircleRounded
                 fontSize="small"
                 className="sidebar-icon"
               />
               <span>Cadastrar Passeios</span>
-            </NavLink>
+            </NavLink> */}
           </div>
         </div>
 

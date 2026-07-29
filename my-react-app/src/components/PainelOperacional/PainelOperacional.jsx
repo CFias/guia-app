@@ -3224,6 +3224,9 @@ export default function PainelOperacionalUnificado() {
                             </div>
 
                             <div className="painel-chegadas-flight-meta">
+                             <div className="painel-chegadas-kpi-icon">
+                    <FlightLandRounded  fontSize="small" />
+                  </div>
                               <span>
                                 Previsto: {formatarHora(voo.horarioPrevisto)}
                               </span>

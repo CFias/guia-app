@@ -177,7 +177,6 @@
     padding: 0 16px;
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
     font-size: 11px;
     font-weight: 500;
@@ -201,9 +200,6 @@
 }
 
 .painel-chegadas-tab.active {
-    background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 18%, var(--card) 82%),
-            color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%));
     border-color: color-mix(in srgb, var(--text-dist) 24%, transparent 76%);
     color: var(--text);
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.05);
@@ -238,9 +234,6 @@
     text-align: left;
     padding: 16px 18px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
-            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
     cursor: pointer;
     position: relative;
     transition: all 0.2s ease;
@@ -438,7 +431,6 @@
     padding: 0 16px;
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
     font-size: 10px;
     font-weight: 600;
@@ -565,7 +557,6 @@
     border: 1px solid var(--border);
     border-radius: 24px;
     padding: 24px;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
     position: relative;
     overflow: hidden;
 }
@@ -621,7 +612,6 @@
     font-weight: 500;
     letter-spacing: 0.02em;
     color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
     border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
 }
 
@@ -664,7 +654,6 @@
     min-height: 45px;
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
     color: var(--text);
     font-size: 12px;
     padding: 0 18px;
@@ -703,7 +692,6 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: var(--btn-main);
     color: var(--text-btn);
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
@@ -731,7 +719,6 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
 }
 
@@ -742,7 +729,6 @@
 .painel-chegadas-btn-secondary:hover:not(:disabled) {
     transform: translateY(-1px);
     border-color: color-mix(in srgb, var(--text-dist) 22%, transparent 78%);
-    background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
 }
 
 .painel-chegadas-btn-secondary:disabled {
@@ -751,7 +737,6 @@
 }
 
 .painel-chegadas-copy-btn.success {
-    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
     border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
     color: #15803d;
 }
@@ -766,7 +751,6 @@
     gap: 12px;
     padding: 12px 14px;
     border-radius: 16px;
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
 }
 
@@ -777,7 +761,6 @@
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
     border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
     color: var(--text-dist);
     flex-shrink: 0;
@@ -815,7 +798,6 @@
     gap: 12px;
     padding: 14px;
     border-radius: 18px;
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
 }
 
@@ -837,28 +819,19 @@
 }
 
 .painel-chegadas-flight-card {
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
     border-radius: 20px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 100%, var(--input) 20%);
 }
 
 .painel-chegadas-flight-top {
     width: 100%;
     border: none;
     text-align: left;
-    padding: 16px 18px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 45%, var(--card) 55%),
-            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
     cursor: pointer;
     position: relative;
+    background: none;
 }
 
-.painel-chegadas-flight-top:hover {
-    filter: brightness(1.01);
-}
 
 .painel-chegadas-flight-main {
     display: flex;
@@ -895,33 +868,28 @@
 
 .painel-chegadas-status.programado,
 .painel-chegadas-status.no-horario {
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
     border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
     color: var(--text-dist);
 }
 
 .painel-chegadas-status.atrasado,
 .painel-chegadas-status.pousado-atrasado {
-    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
     border: 1px solid color-mix(in srgb, var(--p2) 22%, transparent 78%);
     color: var(--p2);
 }
 
 .painel-chegadas-status.antecipado,
 .painel-chegadas-status.pousado-antecipado {
-    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
     border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent 78%);
     color: var(--text);
 }
 
 .painel-chegadas-status.cancelado {
-    background: color-mix(in srgb, var(--p1) 12%, transparent 88%);
     border: 1px solid color-mix(in srgb, var(--p1) 18%, transparent 82%);
     color: var(--p1);
 }
 
 .painel-chegadas-status.pousado {
-    background: color-mix(in srgb, var(--primary-2) 12%, transparent 88%);
     border: 1px solid color-mix(in srgb, var(--primary-2) 18%, transparent 82%);
     color: var(--primary-2);
 }
@@ -944,7 +912,6 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
     color: var(--text);
     font-size: 11px;
@@ -966,7 +933,7 @@
 .painel-chegadas-expand-icon {
     position: absolute;
     right: 16px;
-    top: 16px;
+    top: 55px;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -981,7 +948,6 @@
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
     border-radius: 18px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
 }
 
 .painel-chegadas-driver-block.nao-escalado {
@@ -1000,7 +966,6 @@
     gap: 12px;
     padding: 14px 16px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--primary) 60%, var(--card) 94%);
     flex-wrap: wrap;
 }
 
@@ -1027,7 +992,6 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
     color: var(--text);
     font-size: 11px;
@@ -1050,7 +1014,6 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--text);
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
 }
 
@@ -1067,7 +1030,6 @@
 
 .painel-chegadas-google-btn {
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
     border-radius: 999px;
     min-height: 30px;
@@ -1107,18 +1069,15 @@
 .painel-chegadas-alert.atrasado,
 .painel-chegadas-alert.pousado-atrasado {
     border-color: color-mix(in srgb, var(--p2) 35%, transparent 65%);
-    background: color-mix(in srgb, var(--p2) 10%, var(--card) 90%);
 }
 
 .painel-chegadas-alert.cancelado {
     border-color: color-mix(in srgb, var(--p1) 35%, transparent 65%);
-    background: color-mix(in srgb, var(--p1) 10%, var(--card) 90%);
 }
 
 .painel-chegadas-alert.antecipado,
 .painel-chegadas-alert.pousado-antecipado {
     border-color: color-mix(in srgb, var(--primary) 26%, transparent 74%);
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
 }
 
 .painel-chegadas-alert-main {
@@ -1152,7 +1111,6 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
     border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
     color: var(--text);
     font-size: 11px;
@@ -1183,7 +1141,6 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
 }
 
@@ -1332,7 +1289,6 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
     color: var(--text);
 }
 
@@ -1358,7 +1314,7 @@
 }
 
 .painel-chegadas-copy-btn.success {
-    background: color-mix(in srgb, #22c55e 14%, var(--card) 86%);
+    background: color-mix(in srgb, #cf1609 14%, var(--card) 86%);
     border-color: color-mix(in srgb, #22c55e 24%, transparent 76%);
     color: #15803d;
 }
