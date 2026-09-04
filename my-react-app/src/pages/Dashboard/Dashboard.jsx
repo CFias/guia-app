@@ -85,10 +85,10 @@ const Dashboard = ({ loading }) => {
           <div className="sidebar-group">
             <span className="sidebar-group-title">Cadastros</span>
 
-            {/* <NavLink to="register-guias" className={getNavClass}>
+            <NavLink to="register-guias" className={getNavClass}>
               <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
               <span>Cadastrar Guias</span>
-            </NavLink> */}
+            </NavLink>
 
             <NavLink to="register-fornecedores" className={getNavClass}>
               <LocalShippingRounded fontSize="small" className="sidebar-icon" />
