@@ -28,6 +28,7 @@ import {
 import {
   carregarSemanaApiListaPasseios,
   sincronizarPasseiosDaApiNaSemana,
+  carregarHistoricoServicosReaisPorNomeGuia,
 } from "../../Services/Services/plannerApi";
 
 import {
@@ -74,13 +75,10 @@ const ListaPasseiosSemana = () => {
   const [extras, setExtras] = useState({});
   const [guias, setGuias] = useState([]);
   const [disponibilidades, setDisponibilidades] = useState([]);
+  const [afinidades, setAfinidades] = useState([]);
   const [apiSemanaListaPasseios, setApiSemanaListaPasseios] = useState([]);
-  const [resumoGuias, setResumoGuias] = useState([]);
   const [modoVisualizacao, setModoVisualizacao] = useState(true);
   const [modoGeradoSemana, setModoGeradoSemana] = useState(null);
-  const [guiasDisponiveisSemServico, setGuiasDisponiveisSemServico] = useState(
-    [],
-  );
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
     useState("equilibrado");
   const [usarAfinidadeGuiaPasseio, setUsarAfinidadeGuiaPasseio] =
@@ -101,6 +99,10 @@ const ListaPasseiosSemana = () => {
   const primeiraCargaRef = useRef(true);
   const paxTimers = useRef({});
   const roboDotsIntervalRef = useRef(null);
+  // Guarda qual semana foi pedida por último, para descartar respostas
+  // atrasadas da sincronização em segundo plano caso o usuário já tenha
+  // trocado de semana antes dela terminar.
+  const ultimaSemanaSolicitadaRef = useRef(null);
 
   const carregandoEstrutura = loadingInicial || loadingSemana;
 
@@ -135,6 +137,23 @@ const ListaPasseiosSemana = () => {
     return mapa;
   }, [semana, extras, apiSemanaListaPasseios]);
 
+  // Resumo dos guias é um valor derivado — recalcula sozinho quando os
+  // dados mudam, sem precisar de um estado + efeito extra (menos um
+  // ciclo de render a cada atualização).
+  const { resumoGuias, guiasDisponiveisSemServico } = useMemo(() => {
+    const resumo = gerarResumoGuiasSemana({
+      semana,
+      guias,
+      disponibilidades,
+      extras: registrosPorDia,
+    });
+
+    return {
+      resumoGuias: resumo.resumoComServico || [],
+      guiasDisponiveisSemServico: resumo.guiasDisponiveisSemServico || [],
+    };
+  }, [semana, guias, disponibilidades, registrosPorDia]);
+
   useEffect(() => {
     const carregar = async () => {
       const initial = primeiraCargaRef.current;
@@ -144,18 +163,6 @@ const ListaPasseiosSemana = () => {
 
     carregar();
   }, [semanaOffset]);
-
-  useEffect(() => {
-    const resumo = gerarResumoGuiasSemana({
-      semana,
-      guias,
-      disponibilidades,
-      extras: registrosPorDia,
-    });
-
-    setResumoGuias(resumo.resumoComServico || []);
-    setGuiasDisponiveisSemServico(resumo.guiasDisponiveisSemServico || []);
-  }, [semana, guias, disponibilidades, registrosPorDia]);
 
   useEffect(() => {
     return () => {
@@ -207,39 +214,76 @@ const ListaPasseiosSemana = () => {
     setAnimacaoPontos("");
   };
 
+  // Recarrega só os registros da semana (extras), sem repetir a
+  // sincronização com o Phoenix nem os dados base. Usado depois de
+  // ações pontuais (adicionar/remover passeio, gerar/desfazer escala)
+  // que não precisam refazer o carregamento inteiro.
+  const recarregarExtras = async (semanaAlvo = semana) => {
+    if (!semanaAlvo.length) return;
+
+    try {
+      const weeklyServices = await carregarWeeklyServicesDaSemana(semanaAlvo);
+      setExtras(weeklyServices);
+    } catch (err) {
+      console.error("Erro ao recarregar serviços da semana:", err);
+    }
+  };
+
   const carregarDados = async ({ initial = false } = {}) => {
     try {
       if (initial) setLoadingInicial(true);
       else setLoadingSemana(true);
 
       const semanaAtual = gerarSemana(semanaOffset);
+      const chaveSemana = semanaAtual.map((d) => d.date).join("|");
+      ultimaSemanaSolicitadaRef.current = chaveSemana;
+
       setSemana(semanaAtual);
 
-      const [base, modoGerado, apiAgrupada] = await Promise.all([
-        carregarBasePlanner(),
-        carregarModoGeradoSemana(semanaAtual),
-        carregarSemanaApiListaPasseios(semanaAtual),
-      ]);
+      // Base, modo gerado, lista da API e os registros já salvos da
+      // semana são buscados em paralelo — a tela é liberada assim que
+      // isso chegar, sem esperar a sincronização com o Phoenix.
+      const [base, modoGerado, apiAgrupada, weeklyServices] = await Promise.all(
+        [
+          carregarBasePlanner(),
+          carregarModoGeradoSemana(semanaAtual),
+          carregarSemanaApiListaPasseios(semanaAtual),
+          carregarWeeklyServicesDaSemana(semanaAtual),
+        ],
+      );
 
       setServices(base.services);
       setGuias(base.guias);
       setDisponibilidades(base.disponibilidades);
+      setAfinidades(base.afinidades || []);
       setModoDistribuicaoGuias(base.modoDistribuicaoGuias);
       setUsarAfinidadeGuiaPasseio(base.usarAfinidadeGuiaPasseio);
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
+      setExtras(weeklyServices);
 
-      await sincronizarPasseiosDaApiNaSemana(
+      if (initial) setLoadingInicial(false);
+      else setLoadingSemana(false);
+
+      // Sincronização com o Phoenix roda em segundo plano: não trava a
+      // tela, e só atualiza a lista de novo se o usuário ainda estiver
+      // na mesma semana quando ela terminar.
+      sincronizarPasseiosDaApiNaSemana(
         semanaAtual,
         base.services,
         normalizarTexto,
-      );
-
-      const weeklyServices = await carregarWeeklyServicesDaSemana(semanaAtual);
-      setExtras(weeklyServices);
+      )
+        .then(() => carregarWeeklyServicesDaSemana(semanaAtual))
+        .then((atualizado) => {
+          if (ultimaSemanaSolicitadaRef.current === chaveSemana) {
+            setExtras(atualizado);
+          }
+        })
+        .catch((err) => {
+          console.error("Erro ao sincronizar passeios da API:", err);
+        });
     } catch (err) {
       console.error("Erro ao carregar planner:", err);
-    } finally {
       if (initial) setLoadingInicial(false);
       else setLoadingSemana(false);
     }
@@ -391,7 +435,7 @@ const ListaPasseiosSemana = () => {
         [dia.date]: {},
       }));
 
-      await carregarDados();
+      await recarregarExtras();
     } catch (err) {
       console.error("Erro ao adicionar passeio manual:", err);
     } finally {
@@ -403,7 +447,7 @@ const ListaPasseiosSemana = () => {
     try {
       setProcessandoAcao(true);
       await removerPasseioRepo(id);
-      await carregarDados();
+      await recarregarExtras();
     } catch (err) {
       console.error("Erro ao remover passeio:", err);
     } finally {
@@ -419,37 +463,51 @@ const ListaPasseiosSemana = () => {
       if (!guias.length || !semana.length) return;
 
       avancarEtapaRobo(0);
-      const base = await carregarBasePlanner();
+      // Base (guias, serviços, disponibilidade, afinidade e configuração)
+      // já está carregada em memória — só busca fresco o que realmente
+      // muda com frequência: os registros da semana e o histórico real
+      // das duas semanas anteriores (equilíbrio de médio prazo), direto
+      // da API do sistema.
+      const semanaAnterior1 = gerarSemana(semanaOffset - 1);
+      const semanaAnterior2 = gerarSemana(semanaOffset - 2);
+      const datasHistorico = [...semanaAnterior1, ...semanaAnterior2].map(
+        (d) => d.date,
+      );
 
-      const registrosSemanaMap = await carregarWeeklyServicesDaSemana(semana);
+      const [registrosSemanaMap, historicoPorGuia] = await Promise.all([
+        carregarWeeklyServicesDaSemana(semana),
+        carregarHistoricoServicosReaisPorNomeGuia(datasHistorico),
+      ]);
       const registrosSemana = Object.values(registrosSemanaMap).flat();
 
       avancarEtapaRobo(1);
-      const mapaAfinidade = construirMapaAfinidade(base.afinidades);
-      const mapaDisponibilidade = construirMapaDisponibilidade(
-        base.disponibilidades,
-      );
+      const mapaAfinidade = construirMapaAfinidade(afinidades);
+      const mapaDisponibilidade =
+        construirMapaDisponibilidade(disponibilidades);
 
       avancarEtapaRobo(2);
       const { atualizacoes } = gerarPlanoAlocacaoSemana({
         semana,
-        guias: base.guias.filter((g) => g.ativo),
+        guias: guias.filter((g) => g.ativo),
         registrosSemana,
         mapaAfinidade,
         mapaDisponibilidade,
-        servicesData: base.services,
-        modoDistribuicaoGuias: base.modoDistribuicaoGuias,
-        usarAfinidadeGuiaPasseio: base.usarAfinidadeGuiaPasseio,
+        servicesData: services,
+        modoDistribuicaoGuias,
+        usarAfinidadeGuiaPasseio,
         agruparRegistrosPorServico,
-        normalizarTexto: base.normalizarTexto || normalizarTexto,
+        normalizarTexto,
+        historicoPorGuia,
+        numeroSemanasHistorico: 2,
       });
 
       avancarEtapaRobo(3);
       await aplicarPlanoDeAlocacao(atualizacoes);
 
       avancarEtapaRobo(4);
-      await salvarModoGeradoSemana(semana, base.modoDistribuicaoGuias);
-      await carregarDados();
+      await salvarModoGeradoSemana(semana, modoDistribuicaoGuias);
+      setModoGeradoSemana(modoDistribuicaoGuias);
+      await recarregarExtras();
     } catch (err) {
       console.error("Erro ao alocar guias da semana:", err);
     } finally {
@@ -463,7 +521,8 @@ const ListaPasseiosSemana = () => {
       setProcessandoAcao(true);
       await removerGuiasSemanaRepo(semana);
       await limparModoGeradoSemana(semana);
-      await carregarDados();
+      setModoGeradoSemana(null);
+      await recarregarExtras();
     } catch (err) {
       console.error("Erro ao remover guias da semana:", err);
     } finally {

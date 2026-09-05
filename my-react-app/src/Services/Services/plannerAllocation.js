@@ -11,7 +11,9 @@ const compareText = (a, b) =>
   });
 
 const isModoPrioridade = (modoDistribuicaoGuias = "") => {
-  const modo = String(modoDistribuicaoGuias || "").trim().toLowerCase();
+  const modo = String(modoDistribuicaoGuias || "")
+    .trim()
+    .toLowerCase();
   return modo === "prioridade" || modo === "seguir_nivel_selecionado";
 };
 
@@ -19,6 +21,11 @@ export const normalizarPrioridade = (valor) => {
   const prioridade = toNumber(valor, 2);
   return Math.max(1, Math.min(prioridade, 5));
 };
+
+// Fator de folga do teto justo por nível de prioridade. Só é aplicado no
+// modo "prioridade" — no modo "equilibrado" todo mundo usa fator 1.0,
+// independente do nível cadastrado.
+const FATOR_TETO_POR_PRIORIDADE = { 1: 1.0, 2: 1.15, 3: 1.3 };
 
 export const construirMapaAfinidade = (docsOuDados = []) => {
   const mapa = {};
@@ -108,6 +115,9 @@ export const resolverServiceIdDoItem = (
   return byName?.id ? String(byName.id) : "";
 };
 
+// Nível de afinidade (0 a 100) do guia para o passeio deste item.
+// 0 = "Não operar" — é tratado como exclusão dura em
+// filtrarGuiasElegiveisParaServico, não apenas como desempate fraco.
 export const obterNivelAfinidade = (
   mapaAfinidade,
   guiaId,
@@ -211,6 +221,9 @@ export const filtrarGuiasDisponiveisNoDia = (
   );
 };
 
+// Mantida por compatibilidade (pode estar em uso em outro lugar do
+// sistema). Não é mais usada internamente pela nova lógica de seleção,
+// que lê diretamente do "estado" corrente.
 export const calcularCargaGuia = ({
   guiaId,
   contadorSemana,
@@ -242,6 +255,9 @@ export const calcularCargaGuia = ({
   };
 };
 
+// Elegibilidade = disponibilidade (já filtrada em guiasDisponiveis) +
+// afinidade/compatibilidade com o passeio. Isso é um filtro DURO: quem
+// não passa aqui não pode nem entrar na disputa pelo serviço.
 export const filtrarGuiasElegiveisParaServico = ({
   item,
   guiasDisponiveis = [],
@@ -270,6 +286,9 @@ export const filtrarGuiasElegiveisParaServico = ({
   });
 };
 
+// Processa primeiro os serviços com menos guias elegíveis disponíveis —
+// evita "gastar" um guia raro num serviço fácil e depois travar num
+// serviço difícil sem ninguém disponível.
 export const ordenarServicosPorEscassez = (
   itens = [],
   guiasDisponiveis = [],
@@ -345,71 +364,50 @@ export const ordenarServicosPorEscassez = (
   });
 };
 
-const normalizarNumeroPositivo = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-};
+// ---------------------------------------------------------------------
+// Garantias mínimas por nível de prioridade (regra 3 do usuário):
+//  - Nível 1 e 2: garante 1 serviço, desde que exista oportunidade.
+//  - Nível 3: garante 1 sempre, e sobe para 2 (em dias distintos) se o
+//    guia tiver oportunidade em 2 ou mais dias da semana.
+// No modo "equilibrado" o nível é ignorado: todo mundo usa a garantia
+// básica de nível 1/2.
+// ---------------------------------------------------------------------
+export const calcularMetaMinimaPrioridade = (
+  guia,
+  diasUteisGuia,
+  modoPrioridade,
+) => {
+  if (!modoPrioridade) return 1;
 
-const getPesoOperacionalServico = (item) => {
-  const pax = Number(item?.passengers || 0);
+  const prioridade = normalizarPrioridade(guia?.nivelPrioridade);
 
-  if (pax >= 25) return 1.35;
-  if (pax >= 15) return 1.2;
-  if (pax >= 8) return 1.1;
+  if (prioridade >= 3) {
+    return diasUteisGuia >= 2 ? 2 : 1;
+  }
+
   return 1;
 };
 
-const calcularMediaServicosGrupo = (guias = [], contadorSemana = {}) => {
-  if (!Array.isArray(guias) || !guias.length) return 0;
+// Quantas semanas de histórico real (vindo da API) entram no cálculo de
+// equilíbrio de médio prazo.
+const NUMERO_SEMANAS_HISTORICO_PADRAO = 2;
 
-  const total = guias.reduce(
-    (acc, guia) => acc + Number(contadorSemana?.[guia?.id] || 0),
-    0,
-  );
-
-  return total / guias.length;
+// Tenta casar o guia do Firestore com as chaves do histórico (que vêm
+// por nome normalizado, extraído da API). Testa apelido e nome
+// completo — o que existir — sem exigir um campo específico.
+const obterChavesNomeGuia = (guia, normalizarTexto) => {
+  const chaves = [];
+  if (guia?.nickname) chaves.push(normalizarTexto(guia.nickname));
+  if (guia?.nome) chaves.push(normalizarTexto(guia.nome));
+  return chaves.filter(Boolean);
 };
 
-const calcularMenorCargaDoGrupo = (guias = [], contadorSemana = {}) => {
-  if (!Array.isArray(guias) || !guias.length) return 0;
-
-  return Math.min(
-    ...guias.map((guia) => Number(contadorSemana?.[guia?.id] || 0)),
-  );
-};
-
-const calcularLimiteEquilibrioPrioridade = ({
-  elegiveis = [],
-  contadorSemana,
-  margemMaxima = 1,
-}) => {
-  const media = calcularMediaServicosGrupo(elegiveis, contadorSemana);
-  const menorCarga = calcularMenorCargaDoGrupo(elegiveis, contadorSemana);
-
-  return Math.max(media + margemMaxima, menorCarga + margemMaxima);
-};
-
-const calcularGap = (alvo, atual) => {
-  return normalizarNumeroPositivo(alvo) - Number(atual || 0);
-};
-
-const calcularMinimoAceitavelGuia = ({
-  guiaId,
-  metasSemana = {},
-  oportunidadesSemana = {},
-  diasUteisSemana = {},
-}) => {
-  const meta = normalizarNumeroPositivo(metasSemana?.[guiaId]);
-  const oportunidades = Number(oportunidadesSemana?.[guiaId] || 0);
-  const diasUteis = Number(diasUteisSemana?.[guiaId] || 0);
-
-  if (oportunidades <= 0 || diasUteis <= 0) return 0;
-
-  if (meta >= 2.6 && diasUteis >= 4 && oportunidades >= 2) return 2;
-  return 1;
-};
-
-const construirMetricasEquilibrioSemana = ({
+// Calcula, para cada guia, quantas oportunidades elegíveis ele teria na
+// semana (serviços que ele PODERIA fazer, considerando disponibilidade +
+// afinidade), em quantos dias distintos, e a garantia mínima do seu
+// nível. Isso roda uma vez no início — a alocação em si é quem decide,
+// serviço a serviço, quem efetivamente recebe cada vaga.
+const construirMetricasSemana = ({
   semana = [],
   guias = [],
   registrosSemana = [],
@@ -417,24 +415,20 @@ const construirMetricasEquilibrioSemana = ({
   mapaDisponibilidade = {},
   servicesData = [],
   usarAfinidadeGuiaPasseio = false,
+  modoDistribuicaoGuias = "equilibrado",
   agruparRegistrosPorServico,
   normalizarTexto,
+  historicoPorGuia = {},
+  numeroSemanasHistorico = NUMERO_SEMANAS_HISTORICO_PADRAO,
 }) => {
-  const oportunidadesSemana = {};
-  const diasDisponiveisSemana = {};
-  const diasUteisSemanaMap = {};
-  const pesoOportunidadeSemana = {};
-  let totalPesoServicosPendentesSemana = 0;
+  const modoPrioridade = isModoPrioridade(modoDistribuicaoGuias);
 
-  guias.forEach((guia) => {
-    oportunidadesSemana[guia.id] = 0;
-    diasUteisSemanaMap[guia.id] = new Set();
-    diasDisponiveisSemana[guia.id] = getDiasDisponiveisSemana(
-      mapaDisponibilidade,
-      guia.id,
-      semana,
-    );
-    pesoOportunidadeSemana[guia.id] = 0;
+  const oportunidadesSemana = {};
+  const diasUteisSemanaSet = {};
+
+  guias.forEach((g) => {
+    oportunidadesSemana[g.id] = 0;
+    diasUteisSemanaSet[g.id] = new Set();
   });
 
   for (const dia of semana) {
@@ -458,10 +452,7 @@ const construirMetricasEquilibrioSemana = ({
       return true;
     });
 
-    for (const item of itensPendentes) {
-      const pesoServico = getPesoOperacionalServico(item);
-      totalPesoServicosPendentesSemana += pesoServico;
-
+    itensPendentes.forEach((item) => {
       const elegiveis = filtrarGuiasElegiveisParaServico({
         item,
         guiasDisponiveis,
@@ -472,372 +463,205 @@ const construirMetricasEquilibrioSemana = ({
         normalizarTexto,
       });
 
-      elegiveis.forEach((guia) => {
-        oportunidadesSemana[guia.id] =
-          Number(oportunidadesSemana[guia.id] || 0) + 1;
-        pesoOportunidadeSemana[guia.id] =
-          Number(pesoOportunidadeSemana[guia.id] || 0) + pesoServico;
-        diasUteisSemanaMap[guia.id].add(dia.date);
+      elegiveis.forEach((g) => {
+        oportunidadesSemana[g.id] = Number(oportunidadesSemana[g.id] || 0) + 1;
+        diasUteisSemanaSet[g.id].add(dia.date);
       });
-    }
+    });
   }
 
   const diasUteisSemana = {};
-  guias.forEach((guia) => {
-    diasUteisSemana[guia.id] = diasUteisSemanaMap[guia.id]?.size || 0;
+  guias.forEach((g) => {
+    diasUteisSemana[g.id] = diasUteisSemanaSet[g.id]?.size || 0;
   });
 
-  const pesosMeta = {};
-  let somaPesosMeta = 0;
-
-  guias.forEach((guia) => {
-    const diasUteis = Number(diasUteisSemana[guia.id] || 0);
-    const pesoOportunidade = Number(pesoOportunidadeSemana[guia.id] || 0);
-
-    const peso = diasUteis * 0.7 + pesoOportunidade * 0.3;
-
-    pesosMeta[guia.id] = peso;
-    somaPesosMeta += peso;
-  });
-
-  const metasSemana = {};
   const minimosSemana = {};
+  guias.forEach((g) => {
+    minimosSemana[g.id] =
+      Number(oportunidadesSemana[g.id] || 0) > 0
+        ? calcularMetaMinimaPrioridade(g, diasUteisSemana[g.id], modoPrioridade)
+        : 0;
+  });
 
-  guias.forEach((guia) => {
-    if (!somaPesosMeta || !totalPesoServicosPendentesSemana) {
-      metasSemana[guia.id] = 0;
-      minimosSemana[guia.id] = 0;
-      return;
-    }
+  const guiasComOportunidade = guias.filter(
+    (g) => Number(oportunidadesSemana[g.id] || 0) > 0,
+  );
 
-    metasSemana[guia.id] =
-      (Number(pesosMeta[guia.id] || 0) / somaPesosMeta) *
-      totalPesoServicosPendentesSemana;
+  // Média semanal real de cada guia nas últimas N semanas (histórico
+  // vindo da API do próprio sistema, casado por nome). Não afeta a
+  // garantia mínima da semana atual — só entra no equilíbrio/desempate.
+  const historicoMedioSemanalPorGuia = {};
+  guias.forEach((g) => {
+    const chaves = obterChavesNomeGuia(g, normalizarTexto);
+    const totalHistorico = chaves.length
+      ? Math.max(
+          ...chaves.map((chave) => Number(historicoPorGuia?.[chave] || 0)),
+        )
+      : 0;
 
-    minimosSemana[guia.id] = calcularMinimoAceitavelGuia({
-      guiaId: guia.id,
-      metasSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
+    historicoMedioSemanalPorGuia[g.id] =
+      numeroSemanasHistorico > 0 ? totalHistorico / numeroSemanasHistorico : 0;
   });
 
   return {
-    totalPesoServicosPendentesSemana,
+    modoPrioridade,
     oportunidadesSemana,
-    diasDisponiveisSemana,
     diasUteisSemana,
-    pesoOportunidadeSemana,
-    metasSemana,
     minimosSemana,
+    guiasComOportunidade,
+    historicoMedioSemanalPorGuia,
   };
 };
 
-const calcularIndicadoresOperacionaisGuia = ({
-  guiaId,
-  contadorSemana,
-  metasSemana = {},
-  minimosSemana = {},
-  oportunidadesSemana = {},
-  diasUteisSemana = {},
-}) => {
-  const atual = Number(contadorSemana?.[guiaId] || 0);
-  const meta = normalizarNumeroPositivo(metasSemana?.[guiaId]);
-  const minimo = normalizarNumeroPositivo(minimosSemana?.[guiaId]);
-  const oportunidades = Number(oportunidadesSemana?.[guiaId] || 0);
-  const diasUteis = Number(diasUteisSemana?.[guiaId] || 0);
+// Indicadores "ao vivo" de um guia no momento da decisão: quanto ele já
+// tem, quanto falta pro mínimo do nível dele, e qual o teto justo atual
+// (média corrente entre quem tem oportunidade, com folga maior para
+// prioridade mais alta — regra "não pode ter muito mais serviço que os
+// outros níveis"). A garantia mínima olha só a semana atual; o
+// equilíbrio/desempate usa "carga recente" (semana atual + média das
+// últimas semanas de histórico real), pra não repetir sempre os mesmos.
+const calcularIndicadoresGuia = ({ guia, estado, metricasSemana }) => {
+  const atual = Number(estado.contadorSemana[guia.id] || 0);
+  const diasTrabalhados = estado.diasTrabalhadosSemana[guia.id]?.size || 0;
+  const oportunidades = Number(
+    metricasSemana.oportunidadesSemana[guia.id] || 0,
+  );
+  const diasUteis = Number(metricasSemana.diasUteisSemana[guia.id] || 0);
+  const minimo = Number(metricasSemana.minimosSemana[guia.id] || 0);
+  const historicoMedioSemanal = Number(
+    metricasSemana.historicoMedioSemanalPorGuia?.[guia.id] || 0,
+  );
+
+  const cargaRecente = atual + historicoMedioSemanal;
+
+  const grupo = metricasSemana.guiasComOportunidade || [];
+  const mediaCargaRecenteGrupo = grupo.length
+    ? grupo.reduce((acc, gg) => {
+        const atualGg = Number(estado.contadorSemana[gg.id] || 0);
+        const historicoGg = Number(
+          metricasSemana.historicoMedioSemanalPorGuia?.[gg.id] || 0,
+        );
+        return acc + atualGg + historicoGg;
+      }, 0) / grupo.length
+    : 0;
+
+  const prioridade = normalizarPrioridade(guia?.nivelPrioridade);
+  const fatorTeto = metricasSemana.modoPrioridade
+    ? FATOR_TETO_POR_PRIORIDADE[Math.min(prioridade, 3)] || 1.15
+    : 1.0;
+
+  const teto = Math.max(minimo, mediaCargaRecenteGrupo * fatorTeto);
 
   return {
     atual,
-    meta,
-    minimo,
+    cargaRecente,
+    diasTrabalhados,
     oportunidades,
     diasUteis,
-    gapMinimo: calcularGap(minimo, atual),
-    gapMeta: calcularGap(meta, atual),
-    abaixoDoMinimo: atual < minimo,
-    abaixoDaMeta: atual < meta,
-    zerado: atual === 0,
-  };
-};
-
-const calcularPontuacaoPrioridade = ({
-  guia,
-  item,
-  mapaAfinidade,
-  servicesData,
-  contadorSemana,
-  diasTrabalhadosSemana,
-  mapaDisponibilidade,
-  semanaRef,
-  usarAfinidadeGuiaPasseio,
-  normalizarTexto,
-  elegiveis = [],
-  metasSemana = {},
-  minimosSemana = {},
-  oportunidadesSemana = {},
-  diasUteisSemana = {},
-}) => {
-  const prioridade = normalizarPrioridade(guia?.nivelPrioridade);
-  const afinidade = usarAfinidadeGuiaPasseio
-    ? obterNivelAfinidade(
-        mapaAfinidade,
-        guia.id,
-        item,
-        servicesData,
-        normalizarTexto,
-      )
-    : 0;
-
-  const carga = calcularCargaGuia({
-    guiaId: guia.id,
-    contadorSemana,
-    diasTrabalhadosSemana,
-    mapaDisponibilidade,
-    semanaRef,
-  });
-
-  const indicadores = calcularIndicadoresOperacionaisGuia({
-    guiaId: guia.id,
-    contadorSemana,
-    metasSemana,
-    minimosSemana,
-    oportunidadesSemana,
-    diasUteisSemana,
-  });
-
-  const limiteEquilibrio = calcularLimiteEquilibrioPrioridade({
-    elegiveis,
-    contadorSemana,
-    margemMaxima: 1,
-  });
-
-  const excedente = Math.max(
-    0,
-    indicadores.atual - Math.max(indicadores.meta + 0.75, limiteEquilibrio),
-  );
-
-  const score =
-    indicadores.gapMinimo * 5000 +
-    indicadores.gapMeta * 2200 +
-    (indicadores.zerado ? 420 : 0) +
-    prioridade * 260 +
-    afinidade * 140 -
-    excedente * 900 -
-    carga.frequencia * 50 -
-    carga.ocupacao * 45 -
-    carga.totalDiasTrabalhados * 10 -
-    carga.totalServicos * 18;
-
-  return {
+    minimo,
+    teto,
+    mediaGeral: mediaCargaRecenteGrupo,
     prioridade,
-    afinidade,
-    carga,
-    excedente,
-    score,
-    ...indicadores,
+    abaixoDoMinimo: oportunidades > 0 && atual < minimo,
+    excedente: Math.max(0, cargaRecente - teto),
   };
 };
 
+// Ordena os guias elegíveis para UM serviço específico, seguindo as
+// regras (nessa ordem de desempate):
+//   1) quem ainda não bateu a garantia mínima do próprio nível (só
+//      semana atual) entra na frente de quem já bateu;
+//   2) nível de prioridade mais alto sempre à frente — MAS só enquanto
+//      os dois candidatos ainda estiverem dentro de uma folga razoável
+//      da média do grupo (carga recente <= média + 1). Carga recente =
+//      semana atual + média das últimas semanas de histórico real.
+//      Assim que alguém passa dessa folga, a prioridade para de valer
+//      pra ele e a distribuição cai no critério 3 — isso é o que impede
+//      um nível mais alto (ou qualquer guia) disparar muito à frente;
+//   3) quem tem MENOS carga recente entra na frente — é o que garante
+//      equilíbrio real entre pares do mesmo nível, olhando também as
+//      últimas semanas, não só a atual;
+//   4) afinidade (nível de aptidão) ajuda a desempatar;
+//   5) menos dias trabalhados na semana — ajuda a espalhar por dias
+//      diferentes, não só por contagem total;
+//   6) nome, para desempate determinístico.
 export const ordenarGuiasParaServico = ({
   elegiveis = [],
   item,
   mapaAfinidade,
   servicesData,
-  contadorSemana,
-  diasTrabalhadosSemana,
-  mapaDisponibilidade,
-  semanaRef,
-  modoDistribuicaoGuias,
-  usarAfinidadeGuiaPasseio,
+  estado,
+  metricasSemana,
+  usarAfinidadeGuiaPasseio = false,
   normalizarTexto,
-  metasSemana = {},
-  minimosSemana = {},
-  oportunidadesSemana = {},
-  diasUteisSemana = {},
 }) => {
-  const modoPrioridade = isModoPrioridade(modoDistribuicaoGuias);
-
-  return [...elegiveis].sort((a, b) => {
-    const afinidadeA = usarAfinidadeGuiaPasseio
+  const candidatos = elegiveis.map((guia) => ({
+    guia,
+    afinidade: usarAfinidadeGuiaPasseio
       ? obterNivelAfinidade(
           mapaAfinidade,
-          a.id,
+          guia.id,
           item,
           servicesData,
           normalizarTexto,
         )
-      : 0;
+      : 0,
+    indicadores: calcularIndicadoresGuia({ guia, estado, metricasSemana }),
+  }));
 
-    const afinidadeB = usarAfinidadeGuiaPasseio
-      ? obterNivelAfinidade(
-          mapaAfinidade,
-          b.id,
-          item,
-          servicesData,
-          normalizarTexto,
-        )
-      : 0;
+  // margem de folga acima da média geral em que o nível de prioridade
+  // ainda "vale" como desempate — acima disso, cai pro equilíbrio puro.
+  const MARGEM_FOLGA_PRIORIDADE = 1;
 
-    const cargaA = calcularCargaGuia({
-      guiaId: a.id,
-      contadorSemana,
-      diasTrabalhadosSemana,
-      mapaDisponibilidade,
-      semanaRef,
-    });
-
-    const cargaB = calcularCargaGuia({
-      guiaId: b.id,
-      contadorSemana,
-      diasTrabalhadosSemana,
-      mapaDisponibilidade,
-      semanaRef,
-    });
-
-    const opA = calcularIndicadoresOperacionaisGuia({
-      guiaId: a.id,
-      contadorSemana,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
-
-    const opB = calcularIndicadoresOperacionaisGuia({
-      guiaId: b.id,
-      contadorSemana,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
-
-    if (!modoPrioridade) {
-      if (opB.gapMinimo !== opA.gapMinimo) {
-        return opB.gapMinimo - opA.gapMinimo;
-      }
-
-      if (opB.gapMeta !== opA.gapMeta) {
-        return opB.gapMeta - opA.gapMeta;
-      }
-
-      if (usarAfinidadeGuiaPasseio && afinidadeB !== afinidadeA) {
-        return afinidadeB - afinidadeA;
-      }
-
-      if (cargaA.frequencia !== cargaB.frequencia) {
-        return cargaA.frequencia - cargaB.frequencia;
-      }
-
-      if (cargaA.ocupacao !== cargaB.ocupacao) {
-        return cargaA.ocupacao - cargaB.ocupacao;
-      }
-
-      if (cargaA.totalDiasTrabalhados !== cargaB.totalDiasTrabalhados) {
-        return cargaA.totalDiasTrabalhados - cargaB.totalDiasTrabalhados;
-      }
-
-      if (cargaA.totalServicos !== cargaB.totalServicos) {
-        return cargaA.totalServicos - cargaB.totalServicos;
-      }
-
-      return compareText(a?.nome, b?.nome);
+  candidatos.sort((a, b) => {
+    if (a.indicadores.abaixoDoMinimo !== b.indicadores.abaixoDoMinimo) {
+      return a.indicadores.abaixoDoMinimo ? -1 : 1;
     }
 
-    const metaA = calcularPontuacaoPrioridade({
-      guia: a,
-      item,
-      mapaAfinidade,
-      servicesData,
-      contadorSemana,
-      diasTrabalhadosSemana,
-      mapaDisponibilidade,
-      semanaRef,
-      usarAfinidadeGuiaPasseio,
-      normalizarTexto,
-      elegiveis,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
+    const prioridadeAindaVale =
+      metricasSemana.modoPrioridade &&
+      a.indicadores.cargaRecente <=
+        a.indicadores.mediaGeral + MARGEM_FOLGA_PRIORIDADE &&
+      b.indicadores.cargaRecente <=
+        b.indicadores.mediaGeral + MARGEM_FOLGA_PRIORIDADE;
 
-    const metaB = calcularPontuacaoPrioridade({
-      guia: b,
-      item,
-      mapaAfinidade,
-      servicesData,
-      contadorSemana,
-      diasTrabalhadosSemana,
-      mapaDisponibilidade,
-      semanaRef,
-      usarAfinidadeGuiaPasseio,
-      normalizarTexto,
-      elegiveis,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
-
-    if (metaB.score !== metaA.score) {
-      return metaB.score - metaA.score;
+    if (
+      prioridadeAindaVale &&
+      b.indicadores.prioridade !== a.indicadores.prioridade
+    ) {
+      return b.indicadores.prioridade - a.indicadores.prioridade;
     }
 
-    if (metaB.gapMinimo !== metaA.gapMinimo) {
-      return metaB.gapMinimo - metaA.gapMinimo;
+    if (a.indicadores.cargaRecente !== b.indicadores.cargaRecente) {
+      return a.indicadores.cargaRecente - b.indicadores.cargaRecente;
     }
 
-    if (metaB.gapMeta !== metaA.gapMeta) {
-      return metaB.gapMeta - metaA.gapMeta;
+    if (usarAfinidadeGuiaPasseio && b.afinidade !== a.afinidade) {
+      return b.afinidade - a.afinidade;
     }
 
-    if (metaB.prioridade !== metaA.prioridade) {
-      return metaB.prioridade - metaA.prioridade;
+    if (a.indicadores.diasTrabalhados !== b.indicadores.diasTrabalhados) {
+      return a.indicadores.diasTrabalhados - b.indicadores.diasTrabalhados;
     }
 
-    if (usarAfinidadeGuiaPasseio && metaB.afinidade !== metaA.afinidade) {
-      return metaB.afinidade - metaA.afinidade;
-    }
-
-    if (metaA.excedente !== metaB.excedente) {
-      return metaA.excedente - metaB.excedente;
-    }
-
-    if (metaA.carga.frequencia !== metaB.carga.frequencia) {
-      return metaA.carga.frequencia - metaB.carga.frequencia;
-    }
-
-    if (metaA.carga.ocupacao !== metaB.carga.ocupacao) {
-      return metaA.carga.ocupacao - metaB.carga.ocupacao;
-    }
-
-    if (metaA.carga.totalServicos !== metaB.carga.totalServicos) {
-      return metaA.carga.totalServicos - metaB.carga.totalServicos;
-    }
-
-    return compareText(a?.nome, b?.nome);
+    return compareText(a.guia?.nome, b.guia?.nome);
   });
+
+  return candidatos.map((c) => c.guia);
 };
 
+// Filtra os elegíveis para o serviço e devolve o primeiro da ordenação
+// acima — ou seja, o guia que deve receber esse serviço.
 export const selecionarGuiaParaServico = ({
   item,
   guiasDisponiveis = [],
   usadosNoDia,
   mapaAfinidade,
   servicesData,
-  contadorSemana,
-  diasTrabalhadosSemana,
-  mapaDisponibilidade,
-  semanaRef,
-  modoDistribuicaoGuias = "equilibrado",
+  estado,
+  metricasSemana,
   usarAfinidadeGuiaPasseio = false,
   normalizarTexto,
-  metasSemana = {},
-  minimosSemana = {},
-  oportunidadesSemana = {},
-  diasUteisSemana = {},
 }) => {
   const elegiveis = filtrarGuiasElegiveisParaServico({
     item,
@@ -851,58 +675,18 @@ export const selecionarGuiaParaServico = ({
 
   if (!elegiveis.length) return null;
 
-  const abaixoDoMinimo = elegiveis.filter((g) => {
-    const indicadores = calcularIndicadoresOperacionaisGuia({
-      guiaId: g.id,
-      contadorSemana,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
-
-    return indicadores.abaixoDoMinimo && indicadores.oportunidades > 0;
-  });
-
-  const abaixoDaMeta = elegiveis.filter((g) => {
-    const indicadores = calcularIndicadoresOperacionaisGuia({
-      guiaId: g.id,
-      contadorSemana,
-      metasSemana,
-      minimosSemana,
-      oportunidadesSemana,
-      diasUteisSemana,
-    });
-
-    return indicadores.abaixoDaMeta && indicadores.oportunidades > 0;
-  });
-
-  const grupoAlvo =
-    abaixoDoMinimo.length > 0
-      ? abaixoDoMinimo
-      : abaixoDaMeta.length > 0
-        ? abaixoDaMeta
-        : elegiveis;
-
-  const candidatosOrdenados = ordenarGuiasParaServico({
-    elegiveis: grupoAlvo,
+  const ordenados = ordenarGuiasParaServico({
+    elegiveis,
     item,
     mapaAfinidade,
     servicesData,
-    contadorSemana,
-    diasTrabalhadosSemana,
-    mapaDisponibilidade,
-    semanaRef,
-    modoDistribuicaoGuias,
+    estado,
+    metricasSemana,
     usarAfinidadeGuiaPasseio,
     normalizarTexto,
-    metasSemana,
-    minimosSemana,
-    oportunidadesSemana,
-    diasUteisSemana,
   });
 
-  return candidatosOrdenados[0] || null;
+  return ordenados[0] || null;
 };
 
 export const atualizarEstadoAposAlocacao = ({
@@ -977,7 +761,9 @@ const coletarItensProjetadosSemana = ({
         ...item,
         date: dia.date,
         guiaIdFinal:
-          override?.guiaId !== undefined ? override.guiaId : item.guiaId || null,
+          override?.guiaId !== undefined
+            ? override.guiaId
+            : item.guiaId || null,
         guiaNomeFinal:
           override?.guiaNome !== undefined
             ? override.guiaNome
@@ -989,89 +775,28 @@ const coletarItensProjetadosSemana = ({
   return itens;
 };
 
-const construirMapaContagemGuiaDia = (itensProjetados = []) => {
-  const mapa = {};
-
-  itensProjetados.forEach((item) => {
-    if (!item?.guiaIdFinal || !item?.date) return;
-    if (item.allocationStatus === "CLOSED") return;
-
-    if (!mapa[item.guiaIdFinal]) {
-      mapa[item.guiaIdFinal] = {};
-    }
-
-    mapa[item.guiaIdFinal][item.date] =
-      Number(mapa[item.guiaIdFinal][item.date] || 0) + 1;
-  });
-
-  return mapa;
-};
-
-const removerUsoProjetadoDoDia = ({
-  guiaId,
-  date,
-  contagemGuiaDia,
-  usedByDate,
-  diasTrabalhadosSemana,
-}) => {
-  if (!guiaId || !date) return;
-
-  if (!contagemGuiaDia[guiaId]) {
-    contagemGuiaDia[guiaId] = {};
-  }
-
-  const atual = Number(contagemGuiaDia[guiaId][date] || 0);
-  const proximo = Math.max(0, atual - 1);
-  contagemGuiaDia[guiaId][date] = proximo;
-
-  if (proximo <= 0) {
-    delete contagemGuiaDia[guiaId][date];
-    usedByDate[date]?.delete(guiaId);
-    diasTrabalhadosSemana[guiaId]?.delete(date);
-  }
-};
-
-const adicionarUsoProjetadoNoDia = ({
-  guiaId,
-  date,
-  contagemGuiaDia,
-  usedByDate,
-  diasTrabalhadosSemana,
-}) => {
-  if (!guiaId || !date) return;
-
-  if (!contagemGuiaDia[guiaId]) {
-    contagemGuiaDia[guiaId] = {};
-  }
-
-  contagemGuiaDia[guiaId][date] =
-    Number(contagemGuiaDia[guiaId][date] || 0) + 1;
-
-  if (!usedByDate[date]) {
-    usedByDate[date] = new Set();
-  }
-  usedByDate[date].add(guiaId);
-
-  if (!diasTrabalhadosSemana[guiaId]) {
-    diasTrabalhadosSemana[guiaId] = new Set();
-  }
-  diasTrabalhadosSemana[guiaId].add(date);
-};
-
-const rebalancearGuiasSemServicoAoFinal = ({
+// ---------------------------------------------------------------------
+// Passe final de garantia mínima: depois da alocação gulosa dia a dia,
+// alguns guias podem ter ficado abaixo da garantia do próprio nível
+// (ex.: nível 3 que só pegou 1 dia mas tinha oportunidade em 2). Este
+// passe tenta "roubar" um serviço de quem está acima do próprio teto
+// justo e passar para quem está abaixo do mínimo — sempre em um dia
+// diferente dos que o destinatário já trabalha, pra garantir que a
+// regra de "mais de 1 dia" realmente vire um dia novo, não uma troca
+// boba dentro do mesmo dia.
+// ---------------------------------------------------------------------
+const rebalancearGarantiasDePrioridade = ({
   semana = [],
   guias = [],
   registrosSemana = [],
   atualizacoes = [],
   estado,
   mapaAfinidade = {},
-  mapaDisponibilidade = {},
   servicesData = [],
   usarAfinidadeGuiaPasseio = false,
-  modoDistribuicaoGuias = "equilibrado",
   agruparRegistrosPorServico,
   normalizarTexto,
-  metricasSemana = {},
+  metricasSemana,
 }) => {
   const guiaById = {};
   guias.forEach((g) => {
@@ -1085,96 +810,78 @@ const rebalancearGuiasSemServicoAoFinal = ({
     atualizacoes,
   });
 
-  const contagemGuiaDia = construirMapaContagemGuiaDia(itensProjetados);
-
-  const guiasSemServico = guias
-    .filter((guia) => {
-      if (!guia?.id || !guia.ativo) return false;
-
-      const indicadores = calcularIndicadoresOperacionaisGuia({
-        guiaId: guia.id,
-        contadorSemana: estado.contadorSemana,
-        metasSemana: metricasSemana.metasSemana,
-        minimosSemana: metricasSemana.minimosSemana,
-        oportunidadesSemana: metricasSemana.oportunidadesSemana,
-        diasUteisSemana: metricasSemana.diasUteisSemana,
-      });
-
-      return indicadores.oportunidades > 0 && indicadores.atual === 0;
-    })
-    .sort((a, b) => {
-      const ia = calcularIndicadoresOperacionaisGuia({
-        guiaId: a.id,
-        contadorSemana: estado.contadorSemana,
-        metasSemana: metricasSemana.metasSemana,
-        minimosSemana: metricasSemana.minimosSemana,
-        oportunidadesSemana: metricasSemana.oportunidadesSemana,
-        diasUteisSemana: metricasSemana.diasUteisSemana,
-      });
-
-      const ib = calcularIndicadoresOperacionaisGuia({
-        guiaId: b.id,
-        contadorSemana: estado.contadorSemana,
-        metasSemana: metricasSemana.metasSemana,
-        minimosSemana: metricasSemana.minimosSemana,
-        oportunidadesSemana: metricasSemana.oportunidadesSemana,
-        diasUteisSemana: metricasSemana.diasUteisSemana,
-      });
-
-      if (ib.gapMinimo !== ia.gapMinimo) {
-        return ib.gapMinimo - ia.gapMinimo;
-      }
-
-      if (ib.gapMeta !== ia.gapMeta) {
-        return ib.gapMeta - ia.gapMeta;
-      }
-
-      if (isModoPrioridade(modoDistribuicaoGuias)) {
-        const prioridadeA = normalizarPrioridade(a?.nivelPrioridade);
-        const prioridadeB = normalizarPrioridade(b?.nivelPrioridade);
-        if (prioridadeB !== prioridadeA) {
-          return prioridadeB - prioridadeA;
+  const obterCandidatosAbaixoDoMinimo = () =>
+    guias
+      .filter((g) => g?.id && g.ativo)
+      .map((g) => ({
+        guia: g,
+        indicadores: calcularIndicadoresGuia({
+          guia: g,
+          estado,
+          metricasSemana,
+        }),
+      }))
+      .filter((c) => c.indicadores.abaixoDoMinimo)
+      .sort((a, b) => {
+        // quem tem zero serviço vem antes de quem só falta o "dia extra"
+        if ((a.indicadores.atual === 0) !== (b.indicadores.atual === 0)) {
+          return a.indicadores.atual === 0 ? -1 : 1;
         }
-      }
 
-      return compareText(a?.nome, b?.nome);
-    });
+        if (
+          metricasSemana.modoPrioridade &&
+          b.indicadores.prioridade !== a.indicadores.prioridade
+        ) {
+          return b.indicadores.prioridade - a.indicadores.prioridade;
+        }
 
-  for (const guiaSemServico of guiasSemServico) {
-    let itemEscolhido = null;
-    let guiaDoadorId = null;
+        return compareText(a.guia?.nome, b.guia?.nome);
+      })
+      .map((c) => c.guia);
+
+  // Reprocessa a lista de quem está abaixo do mínimo a cada troca feita,
+  // já que uma troca muda os indicadores de todo mundo.
+  let candidatos = obterCandidatosAbaixoDoMinimo();
+  let tentativasSemProgresso = 0;
+
+  while (candidatos.length && tentativasSemProgresso < candidatos.length) {
+    const guiaAlvo = candidatos[0];
 
     const candidatosSwap = itensProjetados
       .filter((item) => {
         if (!item?.id || !item?.date) return false;
         if (item.allocationStatus === "CLOSED") return false;
         if (!item.guiaIdFinal) return false;
-        if (item.guiaIdFinal === guiaSemServico.id) return false;
+        if (item.guiaIdFinal === guiaAlvo.id) return false;
 
-        const guiaDoador = guiaById[item.guiaIdFinal];
-        if (!guiaDoador?.id) return false;
+        // não faz sentido dar um dia que o próprio guia alvo já trabalha
+        if (estado.diasTrabalhadosSemana[guiaAlvo.id]?.has(item.date)) {
+          return false;
+        }
 
-        const indicadoresDoador = calcularIndicadoresOperacionaisGuia({
-          guiaId: guiaDoador.id,
-          contadorSemana: estado.contadorSemana,
-          metasSemana: metricasSemana.metasSemana,
-          minimosSemana: metricasSemana.minimosSemana,
-          oportunidadesSemana: metricasSemana.oportunidadesSemana,
-          diasUteisSemana: metricasSemana.diasUteisSemana,
+        const doador = guiaById[item.guiaIdFinal];
+        if (!doador?.id) return false;
+
+        const indicadoresDoador = calcularIndicadoresGuia({
+          guia: doador,
+          estado,
+          metricasSemana,
         });
 
-        // Só aceita tirar de quem está mais carregado
-        if (indicadoresDoador.atual <= 1) return false;
+        // só tira de quem está acima do próprio teto (tem folga de sobra)
+        if (indicadoresDoador.excedente <= 0) return false;
+        if (indicadoresDoador.atual <= Math.max(indicadoresDoador.minimo, 1)) {
+          return false;
+        }
 
-        const protecaoDoador = Math.max(indicadoresDoador.minimo, 1);
-        if (indicadoresDoador.atual <= protecaoDoador) return false;
-
-        const usadosNoDiaSemDoador = new Set(estado.usedByDate[item.date] || []);
-        usadosNoDiaSemDoador.delete(guiaDoador.id);
+        const usadosNoDiaSemDoador = new Set(
+          estado.usedByDate[item.date] || [],
+        );
+        usadosNoDiaSemDoador.delete(doador.id);
 
         const recipientElegivel = filtrarGuiasElegiveisParaServico({
           item,
-          guiasDisponiveis: [guiaSemServico],
+          guiasDisponiveis: [guiaAlvo],
           usadosNoDia: usadosNoDiaSemDoador,
           mapaAfinidade,
           servicesData,
@@ -1186,45 +893,33 @@ const rebalancearGuiasSemServicoAoFinal = ({
       })
       .map((item) => {
         const doador = guiaById[item.guiaIdFinal];
-        const indicadoresDoador = calcularIndicadoresOperacionaisGuia({
-          guiaId: doador.id,
-          contadorSemana: estado.contadorSemana,
-          metasSemana: metricasSemana.metasSemana,
-          minimosSemana: metricasSemana.minimosSemana,
-          oportunidadesSemana: metricasSemana.oportunidadesSemana,
-          diasUteisSemana: metricasSemana.diasUteisSemana,
+        const indicadoresDoador = calcularIndicadoresGuia({
+          guia: doador,
+          estado,
+          metricasSemana,
         });
 
         const afinidadeNovoGuia = usarAfinidadeGuiaPasseio
           ? obterNivelAfinidade(
               mapaAfinidade,
-              guiaSemServico.id,
+              guiaAlvo.id,
               item,
               servicesData,
               normalizarTexto,
             )
           : 0;
 
-        return {
-          item,
-          doador,
-          indicadoresDoador,
-          afinidadeNovoGuia,
-          excessoDoador:
-            indicadoresDoador.atual -
-            Math.max(indicadoresDoador.minimo, indicadoresDoador.meta, 1),
-        };
+        return { item, doador, indicadoresDoador, afinidadeNovoGuia };
       })
       .sort((a, b) => {
-        if (b.excessoDoador !== a.excessoDoador) {
-          return b.excessoDoador - a.excessoDoador;
+        if (b.indicadoresDoador.excedente !== a.indicadoresDoador.excedente) {
+          return b.indicadoresDoador.excedente - a.indicadoresDoador.excedente;
         }
 
-        if (b.indicadoresDoador.atual !== a.indicadoresDoador.atual) {
-          return b.indicadoresDoador.atual - a.indicadoresDoador.atual;
-        }
-
-        if (usarAfinidadeGuiaPasseio && b.afinidadeNovoGuia !== a.afinidadeNovoGuia) {
+        if (
+          usarAfinidadeGuiaPasseio &&
+          b.afinidadeNovoGuia !== a.afinidadeNovoGuia
+        ) {
           return b.afinidadeNovoGuia - a.afinidadeNovoGuia;
         }
 
@@ -1232,53 +927,61 @@ const rebalancearGuiasSemServicoAoFinal = ({
       });
 
     if (!candidatosSwap.length) {
+      // não tem doador viável pra esse guia agora — tira ele da fila e
+      // tenta o próximo, mas conta como "tentativa sem progresso" pra
+      // não entrar num loop infinito quando ninguém mais pode ser trocado.
+      candidatos = candidatos.slice(1);
+      tentativasSemProgresso += 1;
       continue;
     }
 
-    itemEscolhido = candidatosSwap[0].item;
-    guiaDoadorId = candidatosSwap[0].doador.id;
+    const { item: itemEscolhido, doador } = candidatosSwap[0];
 
     upsertAtualizacao(atualizacoes, {
       registroId: itemEscolhido.id,
-      guiaId: guiaSemServico.id,
-      guiaNome: guiaSemServico.nome,
+      guiaId: guiaAlvo.id,
+      guiaNome: guiaAlvo.nome,
       date: itemEscolhido.date,
       serviceName: itemEscolhido.serviceName,
       externalServiceId: itemEscolhido.externalServiceId || null,
     });
 
-    estado.contadorSemana[guiaDoadorId] = Math.max(
+    estado.contadorSemana[doador.id] = Math.max(
       0,
-      Number(estado.contadorSemana[guiaDoadorId] || 0) - 1,
+      Number(estado.contadorSemana[doador.id] || 0) - 1,
     );
+    estado.usedByDate[itemEscolhido.date]?.delete(doador.id);
+    if (
+      !itensProjetados.some(
+        (i) =>
+          i !== itemEscolhido &&
+          i.guiaIdFinal === doador.id &&
+          i.date === itemEscolhido.date,
+      )
+    ) {
+      estado.diasTrabalhadosSemana[doador.id]?.delete(itemEscolhido.date);
+    }
 
-    estado.contadorSemana[guiaSemServico.id] =
-      Number(estado.contadorSemana[guiaSemServico.id] || 0) + 1;
+    estado.contadorSemana[guiaAlvo.id] =
+      Number(estado.contadorSemana[guiaAlvo.id] || 0) + 1;
+    if (!estado.usedByDate[itemEscolhido.date]) {
+      estado.usedByDate[itemEscolhido.date] = new Set();
+    }
+    estado.usedByDate[itemEscolhido.date].add(guiaAlvo.id);
+    if (!estado.diasTrabalhadosSemana[guiaAlvo.id]) {
+      estado.diasTrabalhadosSemana[guiaAlvo.id] = new Set();
+    }
+    estado.diasTrabalhadosSemana[guiaAlvo.id].add(itemEscolhido.date);
 
-    removerUsoProjetadoDoDia({
-      guiaId: guiaDoadorId,
-      date: itemEscolhido.date,
-      contagemGuiaDia,
-      usedByDate: estado.usedByDate,
-      diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
-    });
+    itemEscolhido.guiaIdFinal = guiaAlvo.id;
+    itemEscolhido.guiaNomeFinal = guiaAlvo.nome;
 
-    adicionarUsoProjetadoNoDia({
-      guiaId: guiaSemServico.id,
-      date: itemEscolhido.date,
-      contagemGuiaDia,
-      usedByDate: estado.usedByDate,
-      diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
-    });
-
-    itemEscolhido.guiaIdFinal = guiaSemServico.id;
-    itemEscolhido.guiaNomeFinal = guiaSemServico.nome;
+    // progresso feito: recalcula do zero quem ainda está abaixo do mínimo
+    candidatos = obterCandidatosAbaixoDoMinimo();
+    tentativasSemProgresso = 0;
   }
 
-  return {
-    atualizacoes,
-    estado,
-  };
+  return { atualizacoes, estado };
 };
 
 export const gerarPlanoAlocacaoSemana = ({
@@ -1292,13 +995,19 @@ export const gerarPlanoAlocacaoSemana = ({
   usarAfinidadeGuiaPasseio = false,
   agruparRegistrosPorServico,
   normalizarTexto,
+  // Histórico real (nome normalizado do guia -> total de serviços nas
+  // últimas semanas), vindo direto da API do sistema. Opcional — se não
+  // for passado, o comportamento é idêntico ao de antes (equilíbrio só
+  // dentro da semana atual).
+  historicoPorGuia = {},
+  numeroSemanasHistorico = NUMERO_SEMANAS_HISTORICO_PADRAO,
 }) => {
   const estado = aplicarRegistrosExistentesNoEstado(
     registrosSemana,
     construirEstadoInicialSemana(guias, semana),
   );
 
-  const metricasSemana = construirMetricasEquilibrioSemana({
+  const metricasSemana = construirMetricasSemana({
     semana,
     guias,
     registrosSemana,
@@ -1306,8 +1015,11 @@ export const gerarPlanoAlocacaoSemana = ({
     mapaDisponibilidade,
     servicesData,
     usarAfinidadeGuiaPasseio,
+    modoDistribuicaoGuias,
     agruparRegistrosPorServico,
     normalizarTexto,
+    historicoPorGuia,
+    numeroSemanasHistorico,
   });
 
   const atualizacoes = [];
@@ -1354,17 +1066,10 @@ export const gerarPlanoAlocacaoSemana = ({
         usadosNoDia,
         mapaAfinidade,
         servicesData,
-        contadorSemana: estado.contadorSemana,
-        diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
-        mapaDisponibilidade,
-        semanaRef: semana,
-        modoDistribuicaoGuias,
+        estado,
+        metricasSemana,
         usarAfinidadeGuiaPasseio,
         normalizarTexto,
-        metasSemana: metricasSemana.metasSemana,
-        minimosSemana: metricasSemana.minimosSemana,
-        oportunidadesSemana: metricasSemana.oportunidadesSemana,
-        diasUteisSemana: metricasSemana.diasUteisSemana,
       });
 
       if (!guiaSelecionado) continue;
@@ -1390,17 +1095,15 @@ export const gerarPlanoAlocacaoSemana = ({
     }
   }
 
-  rebalancearGuiasSemServicoAoFinal({
+  rebalancearGarantiasDePrioridade({
     semana,
     guias,
     registrosSemana,
     atualizacoes,
     estado,
     mapaAfinidade,
-    mapaDisponibilidade,
     servicesData,
     usarAfinidadeGuiaPasseio,
-    modoDistribuicaoGuias,
     agruparRegistrosPorServico,
     normalizarTexto,
     metricasSemana,

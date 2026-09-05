@@ -1,47 +1,105 @@
+/* =========================================================
+   MAPA DE AFINIDADE GUIA x PASSEIO — MESMO DESIGN SYSTEM
+   DO PAINEL OPERACIONAL (Chegadas / OUT's / Passeios).
+
+   Tokens locais (--pc-*) espelhando exatamente os do painel
+   operacional, pra manter consistência visual entre as telas.
+   Nada de paleta nova — tudo deriva das variáveis globais do
+   tema (--text, --card, --border, --primary, --text-dist,
+   --p1, --p2, --btn-main, --text-btn, --background, --bg,
+   --input).
+   ========================================================= */
+
 .afinidade-page {
+  --pc-radius-xl: 20px;
+  --pc-radius-lg: 16px;
+  --pc-radius-md: 12px;
+  --pc-radius-pill: 999px;
+
+  --pc-space-1: 4px;
+  --pc-space-2: 8px;
+  --pc-space-3: 12px;
+  --pc-space-4: 16px;
+  --pc-space-5: 20px;
+  --pc-space-6: 24px;
+  --pc-space-8: 32px;
+
+  --pc-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --pc-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.14);
+
+  --pc-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+  --pc-border-soft: color-mix(in srgb, var(--border) 55%, transparent 45%);
+  --pc-surface: color-mix(in srgb, var(--background) 48%, var(--card) 52%);
+  --pc-surface-soft: color-mix(in srgb, var(--background) 42%, var(--card) 58%);
+
+  --pc-text-muted: color-mix(in srgb, var(--text) 62%, transparent 38%);
+  --pc-text-faint: color-mix(in srgb, var(--text) 48%, transparent 52%);
+
+  --pc-success: #22c55e;
+  --pc-success-strong: #15803d;
+  --pc-warning: #d97706;
+  --pc-danger: var(--p1, #ef4444);
+
   width: 100%;
-  max-width: 1260px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 8px;
+  padding: 4px 0 32px;
   box-sizing: border-box;
   position: relative;
 }
 
+/* =========================================================
+   CABEÇALHO
+   ========================================================= */
+
 .afinidade-page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--pc-space-6);
 }
 
 .afinidade-page-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--text);
+  gap: var(--pc-space-2);
+  margin: 0 0 7px;
+  font-size: clamp(18px, 4vw, 22px);
+  font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.afinidade-page-title svg {
+  color: var(--text-dist);
 }
 
 .afinidade-page-subtitle {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+  color: var(--pc-text-muted);
 }
+
+/* =========================================================
+   GRID / CARDS
+   ========================================================= */
 
 .afinidade-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--pc-space-5);
   align-items: start;
 }
 
 .afinidade-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 24px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--card) 97%, transparent 3%),
+      color-mix(in srgb, var(--background) 90%, var(--card) 10%));
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-xl);
+  padding: var(--pc-space-6);
+  box-shadow: var(--pc-shadow-sm);
+  position: relative;
+  overflow: hidden;
 }
 
 .afinidade-card-large {
@@ -53,60 +111,64 @@
 }
 
 .afinidade-card-header {
-  margin-bottom: 20px;
+  margin-bottom: var(--pc-space-5);
 }
 
 .afinidade-card-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--pc-space-3);
+  margin-bottom: var(--pc-space-2);
 }
 
 .afinidade-card-header h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .afinidade-card-header p {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+  color: var(--pc-text-muted);
 }
 
 .afinidade-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
-  border-radius: 999px;
+  min-height: 24px;
+  padding: 0 var(--pc-space-3);
+  border-radius: var(--pc-radius-pill);
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
   border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+  background: color-mix(in srgb, var(--text-dist) 5%, transparent 95%);
 }
 
-/* field */
+/* =========================================================
+   CAMPO / SELECT
+   ========================================================= */
+
 .afinidade-field {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--pc-space-2);
 }
 
 .afinidade-field label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--pc-space-2);
   color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .afinidade-field label svg {
@@ -116,85 +178,114 @@
 .afinidade-select {
   width: 100%;
   max-width: 420px;
-  height: 50px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  min-height: 42px;
+  border-radius: var(--pc-radius-md);
+  border: 1px solid var(--pc-border);
+  background: color-mix(in srgb, var(--background) 62%, var(--card) 38%);
   color: var(--text);
   font-size: 12px;
-  padding: 0 14px;
+  padding: 0 var(--pc-space-4);
   outline: none;
-  transition: all 0.25s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
-.afinidade-select:hover {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+@media (hover: hover) and (pointer: fine) {
+  .afinidade-select:hover {
+    border-color: color-mix(in srgb, var(--primary) 24%, var(--border) 76%);
+  }
 }
 
 .afinidade-select:focus {
-  border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
-    inset 0 1px 2px rgba(0, 0, 0, 0.03);
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border) 52%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent 88%);
 }
 
-/* alertas */
+.afinidade-select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+  outline-offset: 2px;
+}
+
+.afinidade-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ALERTAS / ESTADOS
+   ========================================================= */
+
 .afinidade-alerta {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 14px;
+  margin-top: var(--pc-space-4);
+  padding: var(--pc-space-3) var(--pc-space-4);
+  border-radius: var(--pc-radius-md);
   font-size: 13px;
   font-weight: 600;
+  animation: afinidadeFadeSlideIn 0.25s ease;
 }
 
 .afinidade-alerta.sucesso {
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
-  color: var(--text-dist);
+  background: color-mix(in srgb, var(--pc-success) 14%, var(--card) 86%);
+  border: 1px solid color-mix(in srgb, var(--pc-success) 28%, transparent 72%);
+  color: var(--pc-success-strong);
 }
 
 .afinidade-alerta.erro {
-  background: color-mix(in srgb, var(--p1) 12%, transparent 88%);
-  border: 1px solid color-mix(in srgb, var(--p1) 20%, transparent 80%);
-  color: var(--p1);
+  background: color-mix(in srgb, var(--pc-danger) 12%, transparent 88%);
+  border: 1px solid color-mix(in srgb, var(--pc-danger) 22%, transparent 78%);
+  color: var(--pc-danger);
 }
 
-/* resumo */
+@keyframes afinidadeFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .afinidade-resumo-guia {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
-  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border) 84%);
+  margin-top: var(--pc-space-4);
+  padding: var(--pc-space-3) var(--pc-space-4);
+  border-radius: var(--pc-radius-lg);
+  background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border) 82%);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .afinidade-vazio {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
-  border: 1px dashed color-mix(in srgb, var(--border) 68%, transparent 32%);
-  color: color-mix(in srgb, var(--text) 74%, transparent 26%);
-  font-size: 14px;
+  margin-top: var(--pc-space-4);
+  padding: var(--pc-space-4);
+  border-radius: var(--pc-radius-lg);
+  background: var(--pc-surface-soft);
+  border: 1px dashed var(--pc-border-soft);
+  color: var(--pc-text-muted);
+  font-size: 13px;
 }
 
-/* legenda */
+/* =========================================================
+   LEGENDA DE NÍVEIS
+   ========================================================= */
+
 .afinidade-legend {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: var(--pc-space-3);
 }
 
 .afinidade-legend-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-3) var(--pc-space-4);
+  border-radius: var(--pc-radius-lg);
+  border: 1px solid var(--pc-border);
+  background: var(--pc-surface);
 }
 
 .afinidade-legend-dot {
@@ -205,19 +296,19 @@
 }
 
 .afinidade-legend-dot.zero {
-  background: color-mix(in srgb, var(--text) 30%, transparent 70%);
+  background: var(--pc-text-faint);
 }
 
 .afinidade-legend-dot.baixo {
-  background: #c98b00;
+  background: var(--pc-warning);
 }
 
 .afinidade-legend-dot.medio {
-  background: #4f7cff;
+  background: #facc15;
 }
 
 .afinidade-legend-dot.alto {
-  background: var(--text-dist);
+  background: var(--pc-success);
 }
 
 .afinidade-legend-item div {
@@ -228,41 +319,58 @@
 
 .afinidade-legend-item strong {
   font-size: 13px;
+  font-weight: 700;
   color: var(--text);
 }
 
 .afinidade-legend-item span {
-  font-size: 12px;
-  color: color-mix(in srgb, var(--text) 70%, transparent 30%);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--pc-text-muted);
 }
 
-/* lista */
+/* =========================================================
+   LISTA DE RELAÇÕES DE AFINIDADE
+   ========================================================= */
+
 .afinidade-lista {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--pc-space-4);
 }
 
 .afinidade-item {
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
-  background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+  padding: var(--pc-space-4);
+  border-radius: var(--pc-radius-lg);
+  border: 1px solid var(--pc-border-soft);
+  background: var(--pc-surface-soft);
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .afinidade-item:hover {
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  }
+}
+
+.afinidade-item.is-saving {
+  opacity: 0.72;
 }
 
 .afinidade-item-topo {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: var(--pc-space-4);
+  margin-bottom: var(--pc-space-3);
+  flex-wrap: wrap;
 }
 
 .afinidade-item-relacao {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--pc-space-2);
   min-width: 0;
 }
 
@@ -271,18 +379,20 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
+  overflow-wrap: break-word;
 }
 
 .afinidade-item-guia svg,
 .afinidade-item-passeio svg {
   color: var(--text-dist);
+  flex-shrink: 0;
 }
 
 .afinidade-item-separador {
-  color: color-mix(in srgb, var(--text) 45%, transparent 55%);
+  color: var(--pc-text-faint);
   font-weight: 700;
 }
 
@@ -290,32 +400,38 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  gap: 2px;
   min-width: 90px;
 }
 
 .afinidade-item-valor strong {
-  font-size: 18px;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text);
 }
 
 .afinidade-item-valor span {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-dist);
 }
 
+/* =========================================================
+   SLIDER DE NÍVEL
+   ========================================================= */
+
 .afinidade-range-wrap {
-  margin-bottom: 10px;
+  margin-bottom: var(--pc-space-2);
 }
 
 .afinidade-range {
   width: 100%;
   appearance: none;
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border) 100%, transparent 40%);
+  height: 6px;
+  border-radius: var(--pc-radius-pill);
+  background: var(--pc-border);
   outline: none;
+  cursor: pointer;
 }
 
 .afinidade-range::-webkit-slider-thumb {
@@ -324,8 +440,8 @@
   height: 18px;
   border-radius: 50%;
   background: var(--text-dist);
-  border: 2px solid #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--card);
+  box-shadow: var(--pc-shadow-sm);
   cursor: pointer;
 }
 
@@ -334,48 +450,70 @@
   height: 18px;
   border-radius: 50%;
   background: var(--text-dist);
-  border: 2px solid #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--card);
+  box-shadow: var(--pc-shadow-sm);
   cursor: pointer;
+}
+
+.afinidade-range:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+  outline-offset: 3px;
+}
+
+.afinidade-range:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .afinidade-escala-labels {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--pc-space-3);
   font-size: 10px;
-  color: color-mix(in srgb, var(--text) 65%, transparent 35%);
   font-weight: 600;
+  color: var(--pc-text-faint);
 }
 
-/* actions */
+/* =========================================================
+   AÇÕES / BOTÃO SALVAR
+   ========================================================= */
+
 .afinidade-actions {
-  margin-top: 20px;
+  margin-top: var(--pc-space-5);
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  gap: var(--pc-space-4);
+  flex-wrap: wrap;
 }
 
 .afinidade-btn-save {
   min-height: 38px;
-  padding: 0 18px;
+  padding: 0 var(--pc-space-4);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--pc-radius-md);
   background: var(--btn-main);
   color: var(--text-btn);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--pc-space-2);
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+  box-shadow: var(--pc-shadow-sm);
 }
 
-.afinidade-btn-save:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.04);
+@media (hover: hover) and (pointer: fine) {
+  .afinidade-btn-save:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+}
+
+.afinidade-btn-save:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+  outline-offset: 2px;
 }
 
 .afinidade-btn-save:disabled {
@@ -383,18 +521,32 @@
   cursor: not-allowed;
 }
 
-/* responsivo */
-@media (max-width: 1024px) {
-  .afinidade-card-large {
-    grid-column: span 1;
+.afinidade-btn-save.is-saving {
+  cursor: progress;
+}
+
+.afinidade-saving-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pc-text-muted);
+}
+
+/* =========================================================
+   RESPONSIVO
+   ========================================================= */
+
+@media (max-width: 1280px) {
+  .afinidade-page {
+    max-width: calc(100% - 32px);
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 860px) {
   .afinidade-grid {
     grid-template-columns: 1fr;
   }
 
+  .afinidade-card-large,
   .afinidade-card-full {
     grid-column: auto;
   }
@@ -411,24 +563,27 @@
 
 @media (max-width: 768px) {
   .afinidade-page {
-    padding: 4px;
-  }
-
-  .afinidade-page-title {
-    font-size: 25px;
-  }
-
-  .afinidade-page-subtitle {
-    font-size: 13px;
+    max-width: 100%;
+    padding: 4px 0 24px;
   }
 
   .afinidade-card {
-    padding: 18px;
-    border-radius: 18px;
+    padding: var(--pc-space-4);
+    border-radius: var(--pc-radius-lg);
+  }
+}
+
+@media (max-width: 640px) {
+
+  .afinidade-select,
+  .afinidade-btn-save {
+    min-height: 44px;
   }
 
-  .afinidade-card-header h3 {
-    font-size: 19px;
+  .afinidade-range::-webkit-slider-thumb,
+  .afinidade-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
   }
 
   .afinidade-btn-save {
@@ -436,67 +591,27 @@
   }
 }
 
-.afinidade-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.afinidade-item {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.afinidade-item.is-saving {
-  opacity: 0.72;
-}
-
-.afinidade-btn-save {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    opacity 0.18s ease,
-    background 0.18s ease;
-}
-
-.afinidade-btn-save:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.afinidade-btn-save.is-saving {
-  cursor: progress;
-}
-
-.afinidade-saving-hint {
-  font-size: 13px;
-  color: var(--text-soft, #64748b);
-  font-weight: 500;
-}
-
-.afinidade-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.afinidade-alerta {
-  animation: fadeSlideIn 0.25s ease;
-}
-
-@keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
+@media (max-width: 480px) {
+  .afinidade-page {
+    padding: 4px 0 20px;
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .afinidade-card {
+    padding: var(--pc-space-3);
+    border-radius: var(--pc-radius-md);
+  }
+
+  .afinidade-select {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .afinidade-item,
+  .afinidade-btn-save,
+  .afinidade-alerta {
+    transition: none;
+    animation: none;
   }
 }
