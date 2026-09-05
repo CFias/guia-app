@@ -1,10 +1,35 @@
+/* =========================================================
+   DASHBOARD / SIDEBAR — MESMO DESIGN SYSTEM DO PAINEL
+   OPERACIONAL E DO MAPA DE AFINIDADE.
+
+   Tokens locais (--pc-*) espelhando os das outras telas, pra
+   manter consistência visual em todo o app. Tudo deriva das
+   variáveis globais do tema (--text, --card, --border,
+   --primary, --text-dist, --bg, --background, --side).
+   ========================================================= */
+
 * {
   box-sizing: border-box;
-  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .dashboard-container {
+  --pc-radius-xl: 20px;
+  --pc-radius-lg: 16px;
+  --pc-radius-md: 12px;
+  --pc-radius-pill: 999px;
+
+  --pc-space-1: 4px;
+  --pc-space-2: 8px;
+  --pc-space-3: 12px;
+  --pc-space-4: 16px;
+  --pc-space-5: 20px;
+  --pc-space-6: 24px;
+
+  --pc-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+  --pc-border-soft: color-mix(in srgb, var(--border) 50%, transparent 50%);
+
   display: flex;
   min-height: 100vh;
   font-family: "montserrat", sans-serif;
@@ -16,19 +41,22 @@
   width: calc(100% - 250px);
   min-height: 100vh;
   background: var(--bg);
-  padding: 24px;
+  padding: var(--pc-space-6);
 }
 
 .dashboard-main {
   min-height: calc(100vh - 48px);
   position: relative;
-  padding: 20px;
-  border-radius: 7px;
+  padding: var(--pc-space-5);
+  border-radius: var(--pc-radius-md);
 }
 
-/* ===== SIDEBAR ===== */
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
 .sidebar {
-  width: 350px;
+  width: 250px;
   min-height: 100vh;
   position: fixed;
   top: 0;
@@ -38,23 +66,25 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 18px 14px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: var(--pc-space-5) var(--pc-space-3);
+  border-right: 1px solid var(--pc-border);
 }
 
-/* ===== TOPO ===== */
+/* ---------- Topo / marca ---------- */
+
 .sidebar-top {
-  margin-bottom: 10px;
+  margin-bottom: var(--pc-space-2);
 }
 
 .sidebar-brand-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--pc-space-3);
   text-decoration: none;
   color: inherit;
-  padding: 8px 8px 16px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding: var(--pc-space-2) var(--pc-space-2) var(--pc-space-4);
+  border-bottom: 1px solid var(--pc-border-soft);
+  border-radius: var(--pc-radius-md);
 }
 
 .sidebar-brand-wrap:visited,
@@ -63,11 +93,17 @@
   color: inherit;
 }
 
+.sidebar-brand-wrap:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+  outline-offset: 2px;
+}
+
 .sidebar-logo-box {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.14);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pc-radius-md);
+  background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,61 +111,66 @@
 }
 
 .sidebar-logo-box img {
-  width: 45px;
-  height: 45px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
 }
 
 .sidebar-brand {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  line-height: 1.15;
+  min-width: 0;
 }
 
 .sidebar-brand strong {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .sidebar-brand span {
   font-size: 11px;
-  color: var(--text);
-  margin-top: 4px;
+  color: color-mix(in srgb, var(--text) 66%, transparent 34%);
+  margin-top: 3px;
 }
 
-/* ===== MENU ===== */
+/* ---------- Menu ---------- */
+
 .sidebar-menu {
   flex: 1;
-  padding-top: 14px;
+  padding-top: var(--pc-space-4);
+  overflow-y: auto;
 }
 
 .sidebar-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 20px;
+  gap: 4px;
+  margin-bottom: var(--pc-space-5);
 }
 
 .sidebar-group-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text);
-  padding: 0 10px 10px;
+  color: color-mix(in srgb, var(--text) 55%, transparent 45%);
+  padding: 0 var(--pc-space-2) var(--pc-space-2);
 }
 
-/* ===== LINKS ===== */
+/* ---------- Links ---------- */
+
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--pc-space-3);
   width: 100%;
   text-decoration: none;
-  color: var(--text);
-  padding: 11px 12px;
-  border-radius: 10px;
+  color: color-mix(in srgb, var(--text) 82%, transparent 18%);
+  padding: 10px var(--pc-space-3) 10px 16px;
+  border-radius: var(--pc-radius-md);
   position: relative;
 }
 
@@ -141,77 +182,102 @@
 
 .sidebar-icon {
   color: inherit;
-  opacity: 0.95;
+  opacity: 0.9;
   flex-shrink: 0;
 }
 
-.sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.1);
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-link:hover {
+    background: color-mix(in srgb, var(--text) 6%, transparent 94%);
+    color: var(--text);
+  }
 }
 
-/* ===== ITEM ATIVO ===== */
+.sidebar-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+  outline-offset: 2px;
+}
+
+/* ---------- Item ativo ---------- */
+
 .sidebar-link.active {
-  background: var(--side);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--side, var(--primary)) 16%, transparent 84%);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .sidebar-link.active::before {
   content: "";
   position: absolute;
-  left: -14px;
+  left: 4px;
   top: 8px;
   bottom: 8px;
-  width: 4px;
-  border-radius: 999px;
-  background: #ffffff;
+  width: 3px;
+  border-radius: var(--pc-radius-pill);
+  background: var(--side, var(--primary));
 }
 
-/* ===== FOOTER ===== */
+/* ---------- Rodapé ---------- */
+
 .sidebar-footer {
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: var(--pc-space-4);
+  border-top: 1px solid var(--pc-border-soft);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--pc-space-3);
 }
 
 .sidebar-version {
-  font-size: 8px;
-  color: var(--text);
-  padding-left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin-left: var(--pc-space-2);
+  padding: 4px 10px;
+  border-radius: var(--pc-radius-pill);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dist);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 20%, transparent 80%);
+  background: color-mix(in srgb, var(--text-dist) 6%, transparent 94%);
 }
 
-/* ===== CONTEÚDO ===== */
+/* =========================================================
+   LOADING
+   ========================================================= */
 
-
-/* ===== LOADING ===== */
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.65);
+  background: color-mix(in srgb, var(--background) 72%, transparent 28%);
+  backdrop-filter: blur(2px);
   z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: var(--pc-radius-lg);
 }
 
 .spinner {
-  width: 42px;
-  height: 42px;
-  border: 4px solid rgba(109, 88, 199, 0.18);
-  border-top-color: #6d58c7;
+  width: 40px;
+  height: 40px;
+  border: 4px solid color-mix(in srgb, var(--primary) 20%, transparent 80%);
+  border-top-color: var(--primary);
   border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+  animation: dashboardSpin 0.9s linear infinite;
 }
 
-@keyframes spin {
+@keyframes dashboardSpin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* ===== RESPONSIVO ===== */
+/* =========================================================
+   RESPONSIVO
+   ========================================================= */
+
 @media (max-width: 900px) {
   .sidebar {
     width: 220px;
@@ -226,16 +292,26 @@
 @media (max-width: 768px) {
   .sidebar {
     width: 200px;
-    padding: 16px 10px;
+    padding: var(--pc-space-4) var(--pc-space-2);
   }
 
   .dashboard-content {
     margin-left: 200px;
     width: calc(100% - 200px);
-    padding: 16px;
+    padding: var(--pc-space-4);
   }
 
-  .sidebar-link span {
-    font-size: 12px;
+  .sidebar-brand span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none;
+  }
+
+  .spinner {
+    animation: none;
   }
 }

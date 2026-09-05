@@ -26,6 +26,15 @@ const LABEL_NIVEL = (valor) => {
   return "Excelente";
 };
 
+// Mesmo semáforo de 4 faixas usado na legenda ("Leitura dos níveis"):
+// 0 = cinza, 5–40 = laranja, 45–60 = amarelo, 65–100 = verde.
+const obterCorNivel = (valor) => {
+  if (valor === 0) return "var(--pc-text-faint)";
+  if (valor <= 40) return "var(--pc-warning)";
+  if (valor <= 60) return "#facc15";
+  return "var(--pc-success)";
+};
+
 const obterNomePasseio = (passeio) => {
   return (
     passeio?.nome ||
@@ -260,7 +269,8 @@ const MapaAfinidadeGuias = () => {
 
               {guiaAtual && passeios.length === 0 && (
                 <div className="afinidade-vazio">
-                  Nenhum passeio encontrado na coleção <strong>services</strong>.
+                  Nenhum passeio encontrado na coleção <strong>services</strong>
+                  .
                 </div>
               )}
             </>
@@ -324,7 +334,9 @@ const MapaAfinidadeGuias = () => {
               <div className="afinidade-card-title-row">
                 <h3>Relações de afinidade</h3>
                 <span className="afinidade-badge">
-                  {loadingMapa ? "Carregando..." : `${passeios.length} passeio(s)`}
+                  {loadingMapa
+                    ? "Carregando..."
+                    : `${passeios.length} passeio(s)`}
                 </span>
               </div>
               <p>
@@ -340,6 +352,7 @@ const MapaAfinidadeGuias = () => {
                 <div className="afinidade-lista">
                   {passeios.map((passeio) => {
                     const valor = niveis[String(passeio.id)] ?? 0;
+                    const corNivel = obterCorNivel(valor);
 
                     return (
                       <div
@@ -362,7 +375,7 @@ const MapaAfinidadeGuias = () => {
                           </div>
 
                           <div className="afinidade-item-valor">
-                            <strong>{valor}</strong>
+                            <strong style={{ color: corNivel }}>{valor}</strong>
                             <span>{LABEL_NIVEL(valor)}</span>
                           </div>
                         </div>
@@ -379,6 +392,10 @@ const MapaAfinidadeGuias = () => {
                             }
                             className="afinidade-range"
                             disabled={salvando}
+                            style={{
+                              "--nivel-cor": corNivel,
+                              "--nivel-pct": `${valor}%`,
+                            }}
                           />
                         </div>
 

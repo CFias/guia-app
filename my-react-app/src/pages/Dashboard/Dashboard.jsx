@@ -110,7 +110,7 @@ const Dashboard = ({ loading }) => {
             <span>Configurações</span>
           </NavLink>
 
-          <div className="sidebar-version">v1.1.1 Beta</div>
+          <div className="sidebar-version">v1.2.0 Beta</div>
         </div>
       </aside>
 

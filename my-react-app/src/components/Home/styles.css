@@ -304,6 +304,55 @@
     grid-column: 1 / -1;
 }
 
+/* =========================================================
+   AÇÕES POR SERVIÇO — coluna "Ações" do card "Serviços do dia"
+   Adição ao styles.css do Dashboard/Home. Mesmas variáveis já
+   usadas neste arquivo (--border, --text, --text-dist, --card,
+   --btn-main, --text-btn, --p1). Sem paleta nova.
+   ========================================================= */
+
+.home-service-actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-copy-service-btn {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: color-mix(in srgb, var(--text) 55%, transparent 45%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.home-copy-service-btn:hover {
+    background: color-mix(in srgb, var(--text) 8%, transparent 92%);
+    color: var(--text);
+}
+
+.home-copy-service-btn.success {
+    background: color-mix(in srgb, #22c55e 16%, transparent 84%);
+    color: #15803d;
+}
+
+@media (max-width: 640px) {
+    .home-copy-service-btn {
+        width: 34px;
+        height: 34px;
+        min-height: 34px;
+    }
+}
+
+
 .home-dashboard-card-header {
     margin-bottom: 18px;
     display: flex;

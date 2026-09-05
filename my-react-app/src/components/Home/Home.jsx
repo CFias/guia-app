@@ -20,6 +20,8 @@ import {
   TrendingDownRounded,
   RemoveRounded,
   DashboardRounded,
+  ContentCopyRounded,
+  CheckRounded,
 } from "@mui/icons-material";
 import {
   ResponsiveContainer,
@@ -446,8 +448,12 @@ const Home = () => {
   const [filtroGuiaDia, setFiltroGuiaDia] = useState("todos");
   const [ordenacaoPaxDia, setOrdenacaoPaxDia] = useState("maior");
   const [semanaOffset, setSemanaOffset] = useState(0);
+  const [servicoCopiadoChave, setServicoCopiadoChave] = useState(null);
 
-  const semana = useMemo(() => getSemanaPorOffset(semanaOffset), [semanaOffset]);
+  const semana = useMemo(
+    () => getSemanaPorOffset(semanaOffset),
+    [semanaOffset],
+  );
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
@@ -520,8 +526,6 @@ const Home = () => {
         }
       }),
     );
-
-
 
     const itensApiAgrupados = {};
     const itensBrutos = [];
@@ -747,7 +751,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -756,11 +760,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -825,13 +829,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -876,7 +880,9 @@ const Home = () => {
 
     const distribuicaoGuias = guiasAtivos
       .map((guia) => {
-        const disponibilidadeSemana = Array.isArray(mapaDisponibilidade[guia.id])
+        const disponibilidadeSemana = Array.isArray(
+          mapaDisponibilidade[guia.id],
+        )
           ? mapaDisponibilidade[guia.id]
           : [];
 
@@ -893,7 +899,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                normalizarTexto(guia.nome || ""),
+                  normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -923,19 +929,18 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-        distribuicaoGuias.reduce(
-          (acc, guia) => acc + Number(guia.percentualUso || 0),
-          0,
-        ) / distribuicaoGuias.length,
-      )
+          distribuicaoGuias.reduce(
+            (acc, guia) => acc + Number(guia.percentualUso || 0),
+            0,
+          ) / distribuicaoGuias.length,
+        )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
     if (mediaUsoDistribuicao >= 85) statusGeralDistribuicao = "Muito carregada";
     else if (mediaUsoDistribuicao >= 60)
       statusGeralDistribuicao = "Equilibrada";
-    else if (mediaUsoDistribuicao >= 30)
-      statusGeralDistribuicao = "Moderada";
+    else if (mediaUsoDistribuicao >= 30) statusGeralDistribuicao = "Moderada";
 
     const guiasSobrecarga = [...resumoGuias]
       .filter((g) => g.ocupacao >= 80)
@@ -980,8 +985,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1089,8 +1094,6 @@ const Home = () => {
       mapaPasseiosAtual[nome].servicos += 1;
       mapaPasseiosAtual[nome].pax += Number(item.passengers || 0);
     });
-
-
 
     const mapaPasseiosAnterior = {};
     apiSemanaAnterior.forEach((item) => {
@@ -1256,7 +1259,8 @@ const Home = () => {
   ]);
 
   const getAlertaSemaforo = (alerta) => {
-    const texto = `${alerta?.titulo || ""} ${alerta?.descricao || ""}`.toLowerCase();
+    const texto =
+      `${alerta?.titulo || ""} ${alerta?.descricao || ""}`.toLowerCase();
 
     const matchPercent = texto.match(/-?\d+%/);
     const percentual = matchPercent
@@ -1327,7 +1331,6 @@ const Home = () => {
       a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
     );
   }, [servicosDoDiaBase]);
-
 
   const servicosDoDia = useMemo(() => {
     const listaFiltrada = servicosDoDiaBase.filter((item) => {
@@ -1441,6 +1444,43 @@ Qualquer atualização operacional será comunicada oportunamente.
 
 Operacional - Luck Receptivo
 `.trim();
+  };
+
+  // ---- Copiar UM serviço do dia (texto pronto pra enviar ao guia) ----
+  const montarTextoServicoDia = (item) => {
+    const nomeGuia = item.guiaNome || "Guia";
+
+    const partes = [
+      `Olá, ${nomeGuia}!`,
+      `Desejo que esteja bem.`,
+      "",
+      `Serviço para o dia (${formatarDataBr(item.date)}):`,
+      "",
+      `*${item.serviceName}*`,
+      `Status: ${item.statusOperacional} • ${item.statusGrupo}`,
+      `Pax: ADT ${item.adultCount || 0} • CHD ${item.childCount || 0} • INF ${item.infantCount || 0}`,
+      "",
+      "",
+      `Cordialmente,`,
+      `_Operacional Luck SSA_`,
+    ];
+
+    return partes.join("\n");
+  };
+
+  const copiarServicoDia = async (item) => {
+    try {
+      await navigator.clipboard.writeText(montarTextoServicoDia(item));
+      setServicoCopiadoChave(item.chave);
+      setTimeout(() => {
+        setServicoCopiadoChave((atual) =>
+          atual === item.chave ? null : atual,
+        );
+      }, 1800);
+    } catch (err) {
+      console.error("Erro ao copiar serviço:", err);
+      alert("Não foi possível copiar o serviço.");
+    }
   };
 
   const enviarWhatsappServico = (item) => {
@@ -1698,8 +1738,9 @@ Operacional - Luck Receptivo
                     <button
                       key={dia.date}
                       type="button"
-                      className={`home-day-chip ${diaSelecionadoHome === dia.date ? "active" : ""
-                        }`}
+                      className={`home-day-chip ${
+                        diaSelecionadoHome === dia.date ? "active" : ""
+                      }`}
                       onClick={() => setDiaSelecionadoHome(dia.date)}
                       disabled={carregandoCards}
                     >
@@ -1772,12 +1813,13 @@ Operacional - Luck Receptivo
                           <tr key={item.chave}>
                             <td>
                               <span
-                                className={`home-service-status ${item.statusOperacional === "Fechado"
-                                  ? "fechado"
-                                  : item.statusOperacional === "Alocado"
-                                    ? "alocado"
-                                    : "sem-guia"
-                                  }`}
+                                className={`home-service-status ${
+                                  item.statusOperacional === "Fechado"
+                                    ? "fechado"
+                                    : item.statusOperacional === "Alocado"
+                                      ? "alocado"
+                                      : "sem-guia"
+                                }`}
                               >
                                 {item.statusOperacional}
                               </span>
@@ -1785,14 +1827,15 @@ Operacional - Luck Receptivo
 
                             <td>
                               <span
-                                className={`home-service-status ${item.statusGrupo === "Fechado"
-                                  ? "fechado"
-                                  : item.statusGrupo === "Grupo formado"
-                                    ? "alocado"
-                                    : item.statusGrupo === "Privativo"
-                                      ? "privativo"
-                                      : "sem-guia"
-                                  }`}
+                                className={`home-service-status ${
+                                  item.statusGrupo === "Fechado"
+                                    ? "fechado"
+                                    : item.statusGrupo === "Grupo formado"
+                                      ? "alocado"
+                                      : item.statusGrupo === "Privativo"
+                                        ? "privativo"
+                                        : "sem-guia"
+                                }`}
                               >
                                 {item.statusGrupo}
                               </span>
@@ -1821,19 +1864,47 @@ Operacional - Luck Receptivo
                             </td>
 
                             <td>
-                              <button
-                                type="button"
-                                className="home-send-guide-btn"
-                                onClick={() => enviarWhatsappServico(item)}
-                                disabled={!item.guiaId && !item.guiaNome}
-                                title={
-                                  item.guiaId || item.guiaNome
-                                    ? "Enviar mensagem ao guia"
-                                    : "Serviço sem guia alocado"
-                                }
-                              >
-                                Enviar ao guia
-                              </button>
+                              <div className="home-service-actions-cell">
+                                <button
+                                  type="button"
+                                  className={`home-copy-service-btn ${
+                                    servicoCopiadoChave === item.chave
+                                      ? "success"
+                                      : ""
+                                  }`}
+                                  onClick={() => copiarServicoDia(item)}
+                                  title={
+                                    servicoCopiadoChave === item.chave
+                                      ? "Copiado!"
+                                      : "Copiar serviço"
+                                  }
+                                  aria-label={
+                                    servicoCopiadoChave === item.chave
+                                      ? "Copiado!"
+                                      : "Copiar serviço"
+                                  }
+                                >
+                                  {servicoCopiadoChave === item.chave ? (
+                                    <CheckRounded fontSize="12" />
+                                  ) : (
+                                    <ContentCopyRounded fontSize="12" />
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="home-send-guide-btn"
+                                  onClick={() => enviarWhatsappServico(item)}
+                                  disabled={!item.guiaId && !item.guiaNome}
+                                  title={
+                                    item.guiaId || item.guiaNome
+                                      ? "Enviar mensagem ao guia"
+                                      : "Serviço sem guia alocado"
+                                  }
+                                >
+                                  Enviar ao guia
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1941,15 +2012,13 @@ Operacional - Luck Receptivo
                         </div>
 
                         <div className="ranking-meta">
-                          <span>
-                            {operadora.reservas} reserva(s)
-                          </span>
+                          <span>{operadora.reservas} reserva(s)</span>
                           <span>
                             Participação:{" "}
                             {totalPaxOperadoras
                               ? Math.round(
-                                (operadora.pax / totalPaxOperadoras) * 100,
-                              )
+                                  (operadora.pax / totalPaxOperadoras) * 100,
+                                )
                               : 0}
                             %
                           </span>
@@ -2119,7 +2188,7 @@ Operacional - Luck Receptivo
             ) : (
               <div
                 className={`home-alert-item ${getAlertaSemaforo(
-                  dashboard.alertaComparativoPax
+                  dashboard.alertaComparativoPax,
                 )}`}
               >
                 <div className="home-alert-dot" />

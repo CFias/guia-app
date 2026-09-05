@@ -188,6 +188,15 @@
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
+  /* sem isso o navegador desenha o popup de opções em branco/claro,
+     ignorando as cores do tema — o color-scheme força o popup nativo
+     (fundo, scrollbar, seleção) a seguir a paleta escura do app. */
+  color-scheme: dark;
+}
+
+.afinidade-select option {
+  background: var(--card);
+  color: var(--text);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -425,31 +434,64 @@
 }
 
 .afinidade-range {
+  --nivel-cor: var(--text-dist);
+  --nivel-pct: 0%;
   width: 100%;
   appearance: none;
   height: 6px;
   border-radius: var(--pc-radius-pill);
-  background: var(--pc-border);
+  background: linear-gradient(to right,
+      var(--nivel-cor) 0%,
+      var(--nivel-cor) var(--nivel-pct),
+      var(--pc-border) var(--nivel-pct),
+      var(--pc-border) 100%);
   outline: none;
   cursor: pointer;
+}
+
+/* Chrome/Edge/Safari não preenchem a trilha automaticamente — a mesma
+   trilha (com o gradiente) precisa ser reaplicada nesse pseudo-elemento. */
+.afinidade-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--pc-radius-pill);
+  background: linear-gradient(to right,
+      var(--nivel-cor) 0%,
+      var(--nivel-cor) var(--nivel-pct),
+      var(--pc-border) var(--nivel-pct),
+      var(--pc-border) 100%);
 }
 
 .afinidade-range::-webkit-slider-thumb {
   appearance: none;
   width: 18px;
   height: 18px;
+  margin-top: -6px;
   border-radius: 50%;
-  background: var(--text-dist);
+  background: var(--nivel-cor);
   border: 2px solid var(--card);
   box-shadow: var(--pc-shadow-sm);
   cursor: pointer;
+}
+
+/* Firefox tem trilha e preenchimento como pseudo-elementos separados —
+   o preenchimento (range-progress) já acompanha o valor sozinho. */
+.afinidade-range::-moz-range-track {
+  height: 6px;
+  border-radius: var(--pc-radius-pill);
+  background: var(--pc-border);
+}
+
+.afinidade-range::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--pc-radius-pill);
+  background: var(--nivel-cor);
 }
 
 .afinidade-range::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--text-dist);
+  background: var(--nivel-cor);
   border: 2px solid var(--card);
   box-shadow: var(--pc-shadow-sm);
   cursor: pointer;
@@ -580,7 +622,12 @@
     min-height: 44px;
   }
 
-  .afinidade-range::-webkit-slider-thumb,
+  .afinidade-range::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+  }
+
   .afinidade-range::-moz-range-thumb {
     width: 22px;
     height: 22px;
