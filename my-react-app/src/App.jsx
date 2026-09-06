@@ -20,18 +20,22 @@ import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperaci
 import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
 import RelatoriosOperacionais from "./components/RelatoriosOp/RelatoriosOp";
 import RoboConferenteVoos from "./components/RoboConferenteVoos/RoboConferenteVoos";
-
+import FaqComercial from "./components/FaqComercial/FaqComercial";
+import FaqAdmin from "./components/FaqAdmin/FaqAdmin";
 
 function App() {
   return (
     <Routes>
       {/* ===== DASHBOARD COMO LAYOUT ===== */}
       <Route path="/" element={<Dashboard />}>
-
         {/* ROTAS INTERNAS (renderizam no <Outlet />) */}
+        <Route index element={<Home />} />
         <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
         <Route path="previas" element={<PreviaTransfers />} />
-        <Route path="register-fornecedores" element={<CadastroFornecedores />} />
+        <Route
+          path="register-fornecedores"
+          element={<CadastroFornecedores />}
+        />
         <Route path="op" element={<PainelOperacionalUnificado />} />
         <Route path="chegadas" element={<PainelChegadas />} />
         <Route path="outs" element={<PainelOuts />} />
@@ -42,13 +46,17 @@ function App() {
         <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
         <Route path="relatorios" element={<RelatoriosOperacionais />} />
         <Route path="conferencia" element={<RoboConferenteVoos />} />
-        <Route path="/" element={<Home />} />
         <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="faqadmin" element={<FaqAdmin />} />
         {/* rotas futuras */}
         <Route path="guias" element={<ListaGuias />} />
         <Route path="passeios" element={<ListaPasseios />} />
-
       </Route>
+
+      {/* ===== FORA DO LAYOUT DO DASHBOARD =====
+          Sem sidebar, sem menu — só a tela de consulta do comercial.
+          Link direto pra quem precisar: /faqcomercial */}
+      <Route path="/faqcomercial" element={<FaqComercial />} />
     </Routes>
   );
 }

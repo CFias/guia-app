@@ -1,0 +1,817 @@
+/* =========================================================
+   CENTRAL DE DÚVIDAS — CONSULTA (COMERCIAL)
+   Mesmo design system das outras telas. Página autônoma (não
+   depende do shell do Dashboard) — tem seu próprio cabeçalho.
+   ========================================================= */
+
+.faq-comercial-page {
+    --pc-radius-xl: 20px;
+    --pc-radius-lg: 16px;
+    --pc-radius-md: 12px;
+    --pc-radius-pill: 999px;
+
+    --pc-space-1: 4px;
+    --pc-space-2: 8px;
+    --pc-space-3: 12px;
+    --pc-space-4: 16px;
+    --pc-space-5: 20px;
+    --pc-space-6: 24px;
+
+    --pc-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.08);
+
+    --pc-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+    --pc-border-soft: color-mix(in srgb, var(--border) 50%, transparent 50%);
+    --pc-surface-soft: color-mix(in srgb, var(--background) 42%, var(--card) 58%);
+
+    --pc-text-muted: color-mix(in srgb, var(--text) 62%, transparent 38%);
+
+    --pc-success: #22c55e;
+    --pc-success-strong: #15803d;
+
+    width: 100%;
+    max-width: 900px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: var(--pc-space-6) var(--pc-space-4) 48px;
+    box-sizing: border-box;
+    background: var(--bg);
+    font-family: "Montserrat", sans-serif;
+}
+
+/* ---------- Cabeçalho ---------- */
+
+.faq-comercial-header {
+    margin-bottom: var(--pc-space-6);
+}
+
+.faq-comercial-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--pc-space-3);
+}
+
+.faq-comercial-brand svg {
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.faq-comercial-brand h2 {
+    margin: 0 0 4px;
+    font-size: clamp(18px, 4vw, 22px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text);
+}
+
+.faq-comercial-brand p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--pc-text-muted);
+}
+
+/* ---------- Busca ---------- */
+
+.faq-comercial-search-row {
+    margin-bottom: var(--pc-space-4);
+}
+
+.faq-comercial-search-field {
+    display: flex;
+    align-items: center;
+    gap: var(--pc-space-3);
+    min-height: 48px;
+    padding: 0 var(--pc-space-4);
+    border-radius: var(--pc-radius-lg);
+    border: 1px solid var(--pc-border);
+    background: color-mix(in srgb, var(--background) 62%, var(--card) 38%);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.faq-comercial-search-field:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 48%, var(--border) 52%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent 88%);
+}
+
+.faq-comercial-search-field svg {
+    color: var(--text-dist);
+    flex-shrink: 0;
+}
+
+.faq-comercial-search-field input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.faq-comercial-search-field input::placeholder {
+    color: var(--pc-text-muted);
+}
+
+/* ---------- Chips de categoria ---------- */
+
+.faq-comercial-categorias {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pc-space-2);
+    margin-bottom: var(--pc-space-6);
+}
+
+.faq-comercial-chip {
+    --cor-categoria: var(--text-dist);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 var(--pc-space-4);
+    border-radius: var(--pc-radius-pill);
+    border: 1px solid var(--pc-border);
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease,
+        background 0.15s ease, color 0.15s ease;
+}
+
+.faq-comercial-chip svg {
+    color: var(--cor-categoria);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-chip:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--cor-categoria) 30%, var(--border) 70%);
+    }
+}
+
+.faq-comercial-chip:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-chip.active {
+    color: var(--cor-categoria);
+    background: color-mix(in srgb, var(--cor-categoria) 14%, transparent 86%);
+    border-color: color-mix(in srgb, var(--cor-categoria) 30%, transparent 70%);
+}
+
+/* ---------- Lista ---------- */
+
+.faq-comercial-lista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pc-space-4);
+}
+
+.faq-comercial-item {
+    position: relative;
+    padding: var(--pc-space-5);
+    border-radius: var(--pc-radius-xl);
+    border: 1px solid var(--pc-border-soft);
+    background: linear-gradient(135deg,
+            color-mix(in srgb, var(--card) 97%, transparent 3%),
+            color-mix(in srgb, var(--background) 90%, var(--card) 10%));
+    box-shadow: var(--pc-shadow-sm);
+    transition: border-color 0.2s ease;
+}
+
+.faq-comercial-item.destaque {
+    border-color: color-mix(in srgb, #f59e0b 32%, transparent 68%);
+}
+
+.faq-comercial-item.vencida {
+    border-color: color-mix(in srgb, var(--p1, #ef4444) 30%, transparent 70%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-item:hover {
+        border-color: color-mix(in srgb, var(--primary) 24%, var(--border) 76%);
+    }
+}
+
+.faq-comercial-item-topo {
+    display: flex;
+    align-items: center;
+    gap: var(--pc-space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--pc-space-3);
+}
+
+.faq-comercial-categoria-badge {
+    --cor-categoria: var(--text-dist);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cor-categoria);
+    background: color-mix(in srgb, var(--cor-categoria) 14%, transparent 86%);
+    border: 1px solid color-mix(in srgb, var(--cor-categoria) 26%, transparent 74%);
+}
+
+.faq-comercial-destaque-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    color: #b45309;
+    background: color-mix(in srgb, #f59e0b 16%, transparent 84%);
+    border: 1px solid color-mix(in srgb, #f59e0b 26%, transparent 74%);
+}
+
+.faq-comercial-validade-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--pc-text-muted);
+    background: transparent;
+    border: 1px solid var(--pc-border);
+}
+
+.faq-comercial-vencida-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--p1, #ef4444);
+    background: color-mix(in srgb, var(--p1, #ef4444) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--p1, #ef4444) 26%, transparent 74%);
+}
+
+.faq-comercial-item-acoes {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.faq-comercial-copy-btn,
+.faq-comercial-share-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--pc-radius-pill);
+    background: transparent;
+    color: var(--pc-text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+
+    .faq-comercial-copy-btn:hover,
+    .faq-comercial-share-btn:hover {
+        background: color-mix(in srgb, var(--text) 8%, transparent 92%);
+        color: var(--text);
+    }
+}
+
+.faq-comercial-copy-btn:focus-visible,
+.faq-comercial-share-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-copy-btn.success {
+    background: color-mix(in srgb, var(--pc-success) 16%, transparent 84%);
+    color: var(--pc-success-strong);
+}
+
+.faq-comercial-pergunta {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+}
+
+.faq-comercial-vence-breve-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    color: #b45309;
+    background: color-mix(in srgb, #f59e0b 14%, transparent 86%);
+    border: 1px solid color-mix(in srgb, #f59e0b 26%, transparent 74%);
+}
+
+.faq-comercial-resposta {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--pc-text-muted);
+}
+
+.faq-resposta-paragrafo {
+    margin: 0 0 8px;
+}
+
+.faq-resposta-paragrafo:last-child {
+    margin-bottom: 0;
+}
+
+.faq-resposta-lista {
+    margin: 0 0 8px;
+    padding-left: 18px;
+}
+
+.faq-resposta-lista:last-child {
+    margin-bottom: 0;
+}
+
+.faq-resposta-lista li {
+    margin-bottom: 2px;
+}
+
+.faq-comercial-resposta.vencida {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--p1, #ef4444);
+    white-space: normal;
+}
+
+.faq-comercial-resposta.vencida svg {
+    flex-shrink: 0;
+}
+
+.faq-comercial-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--pc-space-4);
+    padding: var(--pc-space-6);
+    border-radius: var(--pc-radius-lg);
+    background: var(--pc-surface-soft);
+    border: 1px dashed var(--pc-border-soft);
+    color: var(--pc-text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.faq-comercial-nao-encontrei-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 var(--pc-space-4);
+    border-radius: var(--pc-radius-pill);
+    background: #25d366;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-nao-encontrei-btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+    }
+}
+
+.faq-comercial-nao-encontrei-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-rodape-ajuda {
+    margin-top: var(--pc-space-6);
+    padding-top: var(--pc-space-4);
+    border-top: 1px solid var(--pc-border-soft);
+    text-align: center;
+    font-size: 12px;
+    color: var(--pc-text-muted);
+}
+
+.faq-comercial-rodape-ajuda a {
+    color: #25d366;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.faq-comercial-rodape-ajuda a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Card clicável ---------- */
+
+.faq-comercial-item {
+    cursor: pointer;
+}
+
+.faq-comercial-item:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-veiculo-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--pc-space-3);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dist);
+}
+
+/* ---------- Seções agrupadas por categoria ---------- */
+
+.faq-comercial-categoria-secao {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pc-space-3);
+    margin-bottom: var(--pc-space-5);
+}
+
+.faq-comercial-categoria-secao:last-child {
+    margin-bottom: 0;
+}
+
+.faq-comercial-categoria-secao-titulo {
+    --cor-categoria: var(--text-dist);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: var(--pc-space-2);
+    border-bottom: 1px solid var(--pc-border-soft);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cor-categoria);
+}
+
+.faq-comercial-categoria-secao-titulo.destaque {
+    color: #b45309;
+}
+
+/* ---------- Modal de detalhes ---------- */
+
+.faq-comercial-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 15, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--pc-space-4);
+    z-index: 1000;
+}
+
+.faq-comercial-modal {
+    width: 480px;
+    max-width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--pc-border);
+    border-radius: var(--pc-radius-xl);
+    padding: var(--pc-space-6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.faq-comercial-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pc-space-3);
+    margin-bottom: var(--pc-space-3);
+}
+
+.faq-comercial-modal-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--pc-border);
+    border-radius: var(--pc-radius-md);
+    background: transparent;
+    color: var(--pc-text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-modal-close:hover {
+        color: var(--text);
+        border-color: color-mix(in srgb, var(--text-dist) 24%, transparent 76%);
+        background: color-mix(in srgb, var(--text-dist) 7%, var(--card) 93%);
+    }
+}
+
+.faq-comercial-modal-close:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-modal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pc-space-2);
+    margin-bottom: var(--pc-space-4);
+}
+
+.faq-comercial-modal-pergunta {
+    margin: 0 0 var(--pc-space-3);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+}
+
+.faq-comercial-modal-resposta {
+    margin: 0 0 var(--pc-space-4);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--pc-text-muted);
+}
+
+.faq-comercial-modal-resposta.vencida {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--p1, #ef4444);
+    white-space: normal;
+}
+
+.faq-comercial-modal-atualizado {
+    margin: -8px 0 var(--pc-space-4);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--pc-text-muted);
+}
+
+.faq-comercial-modal-veiculo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pc-space-3);
+    padding: var(--pc-space-4);
+    margin-bottom: var(--pc-space-4);
+    border-radius: var(--pc-radius-lg);
+    border: 1px solid var(--pc-border-soft);
+    background: var(--pc-surface-soft);
+}
+
+.faq-comercial-modal-veiculo-imagem {
+    position: relative;
+    width: 100%;
+    border-radius: var(--pc-radius-md);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--background) 55%, var(--card) 45%);
+}
+
+.faq-comercial-modal-veiculo-imagem img {
+    display: block;
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.faq-comercial-galeria-seta {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.faq-comercial-galeria-seta:hover {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+.faq-comercial-galeria-seta:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.faq-comercial-galeria-seta.esquerda {
+    left: 8px;
+}
+
+.faq-comercial-galeria-seta.direita {
+    right: 8px;
+}
+
+.faq-comercial-galeria-pontos {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.faq-comercial-galeria-ponto {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.faq-comercial-galeria-ponto.ativo {
+    background: #fff;
+}
+
+.faq-comercial-modal-veiculo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 160px;
+    color: var(--pc-text-muted);
+}
+
+.faq-comercial-modal-veiculo-placeholder span {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.faq-comercial-modal-veiculo-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pc-space-3);
+    flex-wrap: wrap;
+}
+
+.faq-comercial-modal-veiculo-info strong {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.faq-comercial-modal-veiculo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 var(--pc-space-3);
+    border-radius: var(--pc-radius-pill);
+    border: 1px solid var(--pc-border);
+    color: var(--text-dist);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-modal-veiculo-link:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--text-dist) 30%, transparent 70%);
+        background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+    }
+}
+
+.faq-comercial-modal-veiculo-link:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-modal-actions {
+    display: flex;
+    gap: var(--pc-space-3);
+}
+
+.faq-comercial-share-btn-full,
+.faq-comercial-copy-btn-full {
+    flex: 1;
+    min-height: 42px;
+    padding: 0 var(--pc-space-4);
+    border-radius: var(--pc-radius-md);
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--pc-space-2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.faq-comercial-share-btn-full {
+    border: 1px solid #25d366;
+    background: transparent;
+    color: #25d366;
+}
+
+.faq-comercial-copy-btn-full {
+    border: none;
+    background: var(--btn-main);
+    color: var(--text-btn);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .faq-comercial-share-btn-full:hover {
+        transform: translateY(-1px);
+        background: color-mix(in srgb, #25d366 10%, transparent 90%);
+    }
+
+    .faq-comercial-copy-btn-full:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+    }
+}
+
+.faq-comercial-share-btn-full:focus-visible,
+.faq-comercial-copy-btn-full:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    outline-offset: 2px;
+}
+
+.faq-comercial-copy-btn-full.success {
+    background: color-mix(in srgb, var(--pc-success) 20%, var(--btn-main) 80%);
+    color: #fff;
+}
+
+/* ---------- Responsivo ---------- */
+
+@media (max-width: 640px) {
+    .faq-comercial-page {
+        padding: var(--pc-space-4) var(--pc-space-3) 32px;
+    }
+
+    .faq-comercial-chip {
+        min-height: 40px;
+    }
+
+    .faq-comercial-copy-btn,
+    .faq-comercial-share-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .faq-comercial-modal {
+        padding: var(--pc-space-4);
+        max-height: 92vh;
+    }
+
+    .faq-comercial-modal-veiculo-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .faq-comercial-modal-actions {
+        flex-direction: column;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .faq-comercial-item,
+    .faq-comercial-chip,
+    .faq-comercial-copy-btn,
+    .faq-comercial-share-btn,
+    .faq-comercial-modal-close,
+    .faq-comercial-modal-veiculo-link,
+    .faq-comercial-copy-btn-full,
+    .faq-comercial-share-btn-full,
+    .faq-comercial-nao-encontrei-btn,
+    .faq-comercial-galeria-seta {
+        transition: none;
+    }
+}

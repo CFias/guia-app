@@ -217,6 +217,19 @@
   background: var(--side, var(--primary));
 }
 
+/* ---------- Link externo (abre em nova aba) ---------- */
+
+.sidebar-link-external {
+  color: var(--text-dist);
+}
+
+.sidebar-icon-trailing {
+  margin-left: auto;
+  opacity: 0.6;
+  color: inherit;
+  flex-shrink: 0;
+}
+
 /* ---------- Rodapé ---------- */
 
 .sidebar-footer {

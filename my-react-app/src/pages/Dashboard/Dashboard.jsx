@@ -17,6 +17,8 @@ import {
   LocalShippingRounded,
   AssignmentRounded,
   AssessmentRounded,
+  QuizRounded,
+  OpenInNewRounded,
 } from "@mui/icons-material";
 
 const Dashboard = ({ loading }) => {
@@ -72,14 +74,30 @@ const Dashboard = ({ loading }) => {
               <FactCheckRounded fontSize="small" className="sidebar-icon" />
               <span>Disponibilidade da Semana</span>
             </NavLink>
-            {/* <NavLink to="conferencia" className={getNavClass}>
-              <FactCheckRounded fontSize="small" className="sidebar-icon" />
-              <span>Robô de Conferência</span>
-            </NavLink> */}
-            {/* <NavLink to="relatorios" className={getNavClass}>
-              <AssessmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Analytics - beta</span>
-            </NavLink> */}
+
+            <NavLink to="faqadmin" className={getNavClass}>
+              <QuizRounded fontSize="small" className="sidebar-icon" />
+              <span>Central de Dúvidas</span>
+            </NavLink>
+
+            {/* Link externo de propósito: /faqcomercial fica FORA do
+                layout do Dashboard (sem sidebar), então não é um NavLink
+                de navegação interna — é uma âncora normal com
+                target="_blank", só pra abrir a visão do comercial numa
+                aba nova (pra conferir ou copiar o link). */}
+            <a
+              href="/faqcomercial"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sidebar-link sidebar-link-external"
+            >
+              <QuizRounded fontSize="small" className="sidebar-icon" />
+              <span>Ver como o comercial</span>
+              <OpenInNewRounded
+                fontSize="small"
+                className="sidebar-icon-trailing"
+              />
+            </a>
           </div>
 
           <div className="sidebar-group">
