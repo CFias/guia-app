@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  collection,
+  doc,
+  setDoc,
+  query,
+  where,
+  onSnapshot,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../../Services/Services/firebase";
+
+import {
   FlightTakeoffRounded,
   FlightLandRounded,
   CalendarMonthRounded,
@@ -1219,6 +1230,11 @@ const desenharItemColecao = ({
   });
 };
 
+// Chave estável do grupo pra usar como identificador do documento no
+// Firestore — troca "/" por "-" porque documentId não pode conter barra.
+const montarChaveMonitoramento = (dataMapa, grupoId) =>
+  `${dataMapa}__${grupoId}`.replace(/\//g, "-");
+
 export default function PainelOperacionalUnificado() {
   const [abaAtiva, setAbaAtiva] = useState(ABAS.CHEGADAS);
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
@@ -1249,14 +1265,10 @@ export default function PainelOperacionalUnificado() {
   const [termoBusca, setTermoBusca] = useState("");
 
   // ---- Monitoramento (checkbox verde nos cards de OUT/Transfer) ----
-  const [monitoradosOut, setMonitoradosOut] = useState(() => {
-    try {
-      const salvo = localStorage.getItem("painel_operacional_monitorados_out");
-      return salvo ? JSON.parse(salvo) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Agora vive no Firestore (coleção "painel_out_monitoramento"), com
+  // sincronização em tempo real — marcar num computador reflete em
+  // qualquer outro que esteja com a tela aberta, sem precisar recarregar.
+  const [monitoradosOut, setMonitoradosOut] = useState({});
 
   // ---- Placas nominais personalizadas / edição por reserva ----
   const [popupPlacaAberto, setPopupPlacaAberto] = useState(false);
@@ -1394,16 +1406,35 @@ export default function PainelOperacionalUnificado() {
     );
   }, [configPlacas]);
 
+  // Observa em tempo real quem já foi monitorado na data selecionada —
+  // qualquer alteração feita por outro computador chega aqui sozinha.
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "painel_operacional_monitorados_out",
-        JSON.stringify(monitoradosOut),
-      );
-    } catch (error) {
-      console.error("Erro ao salvar monitorados:", error);
-    }
-  }, [monitoradosOut]);
+    if (!dataSelecionada) return undefined;
+
+    const q = query(
+      collection(db, "painel_out_monitoramento"),
+      where("data", "==", dataSelecionada),
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const mapa = {};
+        snap.forEach((docSnap) => {
+          const dados = docSnap.data();
+          if (dados?.grupoId) {
+            mapa[dados.grupoId] = !!dados.monitorado;
+          }
+        });
+        setMonitoradosOut(mapa);
+      },
+      (error) => {
+        console.error("Erro ao observar monitoramento:", error);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [dataSelecionada]);
 
   useEffect(() => {
     carregarDados(abaAtiva, false);
@@ -2187,13 +2218,43 @@ export default function PainelOperacionalUnificado() {
     setGruposExpandidosGuia((prev) => ({ ...prev, [grupoId]: !prev[grupoId] }));
   };
 
-  // ---- Monitoramento OUT/Transfer ----
+  // ---- Monitoramento OUT/Transfer (persistido no Firestore) ----
+  const salvarMonitoramento = async (grupoId, monitorado) => {
+    try {
+      await setDoc(
+        doc(
+          db,
+          "painel_out_monitoramento",
+          montarChaveMonitoramento(dataSelecionada, grupoId),
+        ),
+        {
+          data: dataSelecionada,
+          grupoId,
+          monitorado,
+          atualizadoEm: Timestamp.now(),
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      console.error("Erro ao salvar monitoramento:", error);
+      // desfaz a atualização otimista se a escrita falhar
+      setMonitoradosOut((prev) => ({ ...prev, [grupoId]: !monitorado }));
+      alert("Não foi possível salvar o monitoramento. Tente novamente.");
+    }
+  };
+
   const toggleMonitoradoOut = (grupoId) => {
-    setMonitoradosOut((prev) => ({ ...prev, [grupoId]: !prev[grupoId] }));
+    const novoValor = !monitoradosOut[grupoId];
+    // atualização otimista: reflete na hora, e o listener em tempo real
+    // confirma (ou corrige) assim que o Firestore responder.
+    setMonitoradosOut((prev) => ({ ...prev, [grupoId]: novoValor }));
+    salvarMonitoramento(grupoId, novoValor);
   };
 
   const marcarComoMonitorado = (grupoId) => {
+    if (monitoradosOut[grupoId]) return;
     setMonitoradosOut((prev) => ({ ...prev, [grupoId]: true }));
+    salvarMonitoramento(grupoId, true);
   };
 
   // ---- Placas nominais: nome exibido considerando edição manual ----
