@@ -2456,7 +2456,7 @@ export default function PainelOperacionalUnificado() {
             </div>
             <p>Alterne entre Chegadas, OUT's e Passeios no mesmo ambiente.</p>
           </div>
-
+          
           <div className="painel-chegadas-tabs">
             <button
               type="button"

@@ -52,7 +52,6 @@ function App() {
         <Route path="guias" element={<ListaGuias />} />
         <Route path="passeios" element={<ListaPasseios />} />
       </Route>
-
       {/* ===== FORA DO LAYOUT DO DASHBOARD =====
           Sem sidebar, sem menu — só a tela de consulta do comercial.
           Link direto pra quem precisar: /faqcomercial */}
