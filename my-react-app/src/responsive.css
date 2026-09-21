@@ -1,0 +1,210 @@
+/* =========================================================
+   RESPONSIVIDADE GLOBAL
+
+   Carregado POR ÚLTIMO (ver main.jsx) pra ter a palavra final sobre
+   os estilos de cada tela. Aqui ficam só ajustes transversais:
+   rede de segurança contra estouro lateral, grids que precisam
+   virar 1/2 colunas no celular, campos com largura mínima e
+   painéis flutuantes.
+
+   O menu (gaveta) e a barra superior estão em pages/Dashboard/styles.css.
+   Faixas: até 1024px = tablet/celular · até 768px = celular grande ·
+   até 640px = celular.
+   ========================================================= */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Rede de segurança: nada empurra a página pro lado */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* filhos de grid/flex podem encolher em vez de estourar */
+.dashboard-content,
+.dashboard-main,
+.dashboard-main>* {
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------
+   Tablet e celular (até 1024px)
+   Quase toda tela foi desenhada com "max-width: 65vw" (65% da
+   largura da janela) pensando em monitor grande. Em tela pequena
+   isso desperdiçava mais de um terço do espaço — aqui a página
+   passa a usar a largura toda disponível.
+   --------------------------------------------------------- */
+@media (max-width: 1024px) {
+
+  .dashboard-main>[class*="-page"],
+  .page-container,
+  .page-container-passeios,
+  .robo-conferente-page {
+    max-width: 100% !important;
+  }
+}
+
+/* ---------------------------------------------------------
+   Painel de notificações e avisos (operacional)
+   --------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .notif-painel {
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 80px - env(safe-area-inset-top, 0px));
+  }
+
+  .notif-toasts {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   Celular grande / tablet em pé (até 768px)
+   --------------------------------------------------------- */
+@media (max-width: 768px) {
+
+  /* iOS dá zoom automático em campo com fonte < 16px */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* barras de filtros/ações quebram linha em vez de estourar */
+  [class*="-toolbar"],
+  [class*="-actions"] {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------------------------------------------------------
+   Celular (até 640px)
+   --------------------------------------------------------- */
+@media (max-width: 640px) {
+
+  /* ---- listas de cards e formulários: 1 coluna ---- */
+  .cadastro-fornecedor-grid,
+  .cadastro-fornecedor-form-grid,
+  .cadastro-fornecedor-api-bar,
+  .cadastro-fornecedor-options-grid,
+  .disponibilidade-guia-grid,
+  .lista-guias-grid,
+  .lista-guias-filters-grid,
+  .editar-guia-form-grid,
+  .cadastro-guia-grid,
+  .cadastro-guia-form-grid,
+  .cadastro-passeio-grid,
+  .cadastro-passeio-form-grid,
+  .relatorios-filtros-grid,
+  .config-layout,
+  .config-grid,
+  .theme-segmented,
+  .radio-card-group,
+  .previa-operacional-grid,
+  .painel-chegadas-grid,
+  .painel-outs-grid,
+  .home-dashboard-grid,
+  .fornecedor-panel-grid,
+  .afinidade-grid,
+  .resumo-container,
+  .envio-veiculo-grid,
+  .escala-auto-resumo,
+  .faq-admin-form-grid,
+  .usuarios-grid,
+  .passeio-item,
+  .passeio-add,
+  .passeio-item-padrao,
+  .painel-chegadas-reservation-item,
+  .robo-steps,
+  .skeleton-filters {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* ---- indicadores (KPIs): 2 por linha ---- */
+  .painel-chegadas-kpis,
+  .painel-outs-kpis,
+  .previa-operacional-kpis,
+  .home-dashboard-metrics,
+  .home-dashboard-summary-grid,
+  .home-kpis-grid.relatorios-kpis-grid,
+  .resumo-guia-reserva-grid,
+  .painel-outs-reserva-grid,
+  .skeleton-metrics-grid,
+  .skeleton-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* ---- campos com largura mínima: ocupam a linha toda ---- */
+  .painel-chegadas-field,
+  .previa-operacional-field,
+  .previa-operacional-field.small,
+  .painel-outs-field,
+  .faq-admin-toolbar .faq-admin-field {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .disponibilidade-guia-dropdown {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .disponibilidade-guia-select,
+  .disponibilidade-guia-search,
+  .afinidade-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* ---- títulos, cabeçalhos e botões lado a lado: quebram linha ---- */
+  [class*="-title-row"],
+  [class*="-card-header"],
+  [class*="-modal-header"],
+  [class*="-modal-actions"],
+  .disponibilidade-guia-toolbar,
+  .faq-admin-actions,
+  .faq-admin-item-actions {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* ---- balões / modais ---- */
+  .resumo-tooltip,
+  .whatsapp-wrapper:hover .resumo-tooltip {
+    width: auto;
+    max-width: calc(100vw - 32px);
+  }
+
+  .painel-chegadas-modal,
+  .faq-comercial-modal,
+  .usuarios-modal,
+  .editar-guia-modal {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .faq-comercial-modal,
+  .editar-guia-modal {
+    max-height: calc(100vh - 32px);
+  }
+
+}

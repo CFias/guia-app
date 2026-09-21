@@ -5,6 +5,7 @@ import App from "./App";
 import { ThemeProvider } from "./Context/ThemeContext";
 import { AuthProvider } from "./Context/AuthContext";
 import "./uiStates.css";
+import "./responsive.css"; // por último: tem a palavra final sobre os estilos das telas
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -15,5 +16,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
