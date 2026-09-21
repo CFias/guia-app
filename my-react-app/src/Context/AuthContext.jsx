@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   onAuthStateChanged,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../Services/Services/firebase";
+import { enviarEmailRedefinicao } from "../Services/Services/authEmail";
 import { ROLES } from "./permissions";
 
 const AuthContext = createContext(null);
@@ -75,8 +75,7 @@ export const AuthProvider = ({ children }) => {
       login: (email, senha) =>
         signInWithEmailAndPassword(auth, email.trim(), senha),
       logout: () => signOut(auth),
-      enviarRedefinicaoSenha: (email) =>
-        sendPasswordResetEmail(auth, email.trim()),
+      enviarRedefinicaoSenha: (email) => enviarEmailRedefinicao(email),
     };
   }, [user, perfil, loading]);
 

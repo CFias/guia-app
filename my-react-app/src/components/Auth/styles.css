@@ -224,3 +224,30 @@
     transform: rotate(360deg);
   }
 }
+
+/* ---------- tela de redefinição de senha ---------- */
+
+a.auth-btn-primary,
+a.auth-btn-secondary,
+a.auth-link-btn {
+  text-decoration: none;
+}
+
+.auth-email-tag {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.auth-hint {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+.auth-icon-badge-erro {
+  color: var(--status-red);
+  background: color-mix(in srgb, var(--status-red) 12%, transparent 88%);
+}
+
+.auth-card-center .auth-btn-primary {
+  align-self: stretch;
+}

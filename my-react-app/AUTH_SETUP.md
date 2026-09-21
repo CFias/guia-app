@@ -48,3 +48,29 @@ como está: as regras já garantem o isolamento.
 | Guia | Cai em `/minha-disponibilidade`; digitar `/op` volta para lá |
 | Conta desativada | Tela "Acesso desativado" |
 | Sem login | Qualquer URL vai para `/login` |
+
+## 7. E-mail e tela de recuperação de senha (temáticos)
+
+A tela nova fica em `/redefinir-senha`. Para o link do e-mail abrir nela (e não na página padrão do Firebase):
+
+1. **Domínio autorizado:** Authentication → *Settings* → *Authorized domains* → adicione o domínio do sistema (o da Vercel).
+2. **Modelo do e-mail:** Authentication → *Templates* → **Password reset** → ícone de lápis:
+   - *Sender name:* `Operacional SSA`
+   - *Language:* Português (Brasil)
+   - *Subject:* `Redefinir sua senha — Operacional SSA`
+   - *Message:*
+     ```
+     Olá,
+
+     Recebemos um pedido para redefinir a senha de acesso %EMAIL% ao Operacional SSA.
+
+     Para criar uma nova senha, clique no link abaixo:
+
+     %LINK%
+
+     Se você não fez esse pedido, ignore este e-mail — sua senha continua a mesma.
+
+     Equipe Operacional SSA
+     ```
+   - *Customize action URL:* `https://SEU-DOMINIO/redefinir-senha`
+3. Salve. Só troque a URL de ação **depois** de publicar o front com a rota nova (senão o link cai numa página inexistente).

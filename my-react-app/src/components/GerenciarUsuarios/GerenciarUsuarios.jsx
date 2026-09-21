@@ -4,7 +4,6 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   getAuth,
-  sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
 import {
@@ -16,7 +15,8 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { auth, db, firebaseConfig } from "../../Services/Services/firebase";
+import { db, firebaseConfig } from "../../Services/Services/firebase";
+import { enviarEmailRedefinicao } from "../../Services/Services/authEmail";
 import { useAuth } from "../../Context/AuthContext";
 import {
   ROLES,
@@ -267,7 +267,7 @@ const GerenciarUsuarios = () => {
 
   const enviarRedefinicao = async (u) => {
     try {
-      await sendPasswordResetEmail(auth, u.email);
+      await enviarEmailRedefinicao(u.email);
       setMsg({
         tipo: "ok",
         texto: `Link de redefinição enviado para ${u.email}.`,

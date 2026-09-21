@@ -25,6 +25,7 @@ import FaqAdmin from "./components/FaqAdmin/FaqAdmin";
 import GerenciarUsuarios from "./components/GerenciarUsuarios/GerenciarUsuarios";
 import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponibilidade";
 import Login from "./pages/Login/Login";
+import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
 import { RedirectHome, RequireRole } from "./components/Auth/RouteGuards";
 import { ACESSO } from "./Context/permissions";
 
@@ -33,6 +34,8 @@ function App() {
     <Routes>
       {/* ===== PÚBLICA: só login (não existe tela de cadastro) ===== */}
       <Route path="/login" element={<Login />} />
+      {/* Destino do link do e-mail "esqueci minha senha" (pública) */}
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
       {/* ===== DASHBOARD COMO LAYOUT (menu lateral) =====
           Operacional e Comercial entram; cada um vê só o seu menu. */}
@@ -77,10 +80,7 @@ function App() {
 
       {/* ===== GUIA: só a própria disponibilidade ===== */}
       <Route element={<RequireRole roles={ACESSO.minhaDisponibilidade} />}>
-        <Route
-          path="/minha-disponibilidade"
-          element={<MinhaDisponibilidade />}
-        />
+        <Route path="/minha-disponibilidade" element={<MinhaDisponibilidade />} />
       </Route>
 
       {/* Qualquer outra URL volta pra home do nível de cada um */}
