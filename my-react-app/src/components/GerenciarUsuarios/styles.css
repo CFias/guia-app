@@ -1,0 +1,410 @@
+/* =========================================================
+   USUÁRIOS E ACESSOS — mesmo design system das outras telas.
+   ========================================================= */
+
+.usuarios-page {
+  --u-radius-lg: 16px;
+  --u-radius-md: 12px;
+  --u-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+  --u-muted: color-mix(in srgb, var(--text) 62%, transparent 38%);
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: "Montserrat", sans-serif;
+  color: var(--text);
+}
+
+.usuarios-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.usuarios-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--u-muted);
+  max-width: 640px;
+}
+
+.usuarios-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.usuarios-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--u-radius-lg);
+  background: var(--card);
+  border: 1px solid var(--u-border);
+}
+
+.usuarios-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.usuarios-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.usuarios-field > span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.usuarios-field input[type="text"],
+.usuarios-field input[type="email"],
+.usuarios-field select,
+.usuarios-lista-topo select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: var(--u-radius-md);
+  border: 1px solid var(--u-border);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.usuarios-lista-topo select {
+  width: auto;
+}
+
+.usuarios-field input:focus,
+.usuarios-field select:focus {
+  border-color: var(--text-dist);
+}
+
+.usuarios-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--u-muted);
+}
+
+.usuarios-senha-row {
+  display: flex;
+  gap: 8px;
+}
+
+.usuarios-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usuarios-role-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--u-radius-md);
+  border: 1px solid var(--u-border);
+  cursor: pointer;
+}
+
+.usuarios-role-option input {
+  grid-row: span 2;
+  align-self: center;
+  accent-color: var(--btn-main);
+}
+
+.usuarios-role-option strong {
+  font-size: 13px;
+}
+
+.usuarios-role-option small {
+  font-size: 11px;
+  color: var(--u-muted);
+  line-height: 1.35;
+}
+
+.usuarios-role-option.ativo {
+  border-color: var(--text-dist);
+  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+}
+
+/* ---------- botões ---------- */
+
+.usuarios-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--u-radius-md);
+  border: 1px solid var(--u-border);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.usuarios-btn.primary {
+  border-color: transparent;
+  background: var(--btn-main);
+  color: var(--text-btn);
+}
+
+.usuarios-btn.ghost {
+  background: transparent;
+}
+
+.usuarios-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.usuarios-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--u-border);
+  background: var(--input);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ---------- avisos ---------- */
+
+.usuarios-alert {
+  padding: 10px 14px;
+  border-radius: var(--u-radius-md);
+  font-size: 13px;
+}
+
+.usuarios-alert.ok {
+  color: var(--text-dist);
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 30%, transparent 70%);
+}
+
+.usuarios-alert.erro {
+  color: var(--status-red);
+  background: color-mix(in srgb, var(--status-red) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--status-red) 30%, transparent 70%);
+}
+
+.usuarios-credenciais {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--u-radius-lg);
+  background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+}
+
+.usuarios-credenciais p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--u-muted);
+}
+
+.usuarios-credenciais code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--u-radius-md);
+  background: var(--input);
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.usuarios-credenciais-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- lista ---------- */
+
+.usuarios-lista-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.usuarios-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usuarios-lista li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--u-radius-md);
+  border: 1px solid var(--u-border);
+}
+
+.usuarios-lista li.inativo {
+  opacity: 0.6;
+}
+
+.usuarios-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.usuarios-item-info strong {
+  font-size: 13px;
+}
+
+.usuarios-item-info span {
+  font-size: 12px;
+  color: var(--u-muted);
+  overflow-wrap: anywhere;
+}
+
+.usuarios-voce {
+  font-weight: 500;
+  color: var(--u-muted);
+}
+
+.usuarios-vinculo {
+  font-size: 11px;
+}
+
+.usuarios-item-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.usuarios-item-acoes {
+  display: flex;
+  gap: 6px;
+}
+
+.usuarios-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--u-border);
+  white-space: nowrap;
+}
+
+.usuarios-badge.role-operacional {
+  color: var(--text-dist);
+  border-color: color-mix(in srgb, var(--text-dist) 40%, transparent 60%);
+}
+
+.usuarios-badge.role-comercial {
+  color: var(--p2);
+  border-color: color-mix(in srgb, var(--p2) 40%, transparent 60%);
+}
+
+.usuarios-badge.desativado {
+  color: var(--status-red);
+  border-color: color-mix(in srgb, var(--status-red) 40%, transparent 60%);
+}
+
+.usuarios-vazio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--u-muted);
+}
+
+/* ---------- modal ---------- */
+
+.usuarios-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.usuarios-modal {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border-radius: var(--u-radius-lg);
+  background: var(--card);
+  border: 1px solid var(--u-border);
+  color: var(--text);
+  font-family: "Montserrat", sans-serif;
+}
+
+.usuarios-modal h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.usuarios-modal .usuarios-hint {
+  margin: -8px 0 0;
+}
+
+.usuarios-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.usuarios-check input {
+  accent-color: var(--btn-main);
+}
+
+.usuarios-modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .usuarios-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .usuarios-lista li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .usuarios-item-tags {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+}

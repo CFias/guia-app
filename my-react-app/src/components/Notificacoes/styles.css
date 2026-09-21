@@ -1,0 +1,248 @@
+/* =========================================================
+   NOTIFICAÇÕES EM TEMPO REAL (operacional) — sino, painel e avisos.
+   ========================================================= */
+
+.notif-sino {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.notif-sino.com-novas {
+    color: var(--text-dist);
+    border-color: color-mix(in srgb, var(--text-dist) 45%, transparent 55%);
+}
+
+.notif-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--status-red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+.notif-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+}
+
+.notif-painel {
+    position: fixed;
+    top: 16px;
+    left: 262px;
+    z-index: 10001;
+    width: 380px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+    font-family: "Montserrat", sans-serif;
+    overflow: hidden;
+}
+
+.notif-painel-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+    font-size: 13px;
+}
+
+.notif-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 0;
+    background: transparent;
+    color: var(--text-dist);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.notif-link:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.notif-vazio {
+    margin: 0;
+    padding: 24px 18px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--text) 62%, transparent 38%);
+}
+
+.notif-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+}
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent 50%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.notif-item.nao-lida {
+    background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+}
+
+.notif-ponto {
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.notif-item.nao-lida .notif-ponto {
+    background: var(--text-dist);
+}
+
+.notif-corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.notif-titulo {
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.notif-sub,
+.notif-hora {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+.notif-detalhes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.notif-chip {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.notif-chip.add {
+    color: var(--text-dist);
+    border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+}
+
+.notif-chip.rem {
+    color: var(--status-red);
+    border-color: color-mix(in srgb, var(--status-red) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--status-red) 8%, transparent 92%);
+}
+
+/* ---------- avisos na tela ---------- */
+
+.notif-toasts {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 10002;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+}
+
+.notif-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--text-dist) 50%, transparent 50%);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+    font-family: "Montserrat", sans-serif;
+    font-size: 13px;
+    line-height: 1.35;
+    animation: notif-entrada 0.25s ease;
+}
+
+.notif-toast-corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-toast-corpo>span:not(.notif-chip) {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+.notif-toast>button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+}
+
+@keyframes notif-entrada {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

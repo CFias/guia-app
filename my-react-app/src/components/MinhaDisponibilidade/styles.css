@@ -1,0 +1,482 @@
+/* =========================================================
+   MINHA DISPONIBILIDADE (GUIA) — página autônoma, pensada pro
+   celular: alvos de toque grandes, uma coluna, sem sidebar.
+   ========================================================= */
+
+.minha-disp-page {
+  --m-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+  --m-muted: color-mix(in srgb, var(--text) 62%, transparent 38%);
+
+  width: 100%;
+  max-width: 560px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Montserrat", sans-serif;
+}
+
+.minha-disp-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.minha-disp-topo h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.minha-disp-topo h1 svg {
+  color: var(--text-dist);
+}
+
+.minha-disp-topo p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+.minha-disp-sair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--m-border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.minha-disp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--m-border);
+  font-size: 13px;
+}
+
+.minha-disp-card h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.minha-disp-aviso {
+  line-height: 1.5;
+}
+
+/* ---------- navegação de semana ---------- */
+
+.minha-disp-semana-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.minha-disp-semana-nav>div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.minha-disp-semana-nav strong {
+  font-size: 14px;
+}
+
+.minha-disp-semana-nav span {
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.minha-disp-semana-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--m-border);
+  background: var(--input);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.minha-disp-semana-nav button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- dias ---------- */
+
+.minha-disp-dias {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.minha-disp-dia {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 62px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--m-border);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.minha-disp-dia .nome {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.minha-disp-dia .data {
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.minha-disp-dia .check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.minha-disp-dia.ativo {
+  border-color: var(--text-dist);
+  background: color-mix(in srgb, var(--text-dist) 14%, var(--card) 86%);
+}
+
+.minha-disp-dia.ativo .check {
+  color: var(--text-dist);
+}
+
+.minha-disp-dia.passado {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- ações ---------- */
+
+.minha-disp-acoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.minha-disp-btn {
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--m-border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.minha-disp-btn.primary {
+  border-color: transparent;
+  background: var(--btn-main);
+  color: var(--text-btn);
+}
+
+.minha-disp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.minha-disp-nota,
+.minha-disp-vazio {
+  margin: 0;
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.minha-disp-msg {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.minha-disp-msg.ok {
+  color: var(--text-dist);
+}
+
+.minha-disp-msg.erro {
+  color: var(--status-red);
+}
+
+.minha-disp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.minha-disp-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dist);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+}
+
+@media (min-width: 480px) {
+  .minha-disp-dias {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* =========================================================
+   ABAS, JANELA DE ENVIO E PERFIL (somente leitura)
+   ========================================================= */
+
+.minha-disp-abas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--m-border);
+}
+
+.minha-disp-abas button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.minha-disp-abas button.ativa {
+  background: var(--btn-main);
+  color: var(--text-btn);
+}
+
+.minha-disp-janela {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--m-border);
+  background: var(--card);
+  font-size: 13px;
+}
+
+.minha-disp-janela p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.minha-disp-janela-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.minha-disp-janela.aberta {
+  border-color: color-mix(in srgb, var(--text-dist) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
+}
+
+.minha-disp-janela.aberta .minha-disp-janela-titulo {
+  color: var(--text-dist);
+}
+
+.minha-disp-janela.fechada {
+  border-color: color-mix(in srgb, var(--p2) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--p2) 8%, var(--card) 92%);
+}
+
+.minha-disp-janela.fechada .minha-disp-janela-titulo {
+  color: var(--p2);
+}
+
+.minha-disp-janela-info {
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.minha-disp-somente-leitura {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--m-muted);
+}
+
+.minha-disp-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.minha-disp-dados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+}
+
+.minha-disp-dados dt {
+  font-size: 11px;
+  color: var(--m-muted);
+  margin-bottom: 2px;
+}
+
+.minha-disp-dados dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.minha-disp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dist);
+}
+
+.minha-disp-texto {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.minha-disp-contador {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-dist);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+}
+
+.minha-disp-passeios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.minha-disp-passeios li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--m-border);
+  background: var(--input);
+}
+
+.minha-disp-passeios strong {
+  font-size: 13px;
+}
+
+.minha-disp-passeios p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--m-muted);
+}
+
+.minha-disp-freq {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dist);
+}
+
+/* ---------- idiomas (editáveis) ---------- */
+
+.minha-disp-idioma {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--m-border);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.minha-disp-idioma.ativo {
+  color: var(--text-dist);
+  border-color: var(--text-dist);
+  background: color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%);
+}
+
+.minha-disp-idioma:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- aviso: só dias totalmente livres ---------- */
+
+.minha-disp-alerta {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--p2) 55%, transparent 45%);
+  background: color-mix(in srgb, var(--p2) 12%, var(--card) 88%);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.minha-disp-alerta svg {
+  color: var(--p2);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.minha-disp-alerta p {
+  margin: 0;
+}

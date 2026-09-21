@@ -1,0 +1,119 @@
+rules_version = '2';
+
+// =========================================================
+//  REGRAS DE SEGURANÇA — SSA Guias
+//
+//  Este arquivo é o que de fato protege os dados. Esconder um
+//  menu ou bloquear uma rota no React não impede ninguém de
+//  chamar o Firestore direto — estas regras impedem.
+//
+//  Níveis (campo `role` em users/{uid}):
+//    operacional → tudo
+//    comercial   → só a Central de Dúvidas (faq_itens)
+//    guia        → só a própria disponibilidade (na janela de quinta/sexta)
+//  Conta sem documento em `users`, ou com ativo != true → nada.
+// =========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function perfilPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function ativo() {
+      return signedIn()
+        && exists(perfilPath())
+        && get(perfilPath()).data.ativo == true;
+    }
+
+    function roleIs(nivel) {
+      return ativo() && get(perfilPath()).data.role == nivel;
+    }
+
+    function isOperacional() { return roleIs('operacional'); }
+    function isComercial()   { return roleIs('comercial'); }
+
+    function isGuiaDono(guideId) {
+      return roleIs('guia') && get(perfilPath()).data.guideId == guideId;
+    }
+
+    // Janela em que o guia pode enviar/alterar disponibilidade:
+    // quinta 00:00 até sexta 23:59:59, horário de Salvador (UTC-3).
+    // (1970-01-01 foi uma quinta-feira, então dia % 7 == 0 é quinta e 1 é sexta.)
+    // Mesma regra de src/Services/Utils/janelaDisponibilidade.js.
+    function janelaAberta() {
+      let diaLocal = math.floor((request.time.toMillis() - 10800000) / 86400000.0);
+      return diaLocal % 7 == 0 || diaLocal % 7 == 1;
+    }
+
+    // ---------- Perfis de acesso ----------
+    match /users/{uid} {
+      // cada um lê o próprio perfil (o app precisa dele pra saber o nível,
+      // inclusive pra avisar "conta desativada")
+      allow read: if signedIn() && request.auth.uid == uid;
+      // só o operacional cria / edita / lista / remove perfis
+      allow read, write: if isOperacional();
+    }
+
+    // ---------- Guia: só o próprio documento de disponibilidade ----------
+    match /guide_availability/{guideId} {
+      // lê sempre (mesmo com a janela fechada, pra ver o que enviou)
+      allow read: if isGuiaDono(guideId);
+      // grava só dentro da janela (quinta 00h → sexta 23h59)
+      allow create, update: if isGuiaDono(guideId)
+        && janelaAberta()
+        && request.resource.data.guideId == guideId
+        && request.resource.data.disponibilidade is list;
+    }
+
+    // ---------- Guia: lê (sem alterar) o próprio perfil e o catálogo ----------
+    match /guides/{guideId} {
+      allow get: if isGuiaDono(guideId);
+    }
+    match /guide_tour_levels/{guideId} {
+      allow get: if isGuiaDono(guideId);
+    }
+    match /services/{serviceId} {
+      allow read: if roleIs('guia');
+    }
+
+    // ---------- Notificações em tempo real pro operacional ----------
+    // O guia só CRIA (uma por envio/alteração), sempre em nome do próprio
+    // guia e dentro da janela. Não lê, não edita, não apaga.
+    // O operacional lê e marca como lida pela regra geral lá embaixo.
+    match /notificacoes/{notifId} {
+      allow create: if roleIs('guia')
+        && janelaAberta()
+        && request.resource.data.guideId == get(perfilPath()).data.guideId
+        && request.resource.data.origem == 'guia'
+        && request.resource.data.tipo in ['envio', 'alteracao', 'cancelamento']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly([
+             'tipo', 'origem', 'guideId', 'guideName',
+             'semanaInicio', 'semanaFim',
+             'adicionados', 'removidos', 'total', 'createdAt'
+           ]);
+    }
+
+    // ---------- Comercial: lê a Central de Dúvidas ----------
+    match /faq_itens/{itemId} {
+      allow read: if isComercial();
+      // única escrita permitida: os contadores de uso (visualização / cópia)
+      allow update: if isComercial()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['contadorVisualizacoes', 'contadorCopias']);
+    }
+
+    // ---------- Operacional: acesso total (inclui coleções futuras) ----------
+    // Todo o resto — services, weekly_services, guides, providers,
+    // settings, guide_tour_levels, weekly_scale_meta,
+    // painel_out_monitoramento... — cai aqui: só operacional.
+    match /{document=**} {
+      allow read, write: if isOperacional();
+    }
+  }
+}

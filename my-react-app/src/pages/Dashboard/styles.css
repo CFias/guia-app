@@ -328,3 +328,58 @@
     animation: none;
   }
 }
+
+/* ---------- Usuário logado / sair ---------- */
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pc-space-2);
+  padding: 8px 8px 8px 16px;
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-user-info strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-info span {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+.sidebar-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--pc-radius-md);
+  border: 1px solid var(--pc-border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Topo da sidebar: marca + sino de notificações lado a lado */
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pc-space-2);
+}
+
+.sidebar-top .sidebar-brand-wrap {
+  flex: 1;
+  min-width: 0;
+}

@@ -815,3 +815,10 @@
         transition: none;
     }
 }
+
+/* Agora a página abre dentro do layout do Dashboard (a sidebar já cuida
+   de usuário / sair), então não precisa ocupar a tela toda. */
+.faq-comercial-page {
+    min-height: auto;
+    padding: 0 0 48px;
+}

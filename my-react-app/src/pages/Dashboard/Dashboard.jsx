@@ -18,10 +18,21 @@ import {
   AssignmentRounded,
   AssessmentRounded,
   QuizRounded,
-  OpenInNewRounded,
+  AdminPanelSettingsRounded,
+  LogoutRounded,
 } from "@mui/icons-material";
+import { useAuth } from "../../Context/AuthContext";
+import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
+import { ACESSO, ROLE_LABELS } from "../../Context/permissions";
 
 const Dashboard = ({ loading }) => {
+  const { perfil, role, logout } = useAuth();
+  // O que aparece no menu depende do nível. Pra liberar mais itens ao
+  // Comercial no futuro: coloque o <NavLink> no grupo "Comercial" abaixo
+  // e inclua a rota em ACESSO (permissions.js) + App.jsx.
+  const veOperacao = ACESSO.painel.includes(role);
+  const veFaq = ACESSO.faqComercial.includes(role);
+
   const getNavClass = ({ isActive }) =>
     `sidebar-link ${isActive ? "active" : ""}`;
 
@@ -39,94 +50,139 @@ const Dashboard = ({ loading }) => {
               <span>Gestão de serviços</span>
             </div>
           </NavLink>
+
+          {/* Notificações em tempo real dos guias (só operacional) */}
+          {veOperacao && <NotificacoesSino />}
         </div>
 
-        <NavLink to="/" className={getNavClass}>
-          <DashboardRounded fontSize="small" className="sidebar-icon" />
-          <span>Dashboard</span>
-        </NavLink>
+        {veOperacao && (
+          <NavLink to="/" className={getNavClass}>
+            <DashboardRounded fontSize="small" className="sidebar-icon" />
+            <span>Dashboard</span>
+          </NavLink>
+        )}
         <div className="sidebar-menu">
-          <div className="sidebar-group">
-            <span className="sidebar-group-title">Operação</span>
-            <NavLink to="op" className={getNavClass}>
-              <AssignmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel Operacional</span>
-            </NavLink>
-            <NavLink to="previas" className={getNavClass}>
-              <ViewModuleRounded fontSize="small" className="sidebar-icon" />
-              <span>Prévia de Transfers</span>
-            </NavLink>
+          {/* ===== COMERCIAL ===== */}
+          {!veOperacao && veFaq && (
+            <div className="sidebar-group">
+              <span className="sidebar-group-title">Comercial</span>
+              <NavLink to="faqcomercial" className={getNavClass}>
+                <QuizRounded fontSize="small" className="sidebar-icon" />
+                <span>Central de Dúvidas</span>
+              </NavLink>
+            </div>
+          )}
 
-            <NavLink to="passeios" className={getNavClass}>
-              <AnalyticsRounded fontSize="small" className="sidebar-icon" />
-              <span>Gerar Escala</span>
-            </NavLink>
-            <NavLink to="guias" className={getNavClass}>
-              <DnsRounded fontSize="small" className="sidebar-icon" />
-              <span>Lista de Guias</span>
-            </NavLink>
-            <NavLink to="mapear-guias" className={getNavClass}>
-              <MapRounded fontSize="small" className="sidebar-icon" />
-              <span>Mapear Guias</span>
-            </NavLink>
+          {/* ===== OPERAÇÃO + CADASTROS (só operacional) ===== */}
+          {veOperacao && (
+            <>
+              <div className="sidebar-group">
+                <span className="sidebar-group-title">Operação</span>
+                <NavLink to="op" className={getNavClass}>
+                  <AssignmentRounded
+                    fontSize="small"
+                    className="sidebar-icon"
+                  />
+                  <span>Painel Operacional</span>
+                </NavLink>
+                <NavLink to="previas" className={getNavClass}>
+                  <ViewModuleRounded
+                    fontSize="small"
+                    className="sidebar-icon"
+                  />
+                  <span>Prévia de Transfers</span>
+                </NavLink>
 
-            <NavLink to="disponibilidade-guia" className={getNavClass}>
-              <FactCheckRounded fontSize="small" className="sidebar-icon" />
-              <span>Disponibilidade da Semana</span>
-            </NavLink>
+                <NavLink to="passeios" className={getNavClass}>
+                  <AnalyticsRounded fontSize="small" className="sidebar-icon" />
+                  <span>Gerar Escala</span>
+                </NavLink>
+                <NavLink to="guias" className={getNavClass}>
+                  <DnsRounded fontSize="small" className="sidebar-icon" />
+                  <span>Lista de Guias</span>
+                </NavLink>
+                <NavLink to="mapear-guias" className={getNavClass}>
+                  <MapRounded fontSize="small" className="sidebar-icon" />
+                  <span>Mapear Guias</span>
+                </NavLink>
 
-            <NavLink to="faqadmin" className={getNavClass}>
-              <QuizRounded fontSize="small" className="sidebar-icon" />
-              <span>Central de Dúvidas</span>
-            </NavLink>
+                <NavLink to="disponibilidade-guia" className={getNavClass}>
+                  <FactCheckRounded fontSize="small" className="sidebar-icon" />
+                  <span>Disponibilidade da Semana</span>
+                </NavLink>
 
-            {/* Link externo de propósito: /faqcomercial fica FORA do
-                layout do Dashboard (sem sidebar), então não é um NavLink
-                de navegação interna — é uma âncora normal com
-                target="_blank", só pra abrir a visão do comercial numa
-                aba nova (pra conferir ou copiar o link). */}
-            <a
-              href="/faqcomercial"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sidebar-link sidebar-link-external"
-            >
-              <QuizRounded fontSize="small" className="sidebar-icon" />
-              <span>Ver como o comercial</span>
-              <OpenInNewRounded
-                fontSize="small"
-                className="sidebar-icon-trailing"
-              />
-            </a>
-          </div>
+                <NavLink to="faqadmin" className={getNavClass}>
+                  <QuizRounded fontSize="small" className="sidebar-icon" />
+                  <span>Central de Dúvidas</span>
+                </NavLink>
 
-          <div className="sidebar-group">
-            <span className="sidebar-group-title">Cadastros</span>
+                <NavLink to="faqcomercial" className={getNavClass}>
+                  <QuizRounded fontSize="small" className="sidebar-icon" />
+                  <span>Ver como o comercial</span>
+                </NavLink>
+              </div>
 
-            <NavLink to="register-guias" className={getNavClass}>
-              <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
-              <span>Cadastrar Guias</span>
-            </NavLink>
+              <div className="sidebar-group">
+                <span className="sidebar-group-title">Cadastros</span>
 
-            <NavLink to="register-fornecedores" className={getNavClass}>
-              <LocalShippingRounded fontSize="small" className="sidebar-icon" />
-              <span>Cadastrar Fornecedores</span>
-            </NavLink>
-            {/* <NavLink to="register-tours" className={getNavClass}>
+                <NavLink to="register-guias" className={getNavClass}>
+                  <AssignmentIndRounded
+                    fontSize="small"
+                    className="sidebar-icon"
+                  />
+                  <span>Cadastrar Guias</span>
+                </NavLink>
+
+                <NavLink to="register-fornecedores" className={getNavClass}>
+                  <LocalShippingRounded
+                    fontSize="small"
+                    className="sidebar-icon"
+                  />
+                  <span>Cadastrar Fornecedores</span>
+                </NavLink>
+
+                <NavLink to="usuarios" className={getNavClass}>
+                  <AdminPanelSettingsRounded
+                    fontSize="small"
+                    className="sidebar-icon"
+                  />
+                  <span>Usuários e Acessos</span>
+                </NavLink>
+                {/* <NavLink to="register-tours" className={getNavClass}>
               <PlaylistAddCheckCircleRounded
                 fontSize="small"
                 className="sidebar-icon"
               />
               <span>Cadastrar Passeios</span>
             </NavLink> */}
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="sidebar-footer">
-          <NavLink to="configuracoes" className={getNavClass}>
-            <SettingsRounded fontSize="small" className="sidebar-icon" />
-            <span>Configurações</span>
-          </NavLink>
+          {veOperacao && (
+            <NavLink to="configuracoes" className={getNavClass}>
+              <SettingsRounded fontSize="small" className="sidebar-icon" />
+              <span>Configurações</span>
+            </NavLink>
+          )}
+
+          <div className="sidebar-user">
+            <div className="sidebar-user-info">
+              <strong>{perfil?.nome}</strong>
+              <span>{ROLE_LABELS[role]}</span>
+            </div>
+            <button
+              type="button"
+              className="sidebar-logout"
+              onClick={logout}
+              title="Sair"
+              aria-label="Sair"
+            >
+              <LogoutRounded fontSize="small" />
+            </button>
+          </div>
 
           <div className="sidebar-version">v1.2.0 Beta</div>
         </div>
