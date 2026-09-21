@@ -15,6 +15,8 @@ import {
   BedtimeRounded,
   NightlightRounded,
   CheckCircleRounded,
+  GroupsRounded,
+  LanguageRounded,
 } from "@mui/icons-material";
 
 const Configuracoes = () => {
@@ -25,6 +27,8 @@ const Configuracoes = () => {
     useState("equilibrado");
   const [usarAfinidadeGuiaPasseio, setUsarAfinidadeGuiaPasseio] =
     useState(false);
+  const [modoIdioma, setModoIdioma] = useState("preferencial");
+  const [paxMinimoParaGuia, setPaxMinimoParaGuia] = useState(2);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -41,6 +45,14 @@ const Configuracoes = () => {
           const data = snap.data();
           setModoDistribuicaoGuias(data.modoDistribuicaoGuias || "equilibrado");
           setUsarAfinidadeGuiaPasseio(data.usarAfinidadeGuiaPasseio || false);
+          setModoIdioma(data.modoIdioma || "preferencial");
+          if (
+            data.paxMinimoParaGuia !== undefined &&
+            data.paxMinimoParaGuia !== null &&
+            Number.isFinite(Number(data.paxMinimoParaGuia))
+          ) {
+            setPaxMinimoParaGuia(Number(data.paxMinimoParaGuia));
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar configurações:", err);
@@ -78,6 +90,18 @@ const Configuracoes = () => {
     await salvarConfiguracao({
       modoDistribuicaoGuias: valor,
     });
+  };
+
+  const salvarModoIdioma = async (valor) => {
+    if (valor === modoIdioma) return;
+    setModoIdioma(valor);
+    await salvarConfiguracao({ modoIdioma: valor });
+  };
+
+  const salvarPaxMinimo = async () => {
+    const valor = Math.max(0, Math.min(20, Math.floor(Number(paxMinimoParaGuia) || 0)));
+    setPaxMinimoParaGuia(valor);
+    await salvarConfiguracao({ paxMinimoParaGuia: valor });
   };
 
   const salvarUsoAfinidade = async (valor) => {
@@ -381,6 +405,107 @@ const Configuracoes = () => {
                         <span className="modern-switch-thumb" />
                       </span>
                     </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="config-card config-card-large">
+                <div className="config-card-header">
+                  <div className="config-card-title-row">
+                    <h3>Idioma dos passageiros</h3>
+                    <span className="config-badge">Automação</span>
+                  </div>
+                  <p>
+                    O idioma vem do Phoenix e é comparado com os idiomas que
+                    cada guia fala (cadastro do guia).
+                  </p>
+                </div>
+
+                {loadingInicial ? (
+                  <CardSkeleton variant="list" rows={2} />
+                ) : (
+                  <div className="radio-card-group">
+                    {[
+                      {
+                        valor: "preferencial",
+                        titulo: "Preferencial",
+                        texto:
+                          "Dá preferência a quem fala o idioma. Se ninguém disponível fala, escala mesmo assim e avisa no resultado.",
+                      },
+                      {
+                        valor: "obrigatorio",
+                        titulo: "Obrigatório",
+                        texto:
+                          "Só escala quem fala o idioma do grupo. Sem ninguém que fale, o serviço fica sem guia e é listado no resultado.",
+                      },
+                      {
+                        valor: "desligado",
+                        titulo: "Desligado",
+                        texto: "Ignora o idioma na escala automática.",
+                      },
+                    ].map((op) => (
+                      <button
+                        key={op.valor}
+                        type="button"
+                        className={`radio-card ${modoIdioma === op.valor ? "active" : ""}`}
+                        onClick={() => salvarModoIdioma(op.valor)}
+                        disabled={salvando}
+                      >
+                        <div className="radio-card-top">
+                          <div className="radio-card-icon">
+                            <LanguageRounded fontSize="small" />
+                          </div>
+                          <span className="radio-indicator" />
+                        </div>
+
+                        <strong>{op.titulo}</strong>
+                        <p>{op.texto}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="config-card">
+                <div className="config-card-header">
+                  <div className="config-card-title-row">
+                    <h3>Tamanho mínimo do grupo</h3>
+                    <span className="config-badge">Automação</span>
+                  </div>
+                  <p>
+                    Serviços com menos passageiros que isso não recebem guia na
+                    escala automática. Privativos (DISP) ficam de fora da regra.
+                  </p>
+                </div>
+
+                {loadingInicial ? (
+                  <CardSkeleton variant="list" rows={2} />
+                ) : (
+                  <div className="switch-row">
+                    <div className="switch-copy">
+                      <label className="switch-title" htmlFor="pax-minimo">
+                        Guia a partir de (pax){" "}
+                        <GroupsRounded fontSize="small" />
+                      </label>
+                      <p className="config-help">
+                        {Number(paxMinimoParaGuia) > 1
+                          ? `Passeios com menos de ${paxMinimoParaGuia} pax ficam sem guia automático (ex.: 1 pax).`
+                          : "Regra desligada: todo passeio recebe guia, mesmo com 1 pax."}
+                      </p>
+                    </div>
+
+                    <input
+                      id="pax-minimo"
+                      type="number"
+                      min="0"
+                      max="20"
+                      className="config-number-input"
+                      value={paxMinimoParaGuia}
+                      onChange={(e) => setPaxMinimoParaGuia(e.target.value)}
+                      onBlur={salvarPaxMinimo}
+                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                      disabled={salvando}
+                    />
                   </div>
                 )}
               </div>

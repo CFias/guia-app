@@ -1,5 +1,7 @@
 // plannerUtils.js
 
+import { listarIdiomasExigidos, somarMapasIdiomas } from "../Utils/idiomas";
+
 export const DIAS = [
     "Segunda",
     "Terça",
@@ -396,6 +398,7 @@ export const agruparRegistrosPorServico = (registros = []) => {
                 adultCount: 0,
                 childCount: 0,
                 infantCount: 0,
+                idiomas: {},
                 guiaId: r.guiaId || null,
                 guiaNome: r.guiaNome || null,
                 date: r.date,
@@ -422,6 +425,7 @@ export const agruparRegistrosPorServico = (registros = []) => {
         mapa[chave].adultCount += adultos;
         mapa[chave].childCount += criancas;
         mapa[chave].infantCount += infants;
+        mapa[chave].idiomas = somarMapasIdiomas(mapa[chave].idiomas, r.idiomas);
 
         if (!mapa[chave].guiaId && r.guiaId) {
             mapa[chave].guiaId = r.guiaId;
@@ -446,6 +450,7 @@ export const agruparRegistrosPorServico = (registros = []) => {
             return {
                 ...item,
                 originalNames: Array.from(item.originalNames),
+                idiomaPrincipal: listarIdiomasExigidos(item.idiomas)[0] || null,
                 passengers: Math.max(Number(item.passengers ?? 0), totalDetalhado),
             };
         })

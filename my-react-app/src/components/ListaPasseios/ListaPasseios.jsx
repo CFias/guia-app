@@ -51,7 +51,16 @@ import {
   construirMapaAfinidade,
   construirMapaDisponibilidade,
   gerarPlanoAlocacaoSemana,
+  servicoDispensaGuiaPorPax,
 } from "../../Services/Services/plannerAllocation";
+
+import {
+  avaliarMatchIdioma,
+  listarIdiomasExigidos,
+  rotuloDoIdioma,
+  siglaDoIdioma,
+  siglasDoGuia,
+} from "../../Services/Utils/idiomas";
 
 import {
   gerarResumoGuiasSemana,
@@ -68,6 +77,26 @@ const ETAPAS_ROBO_ESCALA = [
   "Finalizando escala",
 ];
 
+const formatarDataCurta = (iso) =>
+  String(iso || "").split("-").reverse().slice(0, 2).join("/");
+
+const textoMotivoNaoAlocado = (n, paxMinimo) => {
+  switch (n.motivo) {
+    case "pax_baixo":
+      return `${n.passengers} pax (a regra pede pelo menos ${paxMinimo})`;
+    case "sem_guia_disponivel":
+      return "nenhum guia disponível nesse dia";
+    case "sem_guia_apto":
+      return "nenhum guia disponível é apto a esse passeio";
+    case "sem_match_idioma":
+      return "nenhum guia disponível fala o idioma do grupo";
+    case "todos_ocupados":
+      return "todos os guias aptos já estão em outro serviço no dia";
+    default:
+      return "sem guia";
+  }
+};
+
 const ListaPasseiosSemana = () => {
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [semana, setSemana] = useState([]);
@@ -83,6 +112,11 @@ const ListaPasseiosSemana = () => {
     useState("equilibrado");
   const [usarAfinidadeGuiaPasseio, setUsarAfinidadeGuiaPasseio] =
     useState(false);
+  const [modoIdioma, setModoIdioma] = useState("preferencial");
+  const [paxMinimoParaGuia, setPaxMinimoParaGuia] = useState(2);
+  // Resultado da última geração automática: o que ficou sem guia e por quê,
+  // e serviços que ficaram com guia que não fala o idioma do grupo.
+  const [relatorioEscala, setRelatorioEscala] = useState(null);
 
   const [novoServico, setNovoServico] = useState({});
   const [paxEditando, setPaxEditando] = useState({});
@@ -234,6 +268,8 @@ const ListaPasseiosSemana = () => {
       if (initial) setLoadingInicial(true);
       else setLoadingSemana(true);
 
+      setRelatorioEscala(null); // relatório é da semana que foi gerada
+
       const semanaAtual = gerarSemana(semanaOffset);
       const chaveSemana = semanaAtual.map((d) => d.date).join("|");
       ultimaSemanaSolicitadaRef.current = chaveSemana;
@@ -258,6 +294,8 @@ const ListaPasseiosSemana = () => {
       setAfinidades(base.afinidades || []);
       setModoDistribuicaoGuias(base.modoDistribuicaoGuias);
       setUsarAfinidadeGuiaPasseio(base.usarAfinidadeGuiaPasseio);
+      setModoIdioma(base.modoIdioma);
+      setPaxMinimoParaGuia(base.paxMinimoParaGuia);
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
       setExtras(weeklyServices);
@@ -486,7 +524,7 @@ const ListaPasseiosSemana = () => {
         construirMapaDisponibilidade(disponibilidades);
 
       avancarEtapaRobo(2);
-      const { atualizacoes } = gerarPlanoAlocacaoSemana({
+      const { atualizacoes, naoAlocados, avisosIdioma } = gerarPlanoAlocacaoSemana({
         semana,
         guias: guias.filter((g) => g.ativo),
         registrosSemana,
@@ -499,10 +537,19 @@ const ListaPasseiosSemana = () => {
         normalizarTexto,
         historicoPorGuia,
         numeroSemanasHistorico: 2,
+        modoIdioma,
+        paxMinimoParaGuia,
       });
 
       avancarEtapaRobo(3);
       await aplicarPlanoDeAlocacao(atualizacoes);
+
+      setRelatorioEscala({
+        alocados: atualizacoes.length,
+        naoAlocados,
+        avisosIdioma,
+        paxMinimoParaGuia,
+      });
 
       avancarEtapaRobo(4);
       await salvarModoGeradoSemana(semana, modoDistribuicaoGuias);
@@ -522,6 +569,7 @@ const ListaPasseiosSemana = () => {
       await removerGuiasSemanaRepo(semana);
       await limparModoGeradoSemana(semana);
       setModoGeradoSemana(null);
+      setRelatorioEscala(null);
       await recarregarExtras();
     } catch (err) {
       console.error("Erro ao remover guias da semana:", err);
@@ -826,6 +874,26 @@ Operacional - Luck Receptivo 🍀
                 {usarAfinidadeGuiaPasseio ? "Ativada" : "Desativada"}
               </strong>
             </p>
+
+            <p className="counter-info">
+              Idioma:{" "}
+              <strong>
+                {{
+                  preferencial: "Preferencial",
+                  obrigatorio: "Obrigatório",
+                  desligado: "Desligado",
+                }[modoIdioma] || "Preferencial"}
+              </strong>
+            </p>
+
+            <p className="counter-info">
+              Guia a partir de:{" "}
+              <strong>
+                {Number(paxMinimoParaGuia) > 1
+                  ? `${paxMinimoParaGuia} pax`
+                  : "qualquer pax"}
+              </strong>
+            </p>
           </div>
         </div>
       </div>
@@ -838,6 +906,59 @@ Operacional - Luck Receptivo 🍀
           : "Escala ainda não gerada para esta semana"}{" "}
         <Warning fontSize="10" className="icon-warning" />
       </div>
+
+      {relatorioEscala && !carregandoEstrutura && (
+        <div className="relatorio-escala">
+          <div className="relatorio-escala-topo">
+            <strong>Resultado da geração automática</strong>
+            <button
+              type="button"
+              className="relatorio-escala-fechar"
+              onClick={() => setRelatorioEscala(null)}
+            >
+              Fechar
+            </button>
+          </div>
+
+          <p className="relatorio-escala-resumo">
+            {relatorioEscala.alocados} serviço(s) receberam guia.
+            {relatorioEscala.naoAlocados.length === 0 &&
+              relatorioEscala.avisosIdioma.length === 0 &&
+              " Nenhuma pendência."}
+          </p>
+
+          {relatorioEscala.avisosIdioma.length > 0 && (
+            <div className="relatorio-escala-bloco aviso">
+              <h5>Guia sem o idioma do grupo</h5>
+              <ul>
+                {relatorioEscala.avisosIdioma.map((v) => (
+                  <li key={v.registroId}>
+                    {formatarDataCurta(v.date)} · <b>{v.serviceName}</b> →{" "}
+                    {v.guiaNome} — pede {v.idiomas.map(siglaDoIdioma).join("/")}
+                    , falta {v.faltantes.map(siglaDoIdioma).join("/")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {relatorioEscala.naoAlocados.length > 0 && (
+            <div className="relatorio-escala-bloco">
+              <h5>Ficaram sem guia</h5>
+              <ul>
+                {relatorioEscala.naoAlocados.map((n) => (
+                  <li key={`${n.registroId}-${n.motivo}`}>
+                    {formatarDataCurta(n.date)} · <b>{n.serviceName}</b>
+                    {n.idiomas?.length > 0 &&
+                      ` (${n.idiomas.map(siglaDoIdioma).join("/")})`}{" "}
+                    — {textoMotivoNaoAlocado(n, relatorioEscala.paxMinimoParaGuia)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {carregandoEstrutura ? (
         <>
@@ -1035,7 +1156,27 @@ Operacional - Luck Receptivo 🍀
                     key={`${dia.date}-${item.externalServiceId || item.id}-${item.serviceName}`}
                     className="passeio-item"
                   >
-                    <span className="passeio-name">{item.serviceName}</span>
+                    <span className="passeio-name">
+                      {item.serviceName}
+                      {listarIdiomasExigidos(item.idiomas).map((id) => (
+                        <span
+                          key={id}
+                          className="idioma-tag"
+                          title={`Passageiros em ${rotuloDoIdioma(id)} (${item.idiomas[id]} pax)`}
+                        >
+                          {siglaDoIdioma(id)}
+                        </span>
+                      ))}
+                      {!item.guiaId &&
+                        servicoDispensaGuiaPorPax(item, paxMinimoParaGuia) && (
+                          <span
+                            className="idioma-tag pax-baixo"
+                            title={`Menos de ${paxMinimoParaGuia} pax: a escala automática não aloca guia`}
+                          >
+                            {item.passengers} pax · sem guia
+                          </span>
+                        )}
+                    </span>
 
                     <span className="guia-name-aloc">
                       {item.guiaNome || "-"}
@@ -1094,11 +1235,21 @@ Operacional - Luck Receptivo 🍀
                         >
                           <option value="">Sem guia</option>
 
-                          {guias.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.nome}
-                            </option>
-                          ))}
+                          {guias.map((g) => {
+                            const exigidos = listarIdiomasExigidos(item.idiomas);
+                            const falaIdioma =
+                              exigidos.length > 0 &&
+                              avaliarMatchIdioma(g, exigidos).cobrePrincipal;
+                            const siglas = siglasDoGuia(g);
+
+                            return (
+                              <option key={g.id} value={g.id}>
+                                {falaIdioma ? "✔ " : ""}
+                                {g.nome}
+                                {siglas.length ? ` (${siglas.join("/")})` : ""}
+                              </option>
+                            );
+                          })}
                         </select>
 
                         {item.manual && (

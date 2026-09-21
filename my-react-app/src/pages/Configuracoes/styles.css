@@ -604,3 +604,18 @@
 .config-saved {
     color: #15803d;
 }
+
+/* ---------- campo numérico (pax mínimo) ---------- */
+
+.config-number-input {
+    width: 72px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    text-align: center;
+}

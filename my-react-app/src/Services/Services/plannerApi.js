@@ -23,6 +23,12 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import {
+  acumularIdiomas,
+  extrairIdiomasDoItem,
+  listarCamposParecidosComIdioma,
+  listarIdiomasExigidos,
+} from "../Utils/idiomas";
 
 export const extrairListaResposta = (json) => {
   if (Array.isArray(json)) return json;
@@ -354,6 +360,26 @@ export const carregarHistoricoServicosReaisPorNomeGuia = async (datas = []) => {
   return contagemPorNome;
 };
 
+// Se o Phoenix devolver itens mas NENHUM idioma for reconhecido, avisa uma
+// vez no console com os campos "parecidos" — é o que permite descobrir o
+// nome real do campo (ver CAMINHOS_IDIOMA em Utils/idiomas.js).
+let diagnosticoIdiomaEmitido = false;
+
+const avisarSeNaoHouverIdioma = (lista, totalDetectados) => {
+  if (diagnosticoIdiomaEmitido || !lista.length || totalDetectados > 0) return;
+  diagnosticoIdiomaEmitido = true;
+
+  console.info(
+    `[Idioma] Nenhum idioma reconhecido nos ${lista.length} itens do Phoenix. ` +
+      "Campos com nome parecido no 1º item:",
+    listarCamposParecidosComIdioma(lista[0]),
+    "| Chaves do 1º item:",
+    Object.keys(lista[0] || {}),
+    "| Chaves de reserve:",
+    Object.keys(lista[0]?.reserve || {}),
+  );
+};
+
 export const sincronizarPasseiosDaApiNaSemana = async (
   semanaAtual,
   servicesData,
@@ -375,6 +401,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
       const json = await response.json();
       const lista = extrairListaResposta(json);
       const agregados = {};
+      let totalIdiomasDetectados = 0;
 
       lista.forEach((item) => {
         const serviceIdExterno = extrairServiceIdExterno(item);
@@ -409,14 +436,24 @@ export const sincronizarPasseiosDaApiNaSemana = async (
             totalAdultos: 0,
             totalCriancas: 0,
             totalInfants: 0,
+            idiomas: {}, // pax por idioma estrangeiro, ex.: { en: 3, es: 2 }
           };
         }
+
+        // idioma dos passageiros desta reserva (Phoenix)
+        const { ids: idiomasItem } = extrairIdiomasDoItem(item, {
+          nomeServico: nomeOriginal,
+        });
+        if (idiomasItem.length) totalIdiomasDetectados += 1;
+        acumularIdiomas(agregados[chave].idiomas, idiomasItem, pax.total);
 
         agregados[chave].totalPax += Number(pax.total || 0);
         agregados[chave].totalAdultos += Number(pax.adultos || 0);
         agregados[chave].totalCriancas += Number(pax.criancas || 0);
         agregados[chave].totalInfants += Number(pax.infants || 0);
       });
+
+      avisarSeNaoHouverIdioma(lista, totalIdiomasDetectados);
 
       const qDia = query(
         collection(db, "weekly_services"),
@@ -484,6 +521,9 @@ export const sincronizarPasseiosDaApiNaSemana = async (
           adultCount: Number(passeioApi.totalAdultos || 0),
           childCount: Number(passeioApi.totalCriancas || 0),
           infantCount: Number(passeioApi.totalInfants || 0),
+          // sempre grava (mesmo vazio) pra limpar idioma antigo se mudou no Phoenix
+          idiomas: passeioApi.idiomas || {},
+          idiomaPrincipal: listarIdiomasExigidos(passeioApi.idiomas)[0] || null,
           date: passeioApi.date,
           day: dia.day,
           manual: false,

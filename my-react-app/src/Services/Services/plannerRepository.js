@@ -48,6 +48,15 @@ export const carregarBasePlanner = async () => {
         afinidades,
         modoDistribuicaoGuias: settings.modoDistribuicaoGuias || "equilibrado",
         usarAfinidadeGuiaPasseio: settings.usarAfinidadeGuiaPasseio || false,
+        // idioma dos passageiros: "preferencial" | "obrigatorio" | "desligado"
+        modoIdioma: settings.modoIdioma || "preferencial",
+        // serviços com menos pax que isso não recebem guia (0/1 = desligado)
+        paxMinimoParaGuia:
+            settings.paxMinimoParaGuia === undefined ||
+            settings.paxMinimoParaGuia === null ||
+            !Number.isFinite(Number(settings.paxMinimoParaGuia))
+                ? 2
+                : Number(settings.paxMinimoParaGuia),
         normalizarTexto,
     };
 };

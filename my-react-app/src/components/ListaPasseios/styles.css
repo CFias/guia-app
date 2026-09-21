@@ -1463,3 +1463,87 @@
   border-radius: 3px;
 }
 
+
+/* ---------- sigla de idioma ao lado do passeio ---------- */
+
+.idioma-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  color: var(--text-dist);
+  border: 1px solid color-mix(in srgb, var(--text-dist) 40%, transparent 60%);
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+  white-space: nowrap;
+}
+
+.idioma-tag.pax-baixo {
+  color: var(--p2);
+  border-color: color-mix(in srgb, var(--p2) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--p2) 10%, transparent 90%);
+}
+
+/* ---------- resultado da geração automática ---------- */
+
+.relatorio-escala {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+  color: var(--text);
+}
+
+.relatorio-escala-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.relatorio-escala-fechar {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.relatorio-escala-resumo {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.relatorio-escala-bloco {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
+}
+
+.relatorio-escala-bloco.aviso {
+  border-color: color-mix(in srgb, var(--p2) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--p2) 8%, transparent 92%);
+}
+
+.relatorio-escala-bloco h5 {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+
+.relatorio-escala-bloco ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+}

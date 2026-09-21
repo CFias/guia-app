@@ -1,5 +1,8 @@
 // plannerAllocation.js
 
+import { ehServicoDisp } from "./plannerUtils";
+import { avaliarMatchIdioma, listarIdiomasExigidos } from "../Utils/idiomas";
+
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -16,6 +19,41 @@ const isModoPrioridade = (modoDistribuicaoGuias = "") => {
     .toLowerCase();
   return modo === "prioridade" || modo === "seguir_nivel_selecionado";
 };
+
+// ---------------------------------------------------------------------
+// Idioma dos passageiros (vem do Phoenix) e tamanho mínimo do grupo.
+//
+//  modoIdioma:
+//    "desligado"    → ignora idioma;
+//    "preferencial" → tenta casar; se ninguém disponível fala o idioma, escala
+//                     mesmo assim e AVISA (não deixa o serviço sem guia);
+//    "obrigatorio"  → só entra quem fala o idioma principal do serviço.
+//
+//  paxMinimoParaGuia: serviços com 0 < pax < mínimo não recebem guia
+//  automático (padrão 2 = não escala guia em passeio de 1 pax).
+//  Serviços privativos (DISP) ficam de fora dessa regra: existem
+//  justamente pra atender um cliente, seja quantos forem.
+// ---------------------------------------------------------------------
+export const MODOS_IDIOMA = ["desligado", "preferencial", "obrigatorio"];
+export const PAX_MINIMO_PADRAO = 2;
+
+export const normalizarModoIdioma = (modo) =>
+  MODOS_IDIOMA.includes(modo) ? modo : "preferencial";
+
+export const servicoDispensaGuiaPorPax = (
+  item,
+  paxMinimoParaGuia = PAX_MINIMO_PADRAO,
+) => {
+  const minimo = Number(paxMinimoParaGuia) || 0;
+  if (minimo <= 1) return false;
+  if (ehServicoDisp(item?.serviceName || "")) return false;
+
+  const pax = Number(item?.passengers || 0);
+  return pax > 0 && pax < minimo;
+};
+
+export const idiomasExigidosDoItem = (item) =>
+  listarIdiomasExigidos(item?.idiomas);
 
 export const normalizarPrioridade = (valor) => {
   const prioridade = toNumber(valor, 2);
@@ -266,23 +304,32 @@ export const filtrarGuiasElegiveisParaServico = ({
   servicesData,
   usarAfinidadeGuiaPasseio,
   normalizarTexto,
+  modoIdioma = "desligado",
 }) => {
+  const exigidos =
+    modoIdioma === "obrigatorio" ? idiomasExigidosDoItem(item) : [];
+
   return guiasDisponiveis.filter((g) => {
     if (usadosNoDia.has(g.id)) return false;
 
-    if (usarAfinidadeGuiaPasseio) {
-      return (
-        obterNivelAfinidade(
+    const apto = usarAfinidadeGuiaPasseio
+      ? obterNivelAfinidade(
           mapaAfinidade,
           g.id,
           item,
           servicesData,
           normalizarTexto,
         ) > 0
-      );
+      : guiaCompativelPorPasseio(g, item, normalizarTexto);
+
+    if (!apto) return false;
+
+    // idioma obrigatório: precisa falar o idioma principal do serviço
+    if (exigidos.length && !avaliarMatchIdioma(g, exigidos).cobrePrincipal) {
+      return false;
     }
 
-    return guiaCompativelPorPasseio(g, item, normalizarTexto);
+    return true;
   });
 };
 
@@ -297,27 +344,36 @@ export const ordenarServicosPorEscassez = (
   servicesData,
   usarAfinidadeGuiaPasseio,
   normalizarTexto,
+  modoIdioma = "desligado",
 ) => {
-  return [...itens].sort((a, b) => {
-    const aptosA = filtrarGuiasElegiveisParaServico({
-      item: a,
+  // Serviço que pede idioma raro fica "mais escasso": a contagem considera
+  // só quem fala o idioma (se ninguém fala, volta a contar todos os aptos).
+  const aptosEfetivos = (item) => {
+    const aptos = filtrarGuiasElegiveisParaServico({
+      item,
       guiasDisponiveis,
       usadosNoDia,
       mapaAfinidade,
       servicesData,
       usarAfinidadeGuiaPasseio,
       normalizarTexto,
+      modoIdioma,
     });
 
-    const aptosB = filtrarGuiasElegiveisParaServico({
-      item: b,
-      guiasDisponiveis,
-      usadosNoDia,
-      mapaAfinidade,
-      servicesData,
-      usarAfinidadeGuiaPasseio,
-      normalizarTexto,
-    });
+    if (modoIdioma === "desligado") return aptos;
+
+    const exigidos = idiomasExigidosDoItem(item);
+    if (!exigidos.length) return aptos;
+
+    const comIdioma = aptos.filter(
+      (g) => avaliarMatchIdioma(g, exigidos).cobrePrincipal,
+    );
+    return comIdioma.length ? comIdioma : aptos;
+  };
+
+  return [...itens].sort((a, b) => {
+    const aptosA = aptosEfetivos(a);
+    const aptosB = aptosEfetivos(b);
 
     if (aptosA.length !== aptosB.length) {
       return aptosA.length - aptosB.length;
@@ -420,6 +476,8 @@ const construirMetricasSemana = ({
   normalizarTexto,
   historicoPorGuia = {},
   numeroSemanasHistorico = NUMERO_SEMANAS_HISTORICO_PADRAO,
+  modoIdioma = "desligado",
+  paxMinimoParaGuia = PAX_MINIMO_PADRAO,
 }) => {
   const modoPrioridade = isModoPrioridade(modoDistribuicaoGuias);
 
@@ -449,6 +507,8 @@ const construirMetricasSemana = ({
       if (!item?.id) return false;
       if (item.guiaId) return false;
       if (item.allocationStatus === "CLOSED") return false;
+      // serviço pequeno demais não gera "oportunidade" pra ninguém
+      if (servicoDispensaGuiaPorPax(item, paxMinimoParaGuia)) return false;
       return true;
     });
 
@@ -461,6 +521,7 @@ const construirMetricasSemana = ({
         servicesData,
         usarAfinidadeGuiaPasseio,
         normalizarTexto,
+        modoIdioma,
       });
 
       elegiveis.forEach((g) => {
@@ -594,9 +655,14 @@ export const ordenarGuiasParaServico = ({
   metricasSemana,
   usarAfinidadeGuiaPasseio = false,
   normalizarTexto,
+  modoIdioma = "desligado",
 }) => {
+  const exigidos =
+    modoIdioma !== "desligado" ? idiomasExigidosDoItem(item) : [];
+
   const candidatos = elegiveis.map((guia) => ({
     guia,
+    idioma: avaliarMatchIdioma(guia, exigidos),
     afinidade: usarAfinidadeGuiaPasseio
       ? obterNivelAfinidade(
           mapaAfinidade,
@@ -614,6 +680,17 @@ export const ordenarGuiasParaServico = ({
   const MARGEM_FOLGA_PRIORIDADE = 1;
 
   candidatos.sort((a, b) => {
+    // 0) Idioma vem primeiro: quem fala o idioma do grupo passa na frente,
+    //    e entre esses, quem cobre todos os idiomas pedidos.
+    if (exigidos.length) {
+      if (a.idioma.cobrePrincipal !== b.idioma.cobrePrincipal) {
+        return a.idioma.cobrePrincipal ? -1 : 1;
+      }
+      if (a.idioma.cobreTodos !== b.idioma.cobreTodos) {
+        return a.idioma.cobreTodos ? -1 : 1;
+      }
+    }
+
     if (a.indicadores.abaixoDoMinimo !== b.indicadores.abaixoDoMinimo) {
       return a.indicadores.abaixoDoMinimo ? -1 : 1;
     }
@@ -662,6 +739,7 @@ export const selecionarGuiaParaServico = ({
   metricasSemana,
   usarAfinidadeGuiaPasseio = false,
   normalizarTexto,
+  modoIdioma = "desligado",
 }) => {
   const elegiveis = filtrarGuiasElegiveisParaServico({
     item,
@@ -671,6 +749,7 @@ export const selecionarGuiaParaServico = ({
     servicesData,
     usarAfinidadeGuiaPasseio,
     normalizarTexto,
+    modoIdioma,
   });
 
   if (!elegiveis.length) return null;
@@ -684,6 +763,7 @@ export const selecionarGuiaParaServico = ({
     metricasSemana,
     usarAfinidadeGuiaPasseio,
     normalizarTexto,
+    modoIdioma,
   });
 
   return ordenados[0] || null;
@@ -797,6 +877,7 @@ const rebalancearGarantiasDePrioridade = ({
   agruparRegistrosPorServico,
   normalizarTexto,
   metricasSemana,
+  modoIdioma = "desligado",
 }) => {
   const guiaById = {};
   guias.forEach((g) => {
@@ -887,9 +968,24 @@ const rebalancearGarantiasDePrioridade = ({
           servicesData,
           usarAfinidadeGuiaPasseio,
           normalizarTexto,
+          modoIdioma,
         });
 
-        return recipientElegivel.length > 0;
+        if (!recipientElegivel.length) return false;
+
+        // o rebalanceamento nunca piora o idioma: se o serviço pede um idioma,
+        // quem recebe também precisa falar.
+        if (modoIdioma !== "desligado") {
+          const exigidos = idiomasExigidosDoItem(item);
+          if (
+            exigidos.length &&
+            !avaliarMatchIdioma(guiaAlvo, exigidos).cobrePrincipal
+          ) {
+            return false;
+          }
+        }
+
+        return true;
       })
       .map((item) => {
         const doador = guiaById[item.guiaIdFinal];
@@ -1001,7 +1097,13 @@ export const gerarPlanoAlocacaoSemana = ({
   // dentro da semana atual).
   historicoPorGuia = {},
   numeroSemanasHistorico = NUMERO_SEMANAS_HISTORICO_PADRAO,
+  // Idioma dos passageiros ("desligado" | "preferencial" | "obrigatorio") e
+  // tamanho mínimo do grupo pra receber guia (0 ou 1 = regra desligada).
+  modoIdioma: modoIdiomaBruto = "preferencial",
+  paxMinimoParaGuia = PAX_MINIMO_PADRAO,
 }) => {
+  const modoIdioma = normalizarModoIdioma(modoIdiomaBruto);
+
   const estado = aplicarRegistrosExistentesNoEstado(
     registrosSemana,
     construirEstadoInicialSemana(guias, semana),
@@ -1020,9 +1122,25 @@ export const gerarPlanoAlocacaoSemana = ({
     normalizarTexto,
     historicoPorGuia,
     numeroSemanasHistorico,
+    modoIdioma,
+    paxMinimoParaGuia,
   });
 
   const atualizacoes = [];
+
+  // Relatório: o que ficou sem guia e por quê (nada some sem explicação).
+  const naoAlocados = [];
+  const itemPorId = {};
+
+  const registrarNaoAlocado = (item, dia, motivo) =>
+    naoAlocados.push({
+      registroId: item.id,
+      date: dia.date,
+      serviceName: item.serviceName,
+      passengers: Number(item.passengers || 0),
+      idiomas: idiomasExigidosDoItem(item),
+      motivo,
+    });
 
   for (const dia of semana) {
     const registrosDia = registrosSemana.filter((r) => r.date === dia.date);
@@ -1036,16 +1154,33 @@ export const gerarPlanoAlocacaoSemana = ({
       dia.date,
     );
 
-    if (!guiasDisponiveis.length) continue;
-
-    const usadosNoDia = new Set(estado.usedByDate[dia.date] || []);
-
-    const itensPendentes = registrosAgrupados.filter((item) => {
+    const pendentesDoDia = registrosAgrupados.filter((item) => {
       if (!item?.id) return false;
       if (item.guiaId) return false;
       if (item.allocationStatus === "CLOSED") return false;
       return true;
     });
+
+    // 1) serviços pequenos demais (ex.: 1 pax) não recebem guia automático
+    const itensPendentes = [];
+    pendentesDoDia.forEach((item) => {
+      if (servicoDispensaGuiaPorPax(item, paxMinimoParaGuia)) {
+        registrarNaoAlocado(item, dia, "pax_baixo");
+      } else {
+        itensPendentes.push(item);
+        itemPorId[item.id] = item;
+      }
+    });
+
+    // 2) ninguém disponível no dia
+    if (!guiasDisponiveis.length) {
+      itensPendentes.forEach((item) =>
+        registrarNaoAlocado(item, dia, "sem_guia_disponivel"),
+      );
+      continue;
+    }
+
+    const usadosNoDia = new Set(estado.usedByDate[dia.date] || []);
 
     const itensOrdenados = ordenarServicosPorEscassez(
       itensPendentes,
@@ -1055,7 +1190,10 @@ export const gerarPlanoAlocacaoSemana = ({
       servicesData,
       usarAfinidadeGuiaPasseio,
       normalizarTexto,
+      modoIdioma,
     );
+
+    const alocadosNoDia = new Set();
 
     for (const item of itensOrdenados) {
       if (usadosNoDia.size >= guiasDisponiveis.length) break;
@@ -1070,6 +1208,7 @@ export const gerarPlanoAlocacaoSemana = ({
         metricasSemana,
         usarAfinidadeGuiaPasseio,
         normalizarTexto,
+        modoIdioma,
       });
 
       if (!guiaSelecionado) continue;
@@ -1083,6 +1222,8 @@ export const gerarPlanoAlocacaoSemana = ({
         externalServiceId: item.externalServiceId || null,
       });
 
+      alocadosNoDia.add(item.id);
+
       atualizarEstadoAposAlocacao({
         guiaSelecionado,
         date: dia.date,
@@ -1093,6 +1234,33 @@ export const gerarPlanoAlocacaoSemana = ({
 
       usadosNoDia.add(guiaSelecionado.id);
     }
+
+    // 3) quem sobrou: descobre o motivo
+    itensOrdenados
+      .filter((item) => !alocadosNoDia.has(item.id))
+      .forEach((item) => {
+        const semContarUso = (modo) =>
+          filtrarGuiasElegiveisParaServico({
+            item,
+            guiasDisponiveis,
+            usadosNoDia: new Set(),
+            mapaAfinidade,
+            servicesData,
+            usarAfinidadeGuiaPasseio,
+            normalizarTexto,
+            modoIdioma: modo,
+          });
+
+        let motivo = "todos_ocupados";
+        if (!semContarUso(modoIdioma).length) {
+          motivo =
+            modoIdioma === "obrigatorio" && semContarUso("desligado").length
+              ? "sem_match_idioma"
+              : "sem_guia_apto";
+        }
+
+        registrarNaoAlocado(item, dia, motivo);
+      });
   }
 
   rebalancearGarantiasDePrioridade({
@@ -1107,11 +1275,46 @@ export const gerarPlanoAlocacaoSemana = ({
     agruparRegistrosPorServico,
     normalizarTexto,
     metricasSemana,
+    modoIdioma,
   });
+
+  // Avisos de idioma, calculados sobre o resultado FINAL (depois do
+  // rebalanceamento): serviços que ficaram com um guia que não fala o idioma.
+  const guiaPorId = {};
+  guias.forEach((g) => g?.id && (guiaPorId[g.id] = g));
+
+  const avisosIdioma = [];
+  if (modoIdioma !== "desligado") {
+    atualizacoes.forEach((a) => {
+      const item = itemPorId[a.registroId];
+      const guia = guiaPorId[a.guiaId];
+      if (!item || !guia) return;
+
+      const exigidos = idiomasExigidosDoItem(item);
+      if (!exigidos.length) return;
+
+      const match = avaliarMatchIdioma(guia, exigidos);
+      if (match.cobreTodos) return;
+
+      avisosIdioma.push({
+        registroId: a.registroId,
+        date: a.date,
+        serviceName: a.serviceName,
+        guiaNome: a.guiaNome,
+        idiomas: exigidos,
+        faltantes: match.faltantes,
+        // "principal": o guia não fala o idioma principal do grupo;
+        // "parcial": fala o principal, mas falta algum outro idioma.
+        tipo: match.cobrePrincipal ? "parcial" : "principal",
+      });
+    });
+  }
 
   return {
     atualizacoes,
     estadoFinal: estado,
     metricasSemana,
+    naoAlocados,
+    avisosIdioma,
   };
 };
