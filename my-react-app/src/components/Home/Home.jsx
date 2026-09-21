@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import {
@@ -590,7 +590,13 @@ const Home = () => {
     };
   };
 
+  // Se a semana mudar (ou clicar em atualizar de novo) enquanto uma busca
+  // ainda está rodando, a resposta antiga é descartada.
+  const reqApiRef = useRef(0);
+
   const carregarApiSemana = async () => {
+    const reqId = ++reqApiRef.current;
+
     try {
       setAtualizandoApi(true);
 
@@ -611,6 +617,8 @@ const Home = () => {
         },
       );
 
+      if (reqId !== reqApiRef.current) return;
+
       setApiSemana(semanaAtualApi.agrupados);
       setApiSemanaAnterior(listaAnteriorNormalizada);
       setAlertasApiBrutos(semanaAtualApi.brutos);
@@ -625,9 +633,17 @@ const Home = () => {
     } catch (error) {
       console.error("Erro ao atualizar dados do Phoenix:", error);
     } finally {
-      setAtualizandoApi(false);
+      if (reqId === reqApiRef.current) setAtualizandoApi(false);
     }
   };
+
+  // Puxa os dados do Phoenix sozinho ao abrir a tela e ao trocar de semana.
+  // É um efeito À PARTE do carregamento do Firestore: se algo daquele lado
+  // falhar (versículo, permissão, rede), o Phoenix carrega do mesmo jeito.
+  useEffect(() => {
+    carregarApiSemana();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inicioSemana, fimSemana]);
 
   useEffect(() => {
     const carregarTudo = async () => {
@@ -655,7 +671,9 @@ const Home = () => {
           snapAfinidade,
           snapWeekly,
         ] = await Promise.all([
-          fetch(`https://bible-api.com/${referencia}?translation=almeida`),
+          fetch(`https://bible-api.com/${referencia}?translation=almeida`).catch(
+            () => null,
+          ),
           getDocs(collection(db, "guides")),
           getDocs(collection(db, "services")),
           getDocs(collection(db, "guide_availability")),
@@ -669,12 +687,20 @@ const Home = () => {
           ),
         ]);
 
-        const versiculoData = await versiculoRes.json();
+        // O versículo é só enfeite: se falhar, não pode travar o resto da tela.
+        let versiculoData = null;
+        try {
+          versiculoData = versiculoRes ? await versiculoRes.json() : null;
+        } catch {
+          versiculoData = null;
+        }
 
-        setVersiculo({
-          texto: versiculoData.text,
-          referencia: versiculoData.reference,
-        });
+        if (versiculoData?.text) {
+          setVersiculo({
+            texto: versiculoData.text,
+            referencia: versiculoData.reference,
+          });
+        }
 
         setGuias(
           snapGuias.docs.map((docSnap) => ({
@@ -704,8 +730,6 @@ const Home = () => {
             ...docSnap.data(),
           })),
         );
-
-        await carregarApiSemana();
       } catch (error) {
         console.error("Erro ao carregar Home:", error);
       } finally {
@@ -1371,7 +1395,7 @@ const Home = () => {
   }, [servicosDoDiaBase, filtroStatusDia, filtroGuiaDia, ordenacaoPaxDia]);
 
   const formatarUltimaAtualizacao = (data) => {
-    if (!data) return "Dados ainda não atualizados manualmente";
+    if (!data) return "Dados ainda não atualizados";
     return `Última atualização: ${data.toLocaleString("pt-BR")}`;
   };
 
