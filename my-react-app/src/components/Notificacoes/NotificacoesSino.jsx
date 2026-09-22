@@ -14,16 +14,15 @@ import {
 } from "firebase/firestore";
 import {
   CloseRounded,
+  DeleteOutlineRounded,
   DoneAllRounded,
+  ExpandMoreRounded,
   NotificationsNoneRounded,
   NotificationsRounded,
 } from "@mui/icons-material";
 import { db } from "../../Services/Services/firebase";
 import { useAuth } from "../../Context/AuthContext";
-import {
-  dataBr,
-  diaAbreviado,
-} from "../../Services/Utils/janelaDisponibilidade";
+import { dataBr, diaAbreviado } from "../../Services/Utils/janelaDisponibilidade";
 import "./styles.css";
 
 const VERBOS = {
@@ -84,11 +83,20 @@ const NotificacoesSino = () => {
   const navigate = useNavigate();
   const uid = user?.uid;
 
-  const [itens, setItens] = useState([]);
+  const [todasNotificacoes, setTodasNotificacoes] = useState([]);
   const [aberto, setAberto] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [, setTick] = useState(0);
   const timers = useRef([]);
+
+  // Lista cresce aos poucos ("ver mais") em vez de mostrar tudo de uma vez.
+  // Volta ao tamanho inicial cada vez que o painel é reaberto.
+  const ITENS_POR_PAGINA = 8;
+  const [qtdVisivel, setQtdVisivel] = useState(ITENS_POR_PAGINA);
+
+  useEffect(() => {
+    if (aberto) setQtdVisivel(ITENS_POR_PAGINA);
+  }, [aberto]);
 
   const foiLida = useCallback((n) => (n.lidoPor || []).includes(uid), [uid]);
 
@@ -123,7 +131,7 @@ const NotificacoesSino = () => {
         }
         primeiraCarga = false;
 
-        setItens(
+        setTodasNotificacoes(
           snap.docs.map((d) => ({
             id: d.id,
             ...d.data(),
@@ -144,10 +152,25 @@ const NotificacoesSino = () => {
     };
   }, [mostrarToast]);
 
+  // Cada um só vê o que apagou de si mesmo — o registro continua existindo
+  // pro resto do time (diferente de excluir de verdade do banco).
+  const foiApagadaPorMim = useCallback(
+    (n) => (n.apagadoPor || []).includes(uid),
+    [uid],
+  );
+
+  const itens = useMemo(
+    () => todasNotificacoes.filter((n) => !foiApagadaPorMim(n)),
+    [todasNotificacoes, foiApagadaPorMim],
+  );
+
   const naoLidas = useMemo(
     () => itens.filter((n) => !foiLida(n)).length,
     [itens, foiLida],
   );
+
+  const itensVisiveis = itens.slice(0, qtdVisivel);
+  const restantes = itens.length - itensVisiveis.length;
 
   // Contador no título da aba: "(2) Guia App"
   useEffect(() => {
@@ -175,13 +198,25 @@ const NotificacoesSino = () => {
     try {
       const lote = writeBatch(db);
       pendentes.forEach((n) =>
-        lote.update(doc(db, "notificacoes", n.id), {
-          lidoPor: arrayUnion(uid),
-        }),
+        lote.update(doc(db, "notificacoes", n.id), { lidoPor: arrayUnion(uid) }),
       );
       await lote.commit();
     } catch (err) {
       console.error("Erro ao marcar todas como lidas:", err);
+    }
+  };
+
+  // Some só da lista de quem apagou — o registro continua existindo pro
+  // resto do time (mesma lógica de "lidoPor", em outro campo).
+  const apagarNotificacao = async (e, n) => {
+    e.stopPropagation();
+
+    try {
+      await updateDoc(doc(db, "notificacoes", n.id), {
+        apagadoPor: arrayUnion(uid),
+      });
+    } catch (err) {
+      console.error("Erro ao apagar notificação:", err);
     }
   };
 
@@ -206,23 +241,19 @@ const NotificacoesSino = () => {
           <NotificationsNoneRounded fontSize="small" />
         )}
         {naoLidas > 0 && (
-          <span className="notif-badge">
-            {naoLidas > 99 ? "99+" : naoLidas}
-          </span>
+          <span className="notif-badge">{naoLidas > 99 ? "99+" : naoLidas}</span>
         )}
       </button>
 
       {aberto &&
         createPortal(
-          <>
-            <div className="notif-backdrop" onClick={() => setAberto(false)} />
-            <div
-              className="notif-painel"
-              role="dialog"
-              aria-label="Notificações"
-            >
-              <div className="notif-painel-topo">
-                <strong>Notificações dos guias</strong>
+
+        <>
+          <div className="notif-backdrop" onClick={() => setAberto(false)} />
+          <div className="notif-painel" role="dialog" aria-label="Notificações">
+            <div className="notif-painel-topo">
+              <strong>Notificações dos guias</strong>
+              <div className="notif-painel-acoes">
                 <button
                   type="button"
                   className="notif-link"
@@ -231,71 +262,105 @@ const NotificacoesSino = () => {
                 >
                   <DoneAllRounded fontSize="inherit" /> Marcar todas como lidas
                 </button>
+                <button
+                  type="button"
+                  className="notif-fechar"
+                  onClick={() => setAberto(false)}
+                  aria-label="Fechar notificações"
+                  title="Fechar"
+                >
+                  <CloseRounded fontSize="small" />
+                </button>
               </div>
+            </div>
 
-              {itens.length === 0 ? (
-                <p className="notif-vazio">
-                  Nenhum envio ainda. Quando um guia enviar ou alterar a
-                  disponibilidade, aparece aqui na hora.
-                </p>
-              ) : (
-                <ul className="notif-lista">
-                  {itens.map((n) => (
-                    <li key={n.id}>
+            {itens.length === 0 ? (
+              <p className="notif-vazio">
+                Nenhum envio ainda. Quando um guia enviar ou alterar a
+                disponibilidade, aparece aqui na hora.
+              </p>
+            ) : (
+              <ul className="notif-lista">
+                {itensVisiveis.map((n) => (
+                  <li key={n.id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className={`notif-item ${foiLida(n) ? "" : "nao-lida"}`}
+                      onClick={() => abrirNotificacao(n)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          abrirNotificacao(n);
+                        }
+                      }}
+                    >
+                      <span className="notif-ponto" />
+                      <span className="notif-corpo">
+                        <span className="notif-titulo">
+                          <strong>{n.guideName}</strong>{" "}
+                          {VERBOS[n.tipo] || "atualizou a disponibilidade"}
+                        </span>
+                        <span className="notif-sub">
+                          <Contexto n={n} />
+                        </span>
+                        <Detalhes n={n} />
+                        <span className="notif-hora">{tempoRelativo(n._data)}</span>
+                      </span>
                       <button
                         type="button"
-                        className={`notif-item ${foiLida(n) ? "" : "nao-lida"}`}
-                        onClick={() => abrirNotificacao(n)}
+                        className="notif-apagar"
+                        onClick={(e) => apagarNotificacao(e, n)}
+                        aria-label="Remover da minha lista"
+                        title="Remover da minha lista"
                       >
-                        <span className="notif-ponto" />
-                        <span className="notif-corpo">
-                          <span className="notif-titulo">
-                            <strong>{n.guideName}</strong>{" "}
-                            {VERBOS[n.tipo] || "atualizou a disponibilidade"}
-                          </span>
-                          <span className="notif-sub">
-                            <Contexto n={n} />
-                          </span>
-                          <Detalhes n={n} />
-                          <span className="notif-hora">
-                            {tempoRelativo(n._data)}
-                          </span>
-                        </span>
+                        <DeleteOutlineRounded fontSize="small" />
                       </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>,
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {restantes > 0 && (
+              <button
+                type="button"
+                className="notif-ver-mais"
+                onClick={() => setQtdVisivel((v) => v + ITENS_POR_PAGINA)}
+              >
+                <ExpandMoreRounded fontSize="small" />
+                Ver mais ({restantes} restante{restantes === 1 ? "" : "s"})
+              </button>
+            )}
+          </div>
+        </>
+          ,
           document.body,
         )}
 
       {/* Aviso que aparece na tela quando chega algo novo */}
       {createPortal(
         <div className="notif-toasts" aria-live="polite">
-          {toasts.map((n) => (
-            <div key={n.id} className="notif-toast">
-              <div className="notif-toast-corpo">
-                <strong>{n.guideName}</strong>{" "}
-                {VERBOS[n.tipo] || "atualizou a disponibilidade"}
-                <span>
-                  <Contexto n={n} />
-                </span>
-                <Detalhes n={n} />
-              </div>
-              <button
-                type="button"
-                aria-label="Fechar aviso"
-                onClick={() =>
-                  setToasts((prev) => prev.filter((x) => x.id !== n.id))
-                }
-              >
-                <CloseRounded fontSize="small" />
-              </button>
+        {toasts.map((n) => (
+          <div key={n.id} className="notif-toast">
+            <div className="notif-toast-corpo">
+              <strong>{n.guideName}</strong>{" "}
+              {VERBOS[n.tipo] || "atualizou a disponibilidade"}
+              <span>
+                <Contexto n={n} />
+              </span>
+              <Detalhes n={n} />
             </div>
-          ))}
-        </div>,
+            <button
+              type="button"
+              aria-label="Fechar aviso"
+              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== n.id))}
+            >
+              <CloseRounded fontSize="small" />
+            </button>
+          </div>
+        ))}
+      </div>,
         document.body,
       )}
     </>

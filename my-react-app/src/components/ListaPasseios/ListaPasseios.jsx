@@ -10,6 +10,7 @@ import {
   Groups,
   Lock,
   RefreshRounded,
+  CloudUploadRounded,
 } from "@mui/icons-material";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
 import "./styles.css";
@@ -68,6 +69,7 @@ import {
 } from "../../Services/Services/plannerSummary";
 
 import { abrirEscalaEmNovaAba } from "../../Services/Services/plannerExport";
+import { salvarEscalaNoDrive } from "../../Services/Services/googleDrive";
 
 const ETAPAS_ROBO_ESCALA = [
   "Verificando a disponibilidade dos guias",
@@ -117,6 +119,9 @@ const ListaPasseiosSemana = () => {
   // Resultado da última geração automática: o que ficou sem guia e por quê,
   // e serviços que ficaram com guia que não fala o idioma do grupo.
   const [relatorioEscala, setRelatorioEscala] = useState(null);
+  const [enviandoDrive, setEnviandoDrive] = useState(false);
+  const [driveFolderId, setDriveFolderId] = useState("");
+  const [driveClientId, setDriveClientId] = useState("");
 
   const [novoServico, setNovoServico] = useState({});
   const [paxEditando, setPaxEditando] = useState({});
@@ -296,6 +301,8 @@ const ListaPasseiosSemana = () => {
       setUsarAfinidadeGuiaPasseio(base.usarAfinidadeGuiaPasseio);
       setModoIdioma(base.modoIdioma);
       setPaxMinimoParaGuia(base.paxMinimoParaGuia);
+      setDriveFolderId(base.driveFolderId || "");
+      setDriveClientId(base.driveClientId || "");
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
       setExtras(weeklyServices);
@@ -578,6 +585,40 @@ const ListaPasseiosSemana = () => {
     }
   };
 
+  const salvarNoDrive = async () => {
+    try {
+      setEnviandoDrive(true);
+
+      const arquivo = await salvarEscalaNoDrive({
+        semana,
+        extras,
+        agruparRegistrosPorServico,
+        getTextoStatusServico,
+        pastaId: driveFolderId,
+        clientId: driveClientId,
+      });
+
+      if (arquivo?.webViewLink) {
+        window.open(arquivo.webViewLink, "_blank");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar escala no Drive:", err);
+
+      if (err.message === "SEM_CLIENT_ID") {
+        alert(
+          "O acesso ao Google Drive ainda não foi configurado. " +
+            "Cole o Client ID em Configurações → Escala → Google Drive.",
+        );
+      } else if (err.message === "PERMISSAO_NEGADA") {
+        // a pessoa cancelou o popup de permissão do Google — não precisa de alerta
+      } else {
+        alert(err.message || "Não foi possível salvar a escala no Drive. Tente de novo.");
+      }
+    } finally {
+      setEnviandoDrive(false);
+    }
+  };
+
   const enviarWhatsappGuiasSemana_FIRESTORE = async () => {
     if (!semana.length || !guias.length) return;
 
@@ -811,6 +852,22 @@ Operacional - Luck Receptivo 🍀
             disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
           >
             Abrir planilha
+          </button>
+
+          <button
+            className="btn-list"
+            onClick={salvarNoDrive}
+            disabled={
+              processandoAcao || carregandoEstrutura || gerandoEscala || enviandoDrive
+            }
+            title={
+              driveFolderId
+                ? "Salva a escala na pasta configurada do Drive"
+                : "Salva a escala no Drive de quem clicar (nenhuma pasta configurada)"
+            }
+          >
+            {enviandoDrive ? "Enviando..." : "Salvar no Drive"}
+            <CloudUploadRounded fontSize="10" />
           </button>
 
           <button

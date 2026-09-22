@@ -57,6 +57,10 @@ export const carregarBasePlanner = async () => {
             !Number.isFinite(Number(settings.paxMinimoParaGuia))
                 ? 2
                 : Number(settings.paxMinimoParaGuia),
+        // pasta do Google Drive pra onde "Salvar no Drive" grava (vazio = raiz)
+        driveFolderId: settings.driveFolderId || "",
+        // Client ID do Google Cloud, configurado em Configurações → Escala
+        driveClientId: settings.driveClientId || "",
         normalizarTexto,
     };
 };

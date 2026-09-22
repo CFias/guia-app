@@ -4,21 +4,20 @@ import "./styles.css";
 
 import logo from "../../assets/clover.png";
 import {
-  AnalyticsRounded,
+  AutoAwesomeRounded,
   AssignmentIndRounded,
-  DnsRounded,
+  PeopleAltRounded,
   FactCheckRounded,
   MapRounded,
   PlaylistAddCheckCircleRounded,
   SettingsRounded,
   DashboardRounded,
-  FlightLandRounded,
-  ViewModuleRounded,
-  FlightTakeoffRounded,
+  ExpandMoreRounded,
+  AirportShuttleRounded,
   LocalShippingRounded,
   AssignmentRounded,
-  AssessmentRounded,
   QuizRounded,
+  VisibilityRounded,
   AdminPanelSettingsRounded,
   CloseRounded,
   LogoutRounded,
@@ -53,6 +52,17 @@ const Dashboard = ({ loading }) => {
   const fecharAoNavegar = (e) => {
     if (e.target.closest("a")) setMenuAberto(false);
   };
+
+  // Grupos do menu (Operação, Cadastros) abrem/fecham por conta própria —
+  // abertos por padrão, pra navegação continuar visível de cara.
+  const [gruposAbertos, setGruposAbertos] = useState({
+    operacao: true,
+    cadastros: true,
+  });
+
+  const toggleGrupo = (chave) =>
+    setGruposAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
+
   // O que aparece no menu depende do nível. Pra liberar mais itens ao
   // Comercial no futuro: coloque o <NavLink> no grupo "Comercial" abaixo
   // e inclua a rota em ACESSO (permissions.js) + App.jsx.
@@ -145,22 +155,35 @@ const Dashboard = ({ loading }) => {
           {veOperacao && (
           <>
           <div className="sidebar-group">
-            <span className="sidebar-group-title">Operação</span>
+            <button
+              type="button"
+              className="sidebar-group-title sidebar-group-toggle"
+              onClick={() => toggleGrupo("operacao")}
+              aria-expanded={gruposAbertos.operacao}
+            >
+              <span>Operação</span>
+              <ExpandMoreRounded
+                fontSize="small"
+                className={`sidebar-group-chevron ${gruposAbertos.operacao ? "aberto" : ""}`}
+              />
+            </button>
+            {gruposAbertos.operacao && (
+              <>
             <NavLink to="op" className={getNavClass}>
               <AssignmentRounded fontSize="small" className="sidebar-icon" />
               <span>Painel Operacional</span>
             </NavLink>
             <NavLink to="previas" className={getNavClass}>
-              <ViewModuleRounded fontSize="small" className="sidebar-icon" />
+              <AirportShuttleRounded fontSize="small" className="sidebar-icon" />
               <span>Prévia de Transfers</span>
             </NavLink>
 
             <NavLink to="passeios" className={getNavClass}>
-              <AnalyticsRounded fontSize="small" className="sidebar-icon" />
+              <AutoAwesomeRounded fontSize="small" className="sidebar-icon" />
               <span>Gerar Escala</span>
             </NavLink>
             <NavLink to="guias" className={getNavClass}>
-              <DnsRounded fontSize="small" className="sidebar-icon" />
+              <PeopleAltRounded fontSize="small" className="sidebar-icon" />
               <span>Lista de Guias</span>
             </NavLink>
             <NavLink to="mapear-guias" className={getNavClass}>
@@ -179,13 +202,28 @@ const Dashboard = ({ loading }) => {
             </NavLink>
 
             <NavLink to="faqcomercial" className={getNavClass}>
-              <QuizRounded fontSize="small" className="sidebar-icon" />
+              <VisibilityRounded fontSize="small" className="sidebar-icon" />
               <span>Ver como o comercial</span>
             </NavLink>
+              </>
+            )}
           </div>
 
           <div className="sidebar-group">
-            <span className="sidebar-group-title">Cadastros</span>
+            <button
+              type="button"
+              className="sidebar-group-title sidebar-group-toggle"
+              onClick={() => toggleGrupo("cadastros")}
+              aria-expanded={gruposAbertos.cadastros}
+            >
+              <span className="btn-span">Cadastros</span>
+              <ExpandMoreRounded
+                fontSize="small"
+                className={`sidebar-group-chevron ${gruposAbertos.cadastros ? "aberto" : ""}`}
+              />
+            </button>
+            {gruposAbertos.cadastros && (
+              <>
 
             <NavLink to="register-guias" className={getNavClass}>
               <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
@@ -211,6 +249,8 @@ const Dashboard = ({ loading }) => {
               />
               <span>Cadastrar Passeios</span>
             </NavLink> */}
+              </>
+            )}
           </div>
           </>
           )}

@@ -61,7 +61,7 @@
   gap: 6px;
 }
 
-.usuarios-field > span {
+.usuarios-field>span {
   font-size: 12px;
   font-weight: 600;
 }
@@ -407,4 +407,12 @@
     grid-row: 2;
     justify-content: flex-start;
   }
+}
+
+/* ---------- carregar mais ---------- */
+
+.usuarios-carregar-mais {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
 }

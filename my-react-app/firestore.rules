@@ -10,7 +10,7 @@ rules_version = '2';
 //  Níveis (campo `role` em users/{uid}):
 //    operacional → tudo
 //    comercial   → só a Central de Dúvidas (faq_itens)
-//    guia        → só a própria disponibilidade (na janela de quinta/sexta)
+//    guia        → própria disponibilidade (dentro da janela configurável) e próprios idiomas
 //  Conta sem documento em `users`, ou com ativo != true → nada.
 // =========================================================
 service cloud.firestore {
@@ -41,13 +41,33 @@ service cloud.firestore {
       return roleIs('guia') && get(perfilPath()).data.guideId == guideId;
     }
 
-    // Janela em que o guia pode enviar/alterar disponibilidade:
-    // quinta 00:00 até sexta 23:59:59, horário de Salvador (UTC-3).
-    // (1970-01-01 foi uma quinta-feira, então dia % 7 == 0 é quinta e 1 é sexta.)
-    // Mesma regra de src/Services/Utils/janelaDisponibilidade.js.
-    function janelaAberta() {
+    // Dia da semana atual em Salvador (UTC-3), 0 = domingo ... 6 = sábado
+    // (mesma convenção do Date.getDay() do JavaScript).
+    // 1970-01-01 foi uma quinta-feira: dias desde então, mod 7, dá 0 pra
+    // quinta — soma-se 4 e tira-se o resto de novo pra realinhar em domingo=0.
+    function diaSemanaAtual() {
       let diaLocal = math.floor((request.time.toMillis() - 10800000) / 86400000.0);
-      return diaLocal % 7 == 0 || diaLocal % 7 == 1;
+      return ((diaLocal % 7) + 4) % 7;
+    }
+
+    // Janela CONFIGURÁVEL em que o guia pode enviar/alterar disponibilidade
+    // — dia de abertura (00:00) e de fechamento (23:59:59), guardados em
+    // settings/scale (janelaDisponibilidadeAbertura/Fechamento, 0–6).
+    // Sem configuração salva: padrão quinta(4) a sexta(5).
+    // Mesma regra de src/Services/Utils/janelaDisponibilidade.js — se mudar
+    // a fórmula aqui, mude lá também.
+    function janelaAberta() {
+      let configPath = /databases/$(database)/documents/settings/scale;
+      let temConfig = exists(configPath);
+      let abertura = temConfig
+        ? get(configPath).data.get('janelaDisponibilidadeAbertura', 4)
+        : 4;
+      let fechamento = temConfig
+        ? get(configPath).data.get('janelaDisponibilidadeFechamento', 5)
+        : 5;
+      let duracao = ((fechamento - abertura + 7) % 7) + 1;
+      let diasDesdeAbertura = (diaSemanaAtual() - abertura + 7) % 7;
+      return diasDesdeAbertura < duracao;
     }
 
     // ---------- Perfis de acesso ----------
@@ -70,9 +90,22 @@ service cloud.firestore {
         && request.resource.data.disponibilidade is list;
     }
 
+    // ---------- Todo mundo logado e ativo lê a configuração da escala ----------
+    // É preciso pra tela do guia mostrar quando a janela abre/fecha. Só o
+    // operacional grava (regra geral, lá embaixo).
+    match /settings/{settingId} {
+      allow read: if ativo();
+    }
+
     // ---------- Guia: lê (sem alterar) o próprio perfil e o catálogo ----------
     match /guides/{guideId} {
       allow get: if isGuiaDono(guideId);
+      // O guia só altera os PRÓPRIOS IDIOMAS — nenhum outro campo do cadastro.
+      allow update: if isGuiaDono(guideId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['idiomas', 'updatedAt'])
+        && request.resource.data.idiomas is list
+        && request.resource.data.idiomas.size() <= 20;
     }
     match /guide_tour_levels/{guideId} {
       allow get: if isGuiaDono(guideId);
@@ -83,20 +116,32 @@ service cloud.firestore {
 
     // ---------- Notificações em tempo real pro operacional ----------
     // O guia só CRIA (uma por envio/alteração), sempre em nome do próprio
-    // guia e dentro da janela. Não lê, não edita, não apaga.
-    // O operacional lê e marca como lida pela regra geral lá embaixo.
+    // guia. Não lê, não edita, não apaga. O operacional lê e marca como lida
+    // pela regra geral lá embaixo.
+    //  - disponibilidade (envio/alteracao/cancelamento): só dentro da janela
+    //  - idiomas: a qualquer momento
     match /notificacoes/{notifId} {
       allow create: if roleIs('guia')
-        && janelaAberta()
         && request.resource.data.guideId == get(perfilPath()).data.guideId
         && request.resource.data.origem == 'guia'
-        && request.resource.data.tipo in ['envio', 'alteracao', 'cancelamento']
         && request.resource.data.createdAt == request.time
-        && request.resource.data.keys().hasOnly([
-             'tipo', 'origem', 'guideId', 'guideName',
-             'semanaInicio', 'semanaFim',
-             'adicionados', 'removidos', 'total', 'createdAt'
-           ]);
+        && (
+          (
+            request.resource.data.tipo in ['envio', 'alteracao', 'cancelamento']
+            && janelaAberta()
+            && request.resource.data.keys().hasOnly([
+                 'tipo', 'origem', 'guideId', 'guideName',
+                 'semanaInicio', 'semanaFim',
+                 'adicionados', 'removidos', 'total', 'createdAt'
+               ])
+          ) || (
+            request.resource.data.tipo == 'idiomas'
+            && request.resource.data.keys().hasOnly([
+                 'tipo', 'origem', 'guideId', 'guideName',
+                 'adicionados', 'removidos', 'total', 'createdAt'
+               ])
+          )
+        );
     }
 
     // ---------- Comercial: lê a Central de Dúvidas ----------

@@ -1,5 +1,103 @@
 // plannerExport.js
 
+import * as XLSX from "xlsx";
+
+// ---------------------------------------------------------------------
+// Monta as linhas da escala (uma por serviço, agrupadas por dia) a partir
+// dos registros da semana. Usado tanto pela aba de impressão/Excel quanto
+// pelo envio da planilha ao Google Drive — pra não duplicar a lógica.
+// ---------------------------------------------------------------------
+export const construirDadosEscala = ({
+  semana = [],
+  extras = {},
+  agruparRegistrosPorServico,
+  getTextoStatusServico,
+  getClasseStatusServico,
+}) => {
+  const dadosEscala = [];
+
+  semana.forEach((dia) => {
+    const registrosOrdenados = agruparRegistrosPorServico(extras[dia.date] || []);
+
+    if (!registrosOrdenados.length) {
+      dadosEscala.push({
+        data: dia.label,
+        passeio: "-",
+        guia: "-",
+        pax: "-",
+        status: "-",
+      });
+      return;
+    }
+
+    registrosOrdenados.forEach((item) => {
+      dadosEscala.push({
+        data: dia.label,
+        passeio: item.serviceName || "-",
+        guia: item.guiaNome || "-",
+        pax: Number(item.passengers || 0),
+        status: getTextoStatusServico(item),
+        statusClass: getClasseStatusServico ? getClasseStatusServico(item) : "",
+      });
+    });
+  });
+
+  return dadosEscala;
+};
+
+// Planilha (workbook do SheetJS) pronta a partir das linhas acima — com a
+// coluna de data mesclada por dia, igual à exportação da aba de impressão.
+export const construirWorkbookEscala = (dadosEscala = []) => {
+  const linhas = [["DATA", "PASSEIOS", "GUIAS", "QUANTIDADE DE PAX", "STATUS"]];
+  const merges = [];
+
+  let rowIndex = 1;
+  let i = 0;
+
+  while (i < dadosEscala.length) {
+    const dataAtual = dadosEscala[i].data;
+    const grupo = [];
+
+    while (i < dadosEscala.length && dadosEscala[i].data === dataAtual) {
+      grupo.push(dadosEscala[i]);
+      i++;
+    }
+
+    const inicioBloco = rowIndex;
+
+    grupo.forEach((item, index) => {
+      linhas.push([
+        index === 0 ? item.data : "",
+        item.passeio,
+        item.guia,
+        item.pax,
+        item.status,
+      ]);
+      rowIndex++;
+    });
+
+    const fimBloco = rowIndex - 1;
+
+    if (fimBloco > inicioBloco) {
+      merges.push({ s: { r: inicioBloco, c: 0 }, e: { r: fimBloco, c: 0 } });
+    }
+  }
+
+  const planilha = XLSX.utils.aoa_to_sheet(linhas);
+  planilha["!cols"] = [
+    { wch: 24 },
+    { wch: 42 },
+    { wch: 24 },
+    { wch: 20 },
+    { wch: 20 },
+  ];
+  planilha["!merges"] = merges;
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, planilha, "Escala Semanal");
+  return workbook;
+};
+
 export const abrirEscalaEmNovaAba = ({
     semana = [],
     extras = {},
@@ -15,32 +113,12 @@ export const abrirEscalaEmNovaAba = ({
             return;
         }
 
-        const dadosEscala = [];
-
-        semana.forEach((dia) => {
-            const registrosOrdenados = agruparRegistrosPorServico(extras[dia.date] || []);
-
-            if (!registrosOrdenados.length) {
-                dadosEscala.push({
-                    data: dia.label,
-                    passeio: "-",
-                    guia: "-",
-                    pax: "-",
-                    status: "-",
-                });
-                return;
-            }
-
-            registrosOrdenados.forEach((item) => {
-                dadosEscala.push({
-                    data: dia.label,
-                    passeio: item.serviceName || "-",
-                    guia: item.guiaNome || "-",
-                    pax: Number(item.passengers || 0),
-                    status: getTextoStatusServico(item),
-                    statusClass: getClasseStatusServico(item),
-                });
-            });
+        const dadosEscala = construirDadosEscala({
+            semana,
+            extras,
+            agruparRegistrosPorServico,
+            getTextoStatusServico,
+            getClasseStatusServico,
         });
 
         let htmlLinhas = "";

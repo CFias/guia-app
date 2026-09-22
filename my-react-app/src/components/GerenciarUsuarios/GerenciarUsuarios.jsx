@@ -28,6 +28,7 @@ import {
   AutorenewRounded,
   ContentCopyRounded,
   EditRounded,
+  ExpandMoreRounded,
   LockResetRounded,
   PersonAddRounded,
 } from "@mui/icons-material";
@@ -96,6 +97,11 @@ const GerenciarUsuarios = () => {
   const [editando, setEditando] = useState(null);
   const [filtroRole, setFiltroRole] = useState("todos");
 
+  // Lista cresce aos poucos ("carregar mais") em vez de mostrar tudo de uma
+  // vez. Volta ao tamanho inicial sempre que o filtro muda.
+  const ITENS_POR_PAGINA = 8;
+  const [qtdVisivel, setQtdVisivel] = useState(ITENS_POR_PAGINA);
+
   const carregar = useCallback(async () => {
     try {
       setLoading(true);
@@ -140,6 +146,13 @@ const GerenciarUsuarios = () => {
         : usuarios.filter((u) => u.role === filtroRole),
     [usuarios, filtroRole],
   );
+
+  useEffect(() => {
+    setQtdVisivel(ITENS_POR_PAGINA);
+  }, [filtroRole]);
+
+  const usuariosVisiveis = usuariosFiltrados.slice(0, qtdVisivel);
+  const restantes = usuariosFiltrados.length - usuariosVisiveis.length;
 
   const setCampo = (campo, valor) =>
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -449,7 +462,7 @@ const GerenciarUsuarios = () => {
             <p className="usuarios-vazio">Nenhuma conta por aqui.</p>
           ) : (
             <ul className="usuarios-lista">
-              {usuariosFiltrados.map((u) => (
+              {usuariosVisiveis.map((u) => (
                 <li key={u.id} className={u.ativo === false ? "inativo" : ""}>
                   <div className="usuarios-item-info">
                     <strong>
@@ -499,6 +512,19 @@ const GerenciarUsuarios = () => {
                 </li>
               ))}
             </ul>
+          )}
+
+          {!loading && restantes > 0 && (
+            <button
+              type="button"
+              className="usuarios-btn ghost usuarios-carregar-mais"
+              onClick={() =>
+                setQtdVisivel((v) => v + ITENS_POR_PAGINA)
+              }
+            >
+              <ExpandMoreRounded fontSize="small" />
+              Carregar mais ({restantes} restante{restantes === 1 ? "" : "s"})
+            </button>
           )}
         </div>
       </div>
@@ -637,3 +663,4 @@ const EditarUsuarioModal = ({
 };
 
 export default GerenciarUsuarios;
+

@@ -12,11 +12,14 @@ import {
   AccessTimeRounded,
   CalendarMonthRounded,
   CheckRounded,
+  HistoryRounded,
   InfoOutlined,
   LanguageRounded,
   LocalActivityRounded,
   LockClockRounded,
   LogoutRounded,
+  NavigateBeforeRounded,
+  NavigateNextRounded,
   PersonRounded,
   StarRounded,
   TwoWheelerRounded,
@@ -26,10 +29,13 @@ import { db } from "../../Services/Services/firebase";
 import { useAuth } from "../../Context/AuthContext";
 import { getLanguages } from "../../Services/Services/languages.service";
 import {
+  JANELA_PADRAO,
+  NOMES_DIAS,
   dataBr,
   diaAbreviado,
   formatarRestante,
   getEstadoJanela,
+  somarDias,
 } from "../../Services/Utils/janelaDisponibilidade";
 import "./styles.css";
 
@@ -37,9 +43,7 @@ const nomePasseio = (p) =>
   p?.nome || p?.externalName || p?.name || p?.titulo || "Passeio sem nome";
 
 const formatarWhatsapp = (valor) => {
-  const n = String(valor || "")
-    .replace(/\D/g, "")
-    .slice(0, 11);
+  const n = String(valor || "").replace(/\D/g, "").slice(0, 11);
   if (n.length < 10) return valor || "—";
   const ddd = n.slice(0, 2);
   return n.length === 11
@@ -59,7 +63,41 @@ const MinhaDisponibilidade = () => {
     const t = setInterval(() => setAgora(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
-  const janela = useMemo(() => getEstadoJanela(agora), [agora]);
+
+  // Dias em que a janela abre/fecha: configurados pelo operacional em
+  // Configurações → Escala. Carrega uma vez (independe do guia).
+  const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
+  useEffect(() => {
+    let ativo = true;
+    getDoc(doc(db, "settings", "scale"))
+      .then((snap) => {
+        if (!ativo || !snap.exists()) return;
+        const data = snap.data();
+        if (
+          data.janelaDisponibilidadeAbertura !== undefined ||
+          data.janelaDisponibilidadeFechamento !== undefined
+        ) {
+          setJanelaConfig({
+            dowAbertura:
+              data.janelaDisponibilidadeAbertura ?? JANELA_PADRAO.dowAbertura,
+            dowFechamento:
+              data.janelaDisponibilidadeFechamento ??
+              JANELA_PADRAO.dowFechamento,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error("Erro ao carregar janela de disponibilidade:", err),
+      );
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const janela = useMemo(
+    () => getEstadoJanela(agora, janelaConfig),
+    [agora, janelaConfig],
+  );
 
   /* ---------- disponibilidade ---------- */
   const [salvos, setSalvos] = useState([]); // [{ day, date }]
@@ -72,6 +110,12 @@ const MinhaDisponibilidade = () => {
   const [edicao, setEdicao] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState(null);
+
+  // Histórico: passador de semana à parte, independente da semana editável
+  // acima. offset 0 = semana atual (a que contém hoje); negativo = semanas
+  // passadas. Não avança além da semana atual — a semana que vem já tem
+  // seu próprio editor logo ali em cima.
+  const [offsetHistorico, setOffsetHistorico] = useState(0);
 
   /* ---------- perfil (somente leitura) ---------- */
   const [guia, setGuia] = useState(null);
@@ -156,8 +200,7 @@ const MinhaDisponibilidade = () => {
   );
 
   const salvasNaSemana = useMemo(
-    () =>
-      new Set(salvos.filter((s) => datasSemana.has(s.date)).map((s) => s.date)),
+    () => new Set(salvos.filter((s) => datasSemana.has(s.date)).map((s) => s.date)),
     [salvos, datasSemana],
   );
 
@@ -192,13 +235,12 @@ const MinhaDisponibilidade = () => {
     if (!alterado || !guideId) return;
 
     // Confere de novo na hora de salvar (a janela pode ter fechado no meio).
-    const agoraMesmo = getEstadoJanela(new Date());
+    const agoraMesmo = getEstadoJanela(new Date(), janelaConfig);
     if (!agoraMesmo.aberta) {
       setAgora(new Date());
       setMsg({
         tipo: "erro",
-        texto:
-          "A janela de envio acabou de fechar. Suas alterações não foram salvas.",
+        texto: "A janela de envio acabou de fechar. Suas alterações não foram salvas.",
       });
       return;
     }
@@ -222,11 +264,7 @@ const MinhaDisponibilidade = () => {
       );
 
       const tipo =
-        antes.size === 0
-          ? "envio"
-          : depois.size === 0
-            ? "cancelamento"
-            : "alteracao";
+        antes.size === 0 ? "envio" : depois.size === 0 ? "cancelamento" : "alteracao";
       const guideName = perfil.guideName || perfil.nome;
 
       // Disponibilidade + notificação no mesmo lote: ou grava as duas, ou nenhuma.
@@ -337,10 +375,7 @@ const MinhaDisponibilidade = () => {
 
       setGuia((g) => ({ ...g, idiomas: depois }));
       setIdiomasEdicao(null);
-      setMsgIdiomas({
-        tipo: "ok",
-        texto: "Idiomas salvos! O operacional foi avisado.",
-      });
+      setMsgIdiomas({ tipo: "ok", texto: "Idiomas salvos! O operacional foi avisado." });
     } catch (err) {
       console.error("Erro ao salvar idiomas:", err);
       setMsgIdiomas({
@@ -352,7 +387,37 @@ const MinhaDisponibilidade = () => {
     }
   };
 
-  const proximosSalvos = salvos.filter((s) => s.date >= janela.hojeIso);
+  // Segunda-feira da semana que contém "hoje" — base para navegar o histórico.
+  const segundaDestaSemana = useMemo(() => {
+    const dowHoje = new Date(`${janela.hojeIso}T12:00:00Z`).getUTCDay(); // 0=dom..6=sáb
+    const diasDesdeSegunda = (dowHoje + 6) % 7;
+    return somarDias(janela.hojeIso, -diasDesdeSegunda);
+  }, [janela.hojeIso]);
+
+  // Dias (com o que já foi enviado marcado) da semana do histórico em exibição.
+  const semanaHistorico = useMemo(() => {
+    const inicio = somarDias(segundaDestaSemana, offsetHistorico * 7);
+    const salvosNaSemana = new Set(
+      salvos
+        .filter((s) => s.date >= inicio && s.date <= somarDias(inicio, 6))
+        .map((s) => s.date),
+    );
+
+    return {
+      inicio,
+      fim: somarDias(inicio, 6),
+      dias: NOMES_DIAS.map((day, i) => {
+        const date = somarDias(inicio, i);
+        return { day, date, marcado: salvosNaSemana.has(date) };
+      }),
+    };
+  }, [segundaDestaSemana, offsetHistorico, salvos]);
+
+  const historicoEhSemanaAtual = offsetHistorico === 0;
+  // offset 1 = semana que vem (mesma que janela.semanaInicio) — é o teto,
+  // não faz sentido navegar além dela.
+  const podeAvancarHistorico = offsetHistorico < 1;
+
   const intervalo = `${dataBr(janela.semanaInicio)} a ${dataBr(janela.semanaFim)}`;
   const todosMarcados = janela.dias.every((d) => marcadas.has(d.date));
 
@@ -412,41 +477,37 @@ const MinhaDisponibilidade = () => {
                   <strong>
                     {janela.aberta
                       ? `Envio aberto — fecha em ${formatarRestante(janela.restanteMin)}`
-                      : "Envio fechado"}
+                      : `Envio fechado — abre ${janela.nomeDiaAbertura.toLowerCase()}`}
                   </strong>
                 </div>
                 <p>
                   {janela.aberta
-                    ? "Você pode enviar, alterar ou remover datas até sexta-feira às 23h59."
-                    : `Reabre na quinta-feira (${dataBr(janela.proximaAberturaIso)}) às 00h${
+                    ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
                         janela.diasAteAbrir > 0
                           ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
                           : ""
                       }.`}
                 </p>
                 <p className="minha-disp-janela-info">
-                  <InfoOutlined fontSize="inherit" /> O envio é feito da quinta
-                  (00h) à sexta-feira (23h59), com as datas da semana que vem
-                  (segunda a domingo). A escala será montada aos sábados e os
-                  bloqueios serão enviados a você.
+                  <InfoOutlined fontSize="inherit" /> O envio é feito de{" "}
+                  {janela.rotulo.toLowerCase()}, com as datas da semana que
+                  vem (segunda a domingo). A escala será montada aos sábados
+                  e os bloqueios serão enviados a você.
                 </p>
               </section>
 
               <section className="minha-disp-alerta">
                 <WarningAmberRounded fontSize="small" />
                 <p>
-                  <strong>
-                    Marque apenas os dias em que você está totalmente livre.
-                  </strong>{" "}
+                  <strong>Marque apenas os dias em que você está totalmente livre.</strong>{" "}
                   Se você tem algum compromisso no dia, mesmo que parcial, não
                   marque.
                 </p>
               </section>
 
               {erroCarga ? (
-                <div className="minha-disp-card minha-disp-aviso">
-                  {erroCarga}
-                </div>
+                <div className="minha-disp-card minha-disp-aviso">{erroCarga}</div>
               ) : (
                 <>
                   <section className="minha-disp-card">
@@ -476,10 +537,7 @@ const MinhaDisponibilidade = () => {
                                 <span className="nome">{d.day}</span>
                                 <span className="data">{dataBr(d.date)}</span>
                                 {ativo && (
-                                  <CheckRounded
-                                    fontSize="small"
-                                    className="check"
-                                  />
+                                  <CheckRounded fontSize="small" className="check" />
                                 )}
                               </button>
                             );
@@ -530,31 +588,69 @@ const MinhaDisponibilidade = () => {
                     )}
 
                     {msg && (
-                      <p className={`minha-disp-msg ${msg.tipo}`}>
-                        {msg.texto}
-                      </p>
+                      <p className={`minha-disp-msg ${msg.tipo}`}>{msg.texto}</p>
                     )}
                   </section>
 
                   <section className="minha-disp-card">
-                    <h2>Todos os dias que você já informou</h2>
-                    {proximosSalvos.length === 0 ? (
-                      <p className="minha-disp-vazio">
-                        Nenhum dia marcado ainda.
-                      </p>
-                    ) : (
-                      <div className="minha-disp-chips">
-                        {proximosSalvos.map((s) => (
-                          <span key={s.date} className="minha-disp-chip">
-                            {diaAbreviado(s.date)} {dataBr(s.date)}
+                    <h2>
+                      <HistoryRounded fontSize="small" /> Histórico
+                    </h2>
+
+                    <div className="minha-disp-semana-nav">
+                      <button
+                        type="button"
+                        onClick={() => setOffsetHistorico((o) => o - 1)}
+                        aria-label="Semana anterior"
+                      >
+                        <NavigateBeforeRounded />
+                      </button>
+                      <div>
+                        <strong>
+                          {historicoEhSemanaAtual
+                            ? "Esta semana"
+                            : offsetHistorico === 1
+                              ? "Semana que vem"
+                              : `${dataBr(semanaHistorico.inicio)} – ${dataBr(semanaHistorico.fim)}`}
+                        </strong>
+                        {offsetHistorico >= 0 && (
+                          <span>
+                            {dataBr(semanaHistorico.inicio)} – {dataBr(semanaHistorico.fim)}
                           </span>
-                        ))}
+                        )}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setOffsetHistorico((o) => o + 1)}
+                        disabled={!podeAvancarHistorico}
+                        aria-label="Próxima semana"
+                      >
+                        <NavigateNextRounded />
+                      </button>
+                    </div>
+
+                    {semanaHistorico.dias.some((d) => d.marcado) ? (
+                      <div className="minha-disp-chips minha-disp-historico-chips">
+                        {semanaHistorico.dias
+                          .filter((d) => d.marcado)
+                          .map((d) => (
+                            <span
+                              key={d.date}
+                              className="minha-disp-chip historico marcado"
+                            >
+                              {diaAbreviado(d.date)} {dataBr(d.date)}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="minha-disp-vazio">
+                        Nenhum dia marcado nessa semana.
+                      </p>
                     )}
+
                     {atualizadoEm && (
                       <p className="minha-disp-nota">
-                        Última atualização:{" "}
-                        {atualizadoEm.toLocaleString("pt-BR")}
+                        Última atualização: {atualizadoEm.toLocaleString("pt-BR")}
                       </p>
                     )}
                   </section>

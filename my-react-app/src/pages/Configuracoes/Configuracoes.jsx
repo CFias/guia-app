@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import {
+  JANELA_PADRAO,
+  NOMES_DIAS_COMPLETO,
+  rotuloJanela,
+} from "../../Services/Utils/janelaDisponibilidade";
 import { useTheme } from "../../Context/ThemeContext";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
 import "./styles.css";
@@ -17,7 +22,11 @@ import {
   CheckCircleRounded,
   GroupsRounded,
   LanguageRounded,
+  EventAvailableRounded,
+  FolderSharedRounded,
+  VpnKeyRounded,
 } from "@mui/icons-material";
+import { extrairIdPastaDrive } from "../../Services/Services/googleDrive";
 
 const Configuracoes = () => {
   const { theme, toggleTheme, togglePro } = useTheme();
@@ -29,6 +38,9 @@ const Configuracoes = () => {
     useState(false);
   const [modoIdioma, setModoIdioma] = useState("preferencial");
   const [paxMinimoParaGuia, setPaxMinimoParaGuia] = useState(2);
+  const [pastaDriveTexto, setPastaDriveTexto] = useState("");
+  const [driveClientId, setDriveClientId] = useState("");
+  const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -46,6 +58,13 @@ const Configuracoes = () => {
           setModoDistribuicaoGuias(data.modoDistribuicaoGuias || "equilibrado");
           setUsarAfinidadeGuiaPasseio(data.usarAfinidadeGuiaPasseio || false);
           setModoIdioma(data.modoIdioma || "preferencial");
+          setJanelaConfig({
+            dowAbertura:
+              data.janelaDisponibilidadeAbertura ?? JANELA_PADRAO.dowAbertura,
+            dowFechamento:
+              data.janelaDisponibilidadeFechamento ??
+              JANELA_PADRAO.dowFechamento,
+          });
           if (
             data.paxMinimoParaGuia !== undefined &&
             data.paxMinimoParaGuia !== null &&
@@ -53,6 +72,8 @@ const Configuracoes = () => {
           ) {
             setPaxMinimoParaGuia(Number(data.paxMinimoParaGuia));
           }
+          if (data.driveFolderId) setPastaDriveTexto(data.driveFolderId);
+          if (data.driveClientId) setDriveClientId(data.driveClientId);
         }
       } catch (err) {
         console.error("Erro ao carregar configurações:", err);
@@ -92,6 +113,15 @@ const Configuracoes = () => {
     });
   };
 
+  const salvarJanela = async (campo, valor) => {
+    const proxima = { ...janelaConfig, [campo]: Number(valor) };
+    setJanelaConfig(proxima);
+    await salvarConfiguracao({
+      janelaDisponibilidadeAbertura: proxima.dowAbertura,
+      janelaDisponibilidadeFechamento: proxima.dowFechamento,
+    });
+  };
+
   const salvarModoIdioma = async (valor) => {
     if (valor === modoIdioma) return;
     setModoIdioma(valor);
@@ -102,6 +132,18 @@ const Configuracoes = () => {
     const valor = Math.max(0, Math.min(20, Math.floor(Number(paxMinimoParaGuia) || 0)));
     setPaxMinimoParaGuia(valor);
     await salvarConfiguracao({ paxMinimoParaGuia: valor });
+  };
+
+  const salvarPastaDrive = async () => {
+    const id = extrairIdPastaDrive(pastaDriveTexto);
+    setPastaDriveTexto(id);
+    await salvarConfiguracao({ driveFolderId: id });
+  };
+
+  const salvarClientIdDrive = async () => {
+    const valor = driveClientId.trim();
+    setDriveClientId(valor);
+    await salvarConfiguracao({ driveClientId: valor });
   };
 
   const salvarUsoAfinidade = async (valor) => {
@@ -412,6 +454,69 @@ const Configuracoes = () => {
               <div className="config-card config-card-large">
                 <div className="config-card-header">
                   <div className="config-card-title-row">
+                    <h3>Janela de disponibilidade dos guias</h3>
+                    <span className="config-badge">Regra principal</span>
+                  </div>
+                  <p>
+                    Dias em que os guias conseguem enviar, alterar ou remover
+                    a própria disponibilidade — fora desses dias, a tela fica
+                    bloqueada para eles.
+                  </p>
+                </div>
+
+                {loadingInicial ? (
+                  <CardSkeleton variant="list" rows={2} />
+                ) : (
+                  <>
+                    <div className="janela-escala-selects">
+                      <label className="janela-escala-campo">
+                        <span>Abre em</span>
+                        <select
+                          value={janelaConfig.dowAbertura}
+                          onChange={(e) =>
+                            salvarJanela("dowAbertura", e.target.value)
+                          }
+                          disabled={salvando}
+                        >
+                          {NOMES_DIAS_COMPLETO.map((nome, i) => (
+                            <option key={nome} value={i}>
+                              {nome} às 00h
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="janela-escala-campo">
+                        <span>Fecha em</span>
+                        <select
+                          value={janelaConfig.dowFechamento}
+                          onChange={(e) =>
+                            salvarJanela("dowFechamento", e.target.value)
+                          }
+                          disabled={salvando}
+                        >
+                          {NOMES_DIAS_COMPLETO.map((nome, i) => (
+                            <option key={nome} value={i}>
+                              {nome} às 23h59
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <p className="config-help">
+                      <EventAvailableRounded fontSize="inherit" /> Janela
+                      atual: <strong>{rotuloJanela(janelaConfig)}</strong>.
+                      Escala montada aos sábados — o que o guia informar nessa
+                      janela vale para a semana seguinte.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className="config-card config-card-large">
+                <div className="config-card-header">
+                  <div className="config-card-title-row">
                     <h3>Idioma dos passageiros</h3>
                     <span className="config-badge">Automação</span>
                   </div>
@@ -507,6 +612,75 @@ const Configuracoes = () => {
                       disabled={salvando}
                     />
                   </div>
+                )}
+              </div>
+
+              <div className="config-card config-card-large">
+                <div className="config-card-header">
+                  <div className="config-card-title-row">
+                    <h3>Google Drive</h3>
+                    <span className="config-badge">Opcional</span>
+                  </div>
+                  <p>
+                    Configuração do botão "Salvar no Drive", em Gerar Escala.
+                    O passo a passo de como criar o Client ID está no arquivo{" "}
+                    <code>GOOGLE_DRIVE_SETUP.md</code>, na raiz do projeto.
+                  </p>
+                </div>
+
+                {loadingInicial ? (
+                  <CardSkeleton variant="list" rows={2} />
+                ) : (
+                  <>
+                    <div className="switch-row">
+                      <div className="switch-copy">
+                        <label className="switch-title" htmlFor="drive-client-id">
+                          Client ID do Google <VpnKeyRounded fontSize="small" />
+                        </label>
+                        <p className="config-help">
+                          Criado no Google Cloud Console — não é um dado
+                          secreto, mas identifica este sistema perante o
+                          Google. Sem ele, o botão "Salvar no Drive" avisa
+                          que falta configurar.
+                        </p>
+                      </div>
+
+                      <input
+                        id="drive-client-id"
+                        type="text"
+                        placeholder="123456789-abcdefg.apps.googleusercontent.com"
+                        className="config-text-input"
+                        value={driveClientId}
+                        onChange={(e) => setDriveClientId(e.target.value)}
+                        onBlur={salvarClientIdDrive}
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="switch-row">
+                      <div className="switch-copy">
+                        <label className="switch-title" htmlFor="pasta-drive">
+                          Link ou ID da pasta <FolderSharedRounded fontSize="small" />
+                        </label>
+                        <p className="config-help">
+                          Opcional. A escala sempre é salva ali, em vez da
+                          raiz do Drive de quem clicar. A pasta precisa estar
+                          compartilhada com quem for usar o botão.
+                        </p>
+                      </div>
+
+                      <input
+                        id="pasta-drive"
+                        type="text"
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        className="config-text-input"
+                        value={pastaDriveTexto}
+                        onChange={(e) => setPastaDriveTexto(e.target.value)}
+                        onBlur={salvarPastaDrive}
+                        disabled={salvando}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
 

@@ -160,6 +160,41 @@
   padding: 0 var(--pc-space-2) var(--pc-space-2);
 }
 
+.sidebar-group-title span {
+  font-size: 12px !important;
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+}
+
+.sidebar-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sidebar-group-toggle:hover {
+  color: color-mix(in srgb, var(--text) 80%, transparent 20%);
+}
+
+.sidebar-group-chevron {
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.sidebar-group-chevron.aberto {
+  transform: rotate(180deg);
+}
+
 /* ---------- Links ---------- */
 
 .sidebar-link {

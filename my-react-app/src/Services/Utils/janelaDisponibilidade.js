@@ -1,17 +1,63 @@
 /* =========================================================
    JANELA DE DISPONIBILIDADE DOS GUIAS
 
-   Abre na QUINTA às 00:00 e fecha na SEXTA às 23:59 (fuso de
-   Salvador, America/Bahia = UTC-3, sem horário de verão).
-   A escala é montada no sábado, então o que o guia informa
-   nessa janela vale para as datas da SEMANA QUE VEM (segunda a domingo).
+   O dia de abertura (00:00) e o dia de fechamento (23:59:59) são
+   CONFIGURÁVEIS pelo operacional, em Configurações → Escala
+   (guardados em settings/scale: janelaDisponibilidadeAbertura e
+   janelaDisponibilidadeFechamento — 0 = domingo ... 6 = sábado,
+   igual ao Date.getDay() do JavaScript). Padrão: quinta a sexta.
+
+   A janela sempre cobre dias inteiros, no fuso de Salvador,
+   America/Bahia = UTC-3, sem horário de verão. A escala é montada
+   no sábado, então o que o guia informa vale para as datas da
+   SEMANA QUE VEM (segunda a domingo) — isso não muda com a janela.
 
    Usa sempre o horário de Salvador — não o do celular do guia —
    pra ninguém abrir/fechar a janela mudando o relógio do aparelho.
 
    ⚠️ O firestore.rules repete essa mesma regra (função
-   janelaAberta). Se mudar os dias/horários aqui, mude lá também.
+   janelaAberta, lendo a mesma configuração). Se mudar a fórmula
+   aqui, mude lá também.
    ========================================================= */
+
+// Config padrão: abre quinta (4), fecha sexta (5).
+export const JANELA_PADRAO = { dowAbertura: 4, dowFechamento: 5 };
+
+export const NOMES_DIAS_COMPLETO = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+];
+
+// Sanitiza o que veio do Firestore: precisa ser um inteiro 0–6, senão cai
+// no padrão daquele lado da janela (nunca quebra a tela por um dado ruim).
+const normalizarDow = (valor, padrao) => {
+  const n = Number(valor);
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? n : padrao;
+};
+
+export const normalizarConfigJanela = (config) => ({
+  dowAbertura: normalizarDow(config?.dowAbertura, JANELA_PADRAO.dowAbertura),
+  dowFechamento: normalizarDow(
+    config?.dowFechamento,
+    JANELA_PADRAO.dowFechamento,
+  ),
+});
+
+// Quantos dias a janela cobre, incluindo o de abertura e o de fechamento —
+// ex.: quinta→sexta = 2 dias; sexta→quinta = 7 dias (a semana toda).
+const duracaoJanelaDias = ({ dowAbertura, dowFechamento }) =>
+  ((dowFechamento - dowAbertura + 7) % 7) + 1;
+
+// Texto pronto pra tela: "quinta-feira (00h) até sexta-feira (23h59)".
+export const rotuloJanela = (config) => {
+  const { dowAbertura, dowFechamento } = normalizarConfigJanela(config);
+  return `${NOMES_DIAS_COMPLETO[dowAbertura]} (00h) até ${NOMES_DIAS_COMPLETO[dowFechamento]} (23h59)`;
+};
 
 const TZ = "America/Bahia";
 
@@ -77,10 +123,16 @@ export const formatarRestante = (minutos) => {
   return `${Math.max(min, 1)} min`;
 };
 
-export const getEstadoJanela = (agora = new Date()) => {
+export const getEstadoJanela = (agora = new Date(), configBruta) => {
+  const { dowAbertura, dowFechamento } = normalizarConfigJanela(configBruta);
+  const duracao = duracaoJanelaDias({ dowAbertura, dowFechamento });
+
   const p = partesBahia(agora);
   const hojeIso = `${p.y}-${pad(p.m)}-${pad(p.d)}`;
-  const aberta = p.dow === 4 || p.dow === 5; // quinta ou sexta
+
+  // "Distância" de hoje até o dia de abertura, dentro do ciclo de 7 dias.
+  const diasDesdeAbertura = (p.dow - dowAbertura + 7) % 7;
+  const aberta = diasDesdeAbertura < duracao;
 
   // Semana de referência: SEMPRE a semana que vem (segunda a domingo),
   // qualquer que seja o dia de hoje. Ou seja: o que se preenche nesta semana
@@ -95,14 +147,16 @@ export const getEstadoJanela = (agora = new Date()) => {
     date: somarDias(semanaInicio, i),
   }));
 
-  // Minutos até fechar (sábado 00:00). Só faz sentido com a janela aberta.
+  // Minutos até fechar (início do dia seguinte ao de fechamento). Só faz
+  // sentido com a janela aberta.
+  const diasAteFecharAHoje = duracao - 1 - diasDesdeAbertura;
   const restanteMin = aberta
-    ? (p.dow === 4 ? 2 : 1) * 1440 - (p.h * 60 + p.min)
+    ? (diasAteFecharAHoje + 1) * 1440 - (p.h * 60 + p.min)
     : 0;
 
-  // Próxima quinta-feira (quando fechada).
-  const diasAteQuinta = (4 - p.dow + 7) % 7;
-  const proximaAberturaIso = somarDias(hojeIso, diasAteQuinta);
+  // Próxima abertura (quando fechada).
+  const diasAteAbrir = (dowAbertura - p.dow + 7) % 7;
+  const proximaAberturaIso = somarDias(hojeIso, diasAteAbrir);
 
   return {
     aberta,
@@ -112,6 +166,11 @@ export const getEstadoJanela = (agora = new Date()) => {
     dias,
     restanteMin,
     proximaAberturaIso,
-    diasAteAbrir: aberta ? 0 : diasAteQuinta,
+    diasAteAbrir: aberta ? 0 : diasAteAbrir,
+    dowAbertura,
+    dowFechamento,
+    rotulo: rotuloJanela({ dowAbertura, dowFechamento }),
+    nomeDiaAbertura: NOMES_DIAS_COMPLETO[dowAbertura],
+    nomeDiaFechamento: NOMES_DIAS_COMPLETO[dowFechamento],
   };
 };

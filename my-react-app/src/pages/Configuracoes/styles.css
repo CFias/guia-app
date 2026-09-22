@@ -619,3 +619,35 @@
     font-size: 14px;
     text-align: center;
 }
+
+/* ---------- janela de disponibilidade dos guias ---------- */
+
+.janela-escala-selects {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.janela-escala-campo {
+    flex: 1 1 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.janela-escala-campo span {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.janela-escala-campo select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+}
