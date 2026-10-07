@@ -15,6 +15,7 @@ import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGui
 import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
 import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
+import ServicosFornecedor from "./components/ServicosFornecedor/ServicosFornecedor";
 import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
 import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
@@ -51,6 +52,10 @@ function App() {
               element={<CadastroFornecedores />}
             />
             <Route path="op" element={<PainelOperacionalUnificado />} />
+            <Route
+              path="servicos-fornecedor"
+              element={<ServicosFornecedor />}
+            />
             <Route path="chegadas" element={<PainelChegadas />} />
             <Route path="outs" element={<PainelOuts />} />
             <Route path="register-guias" element={<RegisterGuias />} />

@@ -1,0 +1,1043 @@
+/* =========================================================
+   SERVIÇOS POR FORNECEDOR — segue os tokens do tema
+   (--text, --card, --bg, --border, --primary, --text-dist, --p1/2/3)
+   ========================================================= */
+
+.servicos-fornecedor-page {
+  width: 100%;
+  max-width: 65vw;
+  margin: 0 auto;
+  padding: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.servicos-fornecedor-page * {
+  box-sizing: border-box;
+}
+
+/* ---------- cabeçalho ---------- */
+.sf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sf-title {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.sf-subtitle {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--text) 68%, transparent 32%);
+}
+
+.sf-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ---------- botões ---------- */
+.sf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sf-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.sf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sf-btn-primary {
+  background: var(--btn-main, var(--primary));
+  border-color: transparent;
+  color: var(--text-btn, #fff);
+}
+
+.sf-select-mini {
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  background: var(--card);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.sf-link {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-dist);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.sf-spin {
+  animation: sf-spin 1s linear infinite;
+}
+
+@keyframes sf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- cards ---------- */
+.sf-card {
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.sf-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.sf-card-head h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sf-muted {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+/* ---------- filtros ---------- */
+.sf-filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 0.7fr)) repeat(2, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.sf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sf-field>span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text) 72%, transparent 28%);
+}
+
+.sf-field input,
+.sf-field select {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+}
+
+.sf-field input:focus,
+.sf-field select:focus {
+  border-color: color-mix(in srgb, var(--text-dist) 45%, var(--border) 55%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
+}
+
+.sf-input-wrap {
+  position: relative;
+}
+
+.sf-input-wrap input {
+  padding-right: 36px;
+}
+
+.sf-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
+  display: flex;
+}
+
+.sf-atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.sf-atalhos.sem-margem {
+  margin-top: 0;
+}
+
+.sf-chip {
+  min-height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sf-chip small {
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.sf-chip.ativo {
+  background: color-mix(in srgb, var(--text-dist) 16%, var(--card) 84%);
+  border-color: color-mix(in srgb, var(--text-dist) 45%, transparent 55%);
+  color: var(--text);
+}
+
+.sf-periodo-info {
+  margin-left: auto;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+/* ---------- progresso / alertas ---------- */
+.sf-progresso {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.sf-progresso-barra {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent 20%);
+  overflow: hidden;
+}
+
+.sf-progresso-barra>div {
+  height: 100%;
+  background: var(--text-dist);
+  transition: width 0.3s ease;
+}
+
+.sf-alerta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--p2) 12%, var(--card) 88%);
+  border: 1px solid color-mix(in srgb, var(--p2) 30%, transparent 70%);
+}
+
+.sf-alerta.erro {
+  margin-top: 12px;
+  background: color-mix(in srgb, var(--p1) 10%, var(--card) 90%);
+  border-color: color-mix(in srgb, var(--p1) 30%, transparent 70%);
+}
+
+/* ---------- KPIs ---------- */
+.sf-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.sf-kpi {
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 3px solid color-mix(in srgb, var(--border) 90%, transparent 10%);
+}
+
+.sf-kpi span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+}
+
+.sf-kpi strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sf-kpi small {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text) 55%, transparent 45%);
+}
+
+.sf-kpi.destaque {
+  border-top-color: var(--text-dist);
+}
+
+.sf-kpi.tipo-in {
+  border-top-color: #2563eb;
+}
+
+.sf-kpi.tipo-out {
+  border-top-color: #f59e0b;
+}
+
+.sf-kpi.tipo-trf {
+  border-top-color: #8b5cf6;
+}
+
+.sf-kpi.tipo-passeio {
+  border-top-color: #14b8a6;
+}
+
+/* ---------- tabelas ---------- */
+.sf-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+}
+
+.sf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.sf-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+  background: color-mix(in srgb, var(--bg) 35%, var(--card) 65%);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.sf-table td {
+  padding: 10px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent 40%);
+  vertical-align: middle;
+}
+
+.sf-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sf-table td.zero {
+  opacity: 0.35;
+}
+
+.sf-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--text-dist) 5%, transparent 95%);
+}
+
+.sf-table tfoot td {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--bg) 35%, var(--card) 65%);
+}
+
+.sf-ranking tbody tr {
+  cursor: pointer;
+}
+
+.sf-th-sort {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sf-th-sort.ativo {
+  color: var(--text);
+}
+
+.sf-sort-icon {
+  font-size: 12px !important;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+
+.sf-pos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 11px;
+  background: color-mix(in srgb, var(--border) 70%, transparent 30%);
+}
+
+.sf-pos.top1 {
+  background: #f5c518;
+  color: #3d2f00;
+}
+
+.sf-pos.top2 {
+  background: #c9d1d9;
+  color: #2b2f33;
+}
+
+.sf-pos.top3 {
+  background: #d8a072;
+  color: #3b2210;
+}
+
+.sf-veic-lista {
+  margin-top: 2px;
+}
+
+.sf-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--p1) 14%, transparent 86%);
+  color: var(--p1);
+  vertical-align: middle;
+}
+
+.sf-share-cell {
+  min-width: 150px;
+}
+
+.sf-share-cell span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sf-share {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent 20%);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.sf-share>div {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text-dist);
+}
+
+.sf-tipo {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sf-tipo.tipo-in {
+  background: rgba(37, 99, 235, 0.14);
+  color: #2563eb;
+}
+
+.sf-tipo.tipo-out {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b26b00;
+}
+
+.sf-tipo.tipo-trf {
+  background: rgba(139, 92, 246, 0.14);
+  color: #7c3aed;
+}
+
+.sf-tipo.tipo-passeio {
+  background: rgba(20, 184, 166, 0.14);
+  color: #0f8f80;
+}
+
+.sf-vazio {
+  padding: 28px;
+  text-align: center;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+  border: 1px dashed color-mix(in srgb, var(--border) 80%, transparent 20%);
+  border-radius: 14px;
+}
+
+/* ---------- detalhe ---------- */
+.sf-detalhe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sf-detalhe-head h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.sf-veiculos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sf-veiculo-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.sf-veiculo-chip strong {
+  margin-left: 4px;
+  color: var(--text-dist);
+}
+
+.sf-colunas-wrap {
+  position: relative;
+}
+
+.sf-colunas-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 190px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent 15%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sf-colunas-pop label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sf-colunas-pop label:hover {
+  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+}
+
+.sf-colunas-pop input {
+  accent-color: var(--text-dist);
+}
+
+
+/* ---------- painel de veículos / agrupamento ---------- */
+.sf-head-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sf-head-toggle h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sf-contador {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--text-dist) 14%, transparent 86%);
+}
+
+.sf-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sf-dica {
+  margin: -4px 0 14px;
+  line-height: 1.6;
+}
+
+.sf-grupos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sf-grupo {
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+  align-self: start;
+}
+
+.sf-grupo.desligado {
+  opacity: 0.55;
+}
+
+.sf-grupo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+}
+
+.sf-grupo-nome {
+  flex: 1;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sf-grupo-nome:hover {
+  color: var(--text-dist);
+}
+
+.sf-grupo-total,
+.sf-veic-total {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+}
+
+.sf-grupo-veiculos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sf-grupo-veiculos li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  min-height: 28px;
+}
+
+.sf-grupo-veiculos label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sf-grupo-veiculos label span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sf-grupo input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--text-dist);
+  cursor: pointer;
+}
+
+.sf-tag-manual {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--p2) 18%, transparent 82%);
+  color: #9a7a00;
+  flex-shrink: 0;
+}
+
+.sf-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--text);
+  opacity: 0.55;
+  cursor: pointer;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.sf-icon-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
+}
+
+.sf-icon-btn.ok {
+  color: var(--text-dist);
+  opacity: 1;
+}
+
+.sf-mover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.sf-mover>span {
+  width: 100%;
+}
+
+.sf-input-inline {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text-dist) 45%, var(--border) 55%);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  text-transform: uppercase;
+}
+
+/* botões "Por fornecedor | Por veículo" */
+.sf-segmentado {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 35%, var(--card) 65%);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+}
+
+.sf-segmentado button {
+  border: none;
+  background: none;
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  opacity: 0.7;
+}
+
+.sf-segmentado button.ativo {
+  background: var(--card);
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* chips de veículo no detalhe viram filtro */
+button.sf-veiculo-chip {
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.sf-veiculo-chip.ativo {
+  border-color: color-mix(in srgb, var(--text-dist) 55%, transparent 45%);
+  background: color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%);
+}
+
+
+/* ---------- vínculo: pendentes ---------- */
+.sf-pendentes {
+  border: 1px solid color-mix(in srgb, var(--p2) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--p2) 6%, var(--card) 94%);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.sf-pendentes-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+}
+
+.sf-pendentes-head input,
+.sf-pend-veic input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--text-dist);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sf-pendentes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.sf-pendentes-lista li {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto;
+  gap: 6px 14px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent 45%);
+}
+
+.sf-pendentes-lista li:last-child {
+  border-bottom: none;
+}
+
+.sf-pend-veic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sf-pend-veic>span:nth-of-type(1) {
+  flex: 1;
+  min-width: 0;
+}
+
+.sf-pend-acoes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sf-pend-acoes .sf-input-inline {
+  flex: 0 1 150px;
+}
+
+.sf-sugestao {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text-dist) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--text-dist) 12%, var(--card) 88%);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.sf-sugestao:hover {
+  background: color-mix(in srgb, var(--text-dist) 22%, var(--card) 78%);
+}
+
+.sf-sugestao small {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.65;
+  text-transform: uppercase;
+}
+
+.sf-parecidos {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 65%, transparent 35%);
+  padding-left: 25px;
+}
+
+.nivel-confira .sf-parecidos,
+.nivel-conflito .sf-parecidos {
+  color: var(--text);
+  background: color-mix(in srgb, var(--p2) 14%, transparent 86%);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin-left: 25px;
+}
+
+.nivel-conflito .sf-parecidos {
+  background: color-mix(in srgb, var(--p1) 10%, transparent 90%);
+}
+
+.sf-conflito-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sf-veic-info {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--text) 50%, transparent 50%);
+}
+
+.sf-veic-info span+span::before {
+  content: "·";
+  margin-right: 6px;
+}
+
+.sf-veic-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sf-icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .sf-pendentes-lista li {
+    grid-template-columns: 1fr;
+  }
+
+  .sf-pend-acoes {
+    justify-content: flex-start;
+    padding-left: 25px;
+  }
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1024px) {
+  .servicos-fornecedor-page {
+    max-width: 100%;
+  }
+
+  .sf-filtros-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .sf-filtros-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sf-header-actions,
+  .sf-header-actions .sf-btn,
+  .sf-header-actions .sf-select-mini {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sf-periodo-info {
+    margin-left: 0;
+  }
+
+  .sf-alerta {
+    flex-wrap: wrap;
+  }
+}

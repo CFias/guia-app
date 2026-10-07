@@ -22,6 +22,7 @@ import {
   CloseRounded,
   LogoutRounded,
   MenuRounded,
+  LeaderboardRounded,
 } from "@mui/icons-material";
 import { useAuth } from "../../Context/AuthContext";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
@@ -153,106 +154,110 @@ const Dashboard = ({ loading }) => {
 
           {/* ===== OPERAÇÃO + CADASTROS (só operacional) ===== */}
           {veOperacao && (
-          <>
-          <div className="sidebar-group">
-            <button
-              type="button"
-              className="sidebar-group-title sidebar-group-toggle"
-              onClick={() => toggleGrupo("operacao")}
-              aria-expanded={gruposAbertos.operacao}
-            >
-              <span>Operação</span>
-              <ExpandMoreRounded
-                fontSize="small"
-                className={`sidebar-group-chevron ${gruposAbertos.operacao ? "aberto" : ""}`}
-              />
-            </button>
-            {gruposAbertos.operacao && (
-              <>
-            <NavLink to="op" className={getNavClass}>
-              <AssignmentRounded fontSize="small" className="sidebar-icon" />
-              <span>Painel Operacional</span>
-            </NavLink>
-            <NavLink to="previas" className={getNavClass}>
-              <AirportShuttleRounded fontSize="small" className="sidebar-icon" />
-              <span>Prévia de Transfers</span>
-            </NavLink>
+            <>
+              <div className="sidebar-group">
+                <button
+                  type="button"
+                  className="sidebar-group-title sidebar-group-toggle"
+                  onClick={() => toggleGrupo("operacao")}
+                  aria-expanded={gruposAbertos.operacao}
+                >
+                  <span>Operação</span>
+                  <ExpandMoreRounded
+                    fontSize="small"
+                    className={`sidebar-group-chevron ${gruposAbertos.operacao ? "aberto" : ""}`}
+                  />
+                </button>
+                {gruposAbertos.operacao && (
+                  <>
+                    <NavLink to="op" className={getNavClass}>
+                      <AssignmentRounded fontSize="small" className="sidebar-icon" />
+                      <span>Painel Operacional</span>
+                    </NavLink>
+                    <NavLink to="previas" className={getNavClass}>
+                      <AirportShuttleRounded fontSize="small" className="sidebar-icon" />
+                      <span>Prévia de Transfers</span>
+                    </NavLink>
+                    <NavLink to="servicos-fornecedor" className={getNavClass}>
+                      <LeaderboardRounded fontSize="small" className="sidebar-icon" />
+                      <span>Serviços por Fornecedor</span>
+                    </NavLink>
 
-            <NavLink to="passeios" className={getNavClass}>
-              <AutoAwesomeRounded fontSize="small" className="sidebar-icon" />
-              <span>Gerar Escala</span>
-            </NavLink>
-            <NavLink to="guias" className={getNavClass}>
-              <PeopleAltRounded fontSize="small" className="sidebar-icon" />
-              <span>Lista de Guias</span>
-            </NavLink>
-            <NavLink to="mapear-guias" className={getNavClass}>
-              <MapRounded fontSize="small" className="sidebar-icon" />
-              <span>Mapear Guias</span>
-            </NavLink>
+                    <NavLink to="passeios" className={getNavClass}>
+                      <AutoAwesomeRounded fontSize="small" className="sidebar-icon" />
+                      <span>Gerar Escala</span>
+                    </NavLink>
+                    <NavLink to="guias" className={getNavClass}>
+                      <PeopleAltRounded fontSize="small" className="sidebar-icon" />
+                      <span>Lista de Guias</span>
+                    </NavLink>
+                    <NavLink to="mapear-guias" className={getNavClass}>
+                      <MapRounded fontSize="small" className="sidebar-icon" />
+                      <span>Mapear Guias</span>
+                    </NavLink>
 
-            <NavLink to="disponibilidade-guia" className={getNavClass}>
-              <FactCheckRounded fontSize="small" className="sidebar-icon" />
-              <span>Disponibilidade da Semana</span>
-            </NavLink>
+                    <NavLink to="disponibilidade-guia" className={getNavClass}>
+                      <FactCheckRounded fontSize="small" className="sidebar-icon" />
+                      <span>Disponibilidade da Semana</span>
+                    </NavLink>
 
-            <NavLink to="faqadmin" className={getNavClass}>
-              <QuizRounded fontSize="small" className="sidebar-icon" />
-              <span>Central de Dúvidas</span>
-            </NavLink>
+                    <NavLink to="faqadmin" className={getNavClass}>
+                      <QuizRounded fontSize="small" className="sidebar-icon" />
+                      <span>Central de Dúvidas</span>
+                    </NavLink>
 
-            <NavLink to="faqcomercial" className={getNavClass}>
-              <VisibilityRounded fontSize="small" className="sidebar-icon" />
-              <span>Ver como o comercial</span>
-            </NavLink>
-              </>
-            )}
-          </div>
+                    <NavLink to="faqcomercial" className={getNavClass}>
+                      <VisibilityRounded fontSize="small" className="sidebar-icon" />
+                      <span>Ver como o comercial</span>
+                    </NavLink>
+                  </>
+                )}
+              </div>
 
-          <div className="sidebar-group">
-            <button
-              type="button"
-              className="sidebar-group-title sidebar-group-toggle"
-              onClick={() => toggleGrupo("cadastros")}
-              aria-expanded={gruposAbertos.cadastros}
-            >
-              <span className="btn-span">Cadastros</span>
-              <ExpandMoreRounded
-                fontSize="small"
-                className={`sidebar-group-chevron ${gruposAbertos.cadastros ? "aberto" : ""}`}
-              />
-            </button>
-            {gruposAbertos.cadastros && (
-              <>
+              <div className="sidebar-group">
+                <button
+                  type="button"
+                  className="sidebar-group-title sidebar-group-toggle"
+                  onClick={() => toggleGrupo("cadastros")}
+                  aria-expanded={gruposAbertos.cadastros}
+                >
+                  <span className="btn-span">Cadastros</span>
+                  <ExpandMoreRounded
+                    fontSize="small"
+                    className={`sidebar-group-chevron ${gruposAbertos.cadastros ? "aberto" : ""}`}
+                  />
+                </button>
+                {gruposAbertos.cadastros && (
+                  <>
 
-            <NavLink to="register-guias" className={getNavClass}>
-              <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
-              <span>Cadastrar Guias</span>
-            </NavLink>
+                    <NavLink to="register-guias" className={getNavClass}>
+                      <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
+                      <span>Cadastrar Guias</span>
+                    </NavLink>
 
-            <NavLink to="register-fornecedores" className={getNavClass}>
-              <LocalShippingRounded fontSize="small" className="sidebar-icon" />
-              <span>Cadastrar Fornecedores</span>
-            </NavLink>
+                    <NavLink to="register-fornecedores" className={getNavClass}>
+                      <LocalShippingRounded fontSize="small" className="sidebar-icon" />
+                      <span>Cadastrar Fornecedores</span>
+                    </NavLink>
 
-            <NavLink to="usuarios" className={getNavClass}>
-              <AdminPanelSettingsRounded
-                fontSize="small"
-                className="sidebar-icon"
-              />
-              <span>Usuários e Acessos</span>
-            </NavLink>
-            {/* <NavLink to="register-tours" className={getNavClass}>
+                    <NavLink to="usuarios" className={getNavClass}>
+                      <AdminPanelSettingsRounded
+                        fontSize="small"
+                        className="sidebar-icon"
+                      />
+                      <span>Usuários e Acessos</span>
+                    </NavLink>
+                    {/* <NavLink to="register-tours" className={getNavClass}>
               <PlaylistAddCheckCircleRounded
                 fontSize="small"
                 className="sidebar-icon"
               />
               <span>Cadastrar Passeios</span>
             </NavLink> */}
-              </>
-            )}
-          </div>
-          </>
+                  </>
+                )}
+              </div>
+            </>
           )}
         </div>
 
