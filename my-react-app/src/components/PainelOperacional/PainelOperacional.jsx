@@ -391,21 +391,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-    item?.presentation_hour_end ||
-    item?.schedule?.presentation_hour ||
-    item?.date ||
-    item?.execution_date ||
-    "",
+      item?.presentation_hour_end ||
+      item?.schedule?.presentation_hour ||
+      item?.date ||
+      item?.execution_date ||
+      "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-    item?.reserve?.created_at ||
-    item?.reserve?.updated_at ||
-    item?.date ||
-    item?.execution_date ||
-    "",
+      item?.reserve?.created_at ||
+      item?.reserve?.updated_at ||
+      item?.date ||
+      item?.execution_date ||
+      "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -965,12 +965,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-      item?.reserve?.flight?.scheduled_departure ||
-      item?.reserve?.departure_flight_time ||
-      item?.flight?.departure_time ||
-      item?.flight?.scheduled_departure ||
-      item?.fly_hour ||
-      "",
+        item?.reserve?.flight?.scheduled_departure ||
+        item?.reserve?.departure_flight_time ||
+        item?.flight?.departure_time ||
+        item?.flight?.scheduled_departure ||
+        item?.fly_hour ||
+        "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -1006,10 +1006,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-    item?.schedule?.presentation_hour ||
-    item?.our_schedule ||
-    item?.fly_hour ||
-    "",
+      item?.schedule?.presentation_hour ||
+      item?.our_schedule ||
+      item?.fly_hour ||
+      "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1392,18 +1392,18 @@ export default function PainelOperacionalUnificado() {
       return salvo
         ? { ...JSON.parse(salvo), logoUrl: logoLuck }
         : {
-          repetirCabecalhoVooAoQuebrarPagina: true,
-          mostrarLogoNasPlacas: true,
-          quantidadePorPaginaColecao: 5,
-          fundoPlaca: [255, 255, 255],
-          fundoHeader: [238, 238, 238],
-          bordaPlaca: [196, 196, 196],
-          linhaDivisoria: [90, 90, 90],
-          corTitulo: [65, 74, 95],
-          corTexto: [65, 74, 95],
-          corDestaque: [65, 74, 95],
-          corData: [90, 90, 90],
-        };
+            repetirCabecalhoVooAoQuebrarPagina: true,
+            mostrarLogoNasPlacas: true,
+            quantidadePorPaginaColecao: 5,
+            fundoPlaca: [255, 255, 255],
+            fundoHeader: [238, 238, 238],
+            bordaPlaca: [196, 196, 196],
+            linhaDivisoria: [90, 90, 90],
+            corTitulo: [65, 74, 95],
+            corTexto: [65, 74, 95],
+            corDestaque: [65, 74, 95],
+            corData: [90, 90, 90],
+          };
     } catch {
       return {
         repetirCabecalhoVooAoQuebrarPagina: true,
@@ -1658,12 +1658,12 @@ export default function PainelOperacionalUnificado() {
       const situacao = situacaoAeroporto(noAeroporto?.status);
       const voo = noAeroporto
         ? {
-          ...vooPhoenix,
-          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
-          cancelado: vooPhoenix.cancelado || situacao.cancelado,
-          pousado: vooPhoenix.pousado || situacao.pousado,
-          aeroporto: noAeroporto,
-        }
+            ...vooPhoenix,
+            horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+            cancelado: vooPhoenix.cancelado || situacao.cancelado,
+            pousado: vooPhoenix.pousado || situacao.pousado,
+            aeroporto: noAeroporto,
+          }
         : vooPhoenix;
 
       const calculoStatus = calcularStatusVooPorHorario({
@@ -1952,7 +1952,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-              "Hotel não informado",
+                "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2308,8 +2308,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-            )
+                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+              )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2854,27 +2854,27 @@ export default function PainelOperacionalUnificado() {
               minWidth={1180}
             >
               <TableHead>
-                <span>Tipo</span>
-                <span>Cliente</span>
-                <span>Reserva</span>
-                <span>Fornecedor</span>
-                <span>Origem</span>
-                <span>Destino</span>
+                <span><span className="painel-op-th"><Icon name="grid" size={13} />Tipo</span></span>
+                <span><span className="painel-op-th"><Icon name="user" size={13} />Cliente</span></span>
+                <span><span className="painel-op-th"><Icon name="ticket" size={13} />Reserva</span></span>
+                <span><span className="painel-op-th"><Icon name="truck" size={13} />Fornecedor</span></span>
+                <span><span className="painel-op-th"><Icon name="mapPin" size={13} />Origem</span></span>
+                <span><span className="painel-op-th"><Icon name="flag" size={13} />Destino</span></span>
                 {abaAtiva === ABAS.CHEGADAS && (
                   <>
-                    <span>Voo</span>
-                    <span>Chegada</span>
+                    <span><span className="painel-op-th"><Icon name="plane" size={13} />Voo</span></span>
+                    <span><span className="painel-op-th"><Icon name="planeLanding" size={13} />Chegada</span></span>
                   </>
                 )}
                 {abaAtiva === ABAS.OUTS && (
                   <>
-                    <span>Busca</span>
-                    <span>Voo de retorno</span>
+                    <span><span className="painel-op-th"><Icon name="clock" size={13} />Busca</span></span>
+                    <span><span className="painel-op-th"><Icon name="planeTakeoff" size={13} />Voo de retorno</span></span>
                   </>
                 )}
-                {abaAtiva === ABAS.GUIAS && <span>Busca no hotel</span>}
-                <span>Pax</span>
-                <span>OBS</span>
+                {abaAtiva === ABAS.GUIAS && <span><span className="painel-op-th"><Icon name="clock" size={13} />Busca no hotel</span></span>}
+                <span><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
+                <span><span className="painel-op-th"><Icon name="message" size={13} />OBS</span></span>
               </TableHead>
               {resultadosBusca.map((resultado) => (
                 <TableRow key={resultado.id}>
@@ -2913,13 +2913,14 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) },
-              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) },
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) , icon: "planeLanding" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) , icon: "ticket" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) , icon: "truck" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) , icon: "users" },
               {
                 key: "alterados",
                 label: "Voos alterados",
+                icon: "alert",
                 value: valorKpi(resumoChegadas.alterados),
                 tone: resumoChegadas.alterados ? "alert" : undefined,
                 hint: "atraso, antecipação ou cancelamento",
@@ -2940,12 +2941,12 @@ export default function PainelOperacionalUnificado() {
             >
               <TableHead>
                 <span />
-                <span>Voo</span>
-                <span>Previsto</span>
-                <span>Estimado</span>
-                <span>Status</span>
-                <span className="ui-cell-end painel-op-pax">Pax</span>
-                <span>Fornecedor</span>
+                <span><span className="painel-op-th"><Icon name="plane" size={13} />Voo</span></span>
+                <span><span className="painel-op-th"><Icon name="clock" size={13} />Previsto</span></span>
+                <span><span className="painel-op-th"><Icon name="activity" size={13} />Estimado</span></span>
+                <span><span className="painel-op-th"><Icon name="info" size={13} />Status</span></span>
+                <span className="ui-cell-end painel-op-pax"><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
+                <span><span className="painel-op-th"><Icon name="truck" size={13} />Fornecedor</span></span>
                 <span />
               </TableHead>
 
@@ -2963,7 +2964,10 @@ export default function PainelOperacionalUnificado() {
                       onToggle={() => toggleExpandirVoo(voo.vooKey)}
                     >
                       <span>
-                        <span className="ui-cell-main">{voo.voo}</span>
+                        <span className="ui-cell-main painel-op-com-icone">
+                          <Icon name="plane" size={14} />
+                          {voo.voo}
+                        </span>
                         <span className="ui-cell-sub">
                           {voo.totalReservas} reserva(s)
                           {voo.reservasNaoEscaladas.length > 0 && (
@@ -2974,9 +2978,15 @@ export default function PainelOperacionalUnificado() {
                           )}
                         </span>
                       </span>
-                      <span className="tabular">{formatarHora(voo.horarioPrevisto) || "--:--"}</span>
+                      <span className="tabular painel-op-hora">
+                        <Icon name="clock" size={14} />
+                        {formatarHora(voo.horarioPrevisto) || "--:--"}
+                      </span>
                       <span>
-                        <span className="tabular">{estimado || "—"}</span>
+                        <span className="tabular painel-op-com-icone">
+                          <Icon name="activity" size={14} />
+                          {estimado || "—"}
+                        </span>
                         {voo.variacaoTexto ? (
                           <span className="ui-cell-sub">{voo.variacaoTexto}</span>
                         ) : null}
@@ -2993,19 +3003,30 @@ export default function PainelOperacionalUnificado() {
                           <span className="ui-cell-sub">Não está no painel do aeroporto</span>
                         ) : null}
                       </span>
-                      <span className="ui-cell-end ui-cell-main tabular painel-op-pax">{voo.totalPax}</span>
-                      <span>
-                        {fornecedores.length ? (
-                          <>
-                            <span className="ui-cell-main">{fornecedores[0].motorista}</span>
-                            <span className="ui-cell-sub">
-                              {fornecedores.length} veículo(s)
-                            </span>
-                          </>
-                        ) : (
-                          <StatusDot tone="alert">Sem escala</StatusDot>
-                        )}
+                      <span className="ui-cell-end ui-cell-main tabular painel-op-pax painel-op-com-icone">
+                        <Icon name="users" size={14} />
+                        {voo.totalPax}
                       </span>
+                      {fornecedores.length ? (
+                        <span className="painel-op-fornecedor-cel">
+                          <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
+                            <Icon name="truck" size={16} />
+                          </span>
+                          <span className="painel-op-fornecedor-cel__texto">
+                            <strong>{fornecedores[0].motorista}</strong>
+                            <span>{fornecedores.length} veículo(s)</span>
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="painel-op-fornecedor-cel is-pendente">
+                          <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
+                            <Icon name="alert" size={16} />
+                          </span>
+                          <span className="painel-op-fornecedor-cel__texto">
+                            <strong>Sem escala</strong>
+                          </span>
+                        </span>
+                      )}
                       <Button
                         variant="ghost"
                         iconOnly
@@ -3076,15 +3097,15 @@ export default function PainelOperacionalUnificado() {
                               compact
                             >
                               <TableHead>
-                                <span>Cliente</span>
-                                <span>Reserva</span>
-                                <span>Pax</span>
-                                <span>Operadora</span>
-                                <span>Modalidade</span>
-                                <span>Contato</span>
-                                <span>Destino</span>
-                                <span>OBS</span>
-                                <span className="ui-cell-end">Placa</span>
+                                <span><span className="painel-op-th"><Icon name="user" size={13} />Cliente</span></span>
+                                <span><span className="painel-op-th"><Icon name="ticket" size={13} />Reserva</span></span>
+                                <span><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
+                                <span><span className="painel-op-th"><Icon name="building" size={13} />Operadora</span></span>
+                                <span><span className="painel-op-th"><Icon name="listCheck" size={13} />Modalidade</span></span>
+                                <span><span className="painel-op-th"><Icon name="phone" size={13} />Contato</span></span>
+                                <span><span className="painel-op-th"><Icon name="flag" size={13} />Destino</span></span>
+                                <span><span className="painel-op-th"><Icon name="message" size={13} />OBS</span></span>
+                                <span className="ui-cell-end"><span className="painel-op-th"><Icon name="fileText" size={13} />Placa</span></span>
                               </TableHead>
                               {grupo.reservas.map((reserva) => (
                                 <TableRow key={reserva.id}>
@@ -3134,11 +3155,11 @@ export default function PainelOperacionalUnificado() {
                               compact
                             >
                               <TableHead>
-                                <span>Cliente</span>
-                                <span>Reserva</span>
-                                <span>Pax</span>
-                                <span>Operadora</span>
-                                <span className="ui-cell-end">Placa</span>
+                                <span><span className="painel-op-th"><Icon name="user" size={13} />Cliente</span></span>
+                                <span><span className="painel-op-th"><Icon name="ticket" size={13} />Reserva</span></span>
+                                <span><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
+                                <span><span className="painel-op-th"><Icon name="building" size={13} />Operadora</span></span>
+                                <span className="ui-cell-end"><span className="painel-op-th"><Icon name="fileText" size={13} />Placa</span></span>
                               </TableHead>
                               {voo.reservasNaoEscaladas.map((reserva) => (
                                 <TableRow key={reserva.id}>
@@ -3179,15 +3200,16 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) },
-              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) },
-              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) },
-              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) },
-              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) },
-              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) },
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) , icon: "grid" },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) , icon: "planeTakeoff" },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) , icon: "navigation" },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) , icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) , icon: "users" },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) , icon: "building" },
               {
                 key: "monitorados",
                 label: "Monitorados",
+                icon: "eye",
                 value: valorKpi(`${totaisOut.monitorados} / ${gruposOutBase.length}`),
               },
             ]}
@@ -3206,13 +3228,13 @@ export default function PainelOperacionalUnificado() {
             >
               <TableHead>
                 <span />
-                <span>Serviço · hotel</span>
-                <span>Data / hora</span>
-                <span>Escala</span>
-                <span>Fornecedor</span>
-                <span>Modalidade</span>
-                <span>Pax</span>
-                <span>Monitorado</span>
+                <span><span className="painel-op-th"><Icon name="building" size={13} />Serviço · hotel</span></span>
+                <span><span className="painel-op-th"><Icon name="calendar" size={13} />Data / hora</span></span>
+                <span><span className="painel-op-th"><Icon name="clipboardCheck" size={13} />Escala</span></span>
+                <span><span className="painel-op-th"><Icon name="truck" size={13} />Fornecedor</span></span>
+                <span><span className="painel-op-th"><Icon name="listCheck" size={13} />Modalidade</span></span>
+                <span><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
+                <span><span className="painel-op-th"><Icon name="eye" size={13} />Monitorado</span></span>
                 <span />
               </TableHead>
 
@@ -3368,18 +3390,18 @@ export default function PainelOperacionalUnificado() {
                               compact
                             >
                               <TableHead>
-                                <span>Data</span>
-                                <span>Hora</span>
-                                <span>Reserva</span>
-                                <span>Contato</span>
-                                <span>Nome do pax</span>
-                                <span>Qtd. pax</span>
-                                <span>Origem</span>
-                                {grupo.tipoServico === "TRANSFER" && <span>Destino</span>}
-                                <span>Voo retorno</span>
-                                <span>Modalidade</span>
-                                <span>Buscar</span>
-                                <span>OBS</span>
+                                <span><span className="painel-op-th"><Icon name="calendar" size={13} />Data</span></span>
+                                <span><span className="painel-op-th"><Icon name="clock" size={13} />Hora</span></span>
+                                <span><span className="painel-op-th"><Icon name="ticket" size={13} />Reserva</span></span>
+                                <span><span className="painel-op-th"><Icon name="phone" size={13} />Contato</span></span>
+                                <span><span className="painel-op-th"><Icon name="user" size={13} />Nome do pax</span></span>
+                                <span><span className="painel-op-th"><Icon name="users" size={13} />Qtd. pax</span></span>
+                                <span><span className="painel-op-th"><Icon name="mapPin" size={13} />Origem</span></span>
+                                {grupo.tipoServico === "TRANSFER" && <span><span className="painel-op-th"><Icon name="flag" size={13} />Destino</span></span>}
+                                <span><span className="painel-op-th"><Icon name="planeTakeoff" size={13} />Voo retorno</span></span>
+                                <span><span className="painel-op-th"><Icon name="listCheck" size={13} />Modalidade</span></span>
+                                <span><span className="painel-op-th"><Icon name="clock" size={13} />Buscar</span></span>
+                                <span><span className="painel-op-th"><Icon name="message" size={13} />OBS</span></span>
                               </TableHead>
                               {hotel.reservas.map((reserva) => (
                                 <TableRow key={reserva.id}>
@@ -3435,10 +3457,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) },
-              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) },
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) , icon: "idCard" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) , icon: "truck" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) , icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) , icon: "users" },
             ]}
           />
 
@@ -3455,11 +3477,11 @@ export default function PainelOperacionalUnificado() {
             >
               <TableHead>
                 <span />
-                <span>Guia</span>
-                <span>Passeios</span>
-                <span className="ui-cell-end">Passeios</span>
-                <span className="ui-cell-end">Veículos</span>
-                <span className="ui-cell-end">Pax</span>
+                <span><span className="painel-op-th"><Icon name="idCard" size={13} />Guia</span></span>
+                <span><span className="painel-op-th"><Icon name="compass" size={13} />Passeios</span></span>
+                <span className="ui-cell-end"><span className="painel-op-th"><Icon name="compass" size={13} />Passeios</span></span>
+                <span className="ui-cell-end"><span className="painel-op-th"><Icon name="truck" size={13} />Veículos</span></span>
+                <span className="ui-cell-end"><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
               </TableHead>
 
               {gruposGuiasFiltrados.map((grupo) => {
@@ -3471,11 +3493,30 @@ export default function PainelOperacionalUnificado() {
                       expanded={expandido}
                       onToggle={() => toggleExpandirGrupoGuia(grupo.id)}
                     >
-                      <span className="ui-cell-main">{grupo.guia}</span>
-                      <span className="painel-op-resumo">{grupo.passeiosResumo || "Sem passeio"}</span>
-                      <span className="ui-cell-end tabular">{grupo.totalPasseios}</span>
-                      <span className="ui-cell-end tabular">{grupo.totalVeiculosUtilizados}</span>
-                      <span className="ui-cell-end ui-cell-main tabular">{grupo.totalPax}</span>
+                      <span className="painel-op-fornecedor-cel">
+                        <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
+                          <Icon name="idCard" size={16} />
+                        </span>
+                        <span className="painel-op-fornecedor-cel__texto">
+                          <strong>{grupo.guia}</strong>
+                        </span>
+                      </span>
+                      <span className="painel-op-resumo painel-op-com-icone">
+                        <Icon name="compass" size={14} />
+                        {grupo.passeiosResumo || "Sem passeio"}
+                      </span>
+                      <span className="ui-cell-end tabular painel-op-com-icone">
+                        <Icon name="compass" size={14} />
+                        {grupo.totalPasseios}
+                      </span>
+                      <span className="ui-cell-end tabular painel-op-com-icone">
+                        <Icon name="truck" size={14} />
+                        {grupo.totalVeiculosUtilizados}
+                      </span>
+                      <span className="ui-cell-end ui-cell-main tabular painel-op-com-icone">
+                        <Icon name="users" size={14} />
+                        {grupo.totalPax}
+                      </span>
                     </TableRow>
 
                     {expandido && (
@@ -3527,13 +3568,13 @@ export default function PainelOperacionalUnificado() {
                                   compact
                                 >
                                   <TableHead>
-                                    <span>Nome do pax</span>
-                                    <span>Reserva</span>
-                                    <span>Contato</span>
-                                    <span>Quantidade</span>
-                                    <span>Hotel</span>
-                                    <span>Horário</span>
-                                    <span>OBS</span>
+                                    <span><span className="painel-op-th"><Icon name="user" size={13} />Nome do pax</span></span>
+                                    <span><span className="painel-op-th"><Icon name="ticket" size={13} />Reserva</span></span>
+                                    <span><span className="painel-op-th"><Icon name="phone" size={13} />Contato</span></span>
+                                    <span><span className="painel-op-th"><Icon name="users" size={13} />Quantidade</span></span>
+                                    <span><span className="painel-op-th"><Icon name="building" size={13} />Hotel</span></span>
+                                    <span><span className="painel-op-th"><Icon name="clock" size={13} />Horário</span></span>
+                                    <span><span className="painel-op-th"><Icon name="message" size={13} />OBS</span></span>
                                   </TableHead>
                                   {veiculo.reservas.map((reserva) => (
                                     <TableRow key={reserva.id}>
