@@ -1,0 +1,326 @@
+/* As telas de cadastro dentro das abas ocupam a largura toda */
+.cadastros-conteudo>* {
+  max-width: none !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================================================
+   POLIMENTO DAS 3 ABAS (só visual, escopo .cadastros-conteudo).
+   Os componentes de cadastro mantêm a própria estrutura/CSS;
+   aqui só alinhamos raio, superfícies, campos e layout aos tokens.
+   ========================================================= */
+
+.cadastros-conteudo :is(.cadastro-guia-page, .cadastro-fornecedor-page) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* título da aba: o "Cadastros" já é o título da página */
+.cadastros-conteudo :is(.cadastro-guia-header, .cadastro-fornecedor-header, .usuarios-header) {
+  margin-bottom: var(--space-4);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-title, .cadastro-fornecedor-title, .usuarios-header h2) {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-title, .cadastro-fornecedor-title, .usuarios-header h2) svg {
+  color: var(--text-3);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-subtitle, .cadastro-fornecedor-subtitle, .usuarios-header p) {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* layout: formulário | resumo (fixo ao rolar); listas ocupam a largura toda */
+.cadastros-conteudo :is(.cadastro-guia-grid, .cadastro-fornecedor-grid) {
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr);
+  gap: var(--space-4);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-card-large, .cadastro-fornecedor-card-large):first-child {
+  grid-column: auto;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-grid, .cadastro-fornecedor-grid)> :is(.cadastro-guia-card, .cadastro-fornecedor-card):not(.cadastro-guia-card-large):not(.cadastro-fornecedor-card-large) {
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--space-4));
+}
+
+/* cartões */
+.cadastros-conteudo :is(.cadastro-guia-card, .cadastro-fornecedor-card, .usuarios-card) {
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: 20px;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-card-header, .cadastro-fornecedor-card-header) {
+  margin: -20px -20px 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-card-header, .cadastro-fornecedor-card-header) h3,
+.cadastros-conteudo .usuarios-card h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-card-header, .cadastro-fornecedor-card-header) p {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-badge, .cadastro-fornecedor-badge, .cadastro-fornecedor-mini-badge) {
+  border-radius: 999px;
+  border: 1px solid var(--divider);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* campos */
+.cadastros-conteudo :is(.cadastro-guia-field, .cadastro-fornecedor-field)>label,
+.cadastros-conteudo .usuarios-field>span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-field, .cadastro-fornecedor-field) label svg {
+  color: var(--text-3);
+  width: 14px;
+  height: 14px;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-field, .cadastro-fornecedor-field, .usuarios-field) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+.cadastros-conteudo :is(.cadastro-guia-dropdown-header, .cadastro-fornecedor-dropdown-header) {
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  box-shadow: none;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-field, .cadastro-fornecedor-field, .usuarios-field) textarea {
+  min-height: 96px;
+  padding-top: 10px;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-field, .cadastro-fornecedor-field, .usuarios-field) :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 25%, transparent);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-dropdown-menu, .cadastro-fornecedor-dropdown-menu) {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-dropdown-item, .cadastro-fornecedor-dropdown-item):hover {
+  background: var(--bg);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-tag, .cadastro-fornecedor-tag, .cadastro-fornecedor-veiculo-chip) {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-tag, .cadastro-fornecedor-tag) span {
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-tag, .cadastro-fornecedor-tag) span:hover {
+  color: var(--alert);
+}
+
+/* interruptores */
+.cadastros-conteudo :is(.cadastro-guia-switch-track, .cadastro-fornecedor-switch-track) {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--divider);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-switch-thumb, .cadastro-fornecedor-switch-thumb) {
+  width: 14px;
+  height: 14px;
+  background: var(--text-3);
+  box-shadow: none;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-switch, .cadastro-fornecedor-switch).active :is(.cadastro-guia-switch-track, .cadastro-fornecedor-switch-track) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-switch, .cadastro-fornecedor-switch).active :is(.cadastro-guia-switch-thumb, .cadastro-fornecedor-switch-thumb) {
+  background: var(--on-accent);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-switch-label, .cadastro-fornecedor-switch-label) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-switch-label, .cadastro-fornecedor-switch-label) svg {
+  color: var(--text-3);
+}
+
+/* busca da lista de fornecedores: a moldura é o wrapper */
+.cadastros-conteudo .cadastro-fornecedor-search {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--raised);
+}
+
+.cadastros-conteudo .cadastro-fornecedor-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 25%, transparent);
+}
+
+.cadastros-conteudo .cadastro-fornecedor-search input {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  outline: none;
+  color: var(--text);
+}
+
+.cadastros-conteudo .cadastro-fornecedor-search svg {
+  color: var(--text-3);
+}
+
+/* botões */
+.cadastros-conteudo :is(.cadastro-guia-btn-primary, .cadastro-fornecedor-btn-primary, .usuarios-btn.primary) {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-btn-primary, .cadastro-fornecedor-btn-primary, .usuarios-btn.primary):hover:not(:disabled) {
+  background: color-mix(in oklch, var(--accent), black 12%);
+}
+
+.cadastros-conteudo :is(.cadastro-fornecedor-btn-secondary, .usuarios-btn:not(.primary)) {
+  min-height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.cadastros-conteudo :is(.cadastro-fornecedor-btn-secondary, .usuarios-btn:not(.primary)):hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.cadastros-conteudo .cadastro-fornecedor-btn-secondary.warning {
+  color: var(--warning);
+}
+
+.cadastros-conteudo .usuarios-icon-btn {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.cadastros-conteudo .usuarios-icon-btn:hover:not(:disabled) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+/* resumo / pré-visualização */
+.cadastros-conteudo :is(.cadastro-guia-preview-item, .cadastro-fornecedor-preview-item) {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  background: none;
+  padding: 10px 0;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-preview-item, .cadastro-fornecedor-preview-item):last-child {
+  border-bottom: 0;
+}
+
+.cadastros-conteudo :is(.cadastro-guia-preview-label, .cadastro-fornecedor-preview-label) {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.cadastros-conteudo :is(.cadastro-guia-preview-value, .cadastro-fornecedor-preview-value) {
+  font-size: var(--fs-md);
+  color: var(--text);
+}
+
+/* lista de fornecedores */
+.cadastros-conteudo .cadastro-fornecedor-item {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* usuários: escolha de nível em cartões */
+.cadastros-conteudo .usuarios-grid {
+  gap: var(--space-4);
+}
+
+.cadastros-conteudo .usuarios-role-option {
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 1000px) {
+  .cadastros-conteudo :is(.cadastro-guia-grid, .cadastro-fornecedor-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cadastros-conteudo :is(.cadastro-guia-grid, .cadastro-fornecedor-grid)>* {
+    position: static !important;
+  }
+}

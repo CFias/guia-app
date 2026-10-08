@@ -1,54 +1,14 @@
 /* =========================================================
-   DASHBOARD / SIDEBAR — MESMO DESIGN SYSTEM DO PAINEL
-   OPERACIONAL E DO MAPA DE AFINIDADE.
-
-   Tokens locais (--pc-*) espelhando os das outras telas, pra
-   manter consistência visual em todo o app. Tudo deriva das
-   variáveis globais do tema (--text, --card, --border,
-   --primary, --text-dist, --bg, --background, --side).
+   SHELL — sidebar (256px / 72px recolhida) + topbar (64px).
+   Só tokens de src/styles/tokens.css.
    ========================================================= */
 
-* {
-  box-sizing: border-box;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
 .dashboard-container {
-  --pc-radius-xl: 20px;
-  --pc-radius-lg: 16px;
-  --pc-radius-md: 12px;
-  --pc-radius-pill: 999px;
-
-  --pc-space-1: 4px;
-  --pc-space-2: 8px;
-  --pc-space-3: 12px;
-  --pc-space-4: 16px;
-  --pc-space-5: 20px;
-  --pc-space-6: 24px;
-
-  --pc-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
-  --pc-border-soft: color-mix(in srgb, var(--border) 50%, transparent 50%);
-
   display: flex;
   min-height: 100vh;
-  font-family: "montserrat", sans-serif;
   background: var(--bg);
-}
-
-.dashboard-content {
-  margin-left: 250px;
-  width: calc(100% - 250px);
-  min-height: 100vh;
-  background: var(--bg);
-  padding: var(--pc-space-6);
-}
-
-.dashboard-main {
-  min-height: calc(100vh - 48px);
-  position: relative;
-  padding: var(--pc-space-5);
-  border-radius: var(--pc-radius-md);
+  color: var(--text);
+  font-family: var(--font-body);
 }
 
 /* =========================================================
@@ -56,497 +16,623 @@
    ========================================================= */
 
 .sidebar {
-  width: 250px;
-  min-height: 100vh;
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  background: var(--card);
-  color: var(--text);
+  flex: none;
+  width: var(--sidebar-w);
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: var(--pc-space-5) var(--pc-space-3);
-  border-right: 1px solid var(--pc-border);
+  background: var(--bg);
+  border-right: 1px solid var(--divider);
+  color: var(--text);
+  overflow: hidden;
+  z-index: 60;
+  transition: width 0.18s ease;
 }
 
-/* ---------- Topo / marca ---------- */
+.app-shell.is-collapsed .sidebar {
+  width: var(--sidebar-w-collapsed);
+}
+
+/* ---------- topo / marca ---------- */
 
 .sidebar-top {
-  margin-bottom: var(--pc-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--topbar-h);
+  padding: 0 var(--space-3) 0 14px;
+  flex: none;
 }
 
 .sidebar-brand-wrap {
   display: flex;
   align-items: center;
-  gap: var(--pc-space-3);
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+  color: inherit;
   text-decoration: none;
-  color: inherit;
-  padding: var(--pc-space-2) var(--pc-space-2) var(--pc-space-4);
-  border-bottom: 1px solid var(--pc-border-soft);
-  border-radius: var(--pc-radius-md);
-}
-
-.sidebar-brand-wrap:visited,
-.sidebar-brand-wrap:hover,
-.sidebar-brand-wrap:active {
-  color: inherit;
-}
-
-.sidebar-brand-wrap:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
-  outline-offset: 2px;
+  border-radius: var(--radius-md);
 }
 
 .sidebar-logo-box {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--pc-radius-md);
-  background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-seg);
+  background: var(--raised);
+  overflow: hidden;
 }
 
 .sidebar-logo-box img {
-  width: 42px;
-  height: 42px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
 .sidebar-brand {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
   min-width: 0;
 }
 
 .sidebar-brand strong {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .sidebar-brand span {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--text) 66%, transparent 34%);
-  margin-top: 3px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  white-space: nowrap;
 }
 
-/* ---------- Menu ---------- */
+.sidebar-collapse,
+.sidebar-close {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.sidebar-collapse:hover,
+.sidebar-close:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+
+.sidebar-close {
+  display: none;
+}
+
+/* ---------- menu ---------- */
 
 .sidebar-menu {
   flex: 1;
-  padding-top: var(--pc-space-4);
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-1) var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scrollbar-width: thin;
 }
 
 .sidebar-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: var(--pc-space-5);
+  gap: 2px;
 }
 
 .sidebar-group-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--text) 55%, transparent 45%);
-  padding: 0 var(--pc-space-2) var(--pc-space-2);
-}
-
-.sidebar-group-title span {
-  font-size: 12px !important;
-  all: unset;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: inherit;
-}
-
-.sidebar-group-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
+  min-height: 26px;
+  padding: 0 10px;
   border: 0;
-  background: none;
-  cursor: pointer;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
   font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
 }
 
-.sidebar-group-toggle:hover {
-  color: color-mix(in srgb, var(--text) 80%, transparent 20%);
+.sidebar-group-title:hover {
+  color: var(--text-2);
 }
 
 .sidebar-group-chevron {
-  transition: transform 0.2s ease;
-  opacity: 0.7;
+  opacity: 0;
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.sidebar-group-title:hover .sidebar-group-chevron,
+.sidebar-group-title:focus-visible .sidebar-group-chevron,
+.sidebar-group-title[aria-expanded="false"] .sidebar-group-chevron {
+  opacity: 1;
 }
 
 .sidebar-group-chevron.aberto {
-  transform: rotate(180deg);
+  transform: rotate(0deg);
 }
-
-/* ---------- Links ---------- */
 
 .sidebar-link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--pc-space-3);
-  width: 100%;
+  gap: var(--space-3);
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  font-weight: 500;
   text-decoration: none;
-  color: color-mix(in srgb, var(--text) 82%, transparent 18%);
-  padding: 10px var(--pc-space-3) 10px 16px;
-  border-radius: var(--pc-radius-md);
-  position: relative;
+  white-space: nowrap;
 }
 
-.sidebar-link span {
-  font-size: 12px;
-  font-weight: 500;
-  color: inherit;
+.sidebar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-icon {
-  color: inherit;
-  opacity: 0.9;
-  flex-shrink: 0;
+  flex: none;
+  color: var(--text-3);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .sidebar-link:hover {
-    background: color-mix(in srgb, var(--text) 6%, transparent 94%);
-    color: var(--text);
-  }
+.sidebar-link:hover {
+  background: var(--raised);
+  color: var(--text);
 }
-
-.sidebar-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
-  outline-offset: 2px;
-}
-
-/* ---------- Item ativo ---------- */
 
 .sidebar-link.active {
-  background: color-mix(in srgb, var(--side, var(--primary)) 16%, transparent 84%);
+  background: var(--raised);
   color: var(--text);
   font-weight: 600;
 }
 
-.sidebar-link.active::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: var(--pc-radius-pill);
-  background: var(--side, var(--primary));
+.sidebar-link.active .sidebar-icon {
+  color: var(--accent-text);
 }
 
-/* ---------- Link externo (abre em nova aba) ---------- */
-
-.sidebar-link-external {
-  color: var(--text-dist);
-}
-
-.sidebar-icon-trailing {
-  margin-left: auto;
-  opacity: 0.6;
-  color: inherit;
-  flex-shrink: 0;
-}
-
-/* ---------- Rodapé ---------- */
+/* ---------- rodapé ---------- */
 
 .sidebar-footer {
-  padding-top: var(--pc-space-4);
-  border-top: 1px solid var(--pc-border-soft);
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: var(--pc-space-3);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--divider);
 }
-
-.sidebar-version {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
-  margin-left: var(--pc-space-2);
-  padding: 4px 10px;
-  border-radius: var(--pc-radius-pill);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-dist);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 20%, transparent 80%);
-  background: color-mix(in srgb, var(--text-dist) 6%, transparent 94%);
-}
-
-/* =========================================================
-   LOADING
-   ========================================================= */
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--background) 72%, transparent 28%);
-  backdrop-filter: blur(2px);
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--pc-radius-lg);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid color-mix(in srgb, var(--primary) 20%, transparent 80%);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: dashboardSpin 0.9s linear infinite;
-}
-
-@keyframes dashboardSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* =========================================================
-   RESPONSIVO
-   ========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none;
-  }
-
-  .spinner {
-    animation: none;
-  }
-}
-
-/* ---------- Usuário logado / sair ---------- */
 
 .sidebar-user {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--pc-space-2);
-  padding: 8px 8px 8px 16px;
+  gap: 10px;
+  min-width: 0;
+  padding: var(--space-1) 2px;
+}
+
+.sidebar-avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
 }
 
 .sidebar-user-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .sidebar-user-info strong {
-  font-size: 12px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sidebar-user-info span {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--text) 60%, transparent 40%);
+  font-size: var(--fs-sm);
+  color: var(--text-3);
 }
 
 .sidebar-logout {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: var(--pc-radius-md);
-  border: 1px solid var(--pc-border);
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-md);
   background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.sidebar-logout:hover {
+  background: var(--raised);
+  color: var(--alert);
+}
+
+.sidebar-version {
+  padding: 0 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* ---------- recolhida: só ícones ---------- */
+
+.app-shell.is-collapsed .sidebar-top {
+  flex-direction: column;
+  justify-content: center;
+  height: auto;
+  padding: 14px 0 var(--space-2);
+  gap: var(--space-2);
+}
+
+.app-shell.is-collapsed .sidebar-brand-wrap {
+  flex: none;
+}
+
+.app-shell.is-collapsed .sidebar-brand,
+.app-shell.is-collapsed .sidebar-label,
+.app-shell.is-collapsed .sidebar-user-info,
+.app-shell.is-collapsed .sidebar-version,
+.app-shell.is-collapsed .sidebar-group-chevron {
+  display: none;
+}
+
+.app-shell.is-collapsed .sidebar-menu {
+  padding: var(--space-2) var(--space-3);
+}
+
+.app-shell.is-collapsed .sidebar-group-title {
+  min-height: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 2px 6px 6px;
+  background: var(--divider);
+  font-size: 0;
+  pointer-events: none;
+}
+
+.app-shell.is-collapsed .sidebar-group:first-child .sidebar-group-title {
+  display: none;
+}
+
+.app-shell.is-collapsed .sidebar-link {
+  justify-content: center;
+  padding: 0;
+  width: 44px;
+  height: 40px;
+  margin: 0 auto;
+}
+
+.app-shell.is-collapsed .sidebar-footer {
+  align-items: center;
+  padding: var(--space-3) 0;
+}
+
+.app-shell.is-collapsed .sidebar-user {
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* =========================================================
+   ÁREA DE CONTEÚDO + TOPBAR
+   ========================================================= */
+
+.dashboard-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--topbar-h);
+  padding: 0 var(--space-6) 0 var(--space-8);
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid var(--divider);
+  isolation: isolate;
+}
+
+/* o desfoque fica num pseudo-elemento: no próprio header ele viraria
+   "containing block" dos painéis fixos (notificações) */
+.app-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.dashboard-menu-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
 }
 
-/* Topo da sidebar: marca + sino de notificações lado a lado */
-.sidebar-top {
+.app-breadcrumb {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--pc-space-2);
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  font-size: var(--fs-base);
+  white-space: nowrap;
 }
 
-.sidebar-top .sidebar-brand-wrap {
+.app-breadcrumb__grupo {
+  color: var(--text-3);
+}
+
+.app-breadcrumb__sep {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+.app-breadcrumb__pagina {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.app-topbar__data {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--space-2);
+  font-size: var(--fs-md);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.app-phoenix {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-phoenix:hover:not(:disabled) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.app-phoenix:disabled {
+  cursor: progress;
+}
+
+.app-phoenix__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.app-phoenix__refresh {
+  color: var(--text-3);
+}
+
+/* sino: o componente NotificacoesSino é o mesmo; aqui só o encaixe */
+.dashboard-bell {
+  display: inline-flex;
+}
+
+.app-shell .notif-sino {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border-color: var(--divider);
+  background: var(--surface);
+}
+
+/* o painel abre num portal no <body>: classe dupla para vencer o CSS
+   do componente e o responsive.css, e ancorar embaixo do sino */
+.notif-painel.notif-painel {
+  top: calc(var(--topbar-h) + 8px);
+  left: auto;
+  right: var(--space-4);
+}
+
+/* conteúdo fluido: as telas antigas tinham max-width: 65vw */
+.dashboard-main {
+  position: relative;
   flex: 1;
   min-width: 0;
+  padding: var(--space-6) var(--space-8) var(--space-8);
 }
 
-/* =========================================================
-   RESPONSIVO — celular e tablet (até 1024px)
-   Desktop (> 1024px): sidebar fixa de 250px, como sempre foi.
-   Até 1024px: a sidebar vira uma gaveta que abre pelo botão ☰
-   e o conteúdo usa a tela toda.
-   ========================================================= */
+.app-content>* {
+  max-width: none !important;
+}
 
-/* Elementos que só existem em telas pequenas ficam ocultos no desktop */
-.dashboard-topbar,
-.sidebar-backdrop,
-.sidebar-close {
+/* overlay de carregamento (prop "loading" do layout) */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--divider);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ui-spin 0.9s linear infinite;
+}
+
+.sidebar-backdrop {
   display: none;
 }
 
-/* Sino de notificações: alinhado ao topo da sidebar (desktop) */
-.dashboard-bell {
-  position: fixed;
-  top: 23px;
-  left: 200px;
-  z-index: 30;
-}
-
-/* deixa espaço pro sino ao lado da marca */
-.sidebar-top {
-  padding-right: 46px;
-}
+/* =========================================================
+   CELULAR / TABLET (até 1024px): menu vira gaveta
+   ========================================================= */
 
 @media (max-width: 1024px) {
-  .dashboard-topbar {
-    display: flex;
-    align-items: center;
-    gap: var(--pc-space-2);
+
+  .sidebar,
+  .app-shell.is-collapsed .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    z-index: 35;
-    box-sizing: border-box;
-    height: calc(56px + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 64px 0 var(--pc-space-2);
-    background: var(--card);
-    border-bottom: 1px solid var(--pc-border);
-  }
-
-  .dashboard-menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
-    border: 0;
-    border-radius: var(--pc-radius-md);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-  }
-
-  .dashboard-topbar-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    text-decoration: none;
-    color: var(--text);
-  }
-
-  .dashboard-topbar-brand img {
-    width: 30px;
-    height: 30px;
-    object-fit: contain;
-  }
-
-  .dashboard-topbar-brand strong {
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* sino passa pra barra superior */
-  .dashboard-bell {
-    top: calc(9px + env(safe-area-inset-top, 0px));
-    left: auto;
-    right: 12px;
-    z-index: 36;
-  }
-
-  /* gaveta */
-  .sidebar {
-    width: min(84vw, 300px);
-    min-height: 0;
-    top: 0;
     bottom: 0;
-    z-index: 40;
-    transform: translateX(-105%);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-    padding-bottom: calc(var(--pc-space-4) + env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
+    width: min(300px, 86vw);
+    height: auto;
+    background: var(--surface);
+    transform: translateX(-102%);
+    transition: transform 0.2s ease;
+    z-index: 1100;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: var(--shadow-pop);
   }
 
   .sidebar.aberto {
-    transform: none;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+    transform: translateX(0);
   }
 
   .sidebar-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 39;
-    background: rgba(0, 0, 0, 0.5);
+    z-index: 1090;
+    background: var(--overlay);
   }
 
-  .sidebar-top {
-    padding-right: 0;
+  .sidebar-collapse {
+    display: none;
   }
 
   .sidebar-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    flex-shrink: 0;
-    border: 1px solid var(--pc-border);
-    border-radius: var(--pc-radius-md);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
+    display: grid;
   }
 
   .sidebar-link {
     min-height: 44px;
-    /* alvo de toque confortável */
   }
 
-  /* conteúdo ocupa a tela inteira */
-  .dashboard-content {
-    margin-left: 0;
-    width: 100%;
-    min-width: 0;
-    padding: calc(56px + env(safe-area-inset-top, 0px) + 12px) 12px 24px;
+  .dashboard-menu-btn {
+    display: grid;
+  }
+
+  .app-topbar {
+    padding: env(safe-area-inset-top, 0px) var(--space-4) 0;
+  }
+
+  .app-breadcrumb__grupo,
+  .app-breadcrumb__sep {
+    display: none;
   }
 
   .dashboard-main {
-    min-height: auto;
-    padding: 0;
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 640px) {
+
+  .app-topbar__data,
+  .app-phoenix>span {
+    display: none;
+  }
+
+  .notif-painel.notif-painel {
+    left: 8px;
+    right: 8px;
+    width: auto;
   }
 }
 
 @media print {
 
-  .dashboard-topbar,
+  .sidebar,
+  .app-topbar,
   .dashboard-bell,
   .sidebar-backdrop {
     display: none !important;
   }
+
+  .dashboard-main {
+    padding: 0;
+  }
+}
+
+/* âncoras (ex.: /planilha → #planilha-operacional) não ficam sob a topbar */
+.app-content [id] {
+  scroll-margin-top: calc(var(--topbar-h) + var(--space-4));
 }

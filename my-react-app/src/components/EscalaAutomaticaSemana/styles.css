@@ -2,7 +2,7 @@
     padding: 20px;
     box-sizing: border-box;
     width: 100%;
-    font-family: "Montserrat", sans-serif;
+    font-family: var(--font-body);
 }
 
 .escala-auto-header {

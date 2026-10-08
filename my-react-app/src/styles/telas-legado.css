@@ -1,0 +1,152 @@
+/* =========================================================
+   TELAS FORA DA REFERÊNCIA (etapa 14) — só visual.
+   Disponibilidade, Central de Dúvidas (admin/comercial),
+   Conferência de voos, Resumo por guia, Chegadas, OUT's,
+   Escala semanal e Cadastro de passeios mantêm JSX e CSS
+   próprios; aqui alinhamos cabeçalho, cartões e largura ao
+   padrão das telas novas. Escopo .app-content (dentro do shell).
+   ========================================================= */
+
+/* largura: o shell já dá o respiro lateral */
+.app-content :is(.disponibilidade-guia-page,
+  .faq-admin-page,
+  .faq-comercial-page,
+  .painel-chegadas-page,
+  .painel-outs-page,
+  .cadastro-passeio-page,
+  .previa-operacional-page) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* título da página: 26px + descrição 14px (padrão PageHeader) */
+.app-content :is(.disponibilidade-guia-title,
+  .faq-admin-title,
+  .painel-chegadas-title,
+  .painel-outs-title,
+  .cadastro-passeio-title,
+  .previa-operacional-title),
+.app-content .faq-comercial-header h2,
+.app-content .page-container>h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.app-content :is(.disponibilidade-guia-title,
+  .faq-admin-title,
+  .painel-chegadas-title,
+  .painel-outs-title,
+  .cadastro-passeio-title,
+  .previa-operacional-title) svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-3);
+}
+
+.app-content :is(.disponibilidade-guia-subtitle,
+  .faq-admin-subtitle,
+  .painel-chegadas-subtitle,
+  .painel-outs-subtitle,
+  .cadastro-passeio-subtitle,
+  .previa-operacional-subtitle) {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.app-content :is(.disponibilidade-guia-header,
+  .faq-admin-header,
+  .painel-chegadas-header,
+  .painel-outs-header,
+  .cadastro-passeio-header,
+  .previa-operacional-header) {
+  margin-bottom: var(--space-5);
+}
+
+/* cartões: raio 12, superfície, divisória, sem sombra */
+.app-content :is(.disponibilidade-guia-card,
+  .painel-chegadas-card,
+  .painel-outs-card,
+  .cadastro-passeio-card,
+  .previa-operacional-card,
+  .faq-admin-card) {
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.app-content :is(.disponibilidade-guia-card-header,
+  .painel-chegadas-card-header,
+  .painel-outs-card-header,
+  .cadastro-passeio-card-header,
+  .previa-operacional-card-header,
+  .faq-admin-card-header) h3 {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* campos */
+.app-content :is(.disponibilidade-guia-page,
+  .faq-admin-page,
+  .painel-chegadas-page,
+  .painel-outs-page,
+  .cadastro-passeio-page,
+  .previa-operacional-page) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-radius: var(--radius-md);
+  border-color: var(--divider);
+  font-family: inherit;
+}
+
+.app-content :is(.disponibilidade-guia-page,
+  .faq-admin-page,
+  .painel-chegadas-page,
+  .painel-outs-page,
+  .cadastro-passeio-page,
+  .previa-operacional-page) :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 25%, transparent);
+}
+
+@media (max-width: 640px) {
+
+  .app-content :is(.disponibilidade-guia-title,
+    .faq-admin-title,
+    .painel-chegadas-title,
+    .painel-outs-title,
+    .cadastro-passeio-title,
+    .previa-operacional-title),
+  .app-content .faq-comercial-header h2 {
+    font-size: 22px;
+  }
+}
+
+/* Escala semanal (tela simples): botão no padrão secundário */
+.app-content .page-container>button {
+  min-height: 36px;
+  margin: 8px 0 16px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-content .page-container>button:hover:not(:disabled) {
+  background: var(--raised);
+}

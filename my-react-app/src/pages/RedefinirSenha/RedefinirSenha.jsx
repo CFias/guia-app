@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
-import {
-  CheckCircleRounded,
-  ErrorOutlineRounded,
-  LockResetRounded,
-  VisibilityOffRounded,
-  VisibilityRounded,
-} from "@mui/icons-material";
+import Icon from "../../components/ui/Icon";
 import { auth } from "../../Services/Services/firebase";
 import logo from "../../assets/clover.png";
 import "../../components/Auth/styles.css";
@@ -114,7 +108,7 @@ const RedefinirSenha = () => {
       <div className="auth-fullscreen">
         <div className="auth-card auth-card-center">
           <div className="auth-icon-badge auth-icon-badge-erro">
-            <ErrorOutlineRounded />
+            <Icon name="alert" size={16} />
           </div>
           <h2>Link inválido ou expirado</h2>
           <p>
@@ -134,7 +128,7 @@ const RedefinirSenha = () => {
       <div className="auth-fullscreen">
         <div className="auth-card auth-card-center">
           <div className="auth-icon-badge">
-            <CheckCircleRounded />
+            <Icon name="circleCheck" size={16} />
           </div>
           <h2>Senha redefinida!</h2>
           <p>Sua nova senha já está valendo. Entre com ela para continuar.</p>
@@ -188,9 +182,9 @@ const RedefinirSenha = () => {
                 aria-label={mostrar ? "Ocultar senha" : "Mostrar senha"}
               >
                 {mostrar ? (
-                  <VisibilityOffRounded fontSize="small" />
+                  <Icon name="eyeOff" size={16} />
                 ) : (
-                  <VisibilityRounded fontSize="small" />
+                  <Icon name="eye" size={16} />
                 )}
               </button>
             </div>
@@ -216,7 +210,7 @@ const RedefinirSenha = () => {
           {erro && <div className="auth-alert erro">{erro}</div>}
 
           <button type="submit" className="auth-btn-primary" disabled={enviando}>
-            <LockResetRounded fontSize="small" />
+            <Icon name="key" size={16} />
             {enviando ? "Salvando..." : "Salvar nova senha"}
           </button>
 

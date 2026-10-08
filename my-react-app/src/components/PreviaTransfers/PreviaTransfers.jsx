@@ -1,25 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  CalendarMonthRounded,
-  LocalPrintshopRounded,
-  RefreshRounded,
-  ViewModuleRounded,
-  DirectionsBusRounded,
-  Inventory2Rounded,
-  GroupsRounded,
-  AccessTimeRounded,
-  SouthWestRounded,
-  NorthEastRounded,
-  SwapHorizRounded,
-  DragIndicatorRounded,
-  WhatsApp,
-  WarningAmberRounded,
-  RouteRounded,
-  SyncRounded,
-} from "@mui/icons-material";
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FilterBar,
+  Icon,
+  KpiTiles,
+  PageHeader,
+  StatusDot,
+  Table,
+  TableExpansion,
+  TableHead,
+  TableRow,
+  pararClique,
+} from "../ui";
+import { usePhoenixStatus } from "../Shell/shellContext";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
-import "./styles.css";
+import "./previa.css";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -548,7 +549,11 @@ const tipoLinhaClass = (tipo) => {
   return "";
 };
 
-const PreviaEscalasPlanilha = () => {
+// Um só componente para dois itens do menu (mesmos dados, mesma lógica):
+//   /previas  → Prévia de Serviços (KPIs + envio por veículo)
+//   /planilha → Planilha operacional (secao="planilha": grade arrastável)
+const PreviaEscalasPlanilha = ({ secao } = {}) => {
+  const planilhaRef = useRef(null);
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
@@ -560,6 +565,8 @@ const PreviaEscalasPlanilha = () => {
   );
   const [draggingVehicle, setDraggingVehicle] = useState(null);
   const [fornecedores, setFornecedores] = useState([]);
+  const navigate = useNavigate();
+  const [veiculoAberto, setVeiculoAberto] = useState(null); // só UI: linha expandida
 
   useEffect(() => {
     salvarLocalStorage(LS_ORDEM_BLOCOS, ordemManualVeiculos);
@@ -840,6 +847,12 @@ const PreviaEscalasPlanilha = () => {
     return lista;
   }, [grupos, fornecedores]);
 
+  // só apresentação: acha o envio (fornecedor) de cada veículo na tabela
+  const envioPorVeiculo = useMemo(
+    () => new Map(cardsEnvioPorVeiculo.map((c) => [c.grupo.veiculo, c])),
+    [cardsEnvioPorVeiculo],
+  );
+
   const abrirWhatsappFornecedor = (fornecedor, atualizado = false) => {
     const telefone = limparNumeroWhatsapp(fornecedor?.whatsapp || "");
     if (!telefone) {
@@ -967,445 +980,410 @@ const PreviaEscalasPlanilha = () => {
     });
   };
 
-  return (
-    <div className="previa-operacional-page">
-      <div className="previa-operacional-header">
-        <div>
-          <h2 className="previa-operacional-title">
-            <ViewModuleRounded fontSize="small" />
-            Prévia de Serviços
-          </h2>
-          <p className="previa-operacional-subtitle">
-            Estrutura automática por escala, com passeios consumidos em chamada
-            separada e envio consolidado por fornecedor.
+  // indicador "Phoenix · HH:MM" da topbar: chama o mesmo "Atualizar" da tela
+  usePhoenixStatus({
+    atualizadoEm: ultimaAtualizacao,
+    carregando: loading,
+    atualizar: carregarServicos,
+  });
+
+
+  // separador que não aparece na tela, mas continua no texto copiado
+  // (quem seleciona a planilha e cola no WhatsApp recebe o mesmo texto de antes)
+  const sep = (texto) => <span className="planilha-sep">{texto}</span>;
+
+  const valorKpi = (valor) => (loading ? "…" : valor);
+
+  const kpis = [
+    { key: "veiculos", label: "Veículos", value: valorKpi(resumo.veiculos), icon: "truck" },
+    { key: "servicos", label: "Serviços", value: valorKpi(resumo.servicos), icon: "list" },
+    { key: "pax", label: "Pax", value: valorKpi(resumo.pax), icon: "users" },
+    { key: "in", label: "IN", value: valorKpi(resumo.totalIn), icon: "planeLanding" },
+    { key: "out", label: "OUT", value: valorKpi(resumo.totalOut), icon: "planeTakeoff" },
+    { key: "trf", label: "Transfer", value: valorKpi(resumo.totalTrf), icon: "navigation" },
+    { key: "passeio", label: "Passeios", value: valorKpi(resumo.totalPasseio), icon: "compass" },
+  ];
+
+  const ehPlanilha = secao === "planilha";
+
+  const estadoVazio = erro ? (
+    <EmptyState icon="alert" title={erro} />
+  ) : loading ? (
+    <EmptyState icon="loader" title="Atualizando prévia operacional..." />
+  ) : (
+    <EmptyState icon="truck" title="Nenhum serviço escalado encontrado para esta data." />
+  );
+
+  const filtroData = (
+    <Field label="Data operacional" icon="calendar">
+      <input
+        type="date"
+        value={dataSelecionada}
+        onChange={(e) => setDataSelecionada(e.target.value)}
+      />
+    </Field>
+  );
+
+  const textoAtualizacao = loading
+    ? "Atualizando..."
+    : ultimaAtualizacao
+      ? `Atualizado em ${ultimaAtualizacao.toLocaleString("pt-BR")}`
+      : "Ainda não atualizado";
+
+  /* ---------------- PLANILHA OPERACIONAL (/planilha) ---------------- */
+  if (ehPlanilha) {
+    return (
+      <div className="ui-page previa-page">
+        <PageHeader
+          title="Planilha operacional"
+          description={`Gerada automaticamente do Phoenix · ${formatarDataTitulo(dataSelecionada)} · ${loading ? "…" : resumo.veiculos} veículo(s)`}
+          actions={
+            <Button
+              icon="refresh"
+              onClick={carregarServicos}
+              loading={loading}
+              disabled={loading}
+            >
+              {loading ? "Atualizando serviços..." : "Atualizar"}
+            </Button>
+          }
+          more={[
+            { label: "Prévia e envio aos fornecedores", icon: "send", onClick: () => navigate("/previas") },
+          ]}
+        />
+
+        <FilterBar>
+          {filtroData}
+          <Field label="Colunas" icon="grid">
+            <select
+              value={colunasPorLinha}
+              onChange={(e) => setColunasPorLinha(Number(e.target.value))}
+            >
+              <option value={4}>4 colunas</option>
+              <option value={5}>5 colunas</option>
+              <option value={6}>6 colunas</option>
+            </select>
+          </Field>
+          <p className="previa-atualizacao">
+            <Icon name="clock" size={14} />
+            {textoAtualizacao}
           </p>
-        </div>
-      </div>
+        </FilterBar>
 
-      <div className="previa-operacional-grid">
-        <div className="previa-operacional-card previa-operacional-card-large">
-          <div className="previa-operacional-card-header">
-            <div className="previa-operacional-card-title-row">
-              <h3>Parâmetros da prévia</h3>
-              <span className="previa-operacional-badge">
-                {formatarDataTitulo(dataSelecionada)}
-              </span>
-            </div>
-          </div>
-
-          <div className="previa-operacional-toolbar">
-            <div className="previa-operacional-field">
-              <label>
-                <CalendarMonthRounded fontSize="small" />
-                Data operacional
-              </label>
-              <input
-                className="previa-operacional-input"
-                type="date"
-                value={dataSelecionada}
-                onChange={(e) => setDataSelecionada(e.target.value)}
-              />
-            </div>
-
-            <div className="previa-operacional-field small">
-              <label>
-                <ViewModuleRounded fontSize="small" />
-                Colunas
-              </label>
-              <select
-                className="previa-operacional-input"
-                value={colunasPorLinha}
-                onChange={(e) => setColunasPorLinha(Number(e.target.value))}
-              >
-                <option value={4}>4 colunas</option>
-                <option value={5}>5 colunas</option>
-                <option value={6}>6 colunas</option>
-              </select>
-            </div>
-
-            <div className="previa-operacional-actions">
-              <button
-                type="button"
-                className="previa-operacional-btn-primary"
-                onClick={carregarServicos}
-                disabled={loading}
-              >
-                <RefreshRounded
-                  fontSize="small"
-                  className={loading ? "spin" : ""}
-                />
-                {loading ? "Atualizando serviços..." : "Atualizar"}
-              </button>
-              <button
-                type="button"
-                className="previa-operacional-btn-soft whatsapp"
-                onClick={() => envioGeral(false)}
-              >
-                <WhatsApp fontSize="small" />
-                Enviar todas as prévias
-              </button>
-
-              <button
-                type="button"
-                className="previa-operacional-btn-soft warning"
-                onClick={() => envioGeral(true)}
-              >
-                <WarningAmberRounded fontSize="small" />
-                Enviar todas as prévias atualizadas
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="previa-operacional-card">
-          <div className="previa-operacional-card-header">
-            <div className="previa-operacional-card-title-row">
-              <h3>Última atualização</h3>
-            </div>
-          </div>
-
-          <div className="previa-operacional-stats single">
-            <div className="previa-operacional-stat">
-              <div className="previa-operacional-stat-icon">
-                <AccessTimeRounded fontSize="small" />
-              </div>
-              <div>
-                <span>Atualizado em</span>
-                <strong className="small-value">
-                  {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
-                  ) : ultimaAtualizacao ? (
-                    ultimaAtualizacao.toLocaleString("pt-BR")
-                  ) : (
-                    "--"
-                  )}
-                </strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="previa-operacional-card previa-operacional-card-full">
-          <div className="previa-operacional-card-header">
-            <div className="previa-operacional-card-title-row">
-              <h3>Indicadores operacionais</h3>
-              <span className="previa-operacional-badge">resumo</span>
-            </div>
-          </div>
-
-          <div className="previa-operacional-kpis">
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon">
-                <DirectionsBusRounded fontSize="small" />
-              </div>
-              <div>
-                <span>Veículos</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.veiculos}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon">
-                <Inventory2Rounded fontSize="small" />
-              </div>
-              <div>
-                <span>Serviços</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.servicos}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon">
-                <GroupsRounded fontSize="small" />
-              </div>
-              <div>
-                <span>Pax</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.pax}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon in">
-                <SouthWestRounded fontSize="small" />
-              </div>
-              <div>
-                <span>IN</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.totalIn}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon out">
-                <NorthEastRounded fontSize="small" />
-              </div>
-              <div>
-                <span>OUT</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.totalOut}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon trf">
-                <SwapHorizRounded fontSize="small" />
-              </div>
-              <div>
-                <span>Transfer</span>
-                <strong>
-                  {loading ? <SyncRounded className="spin" /> : resumo.totalTrf}
-                </strong>
-              </div>
-            </div>
-
-            <div className="previa-operacional-kpi">
-              <div className="previa-operacional-kpi-icon passeio">
-                <RouteRounded fontSize="small" />
-              </div>
-              <div>
-                <span>Passeios</span>
-                <strong>
-                  {loading ? (
-                    <SyncRounded className="spin" />
-                  ) : (
-                    resumo.totalPasseio
-                  )}
-                </strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {cardsEnvioPorVeiculo.length > 0 && !loading && (
-          <div className="previa-operacional-card previa-operacional-card-full">
-            <div className="previa-operacional-card-header">
-              <div className="previa-operacional-card-title-row">
-                <h3>Enviar prévia individualmente</h3>
-                <span className="previa-operacional-badge">
-                  {cardsEnvioPorVeiculo.length} veículo(s)
-                </span>
-              </div>
-              <p>Versão compacta por veículo, mantendo ação rápida.</p>
-            </div>
-
-            <div className="envio-veiculo-grid compacto">
-              {cardsEnvioPorVeiculo.map((item) => (
-                <div key={item.chave} className="envio-veiculo-card compacto">
-                  <div className="envio-veiculo-top compacto">
-                    <div>
-                      <strong className="envio-veiculo-titulo">
-                        {item.grupo.veiculo}
-                      </strong>
-                    </div>
-
-                    <span className="envio-veiculo-badge">
-                      {item.totalServicos}
-                    </span>
-                  </div>
-
-                  <div className="envio-veiculo-fornecedor compacto">
-                    <strong>{item.fornecedor.nome}</strong>
-                    <small>
-                      {formatarWhatsappVisual(item.fornecedor.whatsapp || "")}
-                    </small>
-                  </div>
-
-                  <div className="envio-veiculo-preview compacto resumo">
-                    <div className="envio-veiculo-resumo-item">
-                      <span>Serviços</span>
-                      <strong>{item.totalServicos}</strong>
-                    </div>
-                  </div>
-
-                  <div className="envio-veiculo-actions compacto">
-                    <button
-                      type="button"
-                      className="previa-operacional-btn-soft whatsapp"
-                      onClick={() =>
-                        abrirWhatsappPorVeiculo(
-                          item.fornecedor,
-                          item.grupo,
-                          false,
-                        )
-                      }
-                    >
-                      <WhatsApp fontSize="small" />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="previa-operacional-btn-soft warning"
-                      onClick={() =>
-                        abrirWhatsappPorVeiculo(
-                          item.fornecedor,
-                          item.grupo,
-                          true,
-                        )
-                      }
-                    >
-                      <WarningAmberRounded fontSize="small" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="previa-operacional-card previa-operacional-card-full">
-          <div className="previa-operacional-card-header">
-            <div className="previa-operacional-card-title-row">
-              <h3>Planilha operacional automática</h3>
-              <span className="previa-operacional-badge">
-                {loading
-                  ? "Carregando..."
-                  : formatarDataTitulo(dataSelecionada)}
-              </span>
-            </div>
-          </div>
-
-          {erro ? (
-            <div className="previa-operacional-empty">{erro}</div>
-          ) : loading ? (
-            <div className="previa-operacional-empty">
-              <SyncRounded className="spin" fontSize="small" />
-              <span style={{ marginLeft: 8 }}>
-                Atualizando prévia operacional...
-              </span>
-            </div>
-          ) : grupos.length === 0 ? (
-            <div className="previa-operacional-empty">
-              Nenhum serviço escalado encontrado para esta data.
-            </div>
+        <section id="planilha-operacional" ref={planilhaRef} className="planilha">
+          {erro || loading || grupos.length === 0 ? (
+            <Card>{estadoVazio}</Card>
           ) : (
-            <div className="previa-operacional-sheet-wrap">
-              <div className="previa-operacional-sheet-header">
-                <div className="previa-operacional-sheet-logo">OP</div>
-                <h1>{formatarDataTitulo(dataSelecionada)}</h1>
-              </div>
+            <>
+              <p className="planilha-dica">
+                <Icon name="grip" size={14} />
+                Arraste um veículo para mudar a ordem — a ordem fica salva neste navegador.
+              </p>
 
-              <div className="previa-operacional-sheet-body">
-                {grade.map((linha, linhaIndex) => {
-                  const maxServicosNaLinha = Math.max(
-                    ...linha.map((grupo) => grupo.linhas.length),
-                    0,
-                  );
+              {grade.map((linha, linhaIndex) => {
+                const maxServicosNaLinha = Math.max(
+                  ...linha.map((grupo) => grupo.linhas.length),
+                  0,
+                );
 
-                  const totalLinhasVisuais = maxServicosNaLinha + 1;
+                const totalLinhasVisuais = maxServicosNaLinha + 1;
 
-                  return (
-                    <div
-                      key={`linha-${linhaIndex}`}
-                      className="previa-operacional-sheet-grid"
-                      style={{
-                        gridTemplateColumns: `repeat(${colunasPorLinha}, minmax(0, 1fr))`,
-                      }}
-                    >
-                      {linha.map((grupo) => {
-                        const linhasVaziasNecessarias =
-                          totalLinhasVisuais - grupo.linhas.length;
+                return (
+                  <div
+                    key={`linha-${linhaIndex}`}
+                    className="planilha-grid"
+                    style={{
+                      gridTemplateColumns: `repeat(${colunasPorLinha}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {linha.map((grupo) => {
+                      const linhasVaziasNecessarias =
+                        totalLinhasVisuais - grupo.linhas.length;
+                      const arrastando =
+                        draggingVehicle &&
+                        normalizarNomeVeiculo(draggingVehicle) ===
+                          normalizarNomeVeiculo(grupo.veiculo);
 
-                        return (
-                          <div
-                            key={grupo.chave}
-                            className={`previa-operacional-coluna ${draggingVehicle &&
-                              normalizarNomeVeiculo(draggingVehicle) ===
-                              normalizarNomeVeiculo(grupo.veiculo)
-                              ? "dragging"
-                              : ""
-                              }`}
-                            draggable
-                            onDragStart={() =>
-                              setDraggingVehicle(grupo.veiculo)
-                            }
-                            onDragEnd={() => setDraggingVehicle(null)}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={() => {
-                              moverBloco(draggingVehicle, grupo.veiculo);
-                              setDraggingVehicle(null);
-                            }}
-                          >
-                            <div className="previa-operacional-coluna-topo">
-                              <div className="previa-operacional-coluna-titulo">
-                                <DragIndicatorRounded fontSize="small" />
-                                *VEÍCULO: {grupo.veiculo}*
-                              </div>
-                            </div>
+                      return (
+                        <div
+                          key={grupo.chave}
+                          className={`planilha-card ${arrastando ? "is-dragging" : ""}`}
+                          draggable
+                          onDragStart={() => setDraggingVehicle(grupo.veiculo)}
+                          onDragEnd={() => setDraggingVehicle(null)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            moverBloco(draggingVehicle, grupo.veiculo);
+                            setDraggingVehicle(null);
+                          }}
+                        >
+                          <div className="planilha-card__topo">
+                            <Icon name="grip" size={15} className="planilha-card__grip" />
+                            <span className="planilha-card__titulo">
+                              <strong>
+                                {sep("*VEÍCULO: ")}
+                                {grupo.veiculo}
+                                {sep("*")}
+                              </strong>
+                              {/* via CSS (data-info) para não entrar no texto copiado */}
+                              <small
+                                className="planilha-info"
+                                data-info={`${grupo.motorista || "Sem motorista"} · ${grupo.totalPax} pax`}
+                              />
+                            </span>
+                          </div>
 
-                            <div className="previa-operacional-coluna-linhas">
-                              {grupo.linhas.map((linhaItem) => (
+                          <div className="planilha-card__linhas">
+                            {grupo.linhas.map((linhaItem) => {
+                              const ehPasseio = linhaItem.tipo === "PASSEIO";
+                              return (
                                 <div
                                   key={linhaItem.escalaId}
-                                  className={`previa-operacional-linha ${tipoLinhaClass(
-                                    linhaItem.tipo,
-                                  )}`}
+                                  className={`planilha-linha ${tipoLinhaClass(linhaItem.tipo)}`}
+                                  title={
+                                    ehPasseio
+                                      ? `${linhaItem.passeio || linhaItem.texto} - ${linhaItem.guia || "SEM GUIA"} - ${linhaItem.paxDetalhado}`
+                                      : `${linhaItem.tipo} - ${linhaItem.hora || "--:--"} - ${linhaItem.texto} - ${linhaItem.paxDetalhado}`
+                                  }
                                 >
-                                  <span className="texto-linha">
-                                    {linhaItem.tipo === "PASSEIO"
-                                      ? `${linhaItem.passeio || linhaItem.texto} - ${linhaItem.guia || "SEM GUIA"} - ${linhaItem.paxDetalhado}${linhaItem.marcadorHoje ? ` ${linhaItem.marcadorHoje}` : ""}`
-                                      : `${linhaItem.tipo} - ${linhaItem.hora || "--:--"} - ${linhaItem.texto} - ${linhaItem.paxDetalhado}${linhaItem.marcadorHoje ? ` ${linhaItem.marcadorHoje}` : ""}`}
-                                  </span>
+                                  {ehPasseio ? (
+                                    <>
+                                      <span
+                                        className="planilha-tipo planilha-tipo--css"
+                                        data-tipo="PAS"
+                                        aria-hidden="true"
+                                      />
+                                      <span className="planilha-texto">
+                                        {linhaItem.passeio || linhaItem.texto}
+                                        {sep(" - ")}
+                                        <em>{linhaItem.guia || "SEM GUIA"}</em>
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="planilha-tipo">{linhaItem.tipo}</span>
+                                      {sep(" - ")}
+                                      <span className="planilha-hora">
+                                        {linhaItem.hora || "--:--"}
+                                      </span>
+                                      {sep(" - ")}
+                                      <span className="planilha-texto">{linhaItem.texto}</span>
+                                    </>
+                                  )}
+                                  {sep(" - ")}
+                                  <span className="planilha-pax">{linhaItem.paxDetalhado}</span>
+                                  {linhaItem.marcadorHoje && (
+                                    <>
+                                      {sep(" *")}
+                                      <span className="planilha-hoje">
+                                        {linhaItem.marcadorHoje.replace(/\*/g, "")}
+                                      </span>
+                                      {sep("*")}
+                                    </>
+                                  )}
                                 </div>
-                              ))}
+                              );
+                            })}
 
-                              {Array.from({
-                                length: linhasVaziasNecessarias,
-                              }).map((_, idx) => (
-                                <div
-                                  key={`vazia-${grupo.chave}-${idx}`}
-                                  className="previa-operacional-linha vazia"
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {Array.from({
-                        length: Math.max(0, colunasPorLinha - linha.length),
-                      }).map((_, idx) => (
-                        <div
-                          key={`coluna-vazia-${idx}`}
-                          className="previa-operacional-coluna coluna-vazia"
-                        >
-                          <div className="previa-operacional-coluna-topo">
-                            <div className="previa-operacional-coluna-titulo">
-                              *VEÍCULO: -*
-                            </div>
-                            <div className="previa-operacional-coluna-subtitulo">
-                              <span>SEM MOTORISTA</span>
-                              <strong>0/0/0</strong>
-                            </div>
-                          </div>
-
-                          <div className="previa-operacional-coluna-linhas">
-                            {Array.from({ length: totalLinhasVisuais }).map(
-                              (_, emptyIdx) => (
-                                <div
-                                  key={`coluna-vazia-linha-${idx}-${emptyIdx}`}
-                                  className="previa-operacional-linha vazia"
-                                />
-                              ),
-                            )}
+                            {Array.from({ length: linhasVaziasNecessarias }).map((_, idx) => (
+                              <div
+                                key={`vazia-${grupo.chave}-${idx}`}
+                                className="planilha-linha vazia"
+                              />
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      );
+                    })}
+
+                    {Array.from({
+                      length: Math.max(0, colunasPorLinha - linha.length),
+                    }).map((_, idx) => (
+                      <div key={`coluna-vazia-${idx}`} className="planilha-card coluna-vazia">
+                        <div className="planilha-card__topo">
+                          <span className="planilha-card__titulo">
+                            <strong>
+                              {sep("*VEÍCULO: ")}-{sep("*")}
+                            </strong>
+                            <small>
+                              SEM MOTORISTA{sep(" ")}
+                              <span aria-hidden="true"> · </span>0/0/0
+                            </small>
+                          </span>
+                        </div>
+
+                        <div className="planilha-card__linhas">
+                          {Array.from({ length: totalLinhasVisuais }).map((_, emptyIdx) => (
+                            <div
+                              key={`coluna-vazia-linha-${idx}-${emptyIdx}`}
+                              className="planilha-linha vazia"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </>
           )}
-        </div>
+        </section>
       </div>
+    );
+  }
+
+  /* ---------------- PRÉVIA DE SERVIÇOS (/previas) ---------------- */
+  return (
+    <div className="ui-page previa-page">
+      <PageHeader
+        title="Prévia de Serviços"
+        description="Prévia por veículo, com envio consolidado ao fornecedor pelo WhatsApp."
+        actions={
+          <>
+            <Button icon="alert" onClick={() => envioGeral(true)}>
+              Enviar todas atualizadas
+            </Button>
+            <Button variant="primary" icon="send" onClick={() => envioGeral(false)}>
+              Enviar todas as prévias
+            </Button>
+          </>
+        }
+        more={[
+          {
+            label: loading ? "Atualizando serviços..." : "Atualizar serviços",
+            icon: "refresh",
+            onClick: carregarServicos,
+            disabled: loading,
+          },
+          { label: "Abrir planilha operacional", icon: "planilha", onClick: () => navigate("/planilha") },
+        ]}
+      />
+
+      <FilterBar>
+        {filtroData}
+        <p className="previa-atualizacao">
+          <Icon name="clock" size={14} />
+          {textoAtualizacao}
+        </p>
+      </FilterBar>
+
+      <KpiTiles items={kpis} className="previa-kpis" />
+
+      <Card>
+        <CardHeader
+          title="Envio por veículo"
+          subtitle={
+            loading
+              ? "Carregando..."
+              : `${grupos.length} veículo(s) · ${cardsEnvioPorVeiculo.length} com fornecedor vinculado · clique na linha para ver os serviços`
+          }
+          icon="send"
+        />
+
+        {erro || loading || grupos.length === 0 ? (
+          estadoVazio
+        ) : (
+          <Table
+            columns="28px minmax(200px,1.4fr) minmax(150px,1fr) 80px 110px minmax(170px,1fr) 230px"
+            minWidth={1000}
+          >
+            <TableHead>
+              <span />
+              <span>Veículo</span>
+              <span>Motorista</span>
+              <span className="ui-cell-num">Serviços</span>
+              <span className="ui-cell-num">Pax</span>
+              <span>Fornecedor</span>
+              <span />
+            </TableHead>
+
+            {grupos.map((grupo) => {
+              const envio = envioPorVeiculo.get(grupo.veiculo);
+              const aberto = veiculoAberto === grupo.veiculo;
+              return (
+                <Fragment key={grupo.chave}>
+                  <TableRow
+                    expandable
+                    expanded={aberto}
+                    onToggle={() => setVeiculoAberto(aberto ? null : grupo.veiculo)}
+                  >
+                    <span className="ui-cell-main">{grupo.veiculo}</span>
+                    <span>{grupo.motorista || "—"}</span>
+                    <span className="ui-cell-num tabular">{grupo.totalServicos}</span>
+                    <span className="ui-cell-num tabular previa-pax">
+                      <strong>{grupo.totalPax}</strong>
+                      <small>{grupo.totalPaxDetalhado}</small>
+                    </span>
+                    {envio ? (
+                      <span className="previa-fornecedor">
+                        <span>{envio.fornecedor.nome}</span>
+                        <small className="tabular">
+                          {formatarWhatsappVisual(envio.fornecedor.whatsapp || "") || "sem WhatsApp"}
+                        </small>
+                      </span>
+                    ) : (
+                      <StatusDot tone="muted">Sem fornecedor vinculado</StatusDot>
+                    )}
+                    <span className="ui-cell-end" onClick={pararClique}>
+                      {envio && (
+                        <>
+                          <Button
+                            size="sm"
+                            icon="message"
+                            onClick={() =>
+                              abrirWhatsappPorVeiculo(envio.fornecedor, envio.grupo, false)
+                            }
+                          >
+                            Enviar prévia
+                          </Button>
+                          <Button
+                            size="sm"
+                            icon="alert"
+                            onClick={() =>
+                              abrirWhatsappPorVeiculo(envio.fornecedor, envio.grupo, true)
+                            }
+                            title="Enviar prévia atualizada"
+                          >
+                            Atualizada
+                          </Button>
+                        </>
+                      )}
+                    </span>
+                  </TableRow>
+
+                  {aberto && (
+                    <TableExpansion>
+                      <ul className="previa-linhas">
+                        {grupo.linhas.map((linhaItem) => (
+                          <li key={linhaItem.escalaId}>
+                            <span className="planilha-tipo">
+                              {linhaItem.tipo === "PASSEIO" ? "PAS" : linhaItem.tipo}
+                            </span>
+                            <span className="planilha-hora">
+                              {linhaItem.tipo === "PASSEIO" ? "" : linhaItem.hora || "--:--"}
+                            </span>
+                            <span className="planilha-texto">
+                              {linhaItem.tipo === "PASSEIO"
+                                ? `${linhaItem.passeio || linhaItem.texto} · ${linhaItem.guia || "SEM GUIA"}`
+                                : linhaItem.texto}
+                            </span>
+                            <span className="planilha-pax">{linhaItem.paxDetalhado}</span>
+                            {linhaItem.marcadorHoje && (
+                              <span className="planilha-hoje">
+                                {linhaItem.marcadorHoje.replace(/\*/g, "")}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </TableExpansion>
+                  )}
+                </Fragment>
+              );
+            })}
+          </Table>
+        )}
+      </Card>
     </div>
   );
 };

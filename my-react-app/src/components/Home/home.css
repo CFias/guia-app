@@ -1,0 +1,318 @@
+/* =========================================================
+   DASHBOARD — "Operação de hoje". Só tokens.
+   (o styles.css antigo segue carregado porque o Relatório
+   executivo ainda usa algumas classes home-dashboard-*)
+   ========================================================= */
+
+.dash-toolbar {
+  align-items: center;
+}
+
+.dash-week {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dash-week__label {
+  min-width: 112px;
+  text-align: center;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dash-updated {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+/* ---- faixa de dias ---- */
+.dash-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.dash-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-day:hover:not(:disabled):not(.is-active) {
+  background: var(--raised);
+}
+
+.dash-day:disabled {
+  cursor: progress;
+}
+
+.dash-day.is-active {
+  background: var(--raised);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  color: var(--text);
+}
+
+.dash-day__nome {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dash-day__data {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.dash-day__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.dash-day__alerta {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--alert);
+}
+
+/* ---- tabela do dia ---- */
+.dash-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.dash-filters .ui-field select {
+  min-width: 150px;
+}
+
+.dash-table {
+  border: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.dash-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.dash-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-3);
+  font-size: var(--fs-md);
+}
+
+/* ---- seções ---- */
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash-section__title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* ---- alertas ---- */
+.dash-alerts {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.dash-alert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--divider);
+}
+
+.dash-alert:last-child {
+  border-bottom: 0;
+}
+
+.dash-alert .ui-status {
+  white-space: normal;
+}
+
+.dash-alert__desc {
+  padding-left: 13px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+/* ---- barras de operadoras ---- */
+.dash-bars {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash-bar {
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dash-bar__nome {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-bar__trilho {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.dash-bar__valor {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.dash-bar__num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: var(--fs-md);
+  color: var(--text);
+  min-width: 110px;
+}
+
+.dash-bar__num small {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* ---- gráficos ---- */
+.dash-chart {
+  width: 100%;
+  height: 300px;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  box-sizing: border-box;
+}
+
+.dash-chart .recharts-legend-item-text {
+  color: var(--text-2) !important;
+}
+
+.dash-neg {
+  color: var(--alert);
+}
+
+/* ---- comparativo / versículo ---- */
+.dash-reading {
+  padding: var(--space-4) var(--space-5);
+}
+
+.dash-reading p {
+  margin: 6px 0 0 13px;
+  font-size: var(--fs-md);
+  color: var(--text-2);
+}
+
+.dash-verse__body {
+  margin: 0;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.dash-verse__body p {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.dash-verse__body cite {
+  display: block;
+  margin-top: var(--space-2);
+  font-style: normal;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+@media (max-width: 1100px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .dash-updated {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .dash-filters,
+  .dash-filters .ui-field {
+    width: 100%;
+  }
+
+  .dash-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .dash-bar__trilho {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+.dash-pax {
+  padding-right: var(--space-4);
+}

@@ -60,7 +60,7 @@
   color: var(--text);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
-  font-family: "Montserrat", sans-serif;
+  font-family: var(--font-body);
   overflow: hidden;
 }
 
@@ -267,7 +267,7 @@
   color: var(--text);
   border: 1px solid color-mix(in srgb, var(--text-dist) 50%, transparent 50%);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
-  font-family: "Montserrat", sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
   line-height: 1.35;
   animation: notif-entrada 0.25s ease;
@@ -281,12 +281,12 @@
   min-width: 0;
 }
 
-.notif-toast-corpo > span:not(.notif-chip) {
+.notif-toast-corpo>span:not(.notif-chip) {
   font-size: 11px;
   color: color-mix(in srgb, var(--text) 60%, transparent 40%);
 }
 
-.notif-toast > button {
+.notif-toast>button {
   border: 0;
   background: transparent;
   color: inherit;
@@ -300,6 +300,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

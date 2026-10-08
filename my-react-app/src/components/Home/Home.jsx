@@ -2,35 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import {
-  AutoGraphRounded,
-  CalendarMonthRounded,
-  RefreshRounded,
-  SyncRounded,
-  FactCheckRounded,
-  GroupsRounded,
-  InsightsRounded,
-  LocalFireDepartmentRounded,
-  LockRounded,
-  SearchOffRounded,
-  ShieldRounded,
-  TravelExploreRounded,
-  WarningAmberRounded,
-  BusinessRounded,
-  TrendingUpRounded,
-  TrendingDownRounded,
-  RemoveRounded,
-  DashboardRounded,
-  ContentCopyRounded,
-  CheckRounded,
-} from "@mui/icons-material";
-import {
   ResponsiveContainer,
-  ComposedChart,
   LineChart,
   BarChart,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -40,8 +14,24 @@ import {
   Line,
 } from "recharts";
 import { db } from "../../Services/Services/firebase";
-import logo from "../../assets/logo4.png";
-import "./styles.css";
+import "./home.css";
+import {
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FilterBar,
+  Icon,
+  KpiTiles,
+  PageHeader,
+  Segmented,
+  StatusDot,
+  Table,
+  TableHead,
+  TableRow,
+} from "../ui";
+import { usePhoenixStatus } from "../Shell/shellContext";
 
 const DIAS = [
   "Segunda",
@@ -98,18 +88,8 @@ const MAPA_NOMES_CANONICOS = {
   "city tour historico": "CITY TOUR HISTORICO",
 };
 
-const CHART_COLORS = [
-  "#2563eb",
-  "#0ea5e9",
-  "#14b8a6",
-  "#22c55e",
-  "#f59e0b",
-  "#f97316",
-  "#ef4444",
-  "#a855f7",
-  "#8b5cf6",
-  "#06b6d4",
-];
+// cores dos gráficos: só tokens (accent + neutro)
+const CHART_COLORS = ["var(--accent)", "var(--text-3)"];
 
 const normalizarTexto = (texto = "") =>
   String(texto)
@@ -415,10 +395,11 @@ const getAlertaComparativoPax = (atual, anterior) => {
 };
 
 const tooltipStyle = {
-  background: "var(--card, #111827)",
-  border: "1px solid rgba(148,163,184,.22)",
-  borderRadius: 12,
-  boxShadow: "0 10px 30px rgba(0,0,0,.18)",
+  background: "var(--surface)",
+  border: "1px solid var(--divider)",
+  borderRadius: 10,
+  boxShadow: "var(--shadow-pop)",
+  color: "var(--text)",
   fontSize: 12,
 };
 
@@ -775,7 +756,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -784,11 +765,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -853,13 +834,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -923,7 +904,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                  normalizarTexto(guia.nome || ""),
+                normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -953,11 +934,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-          distribuicaoGuias.reduce(
-            (acc, guia) => acc + Number(guia.percentualUso || 0),
-            0,
-          ) / distribuicaoGuias.length,
-        )
+        distribuicaoGuias.reduce(
+          (acc, guia) => acc + Number(guia.percentualUso || 0),
+          0,
+        ) / distribuicaoGuias.length,
+      )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1009,8 +990,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1542,23 +1523,27 @@ Operacional - Luck Receptivo
   const renderIconeComparativo = () => {
     const tipo = dashboard.alertaComparativoPax?.icone;
 
-    if (tipo === "up") return <TrendingUpRounded fontSize="small" />;
-    if (tipo === "down") return <TrendingDownRounded fontSize="small" />;
-    return <RemoveRounded fontSize="small" />;
+    if (tipo === "up") return <Icon name="trendingUp" size={16} />;
+    if (tipo === "down") return <Icon name="trendingDown" size={16} />;
+    return <Icon name="minus" size={16} />;
   };
 
   const carregandoCards = loading || atualizandoApi;
 
+  // indicador "Phoenix · HH:MM" da barra superior: o clique chama o mesmo
+  // carregarApiSemana do botão "Atualizar dados do Phoenix"
+  usePhoenixStatus({
+    atualizadoEm: ultimaAtualizacaoApi,
+    carregando: carregandoCards,
+    atualizar: carregarApiSemana,
+  });
+
   const renderValorCard = (valor, suffix = "") =>
-    carregandoCards ? (
-      <SyncRounded className="spin" fontSize="small" />
-    ) : (
-      `${valor}${suffix}`
-    );
+    carregandoCards ? "…" : `${valor}${suffix}`;
 
   const renderCardLoading = (texto = "Atualizando dados...") => (
-    <div className="home-dashboard-empty home-dashboard-loading-inline">
-      <SyncRounded className="spin" fontSize="small" />
+    <div className="dash-loading">
+      <Icon name="loader" size={16} className="ui-spin" />
       <span>{texto}</span>
     </div>
   );
@@ -1584,825 +1569,663 @@ Operacional - Luck Receptivo
     [dashboard.operadorasSemana, totalPaxOperadoras],
   );
 
+  /* ---- números do dia selecionado (só contagem do que a tabela já mostra) ---- */
+  const resumoDia = useMemo(
+    () => ({
+      total: servicosDoDiaBase.length,
+      semGuia: servicosDoDiaBase.filter((s) => s.statusOperacional === "Sem guia").length,
+      formarGrupo: servicosDoDiaBase.filter(
+        (s) => !s.isDisp && s.statusGrupo === "Formar grupo",
+      ).length,
+      pax: servicosDoDiaBase.reduce((acc, s) => acc + Number(s.passengers || 0), 0),
+    }),
+    [servicosDoDiaBase],
+  );
+
+  const diaInfo = semana.find((d) => d.date === diaSelecionadoHome);
+  const maiorPaxOperadora = operadorasGrafico[0]?.pax || 1;
+
+  const tomStatusOperacional = (status) =>
+    status === "Sem guia" ? "alert" : status === "Alocado" ? "accent" : "muted";
+
+  const tomStatusGrupo = (status) =>
+    status === "Formar grupo"
+      ? "warning"
+      : status === "Grupo formado"
+        ? "accent"
+        : "muted";
+
+  const tomAlerta = (alerta) => {
+    const s = getAlertaSemaforo(alerta);
+    if (s === "semaforo-vermelho") return "alert";
+    if (s === "semaforo-amarelo") return "warning";
+    if (s === "semaforo-verde") return "accent";
+    return alerta?.tipo === "critico" ? "alert" : "neutral";
+  };
+
+  const eixo = { fill: "var(--text-3)", fontSize: 12 };
+
   return (
-    <div className="home-dashboard-page">
-      <div className="home-dashboard-header">
-        <div className="home-dashboard-brand">
-          <DashboardRounded fontSize="large" />
-          <div className="home-dashboard-brand-text">
-            <h2>Dashboard</h2>
-            <p>Demanda real do Phoenix cruzada com alocação do sistema</p>
-          </div>
-        </div>
+    <div className="home-page dash ui-page">
+      <PageHeader
+        title="Operação de hoje"
+        description={`Semana de ${semana[0]?.label} a ${semana[6]?.label} · demanda real do Phoenix cruzada com a escala do sistema`}
+        actions={
+          <>
+            <Button icon="sparkles" onClick={() => navigate("/passeios")}>
+              Abrir escala da semana
+            </Button>
+            <Button
+              variant="primary"
+              icon="refresh"
+              onClick={carregarApiSemana}
+              disabled={carregandoCards}
+              loading={atualizandoApi}
+            >
+              {carregandoCards
+                ? "Puxando dados do Phoenix..."
+                : "Atualizar dados do Phoenix"}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="home-dashboard-week-pill">
-          <CalendarMonthRounded fontSize="small" />
-          <span>
-            {semana[0]?.label} até {semana[6]?.label}
+      <FilterBar className="dash-toolbar">
+        <Segmented
+          ariaLabel="Visão"
+          value={abaAtiva}
+          onChange={setAbaAtiva}
+          options={[
+            { value: "operacao", label: "Operação", icon: "painel" },
+            { value: "comparativo", label: "Comparativo", icon: "lineChart" },
+          ]}
+        />
+
+        <div className="dash-week" role="group" aria-label="Semana">
+          <Button
+            iconOnly
+            icon="chevronLeft"
+            title="Semana anterior"
+            aria-label="Semana anterior"
+            onClick={() => setSemanaOffset((prev) => prev - 1)}
+            disabled={carregandoCards}
+          />
+          <span className="dash-week__label tabular">
+            {semana[0]?.label} – {semana[6]?.label}
           </span>
+          <Button
+            iconOnly
+            icon="chevronRight"
+            title="Próxima semana"
+            aria-label="Próxima semana"
+            onClick={() => setSemanaOffset((prev) => prev + 1)}
+            disabled={carregandoCards}
+          />
+          {semanaOffset !== 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSemanaOffset(0)}
+              disabled={carregandoCards}
+            >
+              Semana atual
+            </Button>
+          )}
         </div>
-      </div>
 
-      <div className="home-dashboard-tabs">
-        <button
-          className={`home-tab ${abaAtiva === "operacao" ? "active" : ""}`}
-          onClick={() => setAbaAtiva("operacao")}
-        >
-          Operação
-        </button>
-        <button
-          className={`home-tab ${abaAtiva === "comparativo" ? "active" : ""}`}
-          onClick={() => setAbaAtiva("comparativo")}
-        >
-          Comparativo
-        </button>
-      </div>
+        <span className="dash-updated">
+          {carregandoCards ? (
+            <>
+              <Icon name="loader" size={14} className="ui-spin" /> Atualizando...
+            </>
+          ) : abaAtiva === "comparativo" ? (
+            formatarUltimaAtualizacao(ultimaAtualizacaoComparativo)
+          ) : (
+            formatarUltimaAtualizacao(ultimaAtualizacaoApi)
+          )}
+        </span>
+      </FilterBar>
 
       {abaAtiva === "operacao" && (
         <>
-          <div className="home-live-toolbar">
-            <div className="home-live-actions">
-              <button
-                type="button"
-                className="home-refresh-btn"
-                onClick={carregarApiSemana}
-                disabled={carregandoCards}
-              >
-                <RefreshRounded
-                  fontSize="small"
-                  className={carregandoCards ? "spin" : ""}
-                />
-                {carregandoCards
-                  ? "Puxando dados do Phoenix..."
-                  : "Atualizar dados do Phoenix"}
-              </button>
-            </div>
-
-            <div className="home-live-info">
-              {carregandoCards ? (
-                <>
-                  <SyncRounded className="spin" fontSize="small" />{" "}
-                  <span>Atualizando...</span>
-                </>
-              ) : (
-                formatarUltimaAtualizacao(ultimaAtualizacaoApi)
-              )}
-            </div>
-          </div>
-
-          <div className="home-dashboard-metrics">
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <TravelExploreRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Serviços reais</span>
-                <strong className="metric-value">
-                  {renderValorCard(dashboard.totalServicosReais)}
-                </strong>
-              </div>
-            </button>
-
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <FactCheckRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Serviços com guia (%)</span>
-                <strong className="metric-value">
-                  {renderValorCard(dashboard.percentualServicosComGuia, "%")}
-                </strong>
-              </div>
-            </button>
-
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <GroupsRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Passageiros com guia (%)</span>
-                <strong className="metric-value">
-                  {renderValorCard(dashboard.percentualPassageirosComGuia, "%")}
-                </strong>
-              </div>
-            </button>
-
-            <button type="button" className="home-dashboard-metric-card">
-              <div className="metric-icon">
-                <BusinessRounded fontSize="small" />
-              </div>
-              <div>
-                <span className="metric-label">Operadoras na semana</span>
-                <strong className="metric-value">
-                  {renderValorCard(dashboard.operadorasSemana.length)}
-                </strong>
-              </div>
-            </button>
-          </div>
-
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <CalendarMonthRounded fontSize="small" />
-                <h3>Serviços do dia</h3>
-              </div>
-
-              <div className="home-header-actions">
-                <div className="home-week-switcher">
-                  <button
-                    type="button"
-                    className="home-week-nav-btn"
-                    onClick={() => setSemanaOffset((prev) => prev - 1)}
-                    disabled={carregandoCards}
-                  >
-                    ← Semana anterior
-                  </button>
-
-                  <span className="home-week-range-label">
-                    {semana[0]?.label} até {semana[6]?.label}
-                  </span>
-
-                  <button
-                    type="button"
-                    className="home-week-nav-btn"
-                    onClick={() => setSemanaOffset((prev) => prev + 1)}
-                    disabled={carregandoCards}
-                  >
-                    Próxima semana →
-                  </button>
-
-                  {semanaOffset !== 0 && (
-                    <button
-                      type="button"
-                      className="home-week-nav-btn secondary"
-                      onClick={() => setSemanaOffset(0)}
-                      disabled={carregandoCards}
-                    >
-                      Semana atual
-                    </button>
-                  )}
-                </div>
-
+          {/* ---- dias da semana ---- */}
+          <div className="dash-days" role="tablist" aria-label="Dia">
+            {semana.map((dia) => {
+              const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
+              const ativo = diaSelecionadoHome === dia.date;
+              return (
                 <button
+                  key={dia.date}
                   type="button"
-                  className="home-open-scale-btn"
-                  onClick={() => navigate("/passeios")}
+                  role="tab"
+                  aria-selected={ativo}
+                  className={`dash-day ${ativo ? "is-active" : ""}`}
+                  onClick={() => setDiaSelecionadoHome(dia.date)}
+                  disabled={carregandoCards}
                 >
-                  Abrir escala da semana
+                  <span className="dash-day__nome">{dia.day}</span>
+                  <span className="dash-day__data tabular">{dia.label}</span>
+                  <span className="dash-day__meta tabular">
+                    {carregandoCards
+                      ? "…"
+                      : `${info?.comGuia ?? 0}/${info?.total ?? 0} com guia`}
+                    {!carregandoCards && info?.semGuia > 0 && (
+                      <span className="dash-day__alerta" title={`${info.semGuia} sem guia`} />
+                    )}
+                  </span>
                 </button>
-              </div>
-            </div>
+              );
+            })}
+          </div>
+
+          {/* ---- tiles do dia (clicar filtra a tabela) ---- */}
+          <KpiTiles
+            items={[
+              {
+                key: "todos",
+                label: "Serviços no dia",
+                value: renderValorCard(resumoDia.total),
+                hint: carregandoCards ? undefined : `${resumoDia.pax} pax`,
+                onClick: () => setFiltroStatusDia("todos"),
+                active: filtroStatusDia === "todos",
+              },
+              {
+                key: "guias",
+                label: "Guias escalados",
+                value: renderValorCard(guiasDisponiveisNoDia.length),
+              },
+              {
+                key: "sem_guia",
+                label: "Sem guia",
+                value: renderValorCard(resumoDia.semGuia),
+                tone: resumoDia.semGuia ? "alert" : undefined,
+                onClick: () => setFiltroStatusDia("sem_guia"),
+                active: filtroStatusDia === "sem_guia",
+              },
+              {
+                key: "formar_grupo",
+                label: "Grupos a formar",
+                value: renderValorCard(resumoDia.formarGrupo),
+                tone: resumoDia.formarGrupo ? "warning" : undefined,
+                onClick: () => setFiltroStatusDia("formar_grupo"),
+                active: filtroStatusDia === "formar_grupo",
+              },
+            ]}
+          />
+
+          {/* ---- guias e serviços do dia ---- */}
+          <Card>
+            <CardHeader
+              icon="calendar"
+              title="Guias e serviços do dia"
+              subtitle={
+                diaInfo ? `${diaInfo.day} · ${formatarDataBr(diaInfo.date)}` : undefined
+              }
+              actions={
+                <div className="dash-filters">
+                  <Field label="Status">
+                    <select
+                      value={filtroStatusDia}
+                      onChange={(e) => setFiltroStatusDia(e.target.value)}
+                    >
+                      <option value="todos">Todos os status</option>
+                      <option value="alocado">Alocado</option>
+                      <option value="sem_guia">Sem guia</option>
+                      <option value="fechado">Fechado</option>
+                      <option value="grupo_formado">Grupo formado</option>
+                      <option value="formar_grupo">Formar grupo</option>
+                    </select>
+                  </Field>
+                  <Field label="Guia">
+                    <select
+                      value={filtroGuiaDia}
+                      onChange={(e) => setFiltroGuiaDia(e.target.value)}
+                    >
+                      <option value="todos">Todos os guias</option>
+                      {guiasDisponiveisNoDia.map((guia) => (
+                        <option key={guia} value={guia}>
+                          {guia}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Ordenar">
+                    <select
+                      value={ordenacaoPaxDia}
+                      onChange={(e) => setOrdenacaoPaxDia(e.target.value)}
+                    >
+                      <option value="maior">Maior pax</option>
+                      <option value="menor">Menor pax</option>
+                      <option value="nome">Nome</option>
+                    </select>
+                  </Field>
+                </div>
+              }
+            />
 
             {carregandoCards ? (
               renderCardLoading("Atualizando serviços do dia...")
+            ) : servicosDoDia.length === 0 ? (
+              <EmptyState icon="calendar" title="Nenhum serviço encontrado para o dia selecionado.">
+                {filtroStatusDia !== "todos" || filtroGuiaDia !== "todos"
+                  ? "Há filtros aplicados — clique em “Serviços no dia” para ver todos."
+                  : undefined}
+              </EmptyState>
             ) : (
-              <>
-                <div className="home-day-selector">
-                  {semana.map((dia) => (
-                    <button
-                      key={dia.date}
-                      type="button"
-                      className={`home-day-chip ${
-                        diaSelecionadoHome === dia.date ? "active" : ""
-                      }`}
-                      onClick={() => setDiaSelecionadoHome(dia.date)}
-                      disabled={carregandoCards}
-                    >
-                      {dia.day} • {dia.label}
-                    </button>
-                  ))}
-                </div>
+              <Table
+                className="dash-table"
+                columns="minmax(220px, 2fr) minmax(150px, 1.2fr) 64px minmax(120px, 1fr) minmax(130px, 1fr) 150px"
+                minWidth={880}
+              >
+                <TableHead>
+                  <span>Passeio</span>
+                  <span>Guia</span>
+                  <span className="ui-cell-end dash-pax">Pax</span>
+                  <span>Status</span>
+                  <span>Grupo</span>
+                  <span className="ui-cell-end">Ações</span>
+                </TableHead>
 
-                <div className="home-services-filters">
-                  <select
-                    className="home-services-filter-select"
-                    value={filtroStatusDia}
-                    onChange={(e) => setFiltroStatusDia(e.target.value)}
-                  >
-                    <option value="todos">Todos os status</option>
-                    <option value="alocado">Alocado</option>
-                    <option value="sem_guia">Sem guia</option>
-                    <option value="fechado">Fechado</option>
-                    <option value="grupo_formado">Grupo formado</option>
-                    <option value="formar_grupo">Formar grupo</option>
-                  </select>
-
-                  <select
-                    className="home-services-filter-select"
-                    value={filtroGuiaDia}
-                    onChange={(e) => setFiltroGuiaDia(e.target.value)}
-                  >
-                    <option value="todos">Todos os guias</option>
-                    {guiasDisponiveisNoDia.map((guia) => (
-                      <option key={guia} value={guia}>
-                        {guia}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="home-services-filter-select"
-                    value={ordenacaoPaxDia}
-                    onChange={(e) => setOrdenacaoPaxDia(e.target.value)}
-                  >
-                    <option value="maior">Ordenar por maior pax</option>
-                    <option value="menor">Ordenar por menor pax</option>
-                    <option value="nome">Ordenar por nome</option>
-                  </select>
-                </div>
-
-                <div className="home-services-table-wrap">
-                  <table className="home-services-table">
-                    <thead>
-                      <tr>
-                        <th>Status operacional</th>
-                        <th>Status do grupo</th>
-                        <th>Passeio</th>
-                        <th>Guia</th>
-                        <th>Pax</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {servicosDoDia.length === 0 ? (
-                        <tr>
-                          <td colSpan="6">
-                            <div className="empty-state">
-                              Nenhum serviço encontrado para o dia selecionado.
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        servicosDoDia.map((item) => (
-                          <tr key={item.chave}>
-                            <td>
-                              <span
-                                className={`home-service-status ${
-                                  item.statusOperacional === "Fechado"
-                                    ? "fechado"
-                                    : item.statusOperacional === "Alocado"
-                                      ? "alocado"
-                                      : "sem-guia"
-                                }`}
-                              >
-                                {item.statusOperacional}
-                              </span>
-                            </td>
-
-                            <td>
-                              <span
-                                className={`home-service-status ${
-                                  item.statusGrupo === "Fechado"
-                                    ? "fechado"
-                                    : item.statusGrupo === "Grupo formado"
-                                      ? "alocado"
-                                      : item.statusGrupo === "Privativo"
-                                        ? "privativo"
-                                        : "sem-guia"
-                                }`}
-                              >
-                                {item.statusGrupo}
-                              </span>
-                            </td>
-
-                            <td>
-                              <div className="home-service-main-cell">
-                                <strong>{item.serviceName}</strong>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="home-service-main-cell">
-                                <strong>{item.guiaNome || "-"}</strong>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="home-service-main-cell">
-                                <small>
-                                  ADT {item.adultCount || 0} • CHD{" "}
-                                  {item.childCount || 0} • INF{" "}
-                                  {item.infantCount || 0}
-                                </small>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="home-service-actions-cell">
-                                <button
-                                  type="button"
-                                  className={`home-copy-service-btn ${
-                                    servicoCopiadoChave === item.chave
-                                      ? "success"
-                                      : ""
-                                  }`}
-                                  onClick={() => copiarServicoDia(item)}
-                                  title={
-                                    servicoCopiadoChave === item.chave
-                                      ? "Copiado!"
-                                      : "Copiar serviço"
-                                  }
-                                  aria-label={
-                                    servicoCopiadoChave === item.chave
-                                      ? "Copiado!"
-                                      : "Copiar serviço"
-                                  }
-                                >
-                                  {servicoCopiadoChave === item.chave ? (
-                                    <CheckRounded fontSize="12" />
-                                  ) : (
-                                    <ContentCopyRounded fontSize="12" />
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className="home-send-guide-btn"
-                                  onClick={() => enviarWhatsappServico(item)}
-                                  disabled={!item.guiaId && !item.guiaNome}
-                                  title={
-                                    item.guiaId || item.guiaNome
-                                      ? "Enviar mensagem ao guia"
-                                      : "Serviço sem guia alocado"
-                                  }
-                                >
-                                  Enviar ao guia
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                {servicosDoDia.map((item) => {
+                  const copiado = servicoCopiadoChave === item.chave;
+                  const temGuia = !!(item.guiaId || item.guiaNome);
+                  return (
+                    <TableRow key={item.chave}>
+                      <span>
+                        <span className="ui-cell-main">{item.serviceName}</span>
+                        <span className="ui-cell-sub tabular">
+                          ADT {item.adultCount || 0} · CHD {item.childCount || 0} · INF{" "}
+                          {item.infantCount || 0}
+                        </span>
+                      </span>
+                      <span>
+                        {item.guiaNome ? (
+                          <span className="ui-cell-main">{item.guiaNome}</span>
+                        ) : (
+                          <StatusDot tone="alert" icon="alert">
+                            Sem guia
+                          </StatusDot>
+                        )}
+                      </span>
+                      <span className="ui-cell-end ui-cell-main tabular dash-pax">
+                        {item.passengers || 0}
+                      </span>
+                      <StatusDot tone={tomStatusOperacional(item.statusOperacional)}>
+                        {item.statusOperacional}
+                      </StatusDot>
+                      <StatusDot tone={tomStatusGrupo(item.statusGrupo)}>
+                        {item.statusGrupo}
+                      </StatusDot>
+                      <span className="dash-actions ui-cell-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          icon={copiado ? "check" : "copy"}
+                          onClick={() => copiarServicoDia(item)}
+                          title={copiado ? "Copiado!" : "Copiar serviço"}
+                          aria-label={copiado ? "Copiado!" : "Copiar serviço"}
+                        />
+                        <Button
+                          size="sm"
+                          icon="message"
+                          onClick={() => enviarWhatsappServico(item)}
+                          disabled={!temGuia}
+                          title={temGuia ? "Enviar mensagem ao guia" : "Serviço sem guia alocado"}
+                        >
+                          Enviar ao guia
+                        </Button>
+                      </span>
+                    </TableRow>
+                  );
+                })}
+              </Table>
             )}
-          </div>
+          </Card>
 
-          <div className="home-dashboard-grid">
-            <div className="home-dashboard-card home-dashboard-card-large">
-              <div className="home-dashboard-card-header">
-                <div className="home-dashboard-card-title">
-                  <WarningAmberRounded fontSize="small" />
-                  <h3>Alertas operacionais automáticos</h3>
-                </div>
-              </div>
+          {/* ---- resumo da semana ---- */}
+          <section className="dash-section">
+            <h2 className="dash-section__title">Resumo da semana</h2>
+            <KpiTiles
+              highlightFirst={false}
+              items={[
+                {
+                  key: "reais",
+                  label: "Serviços reais",
+                  icon: "compass",
+                  value: renderValorCard(dashboard.totalServicosReais),
+                },
+                {
+                  key: "comGuia",
+                  label: "Serviços com guia",
+                  icon: "users",
+                  value: renderValorCard(dashboard.percentualServicosComGuia, "%"),
+                },
+                {
+                  key: "paxGuia",
+                  label: "Passageiros com guia",
+                  icon: "user",
+                  value: renderValorCard(dashboard.percentualPassageirosComGuia, "%"),
+                },
+                {
+                  key: "operadoras",
+                  label: "Operadoras na semana",
+                  icon: "building",
+                  value: renderValorCard(dashboard.operadorasSemana.length),
+                },
+              ]}
+            />
+          </section>
 
+          <div className="dash-grid">
+            <Card>
+              <CardHeader icon="alert" title="Alertas operacionais automáticos" />
               {carregandoCards ? (
                 renderCardLoading("Atualizando alertas operacionais...")
+              ) : dashboard.alertas.length === 0 ? (
+                <EmptyState icon="circleCheck" title="Nenhum alerta crítico detectado nesta semana." />
               ) : (
-                <div className="home-alerts-list">
-                  {dashboard.alertas.length === 0 ? (
-                    <div className="empty-state">
-                      Nenhum alerta crítico detectado nesta semana.
-                    </div>
-                  ) : (
-                    dashboard.alertas.map((alerta, index) => {
-                      const classeSemaforo = getAlertaSemaforo(alerta);
-
-                      return (
-                        <div
-                          key={`${alerta.titulo}-${index}`}
-                          className={`home-alert-item ${classeSemaforo}`}
-                        >
-                          <div className="home-alert-dot" />
-                          <div className="home-alert-content">
-                            <strong>{alerta.titulo}</strong>
-                            <span>{alerta.descricao}</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                <ul className="dash-alerts">
+                  {dashboard.alertas.map((alerta, index) => (
+                    <li key={`${alerta.titulo}-${index}`} className="dash-alert">
+                      <StatusDot tone={tomAlerta(alerta)}>{alerta.titulo}</StatusDot>
+                      <span className="dash-alert__desc">{alerta.descricao}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
+            </Card>
 
-            <div className="home-dashboard-card home-dashboard-card-large">
-              <div className="home-dashboard-card-header">
-                <div className="home-dashboard-card-title">
-                  <BusinessRounded fontSize="small" />
-                  <h3>Operadoras com maior volume na semana</h3>
-                </div>
-              </div>
-
+            <Card>
+              <CardHeader
+                icon="building"
+                title="Operadoras com maior volume na semana"
+                subtitle={carregandoCards ? undefined : `${totalPaxOperadoras} pax no total`}
+              />
               {carregandoCards ? (
                 renderCardLoading("Atualizando operadoras da semana...")
               ) : dashboard.operadorasSemana.length === 0 ? (
-                <div className="empty-state">
-                  Nenhuma operadora identificada nesta semana.
-                </div>
+                <EmptyState icon="building" title="Nenhuma operadora identificada nesta semana." />
               ) : (
-                <>
-                  <div style={{ width: "100%", height: 300 }}>
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={operadorasGrafico}
-                          dataKey="pax"
-                          nameKey="nomeCurto"
-                          innerRadius={68}
-                          outerRadius={108}
-                          paddingAngle={2}
-                        >
-                          {operadorasGrafico.map((entry, index) => (
-                            <Cell
-                              key={`operadora-cell-${entry.nome}-${index}`}
-                              fill={entry.fill}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={tooltipStyle}
-                          formatter={(value, name, props) => [
-                            `${value} pax`,
-                            props?.payload?.nome || name,
-                          ]}
+                <ul className="dash-bars">
+                  {operadorasGrafico.map((operadora) => (
+                    <li key={operadora.nome} className="dash-bar" title={`${operadora.nome}: ${operadora.pax} pax`}>
+                      <span className="dash-bar__nome">{operadora.nome}</span>
+                      <span className="dash-bar__trilho" aria-hidden="true">
+                        <span
+                          className="dash-bar__valor"
+                          style={{ width: `${(operadora.pax / maiorPaxOperadora) * 100}%` }}
                         />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="home-dashboard-ranking">
-                    {dashboard.operadorasSemana.map((operadora) => (
-                      <div key={operadora.nome} className="ranking-item">
-                        <div className="ranking-top">
-                          <span className="ranking-name">{operadora.nome}</span>
-                          <span className="ranking-badge">
-                            {operadora.pax} pax
-                          </span>
-                        </div>
-
-                        <div className="ranking-meta">
-                          <span>{operadora.reservas} reserva(s)</span>
-                          <span>
-                            Participação:{" "}
-                            {totalPaxOperadoras
-                              ? Math.round(
-                                  (operadora.pax / totalPaxOperadoras) * 100,
-                                )
-                              : 0}
-                            %
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                      </span>
+                      <span className="dash-bar__num tabular">
+                        <strong>{operadora.pax} pax</strong>
+                        <small>
+                          {operadora.reservas} reserva(s) · {operadora.participacao}%
+                        </small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
+            </Card>
 
-            <div className="home-dashboard-card home-dashboard-card-large">
-              <div className="home-dashboard-card-header">
-                <div className="home-dashboard-card-title">
-                  <CalendarMonthRounded fontSize="small" />
-                  <h3>Demanda da semana</h3>
-                </div>
-              </div>
-
+            <Card>
+              <CardHeader icon="barChart" title="Demanda da semana" subtitle="Serviços por dia" />
               {carregandoCards ? (
                 renderCardLoading("Atualizando demanda da semana...")
               ) : (
-                <div style={{ width: "100%", height: 340 }}>
+                <div className="dash-chart">
                   <ResponsiveContainer>
-                    <ComposedChart
+                    <BarChart
                       data={dashboard.distribuicaoSemana}
-                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                      margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                      barGap={2}
                     >
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                      <XAxis dataKey="short" />
-                      <YAxis yAxisId="left" allowDecimals={false} />
-                      <YAxis yAxisId="right" orientation="right" />
-                      <Tooltip
-                        contentStyle={tooltipStyle}
-                        formatter={(value, name) => {
-                          if (name === "Pax") return [`${value} pax`, name];
-                          return [`${value}`, name];
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="total"
-                        name="Total de serviços"
-                        radius={[8, 8, 0, 0]}
-                        fill="#2563eb"
-                      />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="comGuia"
-                        name="Serviços com guia"
-                        radius={[8, 8, 0, 0]}
-                        fill="#14b8a6"
-                      />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="pax"
-                        name="Pax"
-                        stroke="#f59e0b"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </ComposedChart>
+                      <CartesianGrid stroke="var(--divider)" vertical={false} />
+                      <XAxis dataKey="short" tick={eixo} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--raised)" }} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} />
+                      <Bar dataKey="total" name="Total de serviços" fill="var(--text-3)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="comGuia" name="Serviços com guia" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
-            </div>
+            </Card>
 
-            <div className="home-dashboard-card home-dashboard-card-full">
-              <div className="home-dashboard-card-header">
-                <div className="home-dashboard-card-title">
-                  <LockRounded fontSize="small" />
-                  <h3>Versículo do dia</h3>
-                </div>
-              </div>
-
-              {loading ? (
-                renderCardLoading("Atualizando versículo do dia...")
-              ) : versiculo ? (
-                <div className="home-bible-card">
-                  <p className="home-bible-text">"{versiculo.texto}"</p>
-                  <strong className="home-bible-ref">
-                    {versiculo.referencia}
-                  </strong>
-                </div>
+            <Card>
+              <CardHeader icon="users" title="Pax da semana" subtitle="Passageiros por dia" />
+              {carregandoCards ? (
+                renderCardLoading("Atualizando demanda da semana...")
               ) : (
-                <div className="empty-state">
-                  Não foi possível carregar o versículo.
+                <div className="dash-chart">
+                  <ResponsiveContainer>
+                    <LineChart
+                      data={dashboard.distribuicaoSemana}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                    >
+                      <CartesianGrid stroke="var(--divider)" vertical={false} />
+                      <XAxis dataKey="short" tick={eixo} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        formatter={(value) => [`${value} pax`, "Pax"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pax"
+                        name="Pax"
+                        stroke="var(--accent)"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "var(--accent)", stroke: "var(--surface)", strokeWidth: 2 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               )}
-            </div>
+            </Card>
           </div>
+
+          <Card className="dash-verse">
+            <CardHeader icon="bookOpen" title="Versículo do dia" />
+            {loading ? (
+              renderCardLoading("Atualizando versículo do dia...")
+            ) : versiculo ? (
+              <blockquote className="dash-verse__body">
+                <p>“{versiculo.texto}”</p>
+                <cite>{versiculo.referencia}</cite>
+              </blockquote>
+            ) : (
+              <EmptyState icon="bookOpen" title="Não foi possível carregar o versículo." />
+            )}
+          </Card>
         </>
       )}
+
       {abaAtiva === "comparativo" && (
-        <div className="home-dashboard-grid">
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <ShieldRounded fontSize="small" />
-                <h3>Comparativo semanal</h3>
-              </div>
-            </div>
+        <>
+          <KpiTiles
+            items={[
+              {
+                key: "servicos",
+                label: "Serviços atuais",
+                value: renderValorCard(dashboard.comparativoGeral.servicosAtual),
+                hint: `Semana anterior: ${dashboard.comparativoGeral.servicosAnterior}`,
+              },
+              {
+                key: "dServicos",
+                label: "Delta de serviços",
+                value: renderValorCard(formatarDelta(dashboard.comparativoGeral.deltaServicos)),
+                hint: `${formatarDelta(dashboard.comparativoGeral.deltaPercentualServicos)}%`,
+              },
+              {
+                key: "pax",
+                label: "Pax atuais",
+                value: renderValorCard(dashboard.comparativoGeral.paxAtual),
+                hint: `Semana anterior: ${dashboard.comparativoGeral.paxAnterior}`,
+              },
+              {
+                key: "dPax",
+                label: "Delta de pax",
+                value: renderValorCard(formatarDelta(dashboard.comparativoGeral.deltaPax)),
+                hint: `${formatarDelta(dashboard.comparativoGeral.deltaPercentualPax)}%`,
+              },
+            ]}
+          />
 
+          <Card>
+            <CardHeader
+              title={
+                <>
+                  {renderIconeComparativo()} Leitura operacional do comparativo de pax
+                </>
+              }
+            />
             {carregandoCards ? (
               renderCardLoading("Atualizando card...")
             ) : (
-              <div className="home-dashboard-summary-grid">
-                <div className="summary-box">
-                  <span className="summary-label">Serviços atuais</span>
-                  <strong>{dashboard.comparativoGeral.servicosAtual}</strong>
-                  <small>
-                    Semana anterior:{" "}
-                    {dashboard.comparativoGeral.servicosAnterior}
-                  </small>
-                </div>
-
-                <div className="summary-box">
-                  <span className="summary-label">Delta de serviços</span>
-                  <strong>
-                    {formatarDelta(dashboard.comparativoGeral.deltaServicos)}
-                  </strong>
-                  <small>
-                    {formatarDelta(
-                      dashboard.comparativoGeral.deltaPercentualServicos,
-                    )}
-                    %
-                  </small>
-                </div>
-
-                <div className="summary-box">
-                  <span className="summary-label">Pax atuais</span>
-                  <strong>{dashboard.comparativoGeral.paxAtual}</strong>
-                  <small>
-                    Semana anterior: {dashboard.comparativoGeral.paxAnterior}
-                  </small>
-                </div>
-
-                <div className="summary-box">
-                  <span className="summary-label">Delta de pax</span>
-                  <strong>
-                    {formatarDelta(dashboard.comparativoGeral.deltaPax)}
-                  </strong>
-                  <small>
-                    {formatarDelta(
-                      dashboard.comparativoGeral.deltaPercentualPax,
-                    )}
-                    %
-                  </small>
-                </div>
+              <div className="dash-reading">
+                <StatusDot tone={tomAlerta(dashboard.alertaComparativoPax)}>
+                  {dashboard.alertaComparativoPax?.titulo}
+                </StatusDot>
+                <p>{dashboard.alertaComparativoPax?.descricao}</p>
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                {renderIconeComparativo()}
-                <h3>Leitura operacional do comparativo de pax</h3>
-              </div>
-            </div>
-
-            {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
-            ) : (
-              <div
-                className={`home-alert-item ${getAlertaSemaforo(
-                  dashboard.alertaComparativoPax,
-                )}`}
-              >
-                <div className="home-alert-dot" />
-                <div className="home-alert-content">
-                  <strong>{dashboard.alertaComparativoPax?.titulo}</strong>
-                  <span>{dashboard.alertaComparativoPax?.descricao}</span>
+          <div className="dash-grid">
+            <Card>
+              <CardHeader icon="barChart" title="Serviços por dia" subtitle="Semana atual x semana anterior" />
+              {carregandoCards ? (
+                renderCardLoading("Atualizando card...")
+              ) : (
+                <div className="dash-chart">
+                  <ResponsiveContainer>
+                    <BarChart
+                      data={dashboard.distribuicaoComparativaSemana}
+                      margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                      barGap={2}
+                    >
+                      <CartesianGrid stroke="var(--divider)" vertical={false} />
+                      <XAxis dataKey="short" tick={eixo} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--raised)" }} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} />
+                      <Bar dataKey="servicosAnterior" name="Semana anterior" fill="var(--text-3)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="servicosAtual" name="Semana atual" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-            )}
+              )}
+            </Card>
+
+            <Card>
+              <CardHeader icon="users" title="Pax por dia" subtitle="Semana atual x semana anterior" />
+              {carregandoCards ? (
+                renderCardLoading("Atualizando card...")
+              ) : (
+                <div className="dash-chart">
+                  <ResponsiveContainer>
+                    <LineChart
+                      data={dashboard.distribuicaoComparativaSemana}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                    >
+                      <CartesianGrid stroke="var(--divider)" vertical={false} />
+                      <XAxis dataKey="short" tick={eixo} axisLine={false} tickLine={false} />
+                      <YAxis tick={eixo} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} />
+                      <Line
+                        type="monotone"
+                        dataKey="paxAnterior"
+                        name="Semana anterior"
+                        stroke="var(--text-3)"
+                        strokeWidth={2}
+                        strokeDasharray="4 4"
+                        dot={{ r: 4, fill: "var(--text-3)", stroke: "var(--surface)", strokeWidth: 2 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="paxAtual"
+                        name="Semana atual"
+                        stroke="var(--accent)"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "var(--accent)", stroke: "var(--surface)", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </Card>
           </div>
 
-          <div className="home-dashboard-card home-dashboard-card-large">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <InsightsRounded fontSize="small" />
-                <h3>Serviços por dia • Atual x Semana anterior</h3>
-              </div>
-            </div>
-
-            {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
-            ) : (
-              <div style={{ width: "100%", height: 340 }}>
-                <ResponsiveContainer>
-                  <BarChart
-                    data={dashboard.distribuicaoComparativaSemana}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                    <XAxis dataKey="short" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    <Bar
-                      dataKey="servicosAnterior"
-                      name="Semana anterior"
-                      fill="#93c5fd"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="servicosAtual"
-                      name="Semana atual"
-                      fill="#2563eb"
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-
-          <div className="home-dashboard-card home-dashboard-card-large">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <GroupsRounded fontSize="small" />
-                <h3>Pax por dia • Atual x Semana anterior</h3>
-              </div>
-            </div>
-
-            {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
-            ) : (
-              <div style={{ width: "100%", height: 340 }}>
-                <ResponsiveContainer>
-                  <LineChart
-                    data={dashboard.distribuicaoComparativaSemana}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                    <XAxis dataKey="short" />
-                    <YAxis />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="paxAnterior"
-                      name="Semana anterior"
-                      stroke="#93c5fd"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="paxAtual"
-                      name="Semana atual"
-                      stroke="#f59e0b"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <TravelExploreRounded fontSize="small" />
-                <h3>Passeios com maior variação</h3>
-              </div>
-            </div>
-
-            {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
-            ) : dashboard.comparativoPasseios.length === 0 ? (
-              <div className="empty-state">
-                Sem dados comparativos de passeios.
-              </div>
-            ) : (
-              <div className="home-dashboard-ranking">
-                {dashboard.comparativoPasseios.map((passeio) => (
-                  <div key={passeio.nome} className="ranking-item">
-                    <div className="ranking-top">
-                      <span className="ranking-name">{passeio.nome}</span>
-                      <span className="ranking-badge">
-                        Δ pax {formatarDelta(passeio.deltaPax)}
-                      </span>
-                    </div>
-
-                    <div className="ranking-meta">
+          <div className="dash-grid">
+            <Card>
+              <CardHeader icon="trendingUp" title="Passeios com maior variação" subtitle="Δ pax vs semana anterior" />
+              {carregandoCards ? (
+                renderCardLoading("Atualizando card...")
+              ) : dashboard.comparativoPasseios.length === 0 ? (
+                <EmptyState icon="compass" title="Sem dados comparativos de passeios." />
+              ) : (
+                <Table columns="minmax(180px, 2fr) 90px 90px 80px" minWidth={480}>
+                  <TableHead>
+                    <span>Passeio</span>
+                    <span className="ui-cell-end">Serviços</span>
+                    <span className="ui-cell-end">Pax</span>
+                    <span className="ui-cell-end">Δ pax</span>
+                  </TableHead>
+                  {dashboard.comparativoPasseios.map((passeio) => (
+                    <TableRow key={passeio.nome}>
                       <span>
-                        Serviços: {passeio.servicosAtual} /{" "}
-                        {passeio.servicosAnterior}
-                      </span>
-                      <span>
-                        Pax: {passeio.paxAtual} / {passeio.paxAnterior}
-                      </span>
-                      <span>
-                        Δ serviços: {formatarDelta(passeio.deltaServicos)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <BusinessRounded fontSize="small" />
-                <h3>Operadoras da semana</h3>
-              </div>
-            </div>
-
-            {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
-            ) : (
-              <div className="home-dashboard-ranking">
-                {dashboard.operadorasSemana.length === 0 ? (
-                  <div className="empty-state">
-                    Nenhuma operadora identificada nesta semana.
-                  </div>
-                ) : (
-                  dashboard.operadorasSemana.map((operadora) => (
-                    <div key={operadora.nome} className="ranking-item">
-                      <div className="ranking-top">
-                        <span className="ranking-name">{operadora.nome}</span>
-                        <span className="ranking-badge">
-                          {operadora.pax} pax
+                        <span className="ui-cell-main">{passeio.nome}</span>
+                        <span className="ui-cell-sub">
+                          Δ serviços: {formatarDelta(passeio.deltaServicos)}
                         </span>
-                      </div>
+                      </span>
+                      <span className="ui-cell-end tabular">
+                        {passeio.servicosAtual} / {passeio.servicosAnterior}
+                      </span>
+                      <span className="ui-cell-end tabular">
+                        {passeio.paxAtual} / {passeio.paxAnterior}
+                      </span>
+                      <span
+                        className={`ui-cell-end ui-cell-main tabular ${passeio.deltaPax < 0 ? "dash-neg" : ""}`}
+                      >
+                        {formatarDelta(passeio.deltaPax)}
+                      </span>
+                    </TableRow>
+                  ))}
+                </Table>
+              )}
+            </Card>
 
-                      <div className="ranking-meta">
-                        <span>
-                          {operadora.reservas} reserva(s)/ocorrência(s)
-                        </span>
-                        <span>Total de pax na semana</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+            <Card>
+              <CardHeader icon="building" title="Operadoras da semana" />
+              {carregandoCards ? (
+                renderCardLoading("Atualizando card...")
+              ) : dashboard.operadorasSemana.length === 0 ? (
+                <EmptyState icon="building" title="Nenhuma operadora identificada nesta semana." />
+              ) : (
+                <Table columns="minmax(160px, 2fr) 90px 140px" minWidth={400}>
+                  <TableHead>
+                    <span>Operadora</span>
+                    <span className="ui-cell-end">Pax</span>
+                    <span className="ui-cell-end">Reservas/ocorrências</span>
+                  </TableHead>
+                  {dashboard.operadorasSemana.map((operadora) => (
+                    <TableRow key={operadora.nome}>
+                      <span className="ui-cell-main">{operadora.nome}</span>
+                      <span className="ui-cell-end ui-cell-main tabular">{operadora.pax}</span>
+                      <span className="ui-cell-end tabular">{operadora.reservas}</span>
+                    </TableRow>
+                  ))}
+                </Table>
+              )}
+            </Card>
           </div>
-
-          <div className="home-dashboard-card home-dashboard-card-full">
-            <div className="home-dashboard-card-header">
-              <div className="home-dashboard-card-title">
-                <CalendarMonthRounded fontSize="small" />
-                <h3>Atualização do comparativo</h3>
-              </div>
-            </div>
-
-            <div className="home-live-info">
-              {formatarUltimaAtualizacao(ultimaAtualizacaoComparativo)}
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

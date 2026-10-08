@@ -10,27 +10,17 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import {
-  LeaderboardRounded,
-  CalendarMonthRounded,
-  SearchRounded,
-  LocalShippingRounded,
-  PrintRounded,
-  RefreshRounded,
-  SyncRounded,
-  ViewColumnRounded,
-  WarningAmberRounded,
-  CloseRounded,
-  ArrowUpwardRounded,
-  ArrowDownwardRounded,
-  EmojiEventsRounded,
-  DirectionsBusRounded,
-  EditRounded,
-  CheckRounded,
-  SaveRounded,
-  LinkOffRounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-} from "@mui/icons-material";
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FilterBar,
+  Icon,
+  KpiTiles,
+  PageHeader,
+  Segmented,
+} from "../ui";
 import "./styles.css";
 
 /* =========================================================
@@ -554,9 +544,9 @@ const Th = ({ campo, ordem, onOrdenar, className = "", children }) => (
     {children}
     {ordem.campo === campo &&
       (ordem.dir === "asc" ? (
-        <ArrowUpwardRounded className="sf-sort-icon" />
+        <Icon name="arrowUp" size={13} className="sf-sort-icon" />
       ) : (
-        <ArrowDownwardRounded className="sf-sort-icon" />
+        <Icon name="arrowDown" size={13} className="sf-sort-icon" />
       ))}
   </th>
 );
@@ -1448,184 +1438,155 @@ const ServicosFornecedor = () => {
   );
 
   return (
-    <div className="servicos-fornecedor-page">
-      <div className="sf-header">
-        <div>
-          <h2 className="sf-title">
-            Serviços por Fornecedor <LeaderboardRounded fontSize="small" />
-          </h2>
-          <p className="sf-subtitle">
-            Todos os veículos escalados no Phoenix. O fornecedor de cada
-            veículo é definido uma vez aqui, pelo ID do veículo. Cada escala
-            conta como 1 serviço.
-          </p>
-        </div>
-
-        <div className="sf-header-actions">
-          {!grupoAtual && (
-            <select
-              className="sf-select-mini"
-              value={modoImpressao}
-              onChange={(e) => setModoImpressao(e.target.value)}
-              title="O que vai no relatório impresso"
-            >
-              <option value="resumo">Relatório: só ranking</option>
-              <option value="completo">Relatório: ranking + serviços</option>
-            </select>
-          )}
-          <button
-            type="button"
-            className="sf-btn"
-            onClick={() => carregar({ forcar: true })}
-            disabled={loading || periodoInvalido || periodoGrandeDemais}
-          >
-            {loading ? (
-              <SyncRounded className="sf-spin" fontSize="small" />
-            ) : (
-              <RefreshRounded fontSize="small" />
+    <div className="ui-page servicos-fornecedor-page">
+      <PageHeader
+        title="Serviços por Fornecedor"
+        description="Cada escala conta como 1 serviço. O fornecedor de cada veículo é definido uma vez aqui, pelo ID do veículo no Phoenix."
+        actions={
+          <>
+            {!grupoAtual && (
+              <select
+                className="sf-select-mini"
+                value={modoImpressao}
+                onChange={(e) => setModoImpressao(e.target.value)}
+                title="O que vai no relatório impresso"
+                aria-label="O que vai no relatório impresso"
+              >
+                <option value="resumo">Relatório: só ranking</option>
+                <option value="completo">Relatório: ranking + serviços</option>
+              </select>
             )}
-            Atualizar
-          </button>
-          <button
-            type="button"
-            className="sf-btn sf-btn-primary"
-            onClick={imprimirRelatorio}
-            disabled={
-              loading || periodoInvalido || periodoGrandeDemais || semVeiculosMarcados
-            }
-          >
-            <PrintRounded fontSize="small" />
-            Imprimir relatório
-          </button>
-        </div>
-      </div>
+            <Button
+              icon="refresh"
+              onClick={() => carregar({ forcar: true })}
+              loading={loading}
+              disabled={loading || periodoInvalido || periodoGrandeDemais}
+            >
+              Atualizar
+            </Button>
+            <Button
+              variant="primary"
+              icon="printer"
+              onClick={imprimirRelatorio}
+              disabled={
+                loading || periodoInvalido || periodoGrandeDemais || semVeiculosMarcados
+              }
+            >
+              Imprimir relatório
+            </Button>
+          </>
+        }
+      />
 
       {/* ===== FILTROS ===== */}
-      <section className="sf-card">
-        <div className="sf-filtros-grid">
-          <label className="sf-field">
-            <span>
-              <CalendarMonthRounded fontSize="small" /> Início
-            </span>
+      <FilterBar>
+        <Field label="Início" icon="calendar">
+          <input
+            type="date"
+            value={inicio}
+            max={fim}
+            onChange={(e) => {
+              setInicio(e.target.value);
+              setAtalhoAtivo("");
+            }}
+          />
+        </Field>
+
+        <Field label="Fim" icon="calendar">
+          <input
+            type="date"
+            value={fim}
+            min={inicio}
+            onChange={(e) => {
+              setFim(e.target.value);
+              setAtalhoAtivo("");
+            }}
+          />
+        </Field>
+
+        <Field label="Fornecedor" icon="truck">
+          <select
+            value={fornecedorSel}
+            onChange={(e) => selecionarFornecedor(e.target.value)}
+          >
+            <option value={TODOS}>Todos (ranking geral)</option>
+            {grupos.map((g) => (
+              <option key={g.chave} value={g.chave}>
+                {g.nome} ({g.veiculos.length} veíc.)
+                {g.qtdMarcados === 0 ? " — fora do relatório" : ""}
+              </option>
+            ))}
+            {pendentes.length > 0 && (
+              <option value={PENDENTES}>
+                ⚠ Sem fornecedor definido ({pendentes.length})
+              </option>
+            )}
+          </select>
+        </Field>
+
+        <Field label="Buscar" icon="search" grow>
+          <div className="sf-input-wrap">
             <input
-              type="date"
-              value={inicio}
-              max={fim}
-              onChange={(e) => {
-                setInicio(e.target.value);
-                setAtalhoAtivo("");
-              }}
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder={
+                grupoAtual
+                  ? "Serviço, hotel, veículo, motorista, guia..."
+                  : "Fornecedor, veículo ou placa..."
+              }
             />
-          </label>
-
-          <label className="sf-field">
-            <span>
-              <CalendarMonthRounded fontSize="small" /> Fim
-            </span>
-            <input
-              type="date"
-              value={fim}
-              min={inicio}
-              onChange={(e) => {
-                setFim(e.target.value);
-                setAtalhoAtivo("");
-              }}
-            />
-          </label>
-
-          <label className="sf-field">
-            <span>
-              <LocalShippingRounded fontSize="small" /> Fornecedor
-            </span>
-            <select
-              value={fornecedorSel}
-              onChange={(e) => selecionarFornecedor(e.target.value)}
-            >
-              <option value={TODOS}>Todos (ranking geral)</option>
-              {grupos.map((g) => (
-                <option key={g.chave} value={g.chave}>
-                  {g.nome} ({g.veiculos.length} veíc.)
-                  {g.qtdMarcados === 0 ? " — fora do relatório" : ""}
-                </option>
-              ))}
-              {pendentes.length > 0 && (
-                <option value={PENDENTES}>
-                  ⚠ Sem fornecedor definido ({pendentes.length})
-                </option>
-              )}
-            </select>
-          </label>
-
-          <label className="sf-field">
-            <span>
-              <SearchRounded fontSize="small" /> Buscar
-            </span>
-            <div className="sf-input-wrap">
-              <input
-                type="text"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder={
-                  grupoAtual
-                    ? "Serviço, hotel, veículo, motorista, guia..."
-                    : "Fornecedor, veículo ou placa..."
-                }
-              />
-              {busca && (
-                <button
-                  type="button"
-                  className="sf-clear"
-                  onClick={() => setBusca("")}
-                  aria-label="Limpar busca"
-                >
-                  <CloseRounded fontSize="small" />
-                </button>
-              )}
-            </div>
-          </label>
-        </div>
-
-        <div className="sf-atalhos">
-          {ATALHOS_PERIODO.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`sf-chip ${atalhoAtivo === a.id ? "ativo" : ""}`}
-              onClick={() => aplicarAtalho(a)}
-            >
-              {a.label}
-            </button>
-          ))}
-          <span className="sf-periodo-info">{datasPeriodo.length} dia(s)</span>
-        </div>
-
-        {periodoInvalido && (
-          <p className="sf-alerta erro">A data de início é depois da data final.</p>
-        )}
-        {periodoGrandeDemais && (
-          <p className="sf-alerta erro">
-            Período muito longo ({datasPeriodo.length} dias). O máximo é{" "}
-            {MAX_DIAS_PERIODO} dias para não sobrecarregar a API.
-          </p>
-        )}
-
-        {loading && (
-          <div className="sf-progresso">
-            <div className="sf-progresso-barra">
-              <div style={{ width: `${percentual}%` }} />
-            </div>
-            <span>
-              Carregando dias do Phoenix… {progresso.feitos}/{progresso.total}
-            </span>
+            {busca && (
+              <button
+                type="button"
+                className="sf-clear"
+                onClick={() => setBusca("")}
+                aria-label="Limpar busca"
+              >
+                <Icon name="x" size={14} />
+              </button>
+            )}
           </div>
-        )}
-      </section>
+        </Field>
+      </FilterBar>
+
+      <div className="sf-atalhos">
+        <Segmented
+          size="sm"
+          ariaLabel="Atalhos de período"
+          value={atalhoAtivo}
+          onChange={(id) => aplicarAtalho(ATALHOS_PERIODO.find((a) => a.id === id))}
+          options={ATALHOS_PERIODO.map((a) => ({ value: a.id, label: a.label }))}
+        />
+        <span className="sf-periodo-info">{datasPeriodo.length} dia(s)</span>
+      </div>
+
+      {periodoInvalido && (
+        <p className="sf-alerta erro">A data de início é depois da data final.</p>
+      )}
+      {periodoGrandeDemais && (
+        <p className="sf-alerta erro">
+          Período muito longo ({datasPeriodo.length} dias). O máximo é{" "}
+          {MAX_DIAS_PERIODO} dias para não sobrecarregar a API.
+        </p>
+      )}
+
+      {loading && (
+        <div className="sf-progresso">
+          <div className="sf-progresso-barra">
+            <div style={{ width: `${percentual}%` }} />
+          </div>
+          <span>
+            Carregando dias do Phoenix… {progresso.feitos}/{progresso.total}
+          </span>
+        </div>
+      )}
 
       {erro && <p className="sf-alerta erro">{erro}</p>}
 
       {datasComFalha.length > 0 && !erro && (
         <p className="sf-alerta">
-          <WarningAmberRounded fontSize="small" />
+          <Icon name="alert" size={16} />
           Não foi possível carregar {datasComFalha.length} dia(s):{" "}
           {datasComFalha.map(formatarDataCurta).join(", ")}. Clique em
           Atualizar para tentar de novo.
@@ -1634,7 +1595,7 @@ const ServicosFornecedor = () => {
 
       {pendentes.length > 0 && vinculosCarregados && (
         <div className="sf-alerta">
-          <WarningAmberRounded fontSize="small" />
+          <Icon name="alert" size={16} />
           <span>
             <strong>
               {pendentes.length} veículo(s) sem fornecedor definido
@@ -1649,22 +1610,22 @@ const ServicosFornecedor = () => {
       )}
 
       {/* ===== VEÍCULOS: vínculo + seleção ===== */}
-      <section className="sf-card" ref={painelRef}>
+      <section className="ui-card sf-card" ref={painelRef}>
         <div className="sf-card-head">
           <button
             type="button"
             className="sf-head-toggle"
             onClick={() => setPainelVeiculosAberto((v) => !v)}
           >
-            <DirectionsBusRounded fontSize="small" />
+            <Icon name="truck" size={17} />
             <h3>Veículos e fornecedores</h3>
             <span className="sf-contador">
               {totalVeiculosMarcados} de {totalVeiculos} no relatório
             </span>
             {painelVeiculosAberto ? (
-              <KeyboardArrowUpRounded fontSize="small" />
+              <Icon name="chevronUp" size={16} />
             ) : (
-              <KeyboardArrowDownRounded fontSize="small" />
+              <Icon name="chevronDown" size={16} />
             )}
           </button>
 
@@ -1672,7 +1633,7 @@ const ServicosFornecedor = () => {
             <div className="sf-head-actions">
               {salvandoVinculo && (
                 <span className="sf-muted">
-                  <SyncRounded className="sf-spin" fontSize="inherit" /> salvando…
+                  <Icon name="loader" size={13} className="ui-spin" /> salvando…
                 </span>
               )}
               <button type="button" className="sf-chip" onClick={() => marcarTodos(true)}>
@@ -1743,7 +1704,7 @@ const ServicosFornecedor = () => {
                                 onClick={() => vincular(v, s)}
                                 title={`Vincular ${v.nome} ao fornecedor ${s}`}
                               >
-                                <CheckRounded fontSize="inherit" /> {s}
+                                <Icon name="check" size={13} /> {s}
                                 {!nomesFornecedores.has(chaveFornecedor(s)) && (
                                   <small>novo</small>
                                 )}
@@ -1774,7 +1735,7 @@ const ServicosFornecedor = () => {
                             disabled={!String(textosPendentes[v.chave] || "").trim()}
                             onClick={() => vincular(v, textosPendentes[v.chave])}
                           >
-                            <SaveRounded fontSize="inherit" />
+                            <Icon name="save" size={14} />
                           </button>
                         </div>
 
@@ -1803,7 +1764,7 @@ const ServicosFornecedor = () => {
                                     className="sf-sugestao"
                                     onClick={() => vincular(v, s)}
                                   >
-                                    <CheckRounded fontSize="inherit" /> {s}
+                                    <Icon name="check" size={13} /> {s}
                                   </button>
                                 ))}
                               </span>
@@ -1858,7 +1819,7 @@ const ServicosFornecedor = () => {
                             title="Salvar nome"
                             onClick={() => renomearFornecedor(g, textoEdicao)}
                           >
-                            <CheckRounded fontSize="inherit" />
+                            <Icon name="check" size={13} />
                           </button>
                         ) : (
                           <button
@@ -1870,7 +1831,7 @@ const ServicosFornecedor = () => {
                               setTextoEdicao(g.nome);
                             }}
                           >
-                            <EditRounded fontSize="inherit" />
+                            <Icon name="pencil" size={14} />
                           </button>
                         )}
                       </div>
@@ -1900,7 +1861,7 @@ const ServicosFornecedor = () => {
                                   title="Salvar"
                                   onClick={() => vincular(v, textoEdicao)}
                                 >
-                                  <CheckRounded fontSize="inherit" />
+                                  <Icon name="check" size={13} />
                                 </button>
                                 <button
                                   type="button"
@@ -1908,7 +1869,7 @@ const ServicosFornecedor = () => {
                                   title="Cancelar"
                                   onClick={() => setEditandoVeiculo(null)}
                                 >
-                                  <CloseRounded fontSize="inherit" />
+                                  <Icon name="x" size={14} />
                                 </button>
                               </div>
                             ) : (
@@ -1934,7 +1895,7 @@ const ServicosFornecedor = () => {
                                     setTextoEdicao(g.nome);
                                   }}
                                 >
-                                  <EditRounded fontSize="inherit" />
+                                  <Icon name="pencil" size={14} />
                                 </button>
                                 <button
                                   type="button"
@@ -1942,7 +1903,7 @@ const ServicosFornecedor = () => {
                                   title="Tirar do fornecedor"
                                   onClick={() => desvincular(v)}
                                 >
-                                  <LinkOffRounded fontSize="inherit" />
+                                  <Icon name="linkOff" size={14} />
                                 </button>
                               </>
                             )}
@@ -1964,51 +1925,50 @@ const ServicosFornecedor = () => {
       {/* ===== VISÃO GERAL / RANKING ===== */}
       {!grupoAtual && (
         <>
-          <div className="sf-kpis">
-            <div className="sf-kpi destaque">
-              <span>Serviços</span>
-              <strong>{formatarNumero(kpis.total)}</strong>
-              <small>{kpis.mediaDia.toFixed(1)} / dia</small>
-            </div>
-            {TIPOS.map((t) => (
-              <div key={t} className={`sf-kpi tipo-${t.toLowerCase()}`}>
-                <span>{TIPO_LABEL[t]}</span>
-                <strong>{formatarNumero(kpis.porTipo[t])}</strong>
-              </div>
-            ))}
-            <div className="sf-kpi">
-              <span>Pax</span>
-              <strong>{formatarNumero(kpis.pax)}</strong>
-            </div>
-            <div className="sf-kpi">
-              <span>Fornecedores</span>
-              <strong>{kpis.fornecedores}</strong>
-              <small>{kpis.veiculos} veículo(s)</small>
-            </div>
-          </div>
+          <KpiTiles
+            className="sf-kpis-ui"
+            items={[
+              {
+                key: "total",
+                label: "Serviços",
+                value: formatarNumero(kpis.total),
+                hint: `${kpis.mediaDia.toFixed(1)} / dia`,
+                icon: "list",
+              },
+              ...TIPOS.map((t) => ({
+                key: t,
+                label: TIPO_LABEL[t],
+                value: formatarNumero(kpis.porTipo[t]),
+              })),
+              { key: "pax", label: "Pax", value: formatarNumero(kpis.pax), icon: "users" },
+              {
+                key: "forn",
+                label: "Fornecedores",
+                value: kpis.fornecedores,
+                hint: `${kpis.veiculos} veículo(s)`,
+                icon: "truck",
+              },
+            ]}
+          />
 
-          <section className="sf-card">
-            <div className="sf-card-head">
-              <h3>
-                <EmojiEventsRounded fontSize="small" /> Ranking geral
-              </h3>
-              <div className="sf-segmentado">
-                <button
-                  type="button"
-                  className={modoRanking === "fornecedor" ? "ativo" : ""}
-                  onClick={() => setModoRanking("fornecedor")}
-                >
-                  Por fornecedor
-                </button>
-                <button
-                  type="button"
-                  className={modoRanking === "veiculo" ? "ativo" : ""}
-                  onClick={() => setModoRanking("veiculo")}
-                >
-                  Por veículo
-                </button>
-              </div>
-            </div>
+          <Card className="sf-card">
+            <CardHeader
+              title="Ranking geral"
+              subtitle="Clique numa linha para ver os serviços"
+              icon="barChart"
+              actions={
+                <Segmented
+                  size="sm"
+                  ariaLabel="Agrupar ranking"
+                  value={modoRanking}
+                  onChange={setModoRanking}
+                  options={[
+                    { value: "fornecedor", label: "Por fornecedor" },
+                    { value: "veiculo", label: "Por veículo" },
+                  ]}
+                />
+              }
+            />
 
             {loading && !rankingGeral.length ? (
               <div className="sf-vazio">Carregando…</div>
@@ -2099,7 +2059,7 @@ const ServicosFornecedor = () => {
                 </table>
               </div>
             )}
-          </section>
+          </Card>
         </>
       )}
 
@@ -2116,39 +2076,41 @@ const ServicosFornecedor = () => {
                 {resumoSelecionado.dias} dia(s) com serviço no período
               </span>
             </div>
-            <button
-              type="button"
-              className="sf-btn"
-              onClick={() => selecionarFornecedor(TODOS)}
-            >
-              <EmojiEventsRounded fontSize="small" /> Voltar ao ranking
-            </button>
+            <Button icon="chevronLeft" onClick={() => selecionarFornecedor(TODOS)}>
+              Voltar ao ranking
+            </Button>
           </div>
 
           {grupoAtual.qtdMarcados === 0 && (
             <p className="sf-alerta">
-              <WarningAmberRounded fontSize="small" />
+              <Icon name="alert" size={16} />
               Nenhum veículo deste fornecedor está marcado — marque no painel
               de veículos para ele entrar no relatório.
             </p>
           )}
 
-          <div className="sf-kpis">
-            <div className="sf-kpi destaque">
-              <span>Serviços</span>
-              <strong>{formatarNumero(resumoSelecionado.total)}</strong>
-            </div>
-            {TIPOS.map((t) => (
-              <div key={t} className={`sf-kpi tipo-${t.toLowerCase()}`}>
-                <span>{TIPO_LABEL[t]}</span>
-                <strong>{formatarNumero(resumoSelecionado.porTipo[t])}</strong>
-              </div>
-            ))}
-            <div className="sf-kpi">
-              <span>Pax</span>
-              <strong>{formatarNumero(resumoSelecionado.pax)}</strong>
-            </div>
-          </div>
+          <KpiTiles
+            className="sf-kpis-ui"
+            items={[
+              {
+                key: "total",
+                label: "Serviços",
+                value: formatarNumero(resumoSelecionado.total),
+                icon: "list",
+              },
+              ...TIPOS.map((t) => ({
+                key: t,
+                label: TIPO_LABEL[t],
+                value: formatarNumero(resumoSelecionado.porTipo[t]),
+              })),
+              {
+                key: "pax",
+                label: "Pax",
+                value: formatarNumero(resumoSelecionado.pax),
+                icon: "users",
+              },
+            ]}
+          />
 
           {resumoSelecionado.porVeiculo.length > 0 && (
             <div className="sf-veiculos">
@@ -2172,7 +2134,7 @@ const ServicosFornecedor = () => {
             </div>
           )}
 
-          <section className="sf-card">
+          <section className="ui-card sf-card">
             <div className="sf-card-head">
               <div className="sf-atalhos sem-margem">
                 {[TODOS, ...TIPOS].map((t) => (
@@ -2193,13 +2155,14 @@ const ServicosFornecedor = () => {
               </div>
 
               <div className="sf-colunas-wrap">
-                <button
-                  type="button"
-                  className="sf-btn"
+                <Button
+                  size="sm"
+                  icon="sliders"
                   onClick={() => setSeletorColunasAberto((v) => !v)}
+                  aria-expanded={seletorColunasAberto}
                 >
-                  <ViewColumnRounded fontSize="small" /> Colunas
-                </button>
+                  Colunas
+                </Button>
                 {seletorColunasAberto && (
                   <div className="sf-colunas-pop">
                     {COLUNAS_DETALHE.map((c) => (
@@ -2218,9 +2181,10 @@ const ServicosFornecedor = () => {
             </div>
 
             {!servicosDetalheExibidos.length ? (
-              <div className="sf-vazio">
-                {loading ? "Carregando…" : "Nenhum serviço encontrado."}
-              </div>
+              <EmptyState
+                icon={loading ? "loader" : "list"}
+                title={loading ? "Carregando…" : "Nenhum serviço encontrado."}
+              />
             ) : (
               <div className="sf-table-wrap">
                 <table className="sf-table">

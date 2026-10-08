@@ -1,0 +1,199 @@
+/* =========================================================
+   LISTA DE GUIAS + drawer de edição. Só tokens.
+   ========================================================= */
+
+.guias-contador {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.guias-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.guias-prioridade {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+
+.guias-prioridade span {
+  width: 6px;
+  border-radius: 2px;
+  background: var(--raised);
+  border: 1px solid var(--divider);
+}
+
+.guias-prioridade span:nth-child(1) {
+  height: 6px;
+}
+
+.guias-prioridade span:nth-child(2) {
+  height: 11px;
+}
+
+.guias-prioridade span:nth-child(3) {
+  height: 16px;
+}
+
+.guias-prioridade span.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- drawer ---- */
+.editar-guia-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.guias-chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guias-chip-toggle:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.guias-chip-toggle.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.editar-guia-vazio {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.editar-guia-passeios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+}
+
+.editar-guia-passeios li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--divider);
+}
+
+.editar-guia-passeios li:last-child {
+  border-bottom: 0;
+}
+
+.editar-guia-passeios__nome {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.editar-guia-passeios__nivel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.editar-guia-passeios__barra {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.editar-guia-passeios__barra span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.editar-guia-passeios li.nivel-baixo .editar-guia-passeios__barra span {
+  background: var(--text-3);
+}
+
+.editar-guia-toggles {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+}
+
+.editar-guia-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.editar-guia-toggle+.editar-guia-toggle {
+  border-top: 1px solid var(--divider);
+}
+
+.editar-guia-toggle span {
+  order: -1;
+}
+
+/* checkbox com cara de interruptor */
+.editar-guia-toggle input {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex: none;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  border: 1px solid var(--divider);
+  cursor: pointer;
+}
+
+.editar-guia-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition: transform 0.15s ease;
+}
+
+.editar-guia-toggle input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.editar-guia-toggle input:checked::after {
+  transform: translateX(16px);
+  background: var(--on-accent);
+}

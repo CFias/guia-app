@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import {
-  LoginRounded,
-  VisibilityOffRounded,
-  VisibilityRounded,
-} from "@mui/icons-material";
+import Icon from "../../components/ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
 import { HOME_BY_ROLE } from "../../Context/permissions";
 import { SemAcesso, TelaCarregando } from "../../components/Auth/RouteGuards";
@@ -150,9 +146,9 @@ const Login = () => {
                 aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
               >
                 {mostrarSenha ? (
-                  <VisibilityOffRounded fontSize="small" />
+                  <Icon name="eyeOff" size={16} />
                 ) : (
-                  <VisibilityRounded fontSize="small" />
+                  <Icon name="eye" size={16} />
                 )}
               </button>
             </div>
@@ -162,7 +158,7 @@ const Login = () => {
           {aviso && <div className="auth-alert ok">{aviso}</div>}
 
           <button type="submit" className="auth-btn-primary" disabled={enviando}>
-            <LoginRounded fontSize="small" />
+            <Icon name="logout" size={16} />
             {enviando ? "Entrando..." : "Entrar"}
           </button>
 

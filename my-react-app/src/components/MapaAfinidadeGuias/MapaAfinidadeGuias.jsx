@@ -9,13 +9,16 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
-import "./styles.css";
+import "./afinidade.css";
 import {
-  AutoGraphRounded,
-  ManageAccountsRounded,
-  SaveRounded,
-  TravelExploreRounded,
-} from "@mui/icons-material";
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Icon,
+  PageHeader,
+  SearchInput,
+} from "../ui";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não operar";
@@ -26,14 +29,21 @@ const LABEL_NIVEL = (valor) => {
   return "Excelente";
 };
 
-// Mesmo semáforo de 4 faixas usado na legenda ("Leitura dos níveis"):
-// 0 = cinza, 5–40 = laranja, 45–60 = amarelo, 65–100 = verde.
+// Mesmas 4 faixas da legenda ("Leitura dos níveis"), só com tokens:
+// 0 = neutro, 5–40 = aviso, 45–60 = accent claro, 65–100 = accent.
 const obterCorNivel = (valor) => {
-  if (valor === 0) return "var(--pc-text-faint)";
-  if (valor <= 40) return "var(--pc-warning)";
-  if (valor <= 60) return "#facc15";
-  return "var(--pc-success)";
+  if (valor === 0) return "var(--text-3)";
+  if (valor <= 40) return "var(--warning)";
+  if (valor <= 60) return "var(--accent-300)";
+  return "var(--accent)";
 };
+
+const FAIXAS_LEGENDA = [
+  { valor: 0, faixa: "0", rotulo: "Não opera" },
+  { valor: 20, faixa: "5–40", rotulo: "Baixo" },
+  { valor: 50, faixa: "45–60", rotulo: "Médio" },
+  { valor: 80, faixa: "65–100", rotulo: "Alto" },
+];
 
 const obterNomePasseio = (passeio) => {
   return (
@@ -56,6 +66,7 @@ const MapaAfinidadeGuias = () => {
   const [loadingMapa, setLoadingMapa] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  const [buscaGuia, setBuscaGuia] = useState(""); // só filtra a lista visual
   const [mensagem, setMensagem] = useState("");
   const [tipoMensagem, setTipoMensagem] = useState("");
 
@@ -202,237 +213,144 @@ const MapaAfinidadeGuias = () => {
     }
   };
 
+  const termo = buscaGuia.trim().toLowerCase();
+  const guiasVisiveis = termo
+    ? guias.filter((g) => String(g.nome || "").toLowerCase().includes(termo))
+    : guias;
+
   return (
-    <div className="afinidade-page">
-      <div className="afinidade-page-header">
-        <div>
-          <h2 className="afinidade-page-title">
-            Mapa de Afinidade Guia x Passeio{" "}
-            <AutoGraphRounded fontSize="small" />
-          </h2>
-          <p className="afinidade-page-subtitle">
-            Defina o nível de operação de cada guia em relação aos passeios e
-            melhore a qualidade da distribuição automática.
-          </p>
+    <div className="afinidade-page ui-page">
+      <PageHeader
+        title="Mapa de afinidade"
+        description="Defina o nível de cada guia em cada passeio para melhorar a distribuição automática."
+        actions={
+          <Button
+            variant="primary"
+            icon="save"
+            onClick={salvarMapa}
+            disabled={salvando || !guiaSelecionado}
+            loading={salvando}
+          >
+            {salvando ? "Salvando alterações..." : "Salvar mapeamento"}
+          </Button>
+        }
+      >
+        <ul className="afinidade-legenda" aria-label="Leitura dos níveis">
+          {FAIXAS_LEGENDA.map((f) => (
+            <li key={f.faixa}>
+              <span className="afinidade-legenda__dot" style={{ background: obterCorNivel(f.valor) }} />
+              <strong className="tabular">{f.faixa}</strong> {f.rotulo}
+            </li>
+          ))}
+        </ul>
+      </PageHeader>
+
+      {mensagem && (
+        <div className={`afinidade-msg ${tipoMensagem === "erro" ? "is-erro" : ""}`} role="status">
+          <Icon name={tipoMensagem === "erro" ? "alert" : "circleCheck"} size={16} />
+          {mensagem}
         </div>
-      </div>
+      )}
 
-      <div className="afinidade-grid">
-        <div className="afinidade-card afinidade-card-large">
-          <div className="afinidade-card-header">
-            <div className="afinidade-card-title-row">
-              <h3>Selecionar guia</h3>
-              <span className="afinidade-badge">Configuração</span>
-            </div>
-            <p>
-              Escolha um guia para ajustar sua afinidade operacional com cada
-              passeio cadastrado.
-            </p>
+      <div className="afinidade-layout">
+        {/* ---- guias ---- */}
+        <Card className="afinidade-guias">
+          <div className="afinidade-guias__busca">
+            <SearchInput
+              value={buscaGuia}
+              onChange={(e) => setBuscaGuia(e.target.value)}
+              placeholder="Buscar guia"
+              aria-label="Buscar guia"
+            />
           </div>
-
           {loadingInicial ? (
-            <CardSkeleton variant="filters" />
+            <CardSkeleton variant="list" rows={6} />
+          ) : (
+            <ul className="afinidade-guias__lista" role="listbox" aria-label="Guia">
+              {guiasVisiveis.map((guia) => {
+                const ativo = guia.id === guiaSelecionado;
+                return (
+                  <li key={guia.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={ativo}
+                      className={`afinidade-guia ${ativo ? "is-active" : ""}`}
+                      onClick={() => setGuiaSelecionado(guia.id)}
+                      disabled={salvando}
+                    >
+                      <span className="afinidade-guia__avatar" aria-hidden="true">
+                        {String(guia.nome || "?").trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="afinidade-guia__nome">{guia.nome}</span>
+                      {guia.ativo === false && <span className="ui-cell-sub">inativo</span>}
+                    </button>
+                  </li>
+                );
+              })}
+              {!guiasVisiveis.length && (
+                <li className="afinidade-guias__vazio">Nenhum guia encontrado.</li>
+              )}
+            </ul>
+          )}
+        </Card>
+
+        {/* ---- passeios do guia ---- */}
+        <Card className="afinidade-passeios">
+          {!guiaSelecionado ? (
+            <EmptyState icon="map" title="Selecione um guia">
+              Escolha um guia na lista para ajustar a afinidade dele com cada passeio cadastrado.
+            </EmptyState>
           ) : (
             <>
-              <div className="afinidade-field">
-                <label htmlFor="afinidade-guia-select">
-                  Guia <ManageAccountsRounded fontSize="small" />
-                </label>
-                <select
-                  id="afinidade-guia-select"
-                  className="afinidade-select"
-                  value={guiaSelecionado}
-                  onChange={(e) => setGuiaSelecionado(e.target.value)}
-                  disabled={salvando}
-                >
-                  <option value="">Selecione um guia</option>
-                  {guias.map((guia) => (
-                    <option key={guia.id} value={guia.id}>
-                      {guia.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {mensagem && (
-                <div className={`afinidade-alerta ${tipoMensagem}`}>
-                  {mensagem}
-                </div>
-              )}
-
-              {guiaAtual && (
-                <div className="afinidade-resumo-guia">
-                  Configurando níveis de operação para{" "}
-                  <strong>{guiaAtual.nome}</strong>
-                </div>
-              )}
-
-              {guiaAtual && passeios.length === 0 && (
-                <div className="afinidade-vazio">
-                  Nenhum passeio encontrado na coleção <strong>services</strong>
-                  .
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="afinidade-card">
-          <div className="afinidade-card-header">
-            <div className="afinidade-card-title-row">
-              <h3>Leitura dos níveis</h3>
-              <span className="afinidade-badge">Escala</span>
-            </div>
-            <p>
-              Use a escala para indicar o quanto o guia está apto a operar cada
-              passeio.
-            </p>
-          </div>
-
-          {loadingInicial ? (
-            <CardSkeleton variant="list" rows={4} />
-          ) : (
-            <div className="afinidade-legend">
-              <div className="afinidade-legend-item">
-                <span className="afinidade-legend-dot zero" />
-                <div>
-                  <strong>0</strong>
-                  <span>Não operar</span>
-                </div>
-              </div>
-
-              <div className="afinidade-legend-item">
-                <span className="afinidade-legend-dot baixo" />
-                <div>
-                  <strong>5 a 40</strong>
-                  <span>Nível baixo</span>
-                </div>
-              </div>
-
-              <div className="afinidade-legend-item">
-                <span className="afinidade-legend-dot medio" />
-                <div>
-                  <strong>45 a 60</strong>
-                  <span>Nível médio</span>
-                </div>
-              </div>
-
-              <div className="afinidade-legend-item">
-                <span className="afinidade-legend-dot alto" />
-                <div>
-                  <strong>65 a 100</strong>
-                  <span>Nível alto</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {guiaSelecionado && (
-          <div className="afinidade-card afinidade-card-full">
-            <div className="afinidade-card-header">
-              <div className="afinidade-card-title-row">
-                <h3>Relações de afinidade</h3>
-                <span className="afinidade-badge">
-                  {loadingMapa
+              <CardHeader
+                icon="user"
+                title={guiaAtual?.nome}
+                subtitle={
+                  loadingMapa
                     ? "Carregando..."
-                    : `${passeios.length} passeio(s)`}
-                </span>
-              </div>
-              <p>
-                Ajuste os níveis individualmente para refletir melhor a aptidão
-                operacional do guia.
-              </p>
-            </div>
-
-            {loadingMapa ? (
-              <CardSkeleton variant="affinity" rows={8} />
-            ) : passeios.length > 0 ? (
-              <>
-                <div className="afinidade-lista">
+                    : `Relações de afinidade · ${passeios.length} passeio(s)`
+                }
+              />
+              {loadingMapa ? (
+                <CardSkeleton variant="affinity" rows={8} />
+              ) : passeios.length > 0 ? (
+                <ul className="afinidade-lista-nova">
                   {passeios.map((passeio) => {
                     const valor = niveis[String(passeio.id)] ?? 0;
                     const corNivel = obterCorNivel(valor);
 
                     return (
-                      <div
-                        key={passeio.id}
-                        className={`afinidade-item ${salvando ? "is-saving" : ""}`}
-                      >
-                        <div className="afinidade-item-topo">
-                          <div className="afinidade-item-relacao">
-                            <span className="afinidade-item-guia">
-                              <ManageAccountsRounded fontSize="small" />
-                              {guiaAtual?.nome}
-                            </span>
-
-                            <span className="afinidade-item-separador">•</span>
-
-                            <span className="afinidade-item-passeio">
-                              <TravelExploreRounded fontSize="small" />
-                              {obterNomePasseio(passeio)}
-                            </span>
-                          </div>
-
-                          <div className="afinidade-item-valor">
-                            <strong style={{ color: corNivel }}>{valor}</strong>
-                            <span>{LABEL_NIVEL(valor)}</span>
-                          </div>
-                        </div>
-
-                        <div className="afinidade-range-wrap">
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="5"
-                            value={valor}
-                            onChange={(e) =>
-                              atualizarNivel(passeio.id, e.target.value)
-                            }
-                            className="afinidade-range"
-                            disabled={salvando}
-                            style={{
-                              "--nivel-cor": corNivel,
-                              "--nivel-pct": `${valor}%`,
-                            }}
-                          />
-                        </div>
-
-                        <div className="afinidade-escala-labels">
-                          <span>Não opera</span>
-                          <span>Médio</span>
-                          <span>Excelente</span>
-                        </div>
-                      </div>
+                      <li key={passeio.id} className={salvando ? "is-saving" : ""}>
+                        <span className="afinidade-passeio__nome">{obterNomePasseio(passeio)}</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={valor}
+                          onChange={(e) => atualizarNivel(passeio.id, e.target.value)}
+                          className="afinidade-slider"
+                          disabled={salvando}
+                          aria-label={`Nível em ${obterNomePasseio(passeio)}`}
+                          style={{ "--nivel-cor": corNivel, "--nivel-pct": `${valor}%` }}
+                        />
+                        <span className="afinidade-passeio__valor">
+                          <strong className="tabular">{valor}</strong>
+                          <span>{LABEL_NIVEL(valor)}</span>
+                        </span>
+                      </li>
                     );
                   })}
-                </div>
-
-                <div className="afinidade-actions">
-                  <button
-                    className={`afinidade-btn-save ${salvando ? "is-saving" : ""}`}
-                    onClick={salvarMapa}
-                    disabled={salvando || !guiaSelecionado}
-                  >
-                    <SaveRounded fontSize="small" />
-                    {salvando ? "Salvando alterações..." : "Salvar mapeamento"}
-                  </button>
-
-                  {salvando && (
-                    <span className="afinidade-saving-hint">
-                      Persistindo dados no sistema...
-                    </span>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="afinidade-vazio">
-                Nenhum passeio encontrado para configurar.
-              </div>
-            )}
-          </div>
-        )}
+                </ul>
+              ) : (
+                <EmptyState icon="compass" title="Nenhum passeio encontrado para configurar.">
+                  Nenhum passeio na coleção services.
+                </EmptyState>
+              )}
+            </>
+          )}
+        </Card>
       </div>
     </div>
   );

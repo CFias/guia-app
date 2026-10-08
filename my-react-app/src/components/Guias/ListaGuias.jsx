@@ -3,12 +3,19 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
-import "./styles.css";
+import "./guias.css";
 import {
-  FilterListRounded,
-  ManageAccountsRounded,
-  SearchRounded,
-} from "@mui/icons-material";
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  FilterBar,
+  PageHeader,
+  StatusDot,
+  Table,
+  TableHead,
+  TableRow,
+} from "../ui";
 
 const ListaGuias = () => {
   const [guias, setGuias] = useState([]);
@@ -76,183 +83,126 @@ const ListaGuias = () => {
   });
 
   return (
-    <div className="lista-guias-page">
-      <div className="lista-guias-header">
-        <div>
-          <h2 className="lista-guias-title">
-            Lista de Guias <ManageAccountsRounded fontSize="small" />
-          </h2>
-          <p className="lista-guias-subtitle">
-            Consulte os guias cadastrados, aplique filtros e faça ajustes
-            individuais quando necessário.
-          </p>
-        </div>
-      </div>
+    <div className="ui-page">
+      <PageHeader
+        title="Lista de Guias"
+        description="Consulte os guias cadastrados, aplique filtros e faça ajustes individuais quando necessário."
+      >
+        <p className="guias-contador">
+          {loading
+            ? "Carregando..."
+            : `${guias.length} guia(s) cadastrado(s) · ${guiasFiltrados.length} resultado(s) com os filtros`}
+        </p>
+      </PageHeader>
 
-      <div className="lista-guias-grid">
-        <div className="lista-guias-card lista-guias-card-large">
-          <div className="lista-guias-card-header">
-            <div className="lista-guias-card-title-row">
-              <h3>Filtros</h3>
-              <span className="lista-guias-badge">
-                <FilterListRounded fontSize="small" />
-                {loading ? "..." : `${guiasFiltrados.length} resultado(s)`}
-              </span>
-            </div>
-            <p>Use os filtros abaixo para localizar guias com mais rapidez.</p>
-          </div>
+      {loading ? (
+        <CardSkeleton variant="filters" />
+      ) : (
+        <FilterBar>
+          <Field label="Buscar" icon="search" grow>
+            <input
+              type="text"
+              placeholder="Buscar por nome, idioma ou WhatsApp"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </Field>
 
-          {loading ? (
-            <CardSkeleton variant="filters" />
-          ) : (
-            <>
-              <div className="lista-guias-filters-grid">
-                <div className="lista-guias-search">
-                  <SearchRounded fontSize="small" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nome, idioma ou WhatsApp"
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                  />
-                </div>
+          <Field label="Idioma" icon="languages">
+            <select
+              value={idiomaSelecionado}
+              onChange={(e) => setIdiomaSelecionado(e.target.value)}
+            >
+              <option value="">Todos os idiomas</option>
+              {idiomasFiltro.map((idioma) => (
+                <option key={idioma} value={idioma}>
+                  {idioma}
+                </option>
+              ))}
+            </select>
+          </Field>
 
-                <select
-                  className="lista-guias-select"
-                  value={idiomaSelecionado}
-                  onChange={(e) => setIdiomaSelecionado(e.target.value)}
-                >
-                  <option value="">Todos os idiomas</option>
-                  {idiomasFiltro.map((idioma) => (
-                    <option key={idioma} value={idioma}>
+          <Field label="Motoguia" icon="truck">
+            <select
+              value={filtroMotoguia}
+              onChange={(e) => setFiltroMotoguia(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="sim">Motoguia</option>
+              <option value="nao">Não motoguia</option>
+            </select>
+          </Field>
+
+          <Field label="Status" icon="filter">
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="ativo">Ativos</option>
+              <option value="inativo">Inativos</option>
+            </select>
+          </Field>
+        </FilterBar>
+      )}
+
+      {loading ? (
+        <CardSkeleton variant="table" />
+      ) : guiasFiltrados.length === 0 ? (
+        <Card>
+          <EmptyState icon="users" title="Nenhum guia encontrado com os filtros aplicados." />
+        </Card>
+      ) : (
+        <Table
+          columns="minmax(180px,1.4fr) 150px minmax(160px,1.4fr) 100px 100px 110px 96px"
+          minWidth={900}
+        >
+          <TableHead>
+            <span>Guia</span>
+            <span>WhatsApp</span>
+            <span>Idiomas</span>
+            <span>Prioridade</span>
+            <span>Motoguia</span>
+            <span>Status</span>
+            <span />
+          </TableHead>
+
+          {guiasFiltrados.map((guia) => {
+            const prioridade = Number(guia.nivelPrioridade || 2);
+            return (
+              <TableRow key={guia.id}>
+                <span className="ui-cell-main">{guia.nome}</span>
+                <span className="tabular">{guia.whatsapp}</span>
+                <span className="guias-chips">
+                  {(guia.idiomas || []).map((idioma) => (
+                    <span key={idioma} className="ui-chip">
                       {idioma}
-                    </option>
+                    </span>
                   ))}
-                </select>
-
-                <select
-                  className="lista-guias-select"
-                  value={filtroMotoguia}
-                  onChange={(e) => setFiltroMotoguia(e.target.value)}
+                </span>
+                <span
+                  className="guias-prioridade"
+                  title={`Prioridade ${prioridade} de 3`}
+                  aria-label={`Prioridade ${prioridade} de 3`}
                 >
-                  <option value="todos">Filtro de Motoguia</option>
-                  <option value="sim">Motoguia</option>
-                  <option value="nao">Não motoguia</option>
-                </select>
-
-                <select
-                  className="lista-guias-select"
-                  value={filtroStatus}
-                  onChange={(e) => setFiltroStatus(e.target.value)}
-                >
-                  <option value="todos">Filtro de Status</option>
-                  <option value="ativo">Ativos</option>
-                  <option value="inativo">Inativos</option>
-                </select>
-              </div>
-
-              <div className="lista-guias-counter">
-                Guias cadastrados: <strong>{guias.length}</strong>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="lista-guias-card lista-guias-card-full">
-          <div className="lista-guias-card-header">
-            <div className="lista-guias-card-title-row">
-              <h3>Guias cadastrados</h3>
-              <span className="lista-guias-badge">
-                {loading ? "..." : `${guias.length} total`}
-              </span>
-            </div>
-            <p>
-              Visualize os dados principais, idiomas, prioridade, status e faça
-              edições quando necessário.
-            </p>
-          </div>
-
-          <div className="lista-guias-table-wrap">
-            {loading ? (
-              <CardSkeleton variant="table" />
-            ) : (
-              <table className="lista-guias-table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>WhatsApp</th>
-                    <th>Idiomas</th>
-                    <th>Prioridade</th>
-                    <th>Motoguia</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {guiasFiltrados.length === 0 ? (
-                    <tr>
-                      <td colSpan="7">
-                        <div className="empty-state">
-                          Nenhum guia encontrado com os filtros aplicados.
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    guiasFiltrados.map((guia) => (
-                      <tr key={guia.id}>
-                        <td className="lista-guias-name-cell">{guia.nome}</td>
-                        <td>{guia.whatsapp}</td>
-
-                        <td>
-                          <div className="lista-guias-tags-inline">
-                            {(guia.idiomas || []).map((idioma) => (
-                              <span
-                                key={idioma}
-                                className="lista-guias-language-tag"
-                              >
-                                {idioma}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td>
-                          <span
-                            className={`lista-guias-priority-badge priority-${guia.nivelPrioridade || 2}`}
-                          >
-                            {guia.nivelPrioridade || 2}
-                          </span>
-                        </td>
-
-                        <td>{guia.motoguia ? "Sim" : "Não"}</td>
-
-                        <td>
-                          <span
-                            className={`lista-guias-status ${guia.ativo ? "ativo" : "inativo"
-                              }`}
-                          >
-                            {guia.ativo ? "Ativo" : "Inativo"}
-                          </span>
-                        </td>
-
-                        <td>
-                          <button
-                            className="lista-guias-btn-edit"
-                            onClick={() => setGuiaEditando(guia)}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
+                  {[1, 2, 3].map((n) => (
+                    <span key={n} className={n <= prioridade ? "is-on" : ""} />
+                  ))}
+                </span>
+                <span>{guia.motoguia ? "Sim" : "Não"}</span>
+                <StatusDot tone={guia.ativo ? "accent" : "muted"}>
+                  {guia.ativo ? "Ativo" : "Inativo"}
+                </StatusDot>
+                <span className="ui-cell-end">
+                  <Button size="sm" icon="pencil" onClick={() => setGuiaEditando(guia)}>
+                    Editar
+                  </Button>
+                </span>
+              </TableRow>
+            );
+          })}
+        </Table>
+      )}
 
       {guiaEditando && (
         <EditarGuiaModal

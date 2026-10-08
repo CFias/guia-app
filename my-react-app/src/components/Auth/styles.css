@@ -13,7 +13,7 @@
   padding: 24px 16px;
   box-sizing: border-box;
   background: var(--bg);
-  font-family: "Montserrat", sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
 }
 

@@ -38,7 +38,7 @@
     margin: 0 auto;
     padding: 4px 0 32px;
     box-sizing: border-box;
-    font-family: "Montserrat", sans-serif;
+    font-family: var(--font-body);
 }
 
 /* ---------- Cabeçalho ---------- */

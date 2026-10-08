@@ -18,8 +18,8 @@
 .empty-state-soft {
     padding: 14px 16px;
     border-radius: 16px;
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
-    border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent 30%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
+    border: 1px dashed color-mix(in srgb, var(--divider) 70%, transparent 30%);
     color: color-mix(in srgb, var(--text) 74%, transparent 26%);
     font-size: 14px;
     font-weight: 500;
@@ -38,27 +38,27 @@
 }
 
 .status-pill.success {
-    background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
-    color: var(--text-dist);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+    background: color-mix(in srgb, var(--accent-text) 12%, transparent 88%);
+    color: var(--accent-text);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
 }
 
 .status-pill.warning {
-    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
+    background: color-mix(in srgb, var(--warning) 16%, transparent 84%);
     color: #9a7a00;
-    border: 1px solid color-mix(in srgb, var(--p2) 22%, transparent 78%);
+    border: 1px solid color-mix(in srgb, var(--warning) 22%, transparent 78%);
 }
 
 .status-pill.danger {
-    background: color-mix(in srgb, var(--p1) 14%, transparent 86%);
-    color: var(--p1);
-    border: 1px solid color-mix(in srgb, var(--p1) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--alert) 14%, transparent 86%);
+    color: var(--alert);
+    border: 1px solid color-mix(in srgb, var(--alert) 18%, transparent 82%);
 }
 
 .status-pill.info {
-    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
+    background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
     color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
 }
 
 .disabled-ui,
@@ -68,8 +68,8 @@
 }
 
 .soft-section {
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     border-radius: 18px;
 }
 
@@ -77,7 +77,7 @@
     position: sticky;
     bottom: 0;
     z-index: 5;
-    background: color-mix(in srgb, var(--card) 88%, var(--bg) 12%);
-    border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent 24%);
+    background: color-mix(in srgb, var(--surface) 88%, var(--bg) 12%);
+    border-top: 1px solid color-mix(in srgb, var(--divider) 76%, transparent 24%);
     backdrop-filter: blur(8px);
 }

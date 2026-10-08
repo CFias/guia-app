@@ -1,0 +1,388 @@
+/* =========================================================
+   PAINEL OPERACIONAL — layout novo. Só tokens.
+   ========================================================= */
+
+.painel-op-updated {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.painel-op-erro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--alert);
+  border-radius: var(--radius-lg);
+  background: var(--alert-soft);
+  color: var(--alert);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.painel-op-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  color: var(--text-3);
+}
+
+.painel-op-alerta-texto {
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.painel-op-obs {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.painel-op-servico {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.painel-op-resumo {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.painel-op-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+/* bloco por veículo / hotel / passeio dentro da linha expandida */
+.painel-op-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.painel-op-bloco:first-child {
+  margin-top: var(--space-1);
+}
+
+.painel-op-bloco__head,
+.painel-op-veiculo__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.painel-op-bloco__head>div,
+.painel-op-veiculo__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.painel-op-veiculo__head {
+  align-items: flex-start;
+}
+
+.painel-op-bloco__fornecedor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.painel-op-bloco__pos {
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.painel-op-bloco__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.painel-op-bloco__totais {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.painel-op-bloco.is-alerta .painel-op-bloco__fornecedor {
+  color: var(--alert);
+}
+
+.painel-op-veiculo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--divider);
+  margin-top: var(--space-2);
+}
+
+/* monitoramento de OUT */
+.painel-op-monitor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.painel-op-monitor input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
+/* verde de "monitorado": fixo (não segue a cor de destaque da pessoa) */
+.painel-op-page,
+body {
+  --monitor-ok: #1f9d55;
+}
+
+body:is(.dark, .dark-pro) {
+  --monitor-ok: #3ccf7f;
+}
+
+.painel-op-monitor input {
+  accent-color: var(--monitor-ok);
+}
+
+.painel-op-monitor.is-on {
+  border-color: color-mix(in oklch, var(--monitor-ok) 60%, transparent);
+  color: var(--monitor-ok);
+  background: color-mix(in oklch, var(--monitor-ok) 10%, transparent);
+}
+
+.ui-table__row.painel-op-monitorado {
+  background: color-mix(in oklch, var(--monitor-ok) 6%, transparent);
+  box-shadow: inset 3px 0 0 var(--monitor-ok);
+}
+
+.ui-table__row.painel-op-monitorado:hover {
+  background: color-mix(in oklch, var(--monitor-ok) 10%, transparent);
+}
+
+.painel-op-dica {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+@media (max-width: 640px) {
+  .painel-op-updated {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+.painel-op-pax {
+  padding-right: var(--space-4);
+}
+
+/* ---------- bloco por fornecedor/veículo (padrão da referência) ---------- */
+.painel-op-bloco.is-fornecedor,
+.painel-op-veiculo.is-fornecedor {
+  gap: 0;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.painel-op-veiculo.is-fornecedor {
+  padding-left: 0;
+  margin-top: var(--space-3);
+}
+
+.painel-op-forn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--divider);
+  background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+}
+
+.painel-op-forn__icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--accent) 22%, transparent);
+  color: var(--accent-text);
+}
+
+.painel-op-forn__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-right: auto;
+  line-height: 1.3;
+}
+
+.painel-op-forn__rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.painel-op-forn__nome {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.painel-op-forn__sub {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.painel-op-forn__totais {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.painel-op-forn__totais svg {
+  color: var(--text-3);
+}
+
+.painel-op-forn__totais strong {
+  color: var(--text);
+}
+
+/* a tabela já está dentro do cartão: sem moldura própria */
+:is(.painel-op-bloco, .painel-op-veiculo).is-fornecedor .ui-table {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.painel-op-aeroporto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* ---------- linha de OUT / Transfer ---------- */
+.painel-op-tag {
+  gap: 4px;
+}
+
+.painel-op-quando {
+  display: flex;
+  flex-direction: column;
+}
+
+.painel-op-hora {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.painel-op-hora svg,
+.painel-op-escala svg,
+.painel-op-com-icone svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.painel-op-escala,
+.painel-op-com-icone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.painel-op-escala.is-vazia {
+  color: var(--text-3);
+}
+
+.painel-op-fornecedor-cel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.painel-op-fornecedor-cel__icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: color-mix(in oklch, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.painel-op-fornecedor-cel__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.painel-op-fornecedor-cel__texto strong {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.painel-op-fornecedor-cel__texto span {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.painel-op-fornecedor-cel.is-pendente .painel-op-fornecedor-cel__icone {
+  background: color-mix(in oklch, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.painel-op-fornecedor-cel.is-pendente strong {
+  color: var(--warning);
+}

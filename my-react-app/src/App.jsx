@@ -3,7 +3,7 @@ import "./App.css";
 import "./uiStates.css";
 
 import Dashboard from "./pages/Dashboard/Dashboard";
-import RegisterGuias from "./components/RegisterGuias/RegisterGuias";
+import Cadastros from "./pages/Cadastros/Cadastros";
 import RegisterTours from "./components/RegisterTours/RegisterTours";
 import DisponibilidadeGuia from "./components/DisponibilidadeGuia/DisponibilidadeGuia";
 import GerarEscalaSemanal from "./components/EscalaSemanal/EscalaSemanal";
@@ -14,16 +14,13 @@ import Configuracoes from "./pages/Configuracoes/Configuracoes";
 import MapaAfinidadeGuias from "./components/MapaAfinidadeGuias/MapaAfinidadeGuias";
 import PreviaTransfers from "./components/PreviaTransfers/PreviaTransfers";
 import PainelChegadas from "./components/PainelChegadas/PainelChegadas";
-import CadastroFornecedores from "./components/CadastroFornecedores/CadastroFornecedores";
 import ServicosFornecedor from "./components/ServicosFornecedor/ServicosFornecedor";
 import PainelOuts from "./components/PainelSaidas/PainelSaidas";
 import ResumoOperacionalGuias from "./components/ResumoOperacional/ResumoOperacional";
 import PainelOperacionalUnificado from "./components/PainelOperacional/PainelOperacional";
-import RelatoriosOperacionais from "./components/RelatoriosOp/RelatoriosOp";
 import RoboConferenteVoos from "./components/RoboConferenteVoos/RoboConferenteVoos";
 import FaqComercial from "./components/FaqComercial/FaqComercial";
 import FaqAdmin from "./components/FaqAdmin/FaqAdmin";
-import GerenciarUsuarios from "./components/GerenciarUsuarios/GerenciarUsuarios";
 import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponibilidade";
 import Login from "./pages/Login/Login";
 import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
@@ -47,9 +44,15 @@ function App() {
             <Route index element={<Home />} />
             <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
             <Route path="previas" element={<PreviaTransfers />} />
+            {/* Planilha operacional: a mesma tela da Prévia, aberta na planilha */}
+            <Route
+              path="planilha"
+              element={<PreviaTransfers secao="planilha" />}
+            />
+            {/* Cadastros: as 3 telas de cadastro viram abas (mesmos paths) */}
             <Route
               path="register-fornecedores"
-              element={<CadastroFornecedores />}
+              element={<Cadastros aba="fornecedores" />}
             />
             <Route path="op" element={<PainelOperacionalUnificado />} />
             <Route
@@ -58,7 +61,7 @@ function App() {
             />
             <Route path="chegadas" element={<PainelChegadas />} />
             <Route path="outs" element={<PainelOuts />} />
-            <Route path="register-guias" element={<RegisterGuias />} />
+            <Route path="register-guias" element={<Cadastros aba="guias" />} />
             <Route path="register-tours" element={<RegisterTours />} />
             <Route path="resumo" element={<ResumoOperacionalGuias />} />
             <Route
@@ -66,11 +69,10 @@ function App() {
               element={<DisponibilidadeGuia />}
             />
             <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
-            <Route path="relatorios" element={<RelatoriosOperacionais />} />
             <Route path="conferencia" element={<RoboConferenteVoos />} />
             <Route path="configuracoes" element={<Configuracoes />} />
             <Route path="faqadmin" element={<FaqAdmin />} />
-            <Route path="usuarios" element={<GerenciarUsuarios />} />
+            <Route path="usuarios" element={<Cadastros aba="usuarios" />} />
             {/* rotas futuras */}
             <Route path="guias" element={<ListaGuias />} />
             <Route path="passeios" element={<ListaPasseios />} />

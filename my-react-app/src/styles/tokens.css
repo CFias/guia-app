@@ -1,0 +1,206 @@
+/* =========================================================
+   DESIGN TOKENS — fonte única de cor, raio, fonte e espaço.
+
+   Nenhuma tela deve usar cor/raio/fonte fixos: só estas variáveis.
+
+   Temas (classe no <body>, aplicada pelo ThemeContext):
+     body.light     → Claro
+     body.dark      → Escuro (padrão do protótipo)
+     body.dark-pro  → Escuro profundo
+
+   Cor de destaque (accent): escolhida por pessoa em
+   Configurações → Aparência. O PreferenciasUIProvider escreve
+   --accent e --on-accent no <html>; os derivados abaixo se
+   recalculam sozinhos.
+   ========================================================= */
+
+/* A fonte Archivo é carregada no index.html (<link> do Google Fonts). */
+
+:root {
+  /* ---- accent (padrão: Petróleo) ---- */
+  --accent: #167a8a;
+  --on-accent: #ffffff;
+  --accent-300: color-mix(in oklch, var(--accent), white 45%);
+  --accent-400: color-mix(in oklch, var(--accent), white 28%);
+  --accent-600: color-mix(in oklch, var(--accent), black 12%);
+  --accent-700: color-mix(in oklch, var(--accent), black 25%);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* ---- forma ---- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-seg: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* ---- tipografia ---- */
+  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-title: 26px;
+  --fs-kpi: 28px;
+
+  /* ---- espaço ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ---- medidas do shell ---- */
+  --sidebar-w: 256px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 64px;
+
+  /* ---- tema padrão (= Claro, mesmo padrão do ThemeContext) ---- */
+  color-scheme: light;
+  --bg: #f5f4f2;
+  --surface: #ffffff;
+  --raised: #efedea;
+  --text: #1b1a19;
+  --text-2: #44403e;
+  --text-3: #66615e;
+  --divider: color-mix(in srgb, #1b1a19 12%, transparent);
+  --accent-text: var(--accent-700);
+  --alert: #c4402b;
+  --alert-soft: color-mix(in srgb, #c4402b 12%, transparent);
+  --warning: #8a6100;
+  --warning-soft: color-mix(in srgb, #c98f00 16%, transparent);
+  --overlay: rgba(20, 18, 16, 0.45);
+  --shadow-pop: 0 12px 32px rgba(20, 18, 16, 0.16);
+}
+
+body.light {
+  color-scheme: light;
+  --bg: #f5f4f2;
+  --surface: #ffffff;
+  --raised: #efedea;
+  --text: #1b1a19;
+  --text-2: #44403e;
+  --text-3: #66615e;
+  --divider: color-mix(in srgb, #1b1a19 12%, transparent);
+  --accent-text: var(--accent-700);
+  --alert: #c4402b;
+  --alert-soft: color-mix(in srgb, #c4402b 12%, transparent);
+  --warning: #8a6100;
+  --warning-soft: color-mix(in srgb, #c98f00 16%, transparent);
+  --overlay: rgba(20, 18, 16, 0.45);
+  --shadow-pop: 0 12px 32px rgba(20, 18, 16, 0.16);
+}
+
+body.dark {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface: #191817;
+  --raised: #211f1e;
+  --text: #ecebea;
+  --text-2: #d7d3d3;
+  --text-3: #a29e9d;
+  --divider: color-mix(in srgb, #ecebea 10%, transparent);
+  --accent-text: var(--accent-400);
+  --alert: #ff7a63;
+  --alert-soft: color-mix(in srgb, #ff7a63 14%, transparent);
+  --warning: #e0a019;
+  --warning-soft: color-mix(in srgb, #e0a019 16%, transparent);
+  --overlay: rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+body.dark-pro {
+  color-scheme: dark;
+  --bg: #0b0b0a;
+  --surface: #141312;
+  --raised: #1c1b1a;
+  --text: #f0efee;
+  --text-2: #d9d6d4;
+  --text-3: #a3a09e;
+  --divider: color-mix(in srgb, #f0efee 8%, transparent);
+  --accent-text: var(--accent-400);
+  --alert: #ff7a63;
+  --alert-soft: color-mix(in srgb, #ff7a63 14%, transparent);
+  --warning: #e0a019;
+  --warning-soft: color-mix(in srgb, #e0a019 16%, transparent);
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- base ---- */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* números alinhados em tabelas, KPIs e contadores */
+.num,
+td,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------
+   Rede de segurança: nomes antigos de variáveis.
+   O código do app já usa só os tokens acima; estes apelidos
+   existem para que um arquivo antigo que não tenha sido
+   substituído (ou um estilo fora do src) não fique sem cor.
+   --------------------------------------------------------- */
+body {
+  --card: var(--surface);
+  --input: var(--raised);
+  --side: var(--surface);
+  --text-side: var(--text);
+  --text-btn: var(--on-accent);
+  --text-soft: var(--text-3);
+  --background: var(--bg);
+  --border: var(--divider);
+  --text-dist: var(--accent-text);
+  --primary: var(--accent);
+  --primary-1: var(--accent-600);
+  --primary-2: var(--accent);
+  --btn-main: var(--accent);
+  --p3: var(--accent-text);
+  --p2: var(--warning);
+  --p1: var(--alert);
+  --status-red: var(--alert);
+  --status-red-btn: color-mix(in srgb, var(--alert) 70%, black);
+}

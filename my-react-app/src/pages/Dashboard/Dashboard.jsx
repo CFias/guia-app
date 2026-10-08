@@ -1,35 +1,57 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import "./styles.css";
 
 import logo from "../../assets/clover.png";
-import {
-  AutoAwesomeRounded,
-  AssignmentIndRounded,
-  PeopleAltRounded,
-  FactCheckRounded,
-  MapRounded,
-  PlaylistAddCheckCircleRounded,
-  SettingsRounded,
-  DashboardRounded,
-  ExpandMoreRounded,
-  AirportShuttleRounded,
-  LocalShippingRounded,
-  AssignmentRounded,
-  QuizRounded,
-  VisibilityRounded,
-  AdminPanelSettingsRounded,
-  CloseRounded,
-  LogoutRounded,
-  MenuRounded,
-  LeaderboardRounded,
-} from "@mui/icons-material";
 import { useAuth } from "../../Context/AuthContext";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS } from "../../Context/permissions";
+import { usePreferenciasUI } from "../../Context/preferenciasUIContext";
+import Icon from "../../components/ui/Icon";
+import {
+  GRUPOS_MENU,
+  ITEM_CONFIGURACOES,
+  ROTAS_FORA_DO_MENU,
+} from "../../components/Shell/navConfig";
+import { ShellContext } from "../../components/Shell/shellContext";
+
+/* =========================================================
+   LAYOUT (shell) — sidebar 256px / 72px recolhida + topbar 64px.
+   É o elemento da rota "/" (App.jsx); as telas entram no <Outlet />.
+   ========================================================= */
+
+const iniciais = (nome = "") =>
+  String(nome)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
+// "Qui, 08 out"
+const formatarDataTopo = (data) => {
+  const texto = data
+    .toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })
+    .replace(/\./g, "")
+    .replace(/ de /g, " ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+};
+
+const formatarHora = (ms) =>
+  new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+const itemAtivo = (item, pathname) => {
+  if (item.match) return item.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (item.end) return pathname === item.to;
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+};
 
 const Dashboard = ({ loading }) => {
   const { perfil, role, logout } = useAuth();
+  const { pathname } = useLocation();
+  const { sidebarRecolhida, setSidebarRecolhida } = usePreferenciasUI();
 
   // Celular / tablet: o menu vira uma gaveta que abre pelo botão ☰.
   const [menuAberto, setMenuAberto] = useState(false);
@@ -54,252 +76,253 @@ const Dashboard = ({ loading }) => {
     if (e.target.closest("a")) setMenuAberto(false);
   };
 
-  // Grupos do menu (Operação, Cadastros) abrem/fecham por conta própria —
-  // abertos por padrão, pra navegação continuar visível de cara.
-  const [gruposAbertos, setGruposAbertos] = useState({
-    operacao: true,
-    cadastros: true,
-  });
+  // Grupos do menu abrem/fecham por conta própria — abertos por padrão,
+  // pra navegação continuar visível de cara.
+  const [gruposAbertos, setGruposAbertos] = useState({});
 
   const toggleGrupo = (chave) =>
-    setGruposAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
+    setGruposAbertos((prev) => ({ ...prev, [chave]: prev[chave] === false }));
 
   // O que aparece no menu depende do nível. Pra liberar mais itens ao
-  // Comercial no futuro: coloque o <NavLink> no grupo "Comercial" abaixo
-  // e inclua a rota em ACESSO (permissions.js) + App.jsx.
+  // Comercial no futuro: inclua o item em components/Shell/navConfig.js
+  // e a rota em ACESSO (permissions.js) + App.jsx.
   const veOperacao = ACESSO.painel.includes(role);
-  const veFaq = ACESSO.faqComercial.includes(role);
 
-  const getNavClass = ({ isActive }) =>
-    `sidebar-link ${isActive ? "active" : ""}`;
+  const podeVer = useCallback(
+    (item) => (ACESSO[item.area] || []).includes(role),
+    [role],
+  );
+
+  const grupos = useMemo(
+    () =>
+      GRUPOS_MENU.filter((g) => !(g.somenteSemPainel && veOperacao))
+        .map((g) => ({ ...g, itens: g.itens.filter(podeVer) }))
+        .filter((g) => g.itens.length > 0),
+    [podeVer, veOperacao],
+  );
+
+  // breadcrumb: Grupo / Página
+  const migalhas = useMemo(() => {
+    for (const g of grupos) {
+      const item = g.itens.find((i) => itemAtivo(i, pathname));
+      if (item) return [g.titulo, item.label];
+    }
+    return ROTAS_FORA_DO_MENU[pathname] || null;
+  }, [grupos, pathname]);
+
+  // data da topbar (atualiza sozinha na virada do dia)
+  const [hoje, setHoje] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setHoje(new Date()), 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Indicador "Phoenix · HH:MM" (a tela aberta se registra via usePhoenixStatus)
+  const [phoenix, setPhoenix] = useState(null);
+  const registrarPhoenix = useCallback((dados) => setPhoenix(dados), []);
+  const shellValue = useMemo(
+    () => ({ phoenix, registrarPhoenix }),
+    [phoenix, registrarPhoenix],
+  );
+
+  // Desktop: menu recolhido (só ícones). Na gaveta do celular, sempre completo.
+  const recolhido = sidebarRecolhida && !menuAberto;
+
+  const getNavClass = (item) =>
+    `sidebar-link ${itemAtivo(item, pathname) ? "active" : ""}`;
+
+  const renderItem = (item) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      end={item.end}
+      className={() => getNavClass(item)}
+      title={recolhido ? item.label : undefined}
+      aria-label={recolhido ? item.label : undefined}
+    >
+      <Icon name={item.icon} size={18} className="sidebar-icon" />
+      <span className="sidebar-label">{item.label}</span>
+    </NavLink>
+  );
 
   return (
-    <div className="dashboard-container">
-      {/* Barra superior (só aparece em celular/tablet) */}
-      <header className="dashboard-topbar">
-        <button
-          type="button"
-          className="dashboard-menu-btn"
-          onClick={() => setMenuAberto(true)}
-          aria-label="Abrir menu"
-          aria-expanded={menuAberto}
-        >
-          <MenuRounded />
-        </button>
-        <NavLink to="/" className="dashboard-topbar-brand">
-          <img src={logo} alt="" />
-          <strong>Operacional SSA</strong>
-        </NavLink>
-      </header>
-
-      {/* Notificações em tempo real (só operacional). Fica fora da sidebar
-          pra continuar visível com a gaveta fechada. */}
-      {veOperacao && (
-        <div className="dashboard-bell">
-          <NotificacoesSino />
-        </div>
-      )}
-
-      {menuAberto && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setMenuAberto(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      <aside
-        className={`sidebar ${menuAberto ? "aberto" : ""}`}
-        onClick={fecharAoNavegar}
+    <ShellContext.Provider value={shellValue}>
+      <div
+        className={`dashboard-container app-shell ${recolhido ? "is-collapsed" : ""}`}
       >
-        <div className="sidebar-top">
-          <NavLink to="/" className="sidebar-brand-wrap">
-            <div className="sidebar-logo-box">
-              <img src={logo} alt="Operacional SSA" />
-            </div>
-
-            <div className="sidebar-brand">
-              <strong>Operacional SSA</strong>
-              <span>Gestão de serviços</span>
-            </div>
-          </NavLink>
-
-          <button
-            type="button"
-            className="sidebar-close"
+        {menuAberto && (
+          <div
+            className="sidebar-backdrop"
             onClick={() => setMenuAberto(false)}
-            aria-label="Fechar menu"
-          >
-            <CloseRounded fontSize="small" />
-          </button>
-        </div>
-
-        {veOperacao && (
-          <NavLink to="/" className={getNavClass}>
-            <DashboardRounded fontSize="small" className="sidebar-icon" />
-            <span>Dashboard</span>
-          </NavLink>
+            aria-hidden="true"
+          />
         )}
-        <div className="sidebar-menu">
-          {/* ===== COMERCIAL ===== */}
-          {!veOperacao && veFaq && (
-            <div className="sidebar-group">
-              <span className="sidebar-group-title">Comercial</span>
-              <NavLink to="faqcomercial" className={getNavClass}>
-                <QuizRounded fontSize="small" className="sidebar-icon" />
-                <span>Central de Dúvidas</span>
-              </NavLink>
-            </div>
-          )}
 
-          {/* ===== OPERAÇÃO + CADASTROS (só operacional) ===== */}
-          {veOperacao && (
-            <>
-              <div className="sidebar-group">
-                <button
-                  type="button"
-                  className="sidebar-group-title sidebar-group-toggle"
-                  onClick={() => toggleGrupo("operacao")}
-                  aria-expanded={gruposAbertos.operacao}
-                >
-                  <span>Operação</span>
-                  <ExpandMoreRounded
-                    fontSize="small"
-                    className={`sidebar-group-chevron ${gruposAbertos.operacao ? "aberto" : ""}`}
-                  />
-                </button>
-                {gruposAbertos.operacao && (
-                  <>
-                    <NavLink to="op" className={getNavClass}>
-                      <AssignmentRounded fontSize="small" className="sidebar-icon" />
-                      <span>Painel Operacional</span>
-                    </NavLink>
-                    <NavLink to="previas" className={getNavClass}>
-                      <AirportShuttleRounded fontSize="small" className="sidebar-icon" />
-                      <span>Prévia de Transfers</span>
-                    </NavLink>
-                    <NavLink to="servicos-fornecedor" className={getNavClass}>
-                      <LeaderboardRounded fontSize="small" className="sidebar-icon" />
-                      <span>Serviços por Fornecedor</span>
-                    </NavLink>
-
-                    <NavLink to="passeios" className={getNavClass}>
-                      <AutoAwesomeRounded fontSize="small" className="sidebar-icon" />
-                      <span>Gerar Escala</span>
-                    </NavLink>
-                    <NavLink to="guias" className={getNavClass}>
-                      <PeopleAltRounded fontSize="small" className="sidebar-icon" />
-                      <span>Lista de Guias</span>
-                    </NavLink>
-                    <NavLink to="mapear-guias" className={getNavClass}>
-                      <MapRounded fontSize="small" className="sidebar-icon" />
-                      <span>Mapear Guias</span>
-                    </NavLink>
-
-                    <NavLink to="disponibilidade-guia" className={getNavClass}>
-                      <FactCheckRounded fontSize="small" className="sidebar-icon" />
-                      <span>Disponibilidade da Semana</span>
-                    </NavLink>
-
-                    <NavLink to="faqadmin" className={getNavClass}>
-                      <QuizRounded fontSize="small" className="sidebar-icon" />
-                      <span>Central de Dúvidas</span>
-                    </NavLink>
-
-                    <NavLink to="faqcomercial" className={getNavClass}>
-                      <VisibilityRounded fontSize="small" className="sidebar-icon" />
-                      <span>Ver como o comercial</span>
-                    </NavLink>
-                  </>
-                )}
+        <aside
+          className={`sidebar ${menuAberto ? "aberto" : ""}`}
+          onClick={fecharAoNavegar}
+          aria-label="Menu principal"
+        >
+          <div className="sidebar-top">
+            <NavLink
+              to={veOperacao ? "/" : "/faqcomercial"}
+              className="sidebar-brand-wrap"
+              title={recolhido ? "Operacional SSA" : undefined}
+            >
+              <div className="sidebar-logo-box">
+                <img src={logo} alt="Operacional SSA" />
               </div>
 
-              <div className="sidebar-group">
-                <button
-                  type="button"
-                  className="sidebar-group-title sidebar-group-toggle"
-                  onClick={() => toggleGrupo("cadastros")}
-                  aria-expanded={gruposAbertos.cadastros}
-                >
-                  <span className="btn-span">Cadastros</span>
-                  <ExpandMoreRounded
-                    fontSize="small"
-                    className={`sidebar-group-chevron ${gruposAbertos.cadastros ? "aberto" : ""}`}
-                  />
-                </button>
-                {gruposAbertos.cadastros && (
-                  <>
-
-                    <NavLink to="register-guias" className={getNavClass}>
-                      <AssignmentIndRounded fontSize="small" className="sidebar-icon" />
-                      <span>Cadastrar Guias</span>
-                    </NavLink>
-
-                    <NavLink to="register-fornecedores" className={getNavClass}>
-                      <LocalShippingRounded fontSize="small" className="sidebar-icon" />
-                      <span>Cadastrar Fornecedores</span>
-                    </NavLink>
-
-                    <NavLink to="usuarios" className={getNavClass}>
-                      <AdminPanelSettingsRounded
-                        fontSize="small"
-                        className="sidebar-icon"
-                      />
-                      <span>Usuários e Acessos</span>
-                    </NavLink>
-                    {/* <NavLink to="register-tours" className={getNavClass}>
-              <PlaylistAddCheckCircleRounded
-                fontSize="small"
-                className="sidebar-icon"
-              />
-              <span>Cadastrar Passeios</span>
-            </NavLink> */}
-                  </>
-                )}
+              <div className="sidebar-brand">
+                <strong>Operacional SSA</strong>
+                <span>Gestão de serviços</span>
               </div>
-            </>
-          )}
-        </div>
-
-        <div className="sidebar-footer">
-          {veOperacao && (
-            <NavLink to="configuracoes" className={getNavClass}>
-              <SettingsRounded fontSize="small" className="sidebar-icon" />
-              <span>Configurações</span>
             </NavLink>
-          )}
 
-          <div className="sidebar-user">
-            <div className="sidebar-user-info">
-              <strong>{perfil?.nome}</strong>
-              <span>{ROLE_LABELS[role]}</span>
-            </div>
             <button
               type="button"
-              className="sidebar-logout"
-              onClick={logout}
-              title="Sair"
-              aria-label="Sair"
+              className="sidebar-collapse"
+              onClick={() => setSidebarRecolhida((v) => !v)}
+              title={recolhido ? "Expandir menu" : "Recolher menu"}
+              aria-label={recolhido ? "Expandir menu" : "Recolher menu"}
+              aria-pressed={recolhido}
             >
-              <LogoutRounded fontSize="small" />
+              <Icon name={recolhido ? "chevronsRight" : "chevronsLeft"} size={16} />
+            </button>
+
+            <button
+              type="button"
+              className="sidebar-close"
+              onClick={() => setMenuAberto(false)}
+              aria-label="Fechar menu"
+            >
+              <Icon name="x" size={18} />
             </button>
           </div>
 
-          <div className="sidebar-version">v1.2.0 Beta</div>
-        </div>
-      </aside>
+          <nav className="sidebar-menu">
+            {grupos.map((g) => {
+              const aberto = gruposAbertos[g.chave] !== false || recolhido;
+              return (
+                <div className="sidebar-group" key={g.chave}>
+                  <button
+                    type="button"
+                    className="sidebar-group-title sidebar-group-toggle"
+                    onClick={() => toggleGrupo(g.chave)}
+                    aria-expanded={aberto}
+                  >
+                    <span>{g.titulo}</span>
+                    <Icon
+                      name="chevronDown"
+                      size={14}
+                      className={`sidebar-group-chevron ${aberto ? "aberto" : ""}`}
+                    />
+                  </button>
+                  {aberto && g.itens.map(renderItem)}
+                </div>
+              );
+            })}
+          </nav>
 
-      <div className="dashboard-content">
-        <main className="dashboard-main">
-          {loading && (
-            <div className="loading-overlay">
-              <div className="spinner" />
+          <div className="sidebar-footer">
+            {podeVer(ITEM_CONFIGURACOES) && renderItem(ITEM_CONFIGURACOES)}
+
+            <div className="sidebar-user">
+              <span className="sidebar-avatar" aria-hidden="true">
+                {iniciais(perfil?.nome)}
+              </span>
+              <div className="sidebar-user-info">
+                <strong>{perfil?.nome}</strong>
+                <span>{ROLE_LABELS[role]}</span>
+              </div>
+              <button
+                type="button"
+                className="sidebar-logout"
+                onClick={logout}
+                title="Sair"
+                aria-label="Sair"
+              >
+                <Icon name="logout" size={16} />
+              </button>
             </div>
-          )}
-          <Outlet />
-        </main>
+
+            <div className="sidebar-version">v1.2.0 Beta</div>
+          </div>
+        </aside>
+
+        <div className="dashboard-content">
+          <header className="app-topbar">
+            <button
+              type="button"
+              className="dashboard-menu-btn"
+              onClick={() => setMenuAberto(true)}
+              aria-label="Abrir menu"
+              aria-expanded={menuAberto}
+            >
+              <Icon name="menu" size={20} />
+            </button>
+
+            <nav className="app-breadcrumb" aria-label="Você está em">
+              {migalhas ? (
+                <>
+                  <span className="app-breadcrumb__grupo">{migalhas[0]}</span>
+                  <span className="app-breadcrumb__sep" aria-hidden="true">
+                    /
+                  </span>
+                  <strong className="app-breadcrumb__pagina">{migalhas[1]}</strong>
+                </>
+              ) : (
+                <strong className="app-breadcrumb__pagina">Operacional SSA</strong>
+              )}
+            </nav>
+
+            <div className="app-topbar__right">
+              <span className="app-topbar__data">
+                <Icon name="calendar" size={15} />
+                {formatarDataTopo(hoje)}
+              </span>
+
+              {phoenix && (
+                <button
+                  type="button"
+                  className={`app-phoenix ${phoenix.carregando ? "is-loading" : ""}`}
+                  onClick={phoenix.atualizar}
+                  disabled={phoenix.carregando}
+                  title="Atualizar dados do Phoenix desta tela"
+                >
+                  {phoenix.carregando ? (
+                    <Icon name="loader" size={14} className="ui-spin" />
+                  ) : (
+                    <span className="app-phoenix__dot" aria-hidden="true" />
+                  )}
+                  <span>
+                    Phoenix
+                    {phoenix.atualizadoEm ? ` · ${formatarHora(phoenix.atualizadoEm)}` : ""}
+                  </span>
+                  <Icon name="refresh" size={14} className="app-phoenix__refresh" />
+                </button>
+              )}
+
+              {/* Notificações em tempo real (só operacional) */}
+              {veOperacao && (
+                <div className="dashboard-bell">
+                  <NotificacoesSino />
+                </div>
+              )}
+            </div>
+          </header>
+
+          <main className="dashboard-main app-content">
+            {loading && (
+              <div className="loading-overlay">
+                <div className="spinner" />
+              </div>
+            )}
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </ShellContext.Provider>
   );
 };
 

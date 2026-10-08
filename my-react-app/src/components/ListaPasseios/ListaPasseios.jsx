@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ManageAccounts,
-  ModeEdit,
-  Send,
-  WhatsApp,
-  Undo,
-  Visibility,
-  Warning,
-  Groups,
-  Lock,
-  RefreshRounded,
-  CloudUploadRounded,
-} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
-import "./styles.css";
+import "./escala.css";
+import {
+  Button,
+  Card,
+  CardHeader,
+  Drawer,
+  EmptyState,
+  FilterBar,
+  Icon,
+  KpiTiles,
+  PageHeader,
+  Segmented,
+  StatusDot,
+  Table,
+  TableHead,
+  TableRow,
+} from "../ui";
 
 import {
   gerarSemana,
@@ -79,6 +83,9 @@ const ETAPAS_ROBO_ESCALA = [
   "Finalizando escala",
 ];
 
+// filtro "Semana" da faixa de dias (mostra todos os dias, como antes)
+const TODOS_OS_DIAS = "__semana__";
+
 const formatarDataCurta = (iso) =>
   String(iso || "").split("-").reverse().slice(0, 2).join("/");
 
@@ -100,6 +107,11 @@ const textoMotivoNaoAlocado = (n, paxMinimo) => {
 };
 
 const ListaPasseiosSemana = () => {
+  const navigate = useNavigate();
+  // estado só de interface (abas, dia aberto, drawer de regras)
+  const [abaEscala, setAbaEscala] = useState("dia");
+  const [diaSelecionado, setDiaSelecionado] = useState(null);
+  const [drawerRegras, setDrawerRegras] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [semana, setSemana] = useState([]);
   const [services, setServices] = useState([]);
@@ -705,24 +717,24 @@ Operacional - Luck Receptivo 🍀
   const statusGrupo = (item) => {
     if (item?.allocationStatus === "CLOSED") {
       return (
-        <span className="status fechado">
-          <Lock fontSize="10" /> Passeio Fechado
-        </span>
+        <StatusDot tone="muted" icon="shield">
+          Passeio fechado
+        </StatusDot>
       );
     }
 
     if (ehServicoDisp(item?.serviceName || "")) {
-      return <span className="status privativo">Privativo</span>;
+      return <StatusDot tone="neutral">Privativo</StatusDot>;
     }
 
     return Number(item?.passengers || 0) >= 8 ? (
-      <span className="status ok">
-        <Groups fontSize="10" /> Grupo Formado
-      </span>
+      <StatusDot tone="accent" icon="users">
+        Grupo formado
+      </StatusDot>
     ) : (
-      <span className="status alerta">
-        <Warning fontSize="10" /> Formar Grupo
-      </span>
+      <StatusDot tone="warning" icon="alert">
+        Formar grupo
+      </StatusDot>
     );
   };
 
@@ -742,279 +754,418 @@ Operacional - Luck Receptivo 🍀
     </div>
   );
 
-  return (
-    <div className="page-container">
-      <div className="planner-header-row">
-        <h2>Planejamento Semanal de Passeios</h2>
+  /* ---------- números para os KPIs e a faixa de dias (só contagem) ---------- */
+  const travado = processandoAcao || carregandoEstrutura || gerandoEscala;
+  const travadoSemana = processandoAcao || gerandoEscala;
 
-        {(processandoAcao || loadingSemana || gerandoEscala) && (
-          <div className={`planner-status-pill ${gerandoEscala ? "robo" : ""}`}>
-            {gerandoEscala
-              ? `Robô em execução: ${etapaRoboAtual}${animacaoPontos}`
-              : processandoAcao
-                ? "Processando alterações..."
-                : "Atualizando semana..."}
-          </div>
+  const infoDia = (date) => {
+    const lista = registrosPorDia[date] || [];
+    const abertos = lista.filter((r) => r.allocationStatus !== "CLOSED");
+    return {
+      total: lista.length,
+      comGuia: abertos.filter((r) => !!r.guiaId).length,
+      semGuia: abertos.filter((r) => !r.guiaId).length,
+      fechados: lista.length - abertos.length,
+    };
+  };
+
+  const totaisSemana = semana.reduce(
+    (acc, dia) => {
+      const i = infoDia(dia.date);
+      acc.total += i.total;
+      acc.comGuia += i.comGuia;
+      acc.semGuia += i.semGuia;
+      acc.fechados += i.fechados;
+      return acc;
+    },
+    { total: 0, comGuia: 0, semGuia: 0, fechados: 0 },
+  );
+
+  const hojeIso = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
+  const diaAtivo =
+    diaSelecionado === TODOS_OS_DIAS ||
+    semana.some((d) => d.date === diaSelecionado)
+      ? diaSelecionado
+      : semana.some((d) => d.date === hojeIso)
+        ? hojeIso
+        : TODOS_OS_DIAS;
+
+  const diasVisiveis =
+    diaAtivo === TODOS_OS_DIAS ? semana : semana.filter((d) => d.date === diaAtivo);
+
+  const rotuloModo = modoPrioridadeAtivo ? "Prioridade" : "Equilibrado";
+  const rotuloIdioma =
+    {
+      preferencial: "Preferencial",
+      obrigatorio: "Obrigatório",
+      desligado: "Desligado",
+    }[modoIdioma] || "Preferencial";
+  const rotuloPax =
+    Number(paxMinimoParaGuia) > 1 ? `${paxMinimoParaGuia} pax` : "qualquer pax";
+
+  const statusTexto = gerandoEscala
+    ? `Robô em execução: ${etapaRoboAtual}${animacaoPontos}`
+    : processandoAcao
+      ? "Processando alterações..."
+      : loadingSemana
+        ? "Atualizando semana..."
+        : "";
+
+  const abrirPlanilha = () =>
+    abrirEscalaEmNovaAba({
+      semana,
+      extras,
+      agruparRegistrosPorServico,
+      getTextoStatusServico,
+      getClasseStatusServico,
+    });
+
+  const classeMiniDia = (g, date) => {
+    if (g.bloqueios?.includes(date)) return "is-bloqueado";
+    if (g.datas?.has(date)) return "is-servico";
+    if (g.datasDisponiveis?.has(date)) return "is-disponivel";
+    return "";
+  };
+
+  const tituloMiniDia = (g, dia) => {
+    if (g.bloqueios?.includes(dia.date)) return `${dia.day} • BLOQUEADO`;
+    if (g.datas?.has(dia.date)) return `${dia.day} • UTILIZADO`;
+    if (g.datasDisponiveis?.has(dia.date)) return `${dia.day} • DISPONÍVEL NÃO UTILIZADO`;
+    return `${dia.day} • SEM SERVIÇO`;
+  };
+
+  const renderItemDia = (dia, item) => (
+    <TableRow
+      key={`${dia.date}-${item.externalServiceId || item.id}-${item.serviceName}`}
+      className={item.allocationStatus === "CLOSED" ? "escala-fechado" : ""}
+    >
+      <span>
+        <span className="escala-passeio">
+          <span className="ui-cell-main">{item.serviceName}</span>
+          {listarIdiomasExigidos(item.idiomas).map((id) => (
+            <span
+              key={id}
+              className="ui-chip escala-idioma"
+              title={`Passageiros em ${rotuloDoIdioma(id)} (${item.idiomas[id]} pax)`}
+            >
+              {siglaDoIdioma(id)}
+            </span>
+          ))}
+        </span>
+        {!item.guiaId && servicoDispensaGuiaPorPax(item, paxMinimoParaGuia) && (
+          <span
+            className="ui-cell-sub"
+            title={`Menos de ${paxMinimoParaGuia} pax: a escala automática não aloca guia`}
+          >
+            {item.passengers} pax · sem guia pela regra de pax mínimo
+          </span>
+        )}
+        {diaAtivo === TODOS_OS_DIAS && <span className="ui-cell-sub">{dia.day}</span>}
+      </span>
+
+      {modoVisualizacao ? (
+        <>
+          <span>
+            {item.guiaNome ? (
+              <span className="ui-cell-main">{item.guiaNome}</span>
+            ) : item.allocationStatus === "CLOSED" ? (
+              <span className="ui-cell-sub">—</span>
+            ) : (
+              <StatusDot tone="alert" icon="alert">
+                Sem guia
+              </StatusDot>
+            )}
+          </span>
+          <span>
+            <span className="ui-cell-main tabular">{item.passengers || 0} pax</span>
+            <span className="ui-cell-sub tabular">
+              {item.adultCount || 0} ADT / {item.childCount || 0} CHD / {item.infantCount || 0} INF
+            </span>
+          </span>
+          {statusGrupo(item)}
+          <span />
+        </>
+      ) : (
+        <>
+          <span className="ui-field">
+            <select
+              value={item.guiaId || ""}
+              disabled={processandoAcao || gerandoEscala}
+              aria-label="Guia"
+              onChange={async (e) => {
+                const guia = guias.find((g) => g.id === e.target.value);
+
+                await alterarGuiaManual(item.id, guia || null, dia, item);
+              }}
+            >
+              <option value="">Sem guia</option>
+
+              {guias.map((g) => {
+                const exigidos = listarIdiomasExigidos(item.idiomas);
+                const falaIdioma =
+                  exigidos.length > 0 && avaliarMatchIdioma(g, exigidos).cobrePrincipal;
+                const siglas = siglasDoGuia(g);
+
+                return (
+                  <option key={g.id} value={g.id}>
+                    {falaIdioma ? "✔ " : ""}
+                    {g.nome}
+                    {siglas.length ? ` (${siglas.join("/")})` : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </span>
+          <span className="ui-field">
+            <input
+              type="number"
+              min="0"
+              aria-label="Pax"
+              value={paxEditando[item.id] ?? item.passengers ?? 0}
+              onChange={(e) => alterarPaxManual(item.id, e.target.value)}
+              disabled={processandoAcao || gerandoEscala}
+            />
+          </span>
+          <span className="ui-field">
+            <select
+              value={item.allocationStatus || "OPEN"}
+              aria-label="Status do passeio"
+              onChange={(e) => alterarStatusAlocacao(item.id, e.target.value)}
+              disabled={processandoAcao || gerandoEscala}
+            >
+              <option value="OPEN">Aberto</option>
+              <option value="CLOSED">Fechado</option>
+            </select>
+          </span>
+          <span className="ui-cell-end">
+            {item.manual && (
+              <Button
+                variant="danger"
+                size="sm"
+                iconOnly
+                icon="trash"
+                title="Remover passeio manual"
+                aria-label="Remover passeio manual"
+                onClick={() => removerPasseio(item.id)}
+                disabled={processandoAcao || gerandoEscala}
+              />
+            )}
+          </span>
+        </>
+      )}
+    </TableRow>
+  );
+
+  return (
+    <div className="page-container escala ui-page">
+      <PageHeader
+        title="Gerar Escala"
+        description={`Planejamento semanal de passeios e guias · ${formatarPeriodoSemana(semana)}`}
+        more={[
+          { label: "Abrir planilha", icon: "external", onClick: abrirPlanilha, disabled: travado },
+          {
+            label: enviandoDrive ? "Enviando..." : "Salvar no Drive",
+            icon: "cloudUpload",
+            onClick: salvarNoDrive,
+            disabled: travado || enviandoDrive,
+            hint: driveFolderId ? "pasta configurada" : "seu Drive",
+          },
+          {
+            label: "Atualizar dados (Phoenix)",
+            icon: "refresh",
+            onClick: atualizarSomentePlanilha,
+            disabled: travadoSemana,
+          },
+        ]}
+        actions={
+          <>
+            <Button icon="undo" onClick={desfazerGuiasSemana} disabled={travado}>
+              Desfazer escala
+            </Button>
+            {modoVisualizacao ? (
+              <Button icon="pencil" onClick={() => setModoVisualizacao(false)} disabled={travado}>
+                Editar escala
+              </Button>
+            ) : (
+              <Button icon="eye" onClick={() => setModoVisualizacao(true)} disabled={travado}>
+                Visualizar
+              </Button>
+            )}
+            <Button
+              icon="sparkles"
+              onClick={alocarGuiasSemana}
+              disabled={travado}
+              loading={gerandoEscala}
+            >
+              {modoGeradoSemana ? "Gerar novamente" : "Gerar escala de guias"}
+            </Button>
+            <Button
+              variant="primary"
+              icon="message"
+              onClick={enviarWhatsappGuiasSemana_FIRESTORE}
+              disabled={travado}
+            >
+              Enviar todos os bloqueios
+            </Button>
+          </>
+        }
+      />
+
+      {/* ---- semana + regras ---- */}
+      <FilterBar className="escala-toolbar">
+        <div className="escala-semana" role="group" aria-label="Semana">
+          <Button
+            iconOnly
+            icon="chevronLeft"
+            title="Semana anterior"
+            aria-label="Semana anterior"
+            onClick={() => setSemanaOffset((o) => o - 1)}
+            disabled={travadoSemana}
+          />
+          <span className="escala-semana__label tabular">{formatarPeriodoSemana(semana)}</span>
+          <Button
+            iconOnly
+            icon="chevronRight"
+            title="Semana seguinte"
+            aria-label="Semana seguinte"
+            onClick={() => setSemanaOffset((o) => o + 1)}
+            disabled={travadoSemana}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSemanaOffset(0)}
+            disabled={travadoSemana || semanaOffset === 0}
+          >
+            Semana atual
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          className="escala-regras"
+          onClick={() => setDrawerRegras(true)}
+          title="Ver as regras da escala automática"
+        >
+          <Icon name="sliders" size={14} />
+          <span>
+            Modo <strong>{rotuloModo}</strong> · Afinidade{" "}
+            <strong>{usarAfinidadeGuiaPasseio ? "ativada" : "desativada"}</strong> · Idioma{" "}
+            <strong>{rotuloIdioma}</strong> · Guia a partir de <strong>{rotuloPax}</strong>
+          </span>
+          <Icon name="chevronRight" size={14} />
+        </button>
+      </FilterBar>
+
+      <div className={`escala-status ${modoGeradoSemana ? "" : "is-pendente"}`}>
+        <Icon name={modoGeradoSemana ? "circleCheck" : "info"} size={15} />
+        <span>
+          {modoGeradoSemana
+            ? modoGeradoPrioridade
+              ? "Essa escala foi gerada com a regra: Prioridade"
+              : "Essa escala foi gerada com a regra: Equilibrada"
+            : "Escala ainda não gerada para esta semana"}
+        </span>
+        {statusTexto && (
+          <span className="escala-status__acao">
+            <Icon name="loader" size={14} className="ui-spin" /> {statusTexto}
+          </span>
         )}
       </div>
 
+      {/* ---- robô ---- */}
       {gerandoEscala && (
-        <div className="robo-loading-card">
-          <div className="robo-loading-top">
-            <div className="robo-spinner-orb">
-              <div className="robo-spinner-ring robo-ring-1" />
-              <div className="robo-spinner-ring robo-ring-2" />
-              <div className="robo-spinner-core" />
-            </div>
-
-            <div className="robo-loading-texts">
-              <span className="robo-kicker">Robô de alocação ativo</span>
-              <h3>
+        <Card className="escala-robo">
+          <div className="escala-robo__topo">
+            <span className="escala-robo__orb" aria-hidden="true">
+              <Icon name="sparkles" size={20} />
+            </span>
+            <div>
+              <span className="escala-robo__kicker">Robô de alocação ativo</span>
+              <h3 className="escala-robo__titulo">
                 {etapaRoboAtual}
                 {animacaoPontos}
               </h3>
-              <p>
-                O sistema está analisando disponibilidade, afinidade,
-                distribuição e equilíbrio da escala para montar a melhor
-                alocação possível da semana.
+              <p className="escala-robo__texto">
+                O sistema está analisando disponibilidade, afinidade, distribuição e equilíbrio
+                da escala para montar a melhor alocação possível da semana.
               </p>
             </div>
           </div>
-
-          <div className="robo-steps">
+          <ol className="escala-robo__etapas">
             {ETAPAS_ROBO_ESCALA.map((etapa, index) => {
               const concluida = index < indiceEtapaRobo;
               const ativa = index === indiceEtapaRobo;
-
               return (
-                <div
+                <li
                   key={etapa}
-                  className={`robo-step ${concluida ? "done" : ""} ${
-                    ativa ? "active" : ""
-                  }`}
+                  className={`${concluida ? "is-feita" : ""} ${ativa ? "is-ativa" : ""}`}
                 >
-                  <div className="robo-step-bullet">
-                    {concluida ? "✓" : index + 1}
-                  </div>
-                  <span>{etapa}</span>
-                </div>
+                  <span className="escala-robo__bullet">
+                    {concluida ? <Icon name="check" size={12} /> : index + 1}
+                  </span>
+                  {etapa}
+                </li>
               );
             })}
-          </div>
-        </div>
+          </ol>
+        </Card>
       )}
 
-      <div className="header-tours">
-        <div className="mode-toggle">
-          <button
-            className="btn-list"
-            onClick={() => setModoVisualizacao(true)}
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Visualizar <Visibility fontSize="10" />
-          </button>
-
-          <button
-            className="btn-list-edt"
-            onClick={() => setModoVisualizacao(false)}
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Editar escala <ModeEdit fontSize="10" />
-          </button>
-
-          <button
-            className="btn-list-gerar"
-            onClick={alocarGuiasSemana}
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Gerar escala de Guias <ManageAccounts fontSize="10" />
-          </button>
-
-          <button
-            className="btn-list-cld"
-            onClick={desfazerGuiasSemana}
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Desfazer escala de Guias <Undo fontSize="10" />
-          </button>
-
-          <button
-            className="btn-list"
-            onClick={() =>
-              abrirEscalaEmNovaAba({
-                semana,
-                extras,
-                agruparRegistrosPorServico,
-                getTextoStatusServico,
-                getClasseStatusServico,
-              })
-            }
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Abrir planilha
-          </button>
-
-          <button
-            className="btn-list"
-            onClick={salvarNoDrive}
-            disabled={
-              processandoAcao || carregandoEstrutura || gerandoEscala || enviandoDrive
-            }
-            title={
-              driveFolderId
-                ? "Salva a escala na pasta configurada do Drive"
-                : "Salva a escala no Drive de quem clicar (nenhuma pasta configurada)"
-            }
-          >
-            {enviandoDrive ? "Enviando..." : "Salvar no Drive"}
-            <CloudUploadRounded fontSize="10" />
-          </button>
-
-          <button
-            className="btn-list-send"
-            onClick={enviarWhatsappGuiasSemana_FIRESTORE}
-            disabled={processandoAcao || carregandoEstrutura || gerandoEscala}
-          >
-            Enviar todos os Bloqueios{" "}
-            <WhatsApp className="icon-zap" fontSize="10" />
-          </button>
-        </div>
-
-        <div className="topic">
-          <div className="week-controls">
-            <button
-              className="btn-list"
-              onClick={() => setSemanaOffset((o) => o - 1)}
-              disabled={processandoAcao || gerandoEscala}
-            >
-              ⬅ Semana anterior
-            </button>
-
-            <button
-              className="btn-list"
-              onClick={() => setSemanaOffset(0)}
-              disabled={processandoAcao || gerandoEscala}
-            >
-              Semana atual
-            </button>
-
-            <button
-              className="btn-list"
-              onClick={() => setSemanaOffset((o) => o + 1)}
-              disabled={processandoAcao || gerandoEscala}
-            >
-              Semana seguinte ➡
-            </button>
-
-            <button
-              className="btn-list"
-              onClick={atualizarSomentePlanilha}
-              disabled={processandoAcao || gerandoEscala}
-            >
-              Atualizar dados (Phoenix) <RefreshRounded fontSize="10" />
-            </button>
-
-            <span className="counter-info">
-              {formatarPeriodoSemana(semana)}
-            </span>
-
-            <p className="counter-info">
-              Modo de distribuição:{" "}
-              <strong>
-                {modoPrioridadeAtivo ? "Prioridade" : "Equilibrado"}
-              </strong>
-            </p>
-
-            <p className="counter-info">
-              Afinidade:{" "}
-              <strong>
-                {usarAfinidadeGuiaPasseio ? "Ativada" : "Desativada"}
-              </strong>
-            </p>
-
-            <p className="counter-info">
-              Idioma:{" "}
-              <strong>
-                {{
-                  preferencial: "Preferencial",
-                  obrigatorio: "Obrigatório",
-                  desligado: "Desligado",
-                }[modoIdioma] || "Preferencial"}
-              </strong>
-            </p>
-
-            <p className="counter-info">
-              Guia a partir de:{" "}
-              <strong>
-                {Number(paxMinimoParaGuia) > 1
-                  ? `${paxMinimoParaGuia} pax`
-                  : "qualquer pax"}
-              </strong>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="resumo-modo-global">
-        {modoGeradoSemana
-          ? modoGeradoPrioridade
-            ? "Essa escala foi gerada com a regra: Prioridade"
-            : "Essa escala foi gerada com a regra: Equilibrada"
-          : "Escala ainda não gerada para esta semana"}{" "}
-        <Warning fontSize="10" className="icon-warning" />
-      </div>
-
+      {/* ---- resultado da geração automática ---- */}
       {relatorioEscala && !carregandoEstrutura && (
-        <div className="relatorio-escala">
-          <div className="relatorio-escala-topo">
-            <strong>Resultado da geração automática</strong>
-            <button
-              type="button"
-              className="relatorio-escala-fechar"
-              onClick={() => setRelatorioEscala(null)}
-            >
-              Fechar
-            </button>
+        <Card>
+          <CardHeader
+            icon="clipboardCheck"
+            title="Resultado da geração automática"
+            subtitle={`${relatorioEscala.alocados} serviço(s) receberam guia.${
+              relatorioEscala.naoAlocados.length === 0 &&
+              relatorioEscala.avisosIdioma.length === 0
+                ? " Nenhuma pendência."
+                : ""
+            }`}
+            actions={
+              <Button size="sm" variant="ghost" onClick={() => setRelatorioEscala(null)}>
+                Fechar
+              </Button>
+            }
+          />
+          <div className="escala-relatorio">
+            {relatorioEscala.avisosIdioma.length > 0 && (
+              <div>
+                <h4 className="escala-relatorio__titulo is-aviso">Guia sem o idioma do grupo</h4>
+                <ul>
+                  {relatorioEscala.avisosIdioma.map((v) => (
+                    <li key={v.registroId}>
+                      {formatarDataCurta(v.date)} · <b>{v.serviceName}</b> → {v.guiaNome} — pede{" "}
+                      {v.idiomas.map(siglaDoIdioma).join("/")}, falta{" "}
+                      {v.faltantes.map(siglaDoIdioma).join("/")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {relatorioEscala.naoAlocados.length > 0 && (
+              <div>
+                <h4 className="escala-relatorio__titulo is-alerta">Ficaram sem guia</h4>
+                <ul>
+                  {relatorioEscala.naoAlocados.map((n) => (
+                    <li key={`${n.registroId}-${n.motivo}`}>
+                      {formatarDataCurta(n.date)} · <b>{n.serviceName}</b>
+                      {n.idiomas?.length > 0 && ` (${n.idiomas.map(siglaDoIdioma).join("/")})`} —{" "}
+                      {textoMotivoNaoAlocado(n, relatorioEscala.paxMinimoParaGuia)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-
-          <p className="relatorio-escala-resumo">
-            {relatorioEscala.alocados} serviço(s) receberam guia.
-            {relatorioEscala.naoAlocados.length === 0 &&
-              relatorioEscala.avisosIdioma.length === 0 &&
-              " Nenhuma pendência."}
-          </p>
-
-          {relatorioEscala.avisosIdioma.length > 0 && (
-            <div className="relatorio-escala-bloco aviso">
-              <h5>Guia sem o idioma do grupo</h5>
-              <ul>
-                {relatorioEscala.avisosIdioma.map((v) => (
-                  <li key={v.registroId}>
-                    {formatarDataCurta(v.date)} · <b>{v.serviceName}</b> →{" "}
-                    {v.guiaNome} — pede {v.idiomas.map(siglaDoIdioma).join("/")}
-                    , falta {v.faltantes.map(siglaDoIdioma).join("/")}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {relatorioEscala.naoAlocados.length > 0 && (
-            <div className="relatorio-escala-bloco">
-              <h5>Ficaram sem guia</h5>
-              <ul>
-                {relatorioEscala.naoAlocados.map((n) => (
-                  <li key={`${n.registroId}-${n.motivo}`}>
-                    {formatarDataCurta(n.date)} · <b>{n.serviceName}</b>
-                    {n.idiomas?.length > 0 &&
-                      ` (${n.idiomas.map(siglaDoIdioma).join("/")})`}{" "}
-                    — {textoMotivoNaoAlocado(n, relatorioEscala.paxMinimoParaGuia)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        </Card>
       )}
 
       {carregandoEstrutura ? (
@@ -1024,377 +1175,369 @@ Operacional - Luck Receptivo 🍀
         </>
       ) : (
         <>
-          <div className="resumo-container">
-            {resumoGuias.map((g, index) => (
-              <div key={g.guiaId} className="resumo-card">
-                <div className="resumo-header">
-                  <h4 className="resumo-nome">
-                    <span className="resumo-nome-main">
-                      {modoPrioridadeAtivo && (
-                        <span
-                          className={`priority-pill p-${g.nivelPrioridade || 2}`}
-                        >
-                          P{g.nivelPrioridade || 2}
-                        </span>
-                      )}
-                      {index === 0 && <span className="medalha">🏆</span>}
-                      {g.nome}
-                    </span>
+          <KpiTiles
+            items={[
+              { key: "total", label: "Passeios na semana", value: totaisSemana.total },
+              { key: "comGuia", label: "Com guia", value: totaisSemana.comGuia },
+              {
+                key: "semGuia",
+                label: "Sem guia",
+                value: totaisSemana.semGuia,
+                tone: totaisSemana.semGuia ? "alert" : undefined,
+              },
+              { key: "fechados", label: "Fechados", value: totaisSemana.fechados },
+              { key: "guias", label: "Guias escalados", value: resumoGuias.length },
+              {
+                key: "livres",
+                label: "Disponíveis sem serviço",
+                value: guiasDisponiveisSemServico.length,
+              },
+            ]}
+          />
 
-                    {g.sobrecarga && (
-                      <span className="indicador-alerta">●</span>
-                    )}
-                  </h4>
-
-                  <span
-                    className={`resumo-percent ${
-                      g.ocupacao >= 80
-                        ? "alta"
-                        : g.ocupacao >= 50
-                          ? "media"
-                          : "baixa"
-                    }`}
-                  >
-                    {g.ocupacao}%
-                  </span>
-                </div>
-
-                <div className="resumo-bar">
-                  <div
-                    className={`resumo-bar-fill ${
-                      g.ocupacao >= 80
-                        ? "alta"
-                        : g.ocupacao >= 50
-                          ? "media"
-                          : "baixa"
-                    }`}
-                    style={{ width: `${g.ocupacao}%` }}
-                  />
-                </div>
-
-                <p className="resumo-info">{g.totalServicos} serviços</p>
-
-                <div className="mini-chart">
-                  {semana.map((dia) => (
-                    <div
-                      key={dia.date}
-                      className={`mini-bar ${g.datas?.has(dia.date) ? "ativo" : ""}`}
-                    />
-                  ))}
-
-                  <div className="whatsapp-wrapper">
-                    <button
-                      className="btn-whatsapp-guia"
-                      onClick={() => enviarWhatsappGuiaIndividual(g)}
-                      disabled={processandoAcao || gerandoEscala}
-                    >
-                      <Send fontSize="12" /> Enviar
-                    </button>
-
-                    <div className="resumo-tooltip">
-                      <pre>{gerarMensagemGuia(g, semana)}</pre>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="resumo-modo-global">
-            Guias que deram disponibilidade e ficaram sem serviço:{" "}
-            <strong>{guiasDisponiveisSemServico.length}</strong>
-          </div>
-
-          {guiasDisponiveisSemServico.length > 0 && (
-            <div className="resumo-container resumo-container-sem-servico">
-              {guiasDisponiveisSemServico.map((guia) => (
-                <div
-                  key={guia.guiaId}
-                  className="resumo-card resumo-card-sem-servico"
-                >
-                  <div className="resumo-header">
-                    <h4 className="resumo-nome">
-                      <span className="resumo-nome-main">
-                        {modoPrioridadeAtivo && (
-                          <span
-                            className={`priority-pill p-${
-                              guia.nivelPrioridade || 2
-                            }`}
-                          >
-                            P{guia.nivelPrioridade || 2}
-                          </span>
-                        )}
-                        {guia.nome}
-                      </span>
-                    </h4>
-
-                    <span className="resumo-percent baixa">0%</span>
-                  </div>
-
-                  <div className="resumo-bar">
-                    <div
-                      className="resumo-bar-fill baixa"
-                      style={{ width: "0%" }}
-                    />
-                  </div>
-
-                  <p className="resumo-info">
-                    Disponível em <strong>{guia.diasDisponiveis}</strong> dia(s)
-                    e ficou sem serviço
-                  </p>
-
-                  <div className="mini-chart">
-                    {semana.map((dia) => {
-                      const bloqueado = guia.bloqueios?.includes(dia.date);
-                      const trabalhou = guia.datas?.has(dia.date);
-                      const estavaDisponivel = guia.datasDisponiveis?.has(
-                        dia.date,
-                      );
-
-                      let classe = "neutro";
-                      let label = `${dia.day}`;
-
-                      if (bloqueado) {
-                        classe = "bloqueado";
-                        label += " • BLOQUEADO";
-                      } else if (trabalhou) {
-                        classe = "ativo";
-                        label += " • UTILIZADO";
-                      } else if (estavaDisponivel) {
-                        classe = "disponivel-nao-usado";
-                        label += " • DISPONÍVEL NÃO UTILIZADO";
-                      } else {
-                        classe = "neutro";
-                        label += " • SEM DISPONIBILIDADE INFORMADA";
-                      }
-
-                      return (
-                        <div
-                          key={dia.date}
-                          className={`mini-bar ${classe}`}
-                          title={label}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {totaisSemana.total === 0 && (
+            <Card>
+              <EmptyState
+                icon="sparkles"
+                title="Nenhum passeio nesta semana"
+                action={
+                  <Button icon="refresh" onClick={atualizarSomentePlanilha} disabled={travadoSemana}>
+                    Atualizar dados (Phoenix)
+                  </Button>
+                }
+              >
+                Os passeios vêm do Phoenix. Atualize para buscar de novo.
+              </EmptyState>
+            </Card>
           )}
 
-          {semana.map((dia) => {
-            const registrosOrdenados = registrosPorDia[dia.date] || [];
+          <Segmented
+            ariaLabel="Visão da escala"
+            value={abaEscala}
+            onChange={setAbaEscala}
+            options={[
+              { value: "dia", label: "Por dia", icon: "calendar" },
+              { value: "guia", label: "Por guia", icon: "users", count: resumoGuias.length },
+            ]}
+          />
 
-            const totalPasseios = registrosOrdenados.length;
-            const passeiosComGuia = registrosOrdenados.filter(
-              (r) => !!r.guiaId && r.allocationStatus !== "CLOSED",
-            ).length;
-
-            const statusDia =
-              passeiosComGuia === 0
-                ? "vazio"
-                : passeiosComGuia < totalPasseios
-                  ? "parcial"
-                  : "completo";
-
-            return (
-              <div key={dia.date} className="day-card">
-                <strong className={`day-list ${statusDia}`}>
-                  {dia.label}
-                  <span className="day-status">
-                    {" "}
-                    - Passeios com Guia: {passeiosComGuia} - Total de Passeios:{" "}
-                    {totalPasseios}
+          {/* ===== POR DIA ===== */}
+          {abaEscala === "dia" && (
+            <>
+              <div className="escala-dias" role="tablist" aria-label="Dia">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={diaAtivo === TODOS_OS_DIAS}
+                  className={`escala-dia ${diaAtivo === TODOS_OS_DIAS ? "is-active" : ""}`}
+                  onClick={() => setDiaSelecionado(TODOS_OS_DIAS)}
+                >
+                  <span className="escala-dia__nome">Semana</span>
+                  <span className="escala-dia__meta tabular">
+                    {totaisSemana.comGuia}/{totaisSemana.total} com guia
                   </span>
-                </strong>
-
-                {registrosOrdenados.map((item) => (
-                  <div
-                    key={`${dia.date}-${item.externalServiceId || item.id}-${item.serviceName}`}
-                    className="passeio-item"
-                  >
-                    <span className="passeio-name">
-                      {item.serviceName}
-                      {listarIdiomasExigidos(item.idiomas).map((id) => (
-                        <span
-                          key={id}
-                          className="idioma-tag"
-                          title={`Passageiros em ${rotuloDoIdioma(id)} (${item.idiomas[id]} pax)`}
-                        >
-                          {siglaDoIdioma(id)}
-                        </span>
-                      ))}
-                      {!item.guiaId &&
-                        servicoDispensaGuiaPorPax(item, paxMinimoParaGuia) && (
-                          <span
-                            className="idioma-tag pax-baixo"
-                            title={`Menos de ${paxMinimoParaGuia} pax: a escala automática não aloca guia`}
-                          >
-                            {item.passengers} pax · sem guia
-                          </span>
+                </button>
+                {semana.map((dia) => {
+                  const i = infoDia(dia.date);
+                  const ativo = diaAtivo === dia.date;
+                  return (
+                    <button
+                      key={dia.date}
+                      type="button"
+                      role="tab"
+                      aria-selected={ativo}
+                      className={`escala-dia ${ativo ? "is-active" : ""}`}
+                      onClick={() => setDiaSelecionado(dia.date)}
+                    >
+                      <span className="escala-dia__nome">
+                        {dia.day}
+                        <span className="escala-dia__data tabular">{formatarDataCurta(dia.date)}</span>
+                      </span>
+                      <span className="escala-dia__meta tabular">
+                        {i.comGuia}/{i.total - i.fechados} com guia
+                        {i.semGuia > 0 && (
+                          <span className="escala-dia__alerta" title={`${i.semGuia} sem guia`} />
                         )}
-                    </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                    <span className="guia-name-aloc">
-                      {item.guiaNome || "-"}
-                    </span>
+              {diasVisiveis.map((dia) => {
+                const registrosOrdenados = registrosPorDia[dia.date] || [];
+                const i = infoDia(dia.date);
 
-                    {modoVisualizacao ? (
-                      <>
-                        <span className="passeio-pax-1">
-                          {item.passengers || 0} pax
-                          <small>
-                            {" "}
-                            ({item.adultCount || 0} ADT / {item.childCount || 0}{" "}
-                            CHD / {item.infantCount || 0} INF)
-                          </small>
-                        </span>
-                        {statusGrupo(item)}
-                      </>
+                return (
+                  <Card key={dia.date} className="escala-dia-card">
+                    <CardHeader
+                      icon="calendar"
+                      title={dia.label}
+                      subtitle={`Passeios com guia: ${i.comGuia} · Total de passeios: ${i.total}${
+                        i.fechados ? ` · Fechados: ${i.fechados}` : ""
+                      }`}
+                    />
+
+                    {registrosOrdenados.length === 0 && modoVisualizacao ? (
+                      <EmptyState icon="compass" title="Nenhum passeio neste dia." />
                     ) : (
-                      <>
-                        <input
-                          type="number"
-                          min="0"
-                          value={paxEditando[item.id] ?? item.passengers ?? 0}
-                          onChange={(e) =>
-                            alterarPaxManual(item.id, e.target.value)
-                          }
-                          disabled={processandoAcao || gerandoEscala}
-                        />
+                      <Table
+                        columns={
+                          modoVisualizacao
+                            ? "minmax(220px,2fr) minmax(150px,1.2fr) minmax(130px,1fr) minmax(140px,1fr) 8px"
+                            : "minmax(220px,2fr) minmax(170px,1.3fr) 90px 120px 48px"
+                        }
+                        minWidth={760}
+                      >
+                        <TableHead>
+                          <span>Passeio</span>
+                          <span>Guia</span>
+                          <span>Pax</span>
+                          <span>{modoVisualizacao ? "Grupo" : "Status"}</span>
+                          <span />
+                        </TableHead>
 
-                        <select
-                          value={item.allocationStatus || "OPEN"}
-                          onChange={(e) =>
-                            alterarStatusAlocacao(item.id, e.target.value)
-                          }
-                          disabled={processandoAcao || gerandoEscala}
+                        {registrosOrdenados.map((item) => renderItemDia(dia, item))}
+
+                        {!modoVisualizacao && (
+                          <TableRow className="escala-add">
+                            <span className="ui-field">
+                              <input
+                                type="text"
+                                placeholder="Nome do serviço"
+                                aria-label="Nome do serviço"
+                                value={novoServico[dia.date]?.nome || ""}
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) =>
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      nome: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </span>
+                            <span className="ui-field">
+                              <select
+                                value={novoServico[dia.date]?.guiaId || ""}
+                                aria-label="Guia"
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) => {
+                                  const guia = guias.find((g) => g.id === e.target.value);
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      guiaId: guia?.id || null,
+                                      guiaNome: guia?.nome || null,
+                                    },
+                                  }));
+                                }}
+                              >
+                                <option value="">Selecione o guia</option>
+                                {guias.map((g) => (
+                                  <option key={g.id} value={g.id}>
+                                    {g.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </span>
+                            <span className="ui-field">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Pax"
+                                aria-label="Pax"
+                                value={novoServico[dia.date]?.pax || ""}
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) =>
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      pax: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </span>
+                            <span className="ui-cell-sub">Passeio manual</span>
+                            <span className="ui-cell-end">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                iconOnly
+                                icon="plus"
+                                title="Adicionar passeio"
+                                aria-label="Adicionar passeio"
+                                onClick={() => adicionarPasseioManual(dia)}
+                                disabled={processandoAcao || gerandoEscala}
+                              />
+                            </span>
+                          </TableRow>
+                        )}
+                      </Table>
+                    )}
+                  </Card>
+                );
+              })}
+            </>
+          )}
+
+          {/* ===== POR GUIA ===== */}
+          {abaEscala === "guia" && (
+            <>
+              {resumoGuias.length === 0 ? (
+                <Card>
+                  <EmptyState icon="users" title="Nenhum guia com serviço nesta semana." />
+                </Card>
+              ) : (
+                <div className="escala-guias">
+                  {resumoGuias.map((g, index) => (
+                    <Card key={g.guiaId} className="escala-guia">
+                      <div className="escala-guia__topo">
+                        <span className="escala-guia__nome">
+                          {modoPrioridadeAtivo && (
+                            <span className="ui-chip" title="Nível de prioridade">
+                              P{g.nivelPrioridade || 2}
+                            </span>
+                          )}
+                          {index === 0 && (
+                            <Icon name="star" size={14} className="escala-guia__top" title="Maior ocupação" />
+                          )}
+                          {g.nome}
+                          {g.sobrecarga && (
+                            <span className="escala-dia__alerta" title="Sobrecarga (90% ou mais)" />
+                          )}
+                        </span>
+                        <span
+                          className={`escala-guia__pct tabular ${g.ocupacao >= 80 ? "is-alta" : ""}`}
                         >
-                          <option value="OPEN">Aberto</option>
-                          <option value="CLOSED">Fechado</option>
-                        </select>
+                          {g.ocupacao}%
+                        </span>
+                      </div>
 
-                        <select
-                          value={item.guiaId || ""}
-                          disabled={processandoAcao || gerandoEscala}
-                          onChange={async (e) => {
-                            const guia = guias.find(
-                              (g) => g.id === e.target.value,
-                            );
+                      <div className="escala-guia__barra" aria-hidden="true">
+                        <span style={{ width: `${Math.min(g.ocupacao, 100)}%` }} />
+                      </div>
 
-                            await alterarGuiaManual(
-                              item.id,
-                              guia || null,
-                              dia,
-                              item,
-                            );
-                          }}
-                        >
-                          <option value="">Sem guia</option>
-
-                          {guias.map((g) => {
-                            const exigidos = listarIdiomasExigidos(item.idiomas);
-                            const falaIdioma =
-                              exigidos.length > 0 &&
-                              avaliarMatchIdioma(g, exigidos).cobrePrincipal;
-                            const siglas = siglasDoGuia(g);
-
-                            return (
-                              <option key={g.id} value={g.id}>
-                                {falaIdioma ? "✔ " : ""}
-                                {g.nome}
-                                {siglas.length ? ` (${siglas.join("/")})` : ""}
-                              </option>
-                            );
-                          })}
-                        </select>
-
-                        {item.manual && (
-                          <button
-                            className="btn-remove"
-                            onClick={() => removerPasseio(item.id)}
+                      <div className="escala-guia__rodape">
+                        <span className="ui-cell-sub">
+                          {g.totalServicos} serviço(s) · {g.diasDisponiveis} dia(s) disponível(is)
+                        </span>
+                        <div className="escala-guia__dias">
+                          {semana.map((dia) => (
+                            <span
+                              key={dia.date}
+                              className={`escala-mini ${classeMiniDia(g, dia.date)}`}
+                              title={tituloMiniDia(g, dia)}
+                            >
+                              {dia.day.slice(0, 1)}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="escala-tooltip-wrap">
+                          <Button
+                            size="sm"
+                            icon="send"
+                            onClick={() => enviarWhatsappGuiaIndividual(g)}
                             disabled={processandoAcao || gerandoEscala}
                           >
-                            🗑️
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
+                            Enviar
+                          </Button>
+                          <span className="escala-tooltip" role="tooltip">
+                            <pre>{gerarMensagemGuia(g, semana)}</pre>
+                          </span>
+                        </span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
-                {!modoVisualizacao && (
-                  <div className="passeio-item passeio-add">
-                    <input
-                      type="text"
-                      placeholder="Nome do serviço"
-                      value={novoServico[dia.date]?.nome || ""}
-                      disabled={processandoAcao || gerandoEscala}
-                      onChange={(e) =>
-                        setNovoServico((prev) => ({
-                          ...prev,
-                          [dia.date]: {
-                            ...prev[dia.date],
-                            nome: e.target.value,
-                          },
-                        }))
-                      }
-                    />
+              <h3 className="escala-subtitulo">
+                Guias que deram disponibilidade e ficaram sem serviço:{" "}
+                <strong>{guiasDisponiveisSemServico.length}</strong>
+              </h3>
 
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Pax"
-                      value={novoServico[dia.date]?.pax || ""}
-                      disabled={processandoAcao || gerandoEscala}
-                      onChange={(e) =>
-                        setNovoServico((prev) => ({
-                          ...prev,
-                          [dia.date]: {
-                            ...prev[dia.date],
-                            pax: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-
-                    <select
-                      value={novoServico[dia.date]?.guiaId || ""}
-                      disabled={processandoAcao || gerandoEscala}
-                      onChange={(e) => {
-                        const guia = guias.find((g) => g.id === e.target.value);
-                        setNovoServico((prev) => ({
-                          ...prev,
-                          [dia.date]: {
-                            ...prev[dia.date],
-                            guiaId: guia?.id || null,
-                            guiaNome: guia?.nome || null,
-                          },
-                        }));
-                      }}
-                    >
-                      <option value="">Selecione o guia</option>
-                      {guias.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.nome}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      className="btn-add"
-                      onClick={() => adicionarPasseioManual(dia)}
-                      disabled={processandoAcao || gerandoEscala}
-                    >
-                      ➕
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              {guiasDisponiveisSemServico.length > 0 && (
+                <div className="escala-guias">
+                  {guiasDisponiveisSemServico.map((guia) => (
+                    <Card key={guia.guiaId} className="escala-guia is-livre">
+                      <div className="escala-guia__topo">
+                        <span className="escala-guia__nome">
+                          {modoPrioridadeAtivo && (
+                            <span className="ui-chip">P{guia.nivelPrioridade || 2}</span>
+                          )}
+                          {guia.nome}
+                        </span>
+                        <span className="escala-guia__pct tabular">0%</span>
+                      </div>
+                      <div className="escala-guia__rodape">
+                        <span className="ui-cell-sub">
+                          Disponível em <strong>{guia.diasDisponiveis}</strong> dia(s) e ficou sem
+                          serviço
+                        </span>
+                        <div className="escala-guia__dias">
+                          {semana.map((dia) => (
+                            <span
+                              key={dia.date}
+                              className={`escala-mini ${classeMiniDia(guia, dia.date)}`}
+                              title={tituloMiniDia(guia, dia)}
+                            >
+                              {dia.day.slice(0, 1)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
+
+      {/* ---- regras da escala (somente leitura; editadas em Configurações) ---- */}
+      <Drawer
+        open={drawerRegras}
+        onClose={() => setDrawerRegras(false)}
+        title="Regras da escala automática"
+        subtitle="São as regras usadas pelo robô ao gerar a escala."
+        footer={
+          <>
+            <Button onClick={() => setDrawerRegras(false)}>Fechar</Button>
+            <Button variant="primary" icon="settings" onClick={() => navigate("/configuracoes")}>
+              Alterar em Configurações
+            </Button>
+          </>
+        }
+      >
+        <dl className="escala-regras-lista">
+          <div>
+            <dt>Modo de distribuição</dt>
+            <dd>{rotuloModo}</dd>
+          </div>
+          <div>
+            <dt>Afinidade guia × passeio</dt>
+            <dd>{usarAfinidadeGuiaPasseio ? "Ativada" : "Desativada"}</dd>
+          </div>
+          <div>
+            <dt>Idioma dos passageiros</dt>
+            <dd>{rotuloIdioma}</dd>
+          </div>
+          <div>
+            <dt>Guia a partir de</dt>
+            <dd>{rotuloPax}</dd>
+          </div>
+        </dl>
+        <p className="escala-dica">
+          Depois de mudar uma regra, volte aqui e use “Gerar novamente” para aplicar na semana.
+        </p>
+      </Drawer>
     </div>
   );
 };

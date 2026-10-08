@@ -21,6 +21,10 @@ html,
 body {
   max-width: 100%;
   overflow-x: hidden;
+  /* "clip" corta o excesso sem transformar o body num contêiner de
+     rolagem — com "hidden" no html e no body, o position: sticky do
+     menu lateral parava de funcionar e ele subia junto com a página */
+  overflow-x: clip;
 }
 
 img,

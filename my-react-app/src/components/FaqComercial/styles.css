@@ -35,7 +35,7 @@
     padding: var(--pc-space-6) var(--pc-space-4) 48px;
     box-sizing: border-box;
     background: var(--bg);
-    font-family: "Montserrat", sans-serif;
+    font-family: var(--font-body);
 }
 
 /* ---------- Cabeçalho ---------- */

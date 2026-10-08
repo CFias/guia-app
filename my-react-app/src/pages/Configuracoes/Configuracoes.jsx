@@ -7,29 +7,72 @@ import {
   rotuloJanela,
 } from "../../Services/Utils/janelaDisponibilidade";
 import { useTheme } from "../../Context/ThemeContext";
-import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
-import "./styles.css";
+import { useAuth } from "../../Context/AuthContext";
 import {
-  Insights,
-  Settings,
-  Tune,
-  PaletteOutlined,
-  AutoAwesomeRounded,
-  SaveRounded,
-  LightModeRounded,
-  BedtimeRounded,
-  NightlightRounded,
-  CheckCircleRounded,
-  GroupsRounded,
-  LanguageRounded,
-  EventAvailableRounded,
-  FolderSharedRounded,
-  VpnKeyRounded,
-} from "@mui/icons-material";
+  PALETA_ACCENT,
+  usePreferenciasUI,
+} from "../../Context/preferenciasUIContext";
+import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
+import "./config.css";
+import {
+  Card,
+  Field,
+  Icon,
+  PageHeader,
+  Segmented,
+  StatusDot,
+} from "../../components/ui";
 import { extrairIdPastaDrive } from "../../Services/Services/googleDrive";
+
+/* ---------- peças de layout (só apresentação) ---------- */
+
+// seção em duas colunas: título + descrição | controles
+const Secao = ({ titulo, descricao, carregando, children }) => (
+  <div className="cfg-secao">
+    <div className="cfg-secao__texto">
+      <h2>{titulo}</h2>
+      {descricao && <p>{descricao}</p>}
+    </div>
+    <div className="cfg-secao__controles">
+      {carregando ? <CardSkeleton variant="list" rows={2} /> : children}
+    </div>
+  </div>
+);
+
+const OpcaoCard = ({ ativo, onClick, icone, titulo, texto, disabled }) => (
+  <button
+    type="button"
+    className={`cfg-opcao ${ativo ? "is-active" : ""}`}
+    onClick={onClick}
+    disabled={disabled}
+    aria-pressed={ativo}
+  >
+    <span className="cfg-opcao__topo">
+      <Icon name={icone} size={16} />
+      <span className="cfg-opcao__radio" aria-hidden="true" />
+    </span>
+    <strong>{titulo}</strong>
+    {texto && <span className="cfg-opcao__texto">{texto}</span>}
+  </button>
+);
+
+const Interruptor = ({ id, ligado, onClick, disabled }) => (
+  <button
+    id={id}
+    type="button"
+    className={`cfg-switch ${ligado ? "is-on" : ""}`}
+    onClick={onClick}
+    aria-pressed={ligado}
+    disabled={disabled}
+  >
+    <span className="cfg-switch__thumb" />
+  </button>
+);
 
 const Configuracoes = () => {
   const { theme, toggleTheme, togglePro } = useTheme();
+  const { perfil } = useAuth();
+  const { accent, setAccent } = usePreferenciasUI();
 
   const [abaAtiva, setAbaAtiva] = useState("tema");
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
@@ -173,544 +216,310 @@ const Configuracoes = () => {
     }
   };
 
+  /* ---------- só apresentação ---------- */
+  const TEMAS = [
+    { valor: "light", nome: "Claro", texto: "Mais leve e aberto", icone: "sun", experiencia: "Mais limpa" },
+    { valor: "dark", nome: "Dark", texto: "Equilíbrio e contraste", icone: "moon", experiencia: "Mais confortável" },
+    { valor: "dark-pro", nome: "Dark Pro", texto: "Mais sofisticado", icone: "sparkles", experiencia: "Mais premium" },
+  ];
+  const temaAtual = TEMAS.find((t) => t.valor === theme) || TEMAS[2];
+
+  const estado = loadingInicial
+    ? { tone: "muted", texto: "Carregando configuração..." }
+    : salvando
+      ? { tone: "warning", texto: "Salvando configuração..." }
+      : { tone: "accent", texto: "Tudo sincronizado" };
+
   return (
-    <div className="config-page">
-      <div className="config-page-header">
-        <div>
-          <h2 className="config-title-page">
-            Configurações <Settings fontSize="small" />
-          </h2>
-          <p className="config-subtitle">
-            Ajuste a aparência da plataforma e defina o comportamento da escala
-            automática com uma interface mais moderna e objetiva.
+    <div className="ui-page cfg-page">
+      <PageHeader
+        title="Configurações"
+        description="Aparência da plataforma (sua) e regras da escala automática (da equipe)."
+        actions={<StatusDot tone={estado.tone}>{estado.texto}</StatusDot>}
+      />
+
+      <Segmented
+        ariaLabel="Grupo de configurações"
+        value={abaAtiva}
+        onChange={setAbaAtiva}
+        options={[
+          { value: "tema", label: "Tema", icon: "palette", disabled: loadingInicial || salvando },
+          { value: "escala", label: "Escala", icon: "sparkles", disabled: loadingInicial || salvando },
+        ]}
+      />
+
+      {abaAtiva === "tema" && (
+        <Card className="cfg-card">
+          <Secao
+            carregando={loadingInicial}
+            titulo="Aparência da plataforma"
+            descricao="Escolha o tema que melhor combina com o ambiente de uso e a legibilidade da operação."
+          >
+            <div className="cfg-opcoes cfg-opcoes--3">
+              {TEMAS.map((t) => (
+                <OpcaoCard
+                  disabled={salvando}
+                  key={t.valor}
+                  ativo={theme === t.valor}
+                  onClick={() => aplicarTema(t.valor)}
+                  icone={t.icone}
+                  titulo={t.nome}
+                  texto={t.texto}
+                />
+              ))}
+            </div>
+            <p className="cfg-ajuda">
+              <Icon name="info" size={14} />
+              <span>
+                Tema atual: <strong>{temaAtual.nome}</strong> · {temaAtual.experiencia}
+              </span>
+            </p>
+          </Secao>
+
+          {/* Cor de destaque: de cada pessoa, salva neste navegador */}
+          <Secao
+            titulo="Cor de destaque"
+            descricao={`Só para você (${perfil?.nome || "este usuário"}). Fica salva neste navegador.`}
+          >
+            <div className="config-accent-swatches" role="radiogroup" aria-label="Cor de destaque">
+              {PALETA_ACCENT.map((cor) => (
+                <button
+                  key={cor.hex}
+                  type="button"
+                  role="radio"
+                  aria-checked={accent === cor.hex}
+                  className={`config-accent-swatch ${accent === cor.hex ? "active" : ""}`}
+                  style={{ "--swatch": cor.hex }}
+                  onClick={() => setAccent(cor.hex)}
+                  title={cor.nome}
+                >
+                  <span className="config-accent-dot" aria-hidden="true" />
+                  <span>{cor.nome}</span>
+                </button>
+              ))}
+            </div>
+          </Secao>
+        </Card>
+      )}
+
+      {abaAtiva === "escala" && (
+        <Card className="cfg-card">
+          <Secao
+            carregando={loadingInicial}
+            titulo="Modo de distribuição"
+            descricao="Lógica usada para distribuir os serviços entre os guias na geração automática."
+          >
+            <div className="cfg-opcoes">
+              <OpcaoCard
+                disabled={salvando}
+                ativo={modoDistribuicaoGuias === "equilibrado"}
+                onClick={() => salvarModo("equilibrado")}
+                icone="activity"
+                titulo="Equilibrado"
+                texto="Distribui os serviços de forma mais justa entre os guias, ajudando a equilibrar melhor a operação."
+              />
+              <OpcaoCard
+                disabled={salvando}
+                ativo={modoDistribuicaoGuias === "seguir_nivel_selecionado"}
+                onClick={() => salvarModo("seguir_nivel_selecionado")}
+                icone="sparkles"
+                titulo="Prioridade"
+                texto="Favorece guias com maior nível de prioridade durante a geração da escala automática."
+              />
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Afinidade operacional"
+            descricao="Uso da afinidade entre guia e passeio (Mapa de afinidade)."
+          >
+            <div className="cfg-linha">
+              <div className="cfg-linha__texto">
+                <label htmlFor="afinidade-switch">Usar afinidade guia x passeio</label>
+                <p>
+                  {usarAfinidadeGuiaPasseio
+                    ? "A escala automática considera o histórico e o vínculo operacional entre guia e passeio."
+                    : "A escala automática ignora o mapeamento de afinidade e distribui sem considerar esse relacionamento."}
+                </p>
+              </div>
+              <Interruptor
+                disabled={salvando}
+                id="afinidade-switch"
+                ligado={usarAfinidadeGuiaPasseio}
+                onClick={() => salvarUsoAfinidade(!usarAfinidadeGuiaPasseio)}
+              />
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Janela de disponibilidade dos guias"
+            descricao="Dias em que os guias conseguem enviar, alterar ou remover a própria disponibilidade — fora desses dias, a tela fica bloqueada para eles."
+          >
+            <div className="cfg-campos">
+              <Field label="Abre em" icon="calendar">
+                <select
+                  value={janelaConfig.dowAbertura}
+                  onChange={(e) => salvarJanela("dowAbertura", e.target.value)}
+                  disabled={salvando}
+                >
+                  {NOMES_DIAS_COMPLETO.map((nome, i) => (
+                    <option key={nome} value={i}>
+                      {nome} às 00h
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Fecha em" icon="calendar">
+                <select
+                  value={janelaConfig.dowFechamento}
+                  onChange={(e) => salvarJanela("dowFechamento", e.target.value)}
+                  disabled={salvando}
+                >
+                  {NOMES_DIAS_COMPLETO.map((nome, i) => (
+                    <option key={nome} value={i}>
+                      {nome} às 23h59
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <p className="cfg-ajuda">
+              <Icon name="calendarCheck" size={14} />
+              <span>
+                Janela atual: <strong>{rotuloJanela(janelaConfig)}</strong>. Escala montada aos
+                sábados — o que o guia informar nessa janela vale para a semana seguinte.
+              </span>
+            </p>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Idioma dos passageiros"
+            descricao="O idioma vem do Phoenix e é comparado com os idiomas que cada guia fala (cadastro do guia)."
+          >
+            <div className="cfg-opcoes cfg-opcoes--3">
+              {[
+                {
+                  valor: "preferencial",
+                  titulo: "Preferencial",
+                  texto:
+                    "Dá preferência a quem fala o idioma. Se ninguém disponível fala, escala mesmo assim e avisa no resultado.",
+                },
+                {
+                  valor: "obrigatorio",
+                  titulo: "Obrigatório",
+                  texto:
+                    "Só escala quem fala o idioma do grupo. Sem ninguém que fale, o serviço fica sem guia e é listado no resultado.",
+                },
+                {
+                  valor: "desligado",
+                  titulo: "Desligado",
+                  texto: "Ignora o idioma na escala automática.",
+                },
+              ].map((op) => (
+                <OpcaoCard
+                  disabled={salvando}
+                  key={op.valor}
+                  ativo={modoIdioma === op.valor}
+                  onClick={() => salvarModoIdioma(op.valor)}
+                  icone="languages"
+                  titulo={op.titulo}
+                  texto={op.texto}
+                />
+              ))}
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Tamanho mínimo do grupo"
+            descricao="Serviços com menos passageiros que isso não recebem guia na escala automática. Privativos (DISP) ficam de fora da regra."
+          >
+            <div className="cfg-linha">
+              <div className="cfg-linha__texto">
+                <label htmlFor="pax-minimo">Guia a partir de (pax)</label>
+                <p>
+                  {Number(paxMinimoParaGuia) > 1
+                    ? `Passeios com menos de ${paxMinimoParaGuia} pax ficam sem guia automático (ex.: 1 pax).`
+                    : "Regra desligada: todo passeio recebe guia, mesmo com 1 pax."}
+                </p>
+              </div>
+              <input
+                id="pax-minimo"
+                type="number"
+                min="0"
+                max="20"
+                className="cfg-input cfg-input--numero"
+                value={paxMinimoParaGuia}
+                onChange={(e) => setPaxMinimoParaGuia(e.target.value)}
+                onBlur={salvarPaxMinimo}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                disabled={salvando}
+              />
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Google Drive"
+            descricao={
+              <>
+                Configuração do botão "Salvar no Drive", em Gerar Escala. O passo a passo de como
+                criar o Client ID está no arquivo <code>GOOGLE_DRIVE_SETUP.md</code>, na raiz do
+                projeto.
+              </>
+            }
+          >
+            <div className="cfg-campo-texto">
+              <label htmlFor="drive-client-id">
+                <Icon name="key" size={14} /> Client ID do Google
+              </label>
+              <input
+                id="drive-client-id"
+                type="text"
+                placeholder="123456789-abcdefg.apps.googleusercontent.com"
+                className="cfg-input"
+                value={driveClientId}
+                onChange={(e) => setDriveClientId(e.target.value)}
+                onBlur={salvarClientIdDrive}
+                disabled={salvando}
+              />
+              <p>
+                Criado no Google Cloud Console — não é um dado secreto, mas identifica este sistema
+                perante o Google. Sem ele, o botão "Salvar no Drive" avisa que falta configurar.
+              </p>
+            </div>
+
+            <div className="cfg-campo-texto">
+              <label htmlFor="pasta-drive">
+                <Icon name="folder" size={14} /> Link ou ID da pasta
+              </label>
+              <input
+                id="pasta-drive"
+                type="text"
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="cfg-input"
+                value={pastaDriveTexto}
+                onChange={(e) => setPastaDriveTexto(e.target.value)}
+                onBlur={salvarPastaDrive}
+                disabled={salvando}
+              />
+              <p>
+                Opcional. A escala sempre é salva ali, em vez da raiz do Drive de quem clicar. A
+                pasta precisa estar compartilhada com quem for usar o botão.
+              </p>
+            </div>
+          </Secao>
+
+          <p className="cfg-rodape">
+            <Icon name="save" size={14} />
+            As alterações são aplicadas automaticamente assim que você interage com os controles.
           </p>
-        </div>
-      </div>
-
-      <div className="config-layout">
-        <aside className="config-nav">
-          <button
-            className={`config-nav-item ${abaAtiva === "tema" ? "active" : ""}`}
-            onClick={() => setAbaAtiva("tema")}
-            disabled={loadingInicial || salvando}
-          >
-            <span className="config-nav-left">
-              <PaletteOutlined fontSize="small" />
-              Tema
-            </span>
-          </button>
-
-          <button
-            className={`config-nav-item ${abaAtiva === "escala" ? "active" : ""}`}
-            onClick={() => setAbaAtiva("escala")}
-            disabled={loadingInicial || salvando}
-          >
-            <span className="config-nav-left">
-              <AutoAwesomeRounded fontSize="small" />
-              Escala
-            </span>
-          </button>
-        </aside>
-
-        <section className="config-content">
-          {abaAtiva === "tema" && (
-            <div className="config-grid">
-              <div className="config-card config-card-large">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Aparência da plataforma</h3>
-                    <span className="config-badge">Visual</span>
-                  </div>
-                  <p>
-                    Escolha o tema que melhor combina com o ambiente de uso e a
-                    legibilidade da operação.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={3} />
-                ) : (
-                  <div className="theme-segmented">
-                    <button
-                      type="button"
-                      className={`theme-option ${theme === "light" ? "active" : ""}`}
-                      onClick={() => aplicarTema("light")}
-                      disabled={salvando}
-                    >
-                      <div className="theme-option-icon">
-                        <LightModeRounded fontSize="small" />
-                      </div>
-                      <div className="theme-option-text">
-                        <strong>Claro</strong>
-                        <span>Mais leve e aberto</span>
-                      </div>
-                      {theme === "light" && (
-                        <CheckCircleRounded
-                          className="theme-check"
-                          fontSize="small"
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`theme-option ${theme === "dark" ? "active" : ""}`}
-                      onClick={() => aplicarTema("dark")}
-                      disabled={salvando}
-                    >
-                      <div className="theme-option-icon">
-                        <BedtimeRounded fontSize="small" />
-                      </div>
-                      <div className="theme-option-text">
-                        <strong>Dark</strong>
-                        <span>Equilíbrio e contraste</span>
-                      </div>
-                      {theme === "dark" && (
-                        <CheckCircleRounded
-                          className="theme-check"
-                          fontSize="small"
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`theme-option ${theme === "dark-pro" ? "active" : ""}`}
-                      onClick={() => aplicarTema("dark-pro")}
-                      disabled={salvando}
-                    >
-                      <div className="theme-option-icon">
-                        <NightlightRounded fontSize="small" />
-                      </div>
-                      <div className="theme-option-text">
-                        <strong>Dark Pro</strong>
-                        <span>Mais sofisticado</span>
-                      </div>
-                      {theme === "dark-pro" && (
-                        <CheckCircleRounded
-                          className="theme-check"
-                          fontSize="small"
-                        />
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="config-card">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Resumo visual</h3>
-                    <span className="config-badge">Status</span>
-                  </div>
-                  <p>Visualização rápida do modo atualmente selecionado.</p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <div className="config-preview">
-                    <div className="config-preview-item">
-                      <span className="preview-label">Tema atual</span>
-                      <strong className="preview-value">
-                        {theme === "light"
-                          ? "Claro"
-                          : theme === "dark"
-                            ? "Dark"
-                            : "Dark Pro"}
-                      </strong>
-                    </div>
-
-                    <div className="config-preview-item">
-                      <span className="preview-label">Experiência</span>
-                      <strong className="preview-value">
-                        {theme === "light"
-                          ? "Mais limpa"
-                          : theme === "dark"
-                            ? "Mais confortável"
-                            : "Mais premium"}
-                      </strong>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {abaAtiva === "escala" && (
-            <div className="config-grid">
-              <div className="config-card config-card-large">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Modo de distribuição</h3>
-                    <span className="config-badge">Regra principal</span>
-                  </div>
-                  <p>
-                    Defina a lógica usada para distribuir os serviços entre os
-                    guias na geração automática.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <div className="radio-card-group">
-                    <button
-                      type="button"
-                      className={`radio-card ${modoDistribuicaoGuias === "equilibrado" ? "active" : ""
-                        }`}
-                      onClick={() => salvarModo("equilibrado")}
-                      disabled={salvando}
-                    >
-                      <div className="radio-card-top">
-                        <div className="radio-card-icon">
-                          <Insights fontSize="small" />
-                        </div>
-                        <span className="radio-indicator" />
-                      </div>
-
-                      <strong>Equilibrado</strong>
-                      <p>
-                        Distribui os serviços de forma mais justa entre os guias,
-                        ajudando a equilibrar melhor a operação.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`radio-card ${modoDistribuicaoGuias === "seguir_nivel_selecionado"
-                          ? "active"
-                          : ""
-                        }`}
-                      onClick={() => salvarModo("seguir_nivel_selecionado")}
-                      disabled={salvando}
-                    >
-                      <div className="radio-card-top">
-                        <div className="radio-card-icon">
-                          <AutoAwesomeRounded fontSize="small" />
-                        </div>
-                        <span className="radio-indicator" />
-                      </div>
-
-                      <strong>Prioridade</strong>
-                      <p>
-                        Favorece guias com maior nível de prioridade durante a
-                        geração da escala automática.
-                      </p>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="config-card">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Afinidade operacional</h3>
-                    <span className="config-badge">Automação</span>
-                  </div>
-                  <p>
-                    Ative ou desative o uso da afinidade entre guia e passeio.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <div className="switch-row">
-                    <div className="switch-copy">
-                      <label
-                        className="switch-title"
-                        htmlFor="afinidade-switch"
-                      >
-                        Usar afinidade guia x passeio{" "}
-                        <Tune fontSize="small" />
-                      </label>
-                      <p className="config-help">
-                        {usarAfinidadeGuiaPasseio
-                          ? "A escala automática considera o histórico e o vínculo operacional entre guia e passeio."
-                          : "A escala automática ignora o mapeamento de afinidade e distribui sem considerar esse relacionamento."}
-                      </p>
-                    </div>
-
-                    <button
-                      id="afinidade-switch"
-                      type="button"
-                      className={`modern-switch ${usarAfinidadeGuiaPasseio ? "active" : ""
-                        }`}
-                      onClick={() =>
-                        salvarUsoAfinidade(!usarAfinidadeGuiaPasseio)
-                      }
-                      aria-pressed={usarAfinidadeGuiaPasseio}
-                      disabled={salvando}
-                    >
-                      <span className="modern-switch-track">
-                        <span className="modern-switch-thumb" />
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="config-card config-card-large">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Janela de disponibilidade dos guias</h3>
-                    <span className="config-badge">Regra principal</span>
-                  </div>
-                  <p>
-                    Dias em que os guias conseguem enviar, alterar ou remover
-                    a própria disponibilidade — fora desses dias, a tela fica
-                    bloqueada para eles.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <>
-                    <div className="janela-escala-selects">
-                      <label className="janela-escala-campo">
-                        <span>Abre em</span>
-                        <select
-                          value={janelaConfig.dowAbertura}
-                          onChange={(e) =>
-                            salvarJanela("dowAbertura", e.target.value)
-                          }
-                          disabled={salvando}
-                        >
-                          {NOMES_DIAS_COMPLETO.map((nome, i) => (
-                            <option key={nome} value={i}>
-                              {nome} às 00h
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="janela-escala-campo">
-                        <span>Fecha em</span>
-                        <select
-                          value={janelaConfig.dowFechamento}
-                          onChange={(e) =>
-                            salvarJanela("dowFechamento", e.target.value)
-                          }
-                          disabled={salvando}
-                        >
-                          {NOMES_DIAS_COMPLETO.map((nome, i) => (
-                            <option key={nome} value={i}>
-                              {nome} às 23h59
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-
-                    <p className="config-help">
-                      <EventAvailableRounded fontSize="inherit" /> Janela
-                      atual: <strong>{rotuloJanela(janelaConfig)}</strong>.
-                      Escala montada aos sábados — o que o guia informar nessa
-                      janela vale para a semana seguinte.
-                    </p>
-                  </>
-                )}
-              </div>
-
-              <div className="config-card config-card-large">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Idioma dos passageiros</h3>
-                    <span className="config-badge">Automação</span>
-                  </div>
-                  <p>
-                    O idioma vem do Phoenix e é comparado com os idiomas que
-                    cada guia fala (cadastro do guia).
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <div className="radio-card-group">
-                    {[
-                      {
-                        valor: "preferencial",
-                        titulo: "Preferencial",
-                        texto:
-                          "Dá preferência a quem fala o idioma. Se ninguém disponível fala, escala mesmo assim e avisa no resultado.",
-                      },
-                      {
-                        valor: "obrigatorio",
-                        titulo: "Obrigatório",
-                        texto:
-                          "Só escala quem fala o idioma do grupo. Sem ninguém que fale, o serviço fica sem guia e é listado no resultado.",
-                      },
-                      {
-                        valor: "desligado",
-                        titulo: "Desligado",
-                        texto: "Ignora o idioma na escala automática.",
-                      },
-                    ].map((op) => (
-                      <button
-                        key={op.valor}
-                        type="button"
-                        className={`radio-card ${modoIdioma === op.valor ? "active" : ""}`}
-                        onClick={() => salvarModoIdioma(op.valor)}
-                        disabled={salvando}
-                      >
-                        <div className="radio-card-top">
-                          <div className="radio-card-icon">
-                            <LanguageRounded fontSize="small" />
-                          </div>
-                          <span className="radio-indicator" />
-                        </div>
-
-                        <strong>{op.titulo}</strong>
-                        <p>{op.texto}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="config-card">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Tamanho mínimo do grupo</h3>
-                    <span className="config-badge">Automação</span>
-                  </div>
-                  <p>
-                    Serviços com menos passageiros que isso não recebem guia na
-                    escala automática. Privativos (DISP) ficam de fora da regra.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <div className="switch-row">
-                    <div className="switch-copy">
-                      <label className="switch-title" htmlFor="pax-minimo">
-                        Guia a partir de (pax){" "}
-                        <GroupsRounded fontSize="small" />
-                      </label>
-                      <p className="config-help">
-                        {Number(paxMinimoParaGuia) > 1
-                          ? `Passeios com menos de ${paxMinimoParaGuia} pax ficam sem guia automático (ex.: 1 pax).`
-                          : "Regra desligada: todo passeio recebe guia, mesmo com 1 pax."}
-                      </p>
-                    </div>
-
-                    <input
-                      id="pax-minimo"
-                      type="number"
-                      min="0"
-                      max="20"
-                      className="config-number-input"
-                      value={paxMinimoParaGuia}
-                      onChange={(e) => setPaxMinimoParaGuia(e.target.value)}
-                      onBlur={salvarPaxMinimo}
-                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                      disabled={salvando}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="config-card config-card-large">
-                <div className="config-card-header">
-                  <div className="config-card-title-row">
-                    <h3>Google Drive</h3>
-                    <span className="config-badge">Opcional</span>
-                  </div>
-                  <p>
-                    Configuração do botão "Salvar no Drive", em Gerar Escala.
-                    O passo a passo de como criar o Client ID está no arquivo{" "}
-                    <code>GOOGLE_DRIVE_SETUP.md</code>, na raiz do projeto.
-                  </p>
-                </div>
-
-                {loadingInicial ? (
-                  <CardSkeleton variant="list" rows={2} />
-                ) : (
-                  <>
-                    <div className="switch-row">
-                      <div className="switch-copy">
-                        <label className="switch-title" htmlFor="drive-client-id">
-                          Client ID do Google <VpnKeyRounded fontSize="small" />
-                        </label>
-                        <p className="config-help">
-                          Criado no Google Cloud Console — não é um dado
-                          secreto, mas identifica este sistema perante o
-                          Google. Sem ele, o botão "Salvar no Drive" avisa
-                          que falta configurar.
-                        </p>
-                      </div>
-
-                      <input
-                        id="drive-client-id"
-                        type="text"
-                        placeholder="123456789-abcdefg.apps.googleusercontent.com"
-                        className="config-text-input"
-                        value={driveClientId}
-                        onChange={(e) => setDriveClientId(e.target.value)}
-                        onBlur={salvarClientIdDrive}
-                        disabled={salvando}
-                      />
-                    </div>
-
-                    <div className="switch-row">
-                      <div className="switch-copy">
-                        <label className="switch-title" htmlFor="pasta-drive">
-                          Link ou ID da pasta <FolderSharedRounded fontSize="small" />
-                        </label>
-                        <p className="config-help">
-                          Opcional. A escala sempre é salva ali, em vez da
-                          raiz do Drive de quem clicar. A pasta precisa estar
-                          compartilhada com quem for usar o botão.
-                        </p>
-                      </div>
-
-                      <input
-                        id="pasta-drive"
-                        type="text"
-                        placeholder="https://drive.google.com/drive/folders/..."
-                        className="config-text-input"
-                        value={pastaDriveTexto}
-                        onChange={(e) => setPastaDriveTexto(e.target.value)}
-                        onBlur={salvarPastaDrive}
-                        disabled={salvando}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="config-status-card">
-                <div className="config-status-top">
-                  <div>
-                    <h4>Estado da configuração</h4>
-                    <p>
-                      As alterações são aplicadas automaticamente assim que você
-                      interage com os controles.
-                    </p>
-                  </div>
-
-                  <div className="config-status-icon">
-                    <SaveRounded fontSize="small" />
-                  </div>
-                </div>
-
-                {loadingInicial ? (
-                  <span className="config-saving">Carregando configuração...</span>
-                ) : salvando ? (
-                  <span className="config-saving">Salvando configuração...</span>
-                ) : (
-                  <span className="config-saved">Tudo sincronizado</span>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
+        </Card>
+      )}
     </div>
   );
 };

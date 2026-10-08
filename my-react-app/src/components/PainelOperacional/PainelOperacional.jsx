@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   collection,
@@ -11,37 +11,135 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 
-import {
-  FlightTakeoffRounded,
-  FlightLandRounded,
-  CalendarMonthRounded,
-  RefreshRounded,
-  AccessTimeRounded,
-  GroupsRounded,
-  Inventory2Rounded,
-  WarningAmberRounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-  FilterAltRounded,
-  DirectionsBusRounded,
-  HotelRounded,
-  SyncRounded,
-  SearchRounded,
-  AssignmentRounded,
-  PersonRounded,
-  ContentCopyRounded,
-  CheckRounded,
-  TourRounded,
-  EditRounded,
-  CloseRounded,
-  AddCircleRounded,
-} from "@mui/icons-material";
 import jsPDF from "jspdf";
 import logoLuck from "../../assets/clover.png";
-import "./styles.css";
+import "./painel.css";
+import {
+  Button,
+  Card,
+  CardHeader,
+  Drawer,
+  EmptyState,
+  Field,
+  FilterBar,
+  Icon,
+  KpiTiles,
+  PageHeader,
+  Segmented,
+  StatusDot,
+  Table,
+  TableExpansion,
+  TableHead,
+  TableRow,
+} from "../ui";
+import { usePhoenixStatus } from "../Shell/shellContext";
+
+// status do voo → tom e ícone (atrasado/cancelado em --alert)
+// ícones da linha de OUT/Transfer (só apresentação)
+const iconeTipoServico = (tipo = "") =>
+  tipo === "TRANSFER" ? "navigation" : tipo === "IN" ? "planeLanding" : "planeTakeoff";
+
+const iconeModalidade = (modalidade = "") => {
+  const m = String(modalidade).toUpperCase();
+  if (m.includes("PRIV")) return "user";
+  if (m.includes("EXEC")) return "star";
+  return "users";
+};
+
+const fornecedorInformado = (nome = "") => {
+  const n = String(nome || "").trim().toLowerCase();
+  return !!n && !n.includes("não informado") && !n.includes("nao informado");
+};
+
+const tomStatusVoo = (statusKey) => {
+  switch (statusKey) {
+    case "atrasado":
+    case "pousado-atrasado":
+    case "cancelado":
+      return { tone: "alert", icon: "alert" };
+    case "antecipado":
+    case "pousado-antecipado":
+      return { tone: "warning", icon: statusKey === "antecipado" ? "clock" : "planeLanding" };
+    case "pousado":
+      return { tone: "neutral", icon: "planeLanding" };
+    case "no-horario":
+      return { tone: "accent", icon: "circleCheck" };
+    default:
+      return { tone: "muted", icon: "clock" };
+  }
+};
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
+
+/* ---------------------------------------------------------
+   Painel de chegadas do aeroporto de Salvador (mesmo backend
+   que o Robô Conferente usa). Só é consultado quando a data
+   do painel é HOJE, para conferir o status real dos voos.
+   --------------------------------------------------------- */
+const API_AEROPORTO = "https://guia-app.onrender.com";
+const AEROPORTO_INTERVALO_MS = 5 * 60 * 1000; // atualiza sozinho a cada 5 min
+
+// "G3 1234", "G31234", "AD-4512", "4512" → "4512".
+// O código da companhia (2 caracteres, ex.: G3, 2Z) pode ter dígito,
+// então ele sai antes de pegar só os números.
+const numeroDoVoo = (valor = "") => {
+  let texto = String(valor || "").toUpperCase().replace(/[\s-]+/g, "");
+  if (/^([A-Z][A-Z0-9]|[0-9][A-Z])\d/.test(texto)) texto = texto.slice(2);
+  const digitos = texto.replace(/\D/g, "");
+  return digitos ? String(Number(digitos)) : "";
+};
+
+const normalizarChegadasAeroporto = (payload) =>
+  (Array.isArray(payload) ? payload : []).map((item) => ({
+    numero: numeroDoVoo(item?.Number),
+    numeroBruto: String(item?.Number || "").trim(),
+    companhia: String(item?.Airliner || "").trim(),
+    origem: String(item?.Airport || item?.Route || "").trim(),
+    previsto: item?.ScheduleTime || item?.FormattedTime || "",
+    operacao: item?.OperationTime || "",
+    status: String(item?.StatusT || item?.Status || "").trim(),
+  }));
+
+// mapa número do voo → lista de voos do painel do aeroporto
+const indexarChegadasAeroporto = (lista = []) => {
+  const mapa = new Map();
+  lista.forEach((voo) => {
+    if (!voo.numero) return;
+    if (!mapa.has(voo.numero)) mapa.set(voo.numero, []);
+    mapa.get(voo.numero).push(voo);
+  });
+  return mapa;
+};
+
+// mesmo número pode aparecer mais de uma vez: fica o de horário previsto mais próximo
+const acharVooNoAeroporto = (mapa, codigoVoo, horarioPrevisto) => {
+  const candidatos = mapa.get(numeroDoVoo(codigoVoo)) || [];
+  if (candidatos.length <= 1) return candidatos[0] || null;
+
+  const alvo = extrairHoraMinutos(horarioPrevisto);
+  if (alvo === null) return candidatos[0];
+
+  return [...candidatos].sort((a, b) => {
+    const da = Math.abs((extrairHoraMinutos(a.previsto) ?? 9999) - alvo);
+    const db = Math.abs((extrairHoraMinutos(b.previsto) ?? 9999) - alvo);
+    return da - db;
+  })[0];
+};
+
+const situacaoAeroporto = (status = "") => {
+  const s = normalizarTexto(status);
+  return {
+    cancelado: s.includes("cancel"),
+    pousado:
+      s.includes("pous") ||
+      s.includes("aterr") ||
+      s.includes("chegou") ||
+      s.includes("desembar") ||
+      s.includes("landed") ||
+      s.includes("arrived"),
+  };
+};
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -293,21 +391,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -722,11 +820,13 @@ const classificarStatusVoo = (status = "") => {
   const s = normalizarTexto(status);
 
   if (s.includes("cancel")) return "cancelado";
+  // "pousado ..." antes de "atras"/"antecip": senão "Pousado antecipado"
+  // virava "Antecipado" e "Pousado com atraso" virava "Atrasado"
+  if (s.includes("pousado com atraso")) return "pousado-atrasado";
+  if (s.includes("pousado antecipado")) return "pousado-antecipado";
   if (s.includes("atras")) return "atrasado";
   if (s.includes("delay")) return "atrasado";
   if (s.includes("antecip")) return "antecipado";
-  if (s.includes("pousado com atraso")) return "pousado-atrasado";
-  if (s.includes("pousado antecipado")) return "pousado-antecipado";
   if (s.includes("pousado no horario")) return "pousado";
   if (s.includes("pousado")) return "pousado";
   if (s.includes("land")) return "pousado";
@@ -865,12 +965,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -906,10 +1006,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1244,6 +1344,14 @@ export default function PainelOperacionalUnificado() {
   const [erro, setErro] = useState("");
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
 
+  // painel do aeroporto (só para a data de hoje)
+  const [chegadasAeroporto, setChegadasAeroporto] = useState([]);
+  const [aeroporto, setAeroporto] = useState({
+    carregando: false,
+    erro: "",
+    atualizadoEm: null,
+  });
+
   const [itensChegadas, setItensChegadas] = useState([]);
   const [itensOuts, setItensOuts] = useState([]);
   const [itensGuias, setItensGuias] = useState([]);
@@ -1275,6 +1383,7 @@ export default function PainelOperacionalUnificado() {
   const [placaPersonalizadaNome, setPlacaPersonalizadaNome] = useState("");
   const [placaPersonalizadaVoo, setPlacaPersonalizadaVoo] = useState("");
   const [placaEmEdicao, setPlacaEmEdicao] = useState(null);
+  const [drawerConfigPlacas, setDrawerConfigPlacas] = useState(false);
   const [nomesPlacaOverride, setNomesPlacaOverride] = useState({});
 
   const [configPlacas, setConfigPlacas] = useState(() => {
@@ -1283,18 +1392,18 @@ export default function PainelOperacionalUnificado() {
       return salvo
         ? { ...JSON.parse(salvo), logoUrl: logoLuck }
         : {
-            repetirCabecalhoVooAoQuebrarPagina: true,
-            mostrarLogoNasPlacas: true,
-            quantidadePorPaginaColecao: 5,
-            fundoPlaca: [255, 255, 255],
-            fundoHeader: [238, 238, 238],
-            bordaPlaca: [196, 196, 196],
-            linhaDivisoria: [90, 90, 90],
-            corTitulo: [65, 74, 95],
-            corTexto: [65, 74, 95],
-            corDestaque: [65, 74, 95],
-            corData: [90, 90, 90],
-          };
+          repetirCabecalhoVooAoQuebrarPagina: true,
+          mostrarLogoNasPlacas: true,
+          quantidadePorPaginaColecao: 5,
+          fundoPlaca: [255, 255, 255],
+          fundoHeader: [238, 238, 238],
+          bordaPlaca: [196, 196, 196],
+          linhaDivisoria: [90, 90, 90],
+          corTitulo: [65, 74, 95],
+          corTexto: [65, 74, 95],
+          corDestaque: [65, 74, 95],
+          corData: [90, 90, 90],
+        };
     } catch {
       return {
         repetirCabecalhoVooAoQuebrarPagina: true,
@@ -1440,6 +1549,51 @@ export default function PainelOperacionalUnificado() {
     carregarDados(abaAtiva, false);
   }, [abaAtiva, dataSelecionada]);
 
+  const ehHoje = dataSelecionada === getHojeIso();
+
+  const carregarAeroporto = useCallback(async () => {
+    if (!ehHoje) {
+      setChegadasAeroporto([]);
+      setAeroporto({ carregando: false, erro: "", atualizadoEm: null });
+      return;
+    }
+
+    setAeroporto((prev) => ({ ...prev, carregando: true, erro: "" }));
+    try {
+      const resp = await fetch(`${API_AEROPORTO}/api/aeroporto/arrivals`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      setChegadasAeroporto(normalizarChegadasAeroporto(json?.data || json));
+      setAeroporto({ carregando: false, erro: "", atualizadoEm: new Date() });
+    } catch (err) {
+      console.error("Erro ao consultar o painel do aeroporto:", err);
+      setAeroporto((prev) => ({
+        ...prev,
+        carregando: false,
+        erro: "Não foi possível consultar o painel do aeroporto agora.",
+      }));
+    }
+  }, [ehHoje]);
+
+  // Chegadas + hoje: consulta ao abrir e a cada 5 minutos
+  useEffect(() => {
+    if (abaAtiva !== ABAS.CHEGADAS || !ehHoje) {
+      if (!ehHoje) carregarAeroporto(); // limpa os dados de outro dia
+      return undefined;
+    }
+    carregarAeroporto();
+    const timer = setInterval(carregarAeroporto, AEROPORTO_INTERVALO_MS);
+    return () => clearInterval(timer);
+  }, [abaAtiva, ehHoje, carregarAeroporto]);
+
+  const indiceAeroporto = useMemo(
+    () => indexarChegadasAeroporto(chegadasAeroporto),
+    [chegadasAeroporto],
+  );
+
   const voosBase = useMemo(() => {
     const mapa = {};
 
@@ -1495,7 +1649,23 @@ export default function PainelOperacionalUnificado() {
   }, [itensChegadas]);
 
   const voos = useMemo(() => {
-    return voosBase.map((voo) => {
+    return voosBase.map((vooPhoenix) => {
+      // Hoje: completa com o painel do aeroporto o que o Phoenix não traz
+      // (horário de operação, cancelado, pousado). Phoenix tem prioridade.
+      const noAeroporto = ehHoje
+        ? acharVooNoAeroporto(indiceAeroporto, vooPhoenix.voo, vooPhoenix.horarioPrevisto)
+        : null;
+      const situacao = situacaoAeroporto(noAeroporto?.status);
+      const voo = noAeroporto
+        ? {
+          ...vooPhoenix,
+          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+          cancelado: vooPhoenix.cancelado || situacao.cancelado,
+          pousado: vooPhoenix.pousado || situacao.pousado,
+          aeroporto: noAeroporto,
+        }
+        : vooPhoenix;
+
       const calculoStatus = calcularStatusVooPorHorario({
         horarioDecolagem: voo.horarioDecolagem,
         horarioPrevistoChegada: voo.horarioPrevisto,
@@ -1581,7 +1751,7 @@ export default function PainelOperacionalUnificado() {
         totalmenteNaoEscalado,
       };
     });
-  }, [voosBase]);
+  }, [voosBase, ehHoje, indiceAeroporto]);
 
   const voosFiltrados = useMemo(() => {
     let lista = voos;
@@ -1782,7 +1952,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2138,8 +2308,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2424,1626 +2594,1104 @@ export default function PainelOperacionalUnificado() {
     }
   };
 
+  // indicador "Phoenix · HH:MM" da topbar: chama o mesmo "Atualizar" da tela
+  usePhoenixStatus({
+    atualizadoEm: ultimaAtualizacao,
+    carregando,
+    atualizar: () => {
+      carregarDados(abaAtiva, true);
+      if (abaAtiva === ABAS.CHEGADAS) carregarAeroporto();
+    },
+  });
+
+  const valorKpi = (valor) => (carregando ? "…" : valor);
+
+  const totaisOut = {
+    outs: gruposOutBase.filter((g) => g.tipoServico === "OUT").length,
+    transfers: gruposOutBase.filter((g) => g.tipoServico === "TRANSFER").length,
+    reservas: gruposOutBase.reduce((acc, g) => acc + g.totalReservas, 0),
+    pax: gruposOutBase.reduce((acc, g) => acc + g.totalPax, 0),
+    hoteis: gruposOutBase.reduce((acc, g) => acc + g.hoteis.length, 0),
+    monitorados: gruposOutBase.filter((g) => monitoradosOut[g.id]).length,
+  };
+
+  const nomeAba =
+    abaAtiva === ABAS.CHEGADAS
+      ? "Chegadas"
+      : abaAtiva === ABAS.OUTS
+        ? "OUT's e Transfers"
+        : "Passeios";
+
+  const contagemAba = (aba) => {
+    if (aba !== abaAtiva || carregando) return undefined;
+    if (aba === ABAS.CHEGADAS) return voosFiltrados.length;
+    if (aba === ABAS.OUTS) return gruposOutFiltrados.length;
+    return gruposGuiasFiltrados.length;
+  };
+
+  const renderCarregando = (texto = "Atualizando serviços do dia...") => (
+    <div className="painel-op-loading">
+      <Icon name="loader" size={16} className="ui-spin" />
+      <span>{texto}</span>
+    </div>
+  );
+
   return (
-    <div className="painel-chegadas-page">
-      <div className="painel-chegadas-top-status">
-        {carregando && (
+    <div className="painel-op ui-page">
+      <PageHeader
+        title="Painel Operacional"
+        description="Chegadas, OUT's e passeios do dia, direto do Phoenix."
+        more={[
+          abaAtiva === ABAS.CHEGADAS && {
+            label: "Configurações das placas PDF",
+            icon: "sliders",
+            onClick: () => setDrawerConfigPlacas(true),
+          },
+        ].filter(Boolean)}
+        actions={
           <>
-            <SyncRounded className="spin" fontSize="small" />
-            <span>Atualizando...</span>
-          </>
-        )}
-      </div>
-
-      <div className="painel-chegadas-header">
-        <div>
-          <h2 className="painel-chegadas-title">
-            <AssignmentRounded fontSize="small" />
-            Painel Operacional
-          </h2>
-          <p className="painel-chegadas-subtitle">
-            Componente único com navegação entre Chegadas, OUT's e Passeios.
-          </p>
-        </div>
-      </div>
-
-      <div className="painel-chegadas-grid">
-        <div className="painel-chegadas-card painel-chegadas-tabs-card">
-          <div className="painel-chegadas-card-header">
-            <div className="painel-chegadas-card-title-row">
-              <h3>Navegação</h3>
-              <span className="painel-chegadas-badge">painel unificado</span>
-            </div>
-            <p>Alterne entre Chegadas, OUT's e Passeios no mesmo ambiente.</p>
-          </div>
-          
-          <div className="painel-chegadas-tabs">
-            <button
-              type="button"
-              className={`painel-chegadas-tab ${abaAtiva === ABAS.CHEGADAS ? "active" : ""}`}
-              onClick={() => setAbaAtiva(ABAS.CHEGADAS)}
-              disabled={carregando}
-            >
-              <FlightLandRounded fontSize="small" />
-              Chegadas
-            </button>
-
-            <button
-              type="button"
-              className={`painel-chegadas-tab ${abaAtiva === ABAS.OUTS ? "active" : ""}`}
-              onClick={() => setAbaAtiva(ABAS.OUTS)}
-              disabled={carregando}
-            >
-              <FlightTakeoffRounded fontSize="small" />
-              OUT's
-            </button>
-
-            <button
-              type="button"
-              className={`painel-chegadas-tab ${abaAtiva === ABAS.GUIAS ? "active" : ""}`}
-              onClick={() => setAbaAtiva(ABAS.GUIAS)}
-              disabled={carregando}
-            >
-              <TourRounded fontSize="small" />
-              Passeios
-            </button>
-          </div>
-        </div>
-
-        <div className="painel-chegadas-card painel-chegadas-card-large">
-          <div className="painel-chegadas-card-header">
-            <div className="painel-chegadas-card-title-row">
-              <h3>Parâmetros</h3>
-              <span className="painel-chegadas-badge">
-                {formatarDataBr(dataSelecionada)}
-              </span>
-            </div>
-            <p>
-              Selecione a data operacional e atualize a leitura da aba atual.
-            </p>
-          </div>
-
-          <div className="painel-chegadas-toolbar">
-            <div className="painel-chegadas-field">
-              <label>
-                <CalendarMonthRounded fontSize="small" />
-                Data operacional
-              </label>
-              <input
-                className="painel-chegadas-input"
-                type="date"
-                value={dataSelecionada}
-                onChange={(e) => setDataSelecionada(e.target.value)}
-                disabled={carregando}
-              />
-            </div>
-
-            <div className="painel-chegadas-field">
-              <label>
-                <SearchRounded fontSize="small" />
-                Buscar reserva (nome ou código)
-              </label>
-              <input
-                className="painel-chegadas-input"
-                type="text"
-                value={termoBusca}
-                onChange={(e) => setTermoBusca(e.target.value)}
-                placeholder="Ex: João Silva ou 123456"
-              />
-            </div>
-
             {abaAtiva === ABAS.CHEGADAS && (
-              <>
-                <div className="painel-chegadas-field">
-                  <label>
-                    <FilterAltRounded fontSize="small" />
-                    Filtrar status do voo
-                  </label>
-                  <select
-                    className="painel-chegadas-input"
-                    value={filtroStatus}
-                    onChange={(e) => setFiltroStatus(e.target.value)}
-                    disabled={carregando}
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="programado">Programado</option>
-                    <option value="no-horario">No horário</option>
-                    <option value="atrasado">Atrasado</option>
-                    <option value="antecipado">Antecipado</option>
-                    <option value="cancelado">Cancelado</option>
-                    <option value="pousado">Pousado</option>
-                    <option value="pousado-atrasado">Pousado com atraso</option>
-                    <option value="pousado-antecipado">
-                      Pousado antecipado
-                    </option>
-                    <option value="sem-info">Sem informação</option>
-                  </select>
-                </div>
-
-                <div className="painel-chegadas-field">
-                  <label>
-                    <FilterAltRounded fontSize="small" />
-                    Filtrar escala
-                  </label>
-                  <select
-                    className="painel-chegadas-input"
-                    value={filtroEscala}
-                    onChange={(e) => setFiltroEscala(e.target.value)}
-                    disabled={carregando}
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="com-escaladas">
-                      Com reservas escaladas
-                    </option>
-                    <option value="com-nao-escaladas">
-                      Com reservas não escaladas
-                    </option>
-                    <option value="somente-nao-escalados">
-                      Somente totalmente não escalados
-                    </option>
-                  </select>
-                </div>
-              </>
+              <Button icon="plus" onClick={abrirPopupNovaPlaca}>
+                Nova placa personalizada
+              </Button>
             )}
-
+            <Button
+              icon="refresh"
+              onClick={() => {
+                carregarDados(abaAtiva, true);
+                if (abaAtiva === ABAS.CHEGADAS) carregarAeroporto();
+              }}
+              disabled={carregando}
+              loading={atualizando}
+            >
+              {atualizando ? "Atualizando..." : "Atualizar"}
+            </Button>
             {abaAtiva === ABAS.GUIAS && (
-              <div className="painel-chegadas-field">
-                <label>
-                  <FilterAltRounded fontSize="small" />
-                  Filtrar guia
-                </label>
-                <select
-                  className="painel-chegadas-input"
-                  value={filtroGuia}
-                  onChange={(e) => setFiltroGuia(e.target.value)}
-                  disabled={carregando}
-                >
-                  <option value="todos">Todos</option>
-                  {guiasDisponiveis.map((guia) => (
-                    <option key={guia} value={guia}>
-                      {guia}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="painel-chegadas-actions">
-              {abaAtiva === ABAS.CHEGADAS && (
-                <button
-                  type="button"
-                  className="painel-chegadas-google-btn"
-                  onClick={abrirPopupNovaPlaca}
-                >
-                  <AddCircleRounded fontSize="small" />
-                  Nova placa personalizada
-                </button>
-              )}
-
-              <button
-                type="button"
-                className="painel-chegadas-btn-primary"
-                onClick={() => carregarDados(abaAtiva, true)}
-                disabled={carregando}
+              <Button
+                variant="primary"
+                icon={copiado ? "check" : "copy"}
+                onClick={copiarResumo}
+                disabled={carregando || !gruposGuiasFiltrados.length}
+                title="Copia a lista de passeios do dia (guia, pax, veículos e ponto de apoio)"
               >
-                <RefreshRounded
-                  fontSize="small"
-                  className={atualizando ? "spin" : ""}
-                />
-                {atualizando ? "Atualizando..." : "Atualizar"}
-              </button>
-            </div>
-          </div>
-        </div>
+                {copiado ? "Copiado!" : carregando ? "Carregando..." : "Copiar resumo"}
+              </Button>
+            )}
+          </>
+        }
+      />
 
-        <div className="painel-chegadas-card">
-          <div className="painel-chegadas-card-header">
-            <div className="painel-chegadas-card-title-row">
-              <h3>Última atualização</h3>
-            </div>
-            <p>Horário da última leitura da API.</p>
-          </div>
+      <Segmented
+        ariaLabel="Tipo de serviço"
+        value={abaAtiva}
+        onChange={setAbaAtiva}
+        options={[
+          {
+            value: ABAS.CHEGADAS,
+            label: "Chegadas",
+            icon: "planeLanding",
+            count: contagemAba(ABAS.CHEGADAS),
+            disabled: carregando,
+          },
+          {
+            value: ABAS.OUTS,
+            label: "OUT's",
+            icon: "planeTakeoff",
+            count: contagemAba(ABAS.OUTS),
+            disabled: carregando,
+          },
+          {
+            value: ABAS.GUIAS,
+            label: "Passeios",
+            icon: "compass",
+            count: contagemAba(ABAS.GUIAS),
+            disabled: carregando,
+          },
+        ]}
+      />
 
-          <div className="painel-chegadas-stat">
-            <div className="painel-chegadas-stat-icon">
-              <AccessTimeRounded fontSize="small" />
-            </div>
-            <div>
-              <span>Atualizado em</span>
-              <strong>
-                {carregando ? (
-                  <SyncRounded className="spin" fontSize="small" />
-                ) : ultimaAtualizacao ? (
-                  ultimaAtualizacao.toLocaleString("pt-BR")
-                ) : (
-                  "--"
-                )}
-              </strong>
-            </div>
-          </div>
-        </div>
+      <FilterBar>
+        <Field label="Data operacional" icon="calendar">
+          <input
+            type="date"
+            value={dataSelecionada}
+            onChange={(e) => setDataSelecionada(e.target.value)}
+            disabled={carregando}
+          />
+        </Field>
 
-        {erro ? (
-          <div className="painel-chegadas-card painel-chegadas-card-full">
-            <div className="painel-chegadas-empty">
-              <WarningAmberRounded fontSize="small" />
-              <span>{erro}</span>
-            </div>
-          </div>
-        ) : null}
-
-        {termoBusca.trim() ? (
-          <div className="painel-chegadas-card painel-chegadas-card-full">
-            <div className="painel-chegadas-card-header">
-              <div className="painel-chegadas-card-title-row">
-                <h3>Resultados da busca</h3>
-                <span className="painel-chegadas-badge">
-                  {resultadosBusca.length} encontrado(s)
-                </span>
-              </div>
-              <p>
-                Busca restrita à aba atual:{" "}
-                {abaAtiva === ABAS.CHEGADAS
-                  ? "Chegadas"
-                  : abaAtiva === ABAS.OUTS
-                    ? "OUT's e Transfers"
-                    : "Passeios"}
-                .
-              </p>
-            </div>
-
-            <div className="painel-chegadas-panel-body">
-              {!resultadosBusca.length ? (
-                <div className="painel-chegadas-inline-empty">
-                  <WarningAmberRounded fontSize="small" />
-                  <span>
-                    Nenhuma reserva encontrada para &quot;{termoBusca}&quot;.
-                  </span>
-                </div>
-              ) : (
-                <div className="painel-chegadas-table-wrap">
-                  <table className="painel-chegadas-table">
-                    <thead>
-                      <tr>
-                        <th>Tipo</th>
-                        <th>Cliente</th>
-                        <th>Reserva</th>
-                        <th>Fornecedor</th>
-                        <th>Origem</th>
-                        <th>Destino</th>
-                        {abaAtiva === ABAS.CHEGADAS && (
-                          <>
-                            <th>Voo</th>
-                            <th>Horário de chegada</th>
-                          </>
-                        )}
-                        {abaAtiva === ABAS.OUTS && (
-                          <>
-                            <th>Horário de busca</th>
-                            <th>Voo de retorno</th>
-                          </>
-                        )}
-                        {abaAtiva === ABAS.GUIAS && (
-                          <th>Horário de busca no hotel</th>
-                        )}
-                        <th>Pax</th>
-                        <th>OBS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultadosBusca.map((resultado) => (
-                        <tr key={resultado.id}>
-                          <td>{resultado.tipo}</td>
-                          <td>{resultado.cliente}</td>
-                          <td>{resultado.codigo}</td>
-                          <td>{resultado.fornecedor}</td>
-                          <td>{resultado.origem}</td>
-                          <td>{resultado.destino}</td>
-                          {abaAtiva === ABAS.CHEGADAS && (
-                            <>
-                              <td>{resultado.numeroVoo}</td>
-                              <td>{resultado.horarioChegada}</td>
-                            </>
-                          )}
-                          {abaAtiva === ABAS.OUTS && (
-                            <>
-                              <td>{resultado.horarioBusca}</td>
-                              <td>{resultado.vooRetorno}</td>
-                            </>
-                          )}
-                          {abaAtiva === ABAS.GUIAS && (
-                            <td>{resultado.horarioBusca}</td>
-                          )}
-                          <td>{resultado.pax}</td>
-                          <td>{resultado.observacao || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
+        <Field label="Buscar reserva (nome ou código)" icon="search" grow>
+          <input
+            type="text"
+            value={termoBusca}
+            onChange={(e) => setTermoBusca(e.target.value)}
+            placeholder="Ex: João Silva ou 123456"
+          />
+        </Field>
 
         {abaAtiva === ABAS.CHEGADAS && (
           <>
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card painel-chegadas-card-full">
-                  <div className="painel-chegadas-card-header">
-                    <div className="painel-chegadas-card-title-row">
-                      <h3>Configurações das placas PDF</h3>
-                      <span className="painel-chegadas-badge">chegadas</span>
-                    </div>
-                    <p>
-                      Ajuste o comportamento da impressão individual e da
-                      coleção.
-                    </p>
-                  </div>
+            <Field label="Status do voo" icon="filter">
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                disabled={carregando}
+              >
+                <option value="todos">Todos</option>
+                <option value="programado">Programado</option>
+                <option value="no-horario">No horário</option>
+                <option value="atrasado">Atrasado</option>
+                <option value="antecipado">Antecipado</option>
+                <option value="cancelado">Cancelado</option>
+                <option value="pousado">Pousado</option>
+                <option value="pousado-atrasado">Pousado com atraso</option>
+                <option value="pousado-antecipado">Pousado antecipado</option>
+                <option value="sem-info">Sem informação</option>
+              </select>
+            </Field>
 
-                  <div className="painel-chegadas-toolbar">
-                    <div className="painel-chegadas-field">
-                      <label>Qtd. por página na coleção</label>
-                      <select
-                        className="painel-chegadas-input"
-                        value={configPlacas.quantidadePorPaginaColecao}
-                        onChange={(e) =>
-                          setConfigPlacas((prev) => ({
-                            ...prev,
-                            quantidadePorPaginaColecao: Number(e.target.value),
-                          }))
-                        }
-                      >
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
-                        <option value={4}>4</option>
-                        <option value={5}>5</option>
-                        <option value={6}>6</option>
-                      </select>
-                    </div>
-
-                    <div className="painel-chegadas-field">
-                      <label>Mostrar logo</label>
-                      <select
-                        className="painel-chegadas-input"
-                        value={
-                          configPlacas.mostrarLogoNasPlacas ? "sim" : "nao"
-                        }
-                        onChange={(e) =>
-                          setConfigPlacas((prev) => ({
-                            ...prev,
-                            mostrarLogoNasPlacas: e.target.value === "sim",
-                          }))
-                        }
-                      >
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                      </select>
-                    </div>
-
-                    <div className="painel-chegadas-field">
-                      <label>Repetir cabeçalho do voo em nova página</label>
-                      <select
-                        className="painel-chegadas-input"
-                        value={
-                          configPlacas.repetirCabecalhoVooAoQuebrarPagina
-                            ? "sim"
-                            : "nao"
-                        }
-                        onChange={(e) =>
-                          setConfigPlacas((prev) => ({
-                            ...prev,
-                            repetirCabecalhoVooAoQuebrarPagina:
-                              e.target.value === "sim",
-                          }))
-                        }
-                      >
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-kpis">
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <FlightLandRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Voos</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoChegadas.voos
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <Inventory2Rounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Reservas</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoChegadas.reservas
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <DirectionsBusRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Veículos</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoChegadas.veiculos
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <GroupsRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Pax</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoChegadas.pax
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <WarningAmberRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Alterados</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoChegadas.alterados
-                      )}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>Serviços do dia</h3>
-                  <span className="painel-chegadas-badge">
-                    {voosFiltrados.length} voo(s)
-                  </span>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-panel-body">
-                {carregando ? (
-                  <div className="painel-chegadas-inline-loading">
-                    <SyncRounded className="spin" fontSize="small" />
-                    <span>Atualizando serviços do dia...</span>
-                  </div>
-                ) : !voosFiltrados.length ? (
-                  <div className="painel-chegadas-inline-empty">
-                    <WarningAmberRounded fontSize="small" />
-                    <span>Nenhum voo encontrado para a data selecionada.</span>
-                  </div>
-                ) : (
-                  <div className="painel-chegadas-list">
-                    {voosFiltrados.map((voo) => {
-                      const expandido = !!voosExpandidos[voo.vooKey];
-
-                      return (
-                        <div
-                          className="painel-chegadas-flight-card"
-                          key={voo.vooKey}
-                        >
-                          <button
-                            type="button"
-                            className="painel-chegadas-flight-top"
-                            onClick={() => toggleExpandirVoo(voo.vooKey)}
-                          >
-                            <div className="painel-chegadas-flight-main">
-                              <div className="painel-chegadas-flight-code-wrap">
-                                <strong className="painel-chegadas-flight-code">
-                                  {voo.voo}
-                                </strong>
-                                <span
-                                  className={`painel-chegadas-status ${voo.statusKey}`}
-                                >
-                                  {voo.statusLabel}
-                                </span>
-                              </div>
-
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 8,
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <button
-                                  type="button"
-                                  className="painel-chegadas-google-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    abrirBuscaGoogleVoo(voo.voo);
-                                  }}
-                                >
-                                  <SearchRounded fontSize="small" />
-                                  Buscar voo
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className="painel-chegadas-google-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    gerarPdfPlacasIndividuais(voo);
-                                  }}
-                                >
-                                  <AssignmentRounded fontSize="small" />
-                                  Placas individuais
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className="painel-chegadas-google-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    gerarPdfPlacasColecao(voo);
-                                  }}
-                                >
-                                  <Inventory2Rounded fontSize="small" />
-                                  Placa coleção
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="painel-chegadas-flight-meta">
-                              <div className="painel-chegadas-kpi-icon">
-                                <FlightLandRounded fontSize="small" />
-                              </div>
-                              <span>
-                                Previsto: {formatarHora(voo.horarioPrevisto)}
-                              </span>
-                              {voo.variacaoTexto ? (
-                                <span>{voo.variacaoTexto}</span>
-                              ) : null}
-                              <span>Reservas: {voo.totalReservas}</span>
-                              <span>Pax: {voo.totalPax}</span>
-                            </div>
-
-                            <div className="painel-chegadas-expand-icon">
-                              {expandido ? (
-                                <KeyboardArrowUpRounded fontSize="small" />
-                              ) : (
-                                <KeyboardArrowDownRounded fontSize="small" />
-                              )}
-                            </div>
-                          </button>
-
-                          {expandido && (
-                            <div className="painel-chegadas-flight-expanded">
-                              {voo.gruposPorVeiculo.map((grupo) => (
-                                <div
-                                  key={grupo.veiculo}
-                                  className="painel-chegadas-driver-block"
-                                >
-                                  <div className="painel-chegadas-driver-header">
-                                    <div className="painel-chegadas-driver-title">
-                                      <DirectionsBusRounded fontSize="small" />
-                                      <strong>{grupo.veiculo}</strong>
-                                    </div>
-
-                                    <div className="painel-chegadas-driver-meta">
-                                      <span>Motorista: {grupo.motorista}</span>
-                                      <span>
-                                        Modalidade:{" "}
-                                        {grupo.reservas[0]?.modalidadeServico ||
-                                          "Não informado"}
-                                      </span>
-                                      <span>
-                                        Reservas: {grupo.totalReservas}
-                                      </span>
-                                      <span>Pax: {grupo.totalPax}</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="painel-chegadas-table-wrap">
-                                    <table className="painel-chegadas-table">
-                                      <thead>
-                                        <tr>
-                                          <th>Cliente</th>
-                                          <th>Reserva</th>
-                                          <th>Pax</th>
-                                          <th>Operadora</th>
-                                          <th>Modalidade</th>
-                                          <th>Contato</th>
-                                          <th>Destino</th>
-                                          <th>OBS</th>
-                                          <th>Placa</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {grupo.reservas.map((reserva) => (
-                                          <tr key={reserva.id}>
-                                            <td>{obterNomePlaca(reserva)}</td>
-                                            <td>{reserva.codigoReserva}</td>
-                                            <td>{reserva.resumoPax}</td>
-                                            <td>{reserva.operadora}</td>
-                                            <td>
-                                              {reserva.modalidadeServico ||
-                                                "Não informado"}
-                                            </td>
-                                            <td>{reserva.contatoPax}</td>
-                                            <td>{reserva.destino}</td>
-                                            <td>{reserva.observacao || "-"}</td>
-                                            <td>
-                                              <button
-                                                type="button"
-                                                className="painel-chegadas-google-btn"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  abrirEdicaoPlaca(
-                                                    reserva,
-                                                    voo,
-                                                  );
-                                                }}
-                                              >
-                                                <EditRounded fontSize="small" />
-                                                Editar placa
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              ))}
-
-                              {voo.reservasNaoEscaladas.length > 0 && (
-                                <div className="painel-chegadas-driver-block nao-escalado">
-                                  <div className="painel-chegadas-driver-header">
-                                    <div className="painel-chegadas-driver-title">
-                                      <WarningAmberRounded fontSize="small" />
-                                      <strong>Reservas não escaladas</strong>
-                                    </div>
-
-                                    <div className="painel-chegadas-driver-meta">
-                                      <span>
-                                        Reservas:{" "}
-                                        {voo.totaisNaoEscalados.totalReservas}
-                                      </span>
-                                      <span>
-                                        Pax: {voo.totaisNaoEscalados.totalPax}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="painel-chegadas-table-wrap">
-                                    <table className="painel-chegadas-table">
-                                      <thead>
-                                        <tr>
-                                          <th>Cliente</th>
-                                          <th>Reserva</th>
-                                          <th>Pax</th>
-                                          <th>Operadora</th>
-                                          <th>Placa</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {voo.reservasNaoEscaladas.map(
-                                          (reserva) => (
-                                            <tr key={reserva.id}>
-                                              <td>{obterNomePlaca(reserva)}</td>
-                                              <td>{reserva.codigoReserva}</td>
-                                              <td>{reserva.resumoPax}</td>
-                                              <td>{reserva.operadora}</td>
-                                              <td>
-                                                <button
-                                                  type="button"
-                                                  className="painel-chegadas-google-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    abrirEdicaoPlaca(
-                                                      reserva,
-                                                      voo,
-                                                    );
-                                                  }}
-                                                >
-                                                  <EditRounded fontSize="small" />
-                                                  Editar placa
-                                                </button>
-                                              </td>
-                                            </tr>
-                                          ),
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+            <Field label="Escala" icon="filter">
+              <select
+                value={filtroEscala}
+                onChange={(e) => setFiltroEscala(e.target.value)}
+                disabled={carregando}
+              >
+                <option value="todos">Todos</option>
+                <option value="com-escaladas">Com reservas escaladas</option>
+                <option value="com-nao-escaladas">Com reservas não escaladas</option>
+                <option value="somente-nao-escalados">Somente totalmente não escalados</option>
+              </select>
+            </Field>
           </>
         )}
 
         {abaAtiva === ABAS.OUTS && (
-          <>
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>Resumo do dia</h3>
-                  <span className="painel-chegadas-badge">
-                    outs + transfers
-                  </span>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-kpis">
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <DirectionsBusRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Grupos</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.length
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <FlightTakeoffRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>OUTs</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.filter((g) => g.tipoServico === "OUT")
-                          .length
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <DirectionsBusRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Transfers</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.filter(
-                          (g) => g.tipoServico === "TRANSFER",
-                        ).length
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <Inventory2Rounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Reservas</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.reduce(
-                          (acc, g) => acc + g.totalReservas,
-                          0,
-                        )
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <GroupsRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Pax</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.reduce((acc, g) => acc + g.totalPax, 0)
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <HotelRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Hotéis</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.reduce(
-                          (acc, g) => acc + g.hoteis.length,
-                          0,
-                        )
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <CheckRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Monitorados</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        gruposOutBase.filter((g) => monitoradosOut[g.id]).length
-                      )}
-                      {" / "}
-                      {gruposOutBase.length}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-              <div className="painel-chegadas-field">
-                <label>
-                  <FilterAltRounded fontSize="small" />
-                  Filtrar veículo
-                </label>
-                <select
-                  className="painel-chegadas-input"
-                  value={filtroVeiculo}
-                  onChange={(e) => setFiltroVeiculo(e.target.value)}
-                  disabled={carregando}
-                >
-                  <option value="todos">Todos</option>
-                  {veiculosDisponiveis.map((veiculo) => (
-                    <option key={veiculo} value={veiculo}>
-                      {veiculo}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>
-                    Mapa de OUT + Transfer -{" "}
-                    <span className="painel-chegadas-badge">
-                      {formatarDataBr(dataSelecionada)}
-                    </span>
-                  </h3>
-                  <span className="painel-chegadas-badge">
-                    {gruposOutFiltrados.length} grupo(s)
-                  </span>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-panel-body">
-                {carregando ? (
-                  <div className="painel-chegadas-inline-loading">
-                    <SyncRounded className="spin" fontSize="small" />
-                    <span>Atualizando serviços do dia...</span>
-                  </div>
-                ) : !gruposOutFiltrados.length ? (
-                  <div className="painel-chegadas-inline-empty">
-                    <WarningAmberRounded fontSize="small" />
-                    <span>
-                      Nenhum grupo encontrado para a data selecionada.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="painel-chegadas-list">
-                    {gruposOutFiltrados.map((grupo) => {
-                      const expandido = !!gruposExpandidosOut[grupo.id];
-                      const monitorado = !!monitoradosOut[grupo.id];
-
-                      return (
-                        <div
-                          className={`painel-chegadas-flight-card${monitorado ? " monitorado" : ""}`}
-                          key={grupo.id}
-                        >
-                          <div
-                            className="painel-chegadas-flight-top-trigger"
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => toggleExpandirGrupoOut(grupo.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                toggleExpandirGrupoOut(grupo.id);
-                              }
-                            }}
-                          >
-                            <div className="painel-chegadas-flight-main">
-                              <div className="painel-chegadas-flight-code-wrap">
-                                <strong className="painel-chegadas-flight-code">
-                                  {grupo.tipoServico} - {grupo.hotelPrincipal}
-                                </strong>
-
-                                {grupo.alertaServicoHoje && (
-                                  <span className="painel-chegadas-status atrasado">
-                                    O SERVIÇO SERÁ REALIZADO HOJE (
-                                    {formatarDataBr(grupo.dataServicoReal)})
-                                  </span>
-                                )}
-                              </div>
-
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 8,
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <label
-                                  className={`painel-chegadas-monitor-toggle${monitorado ? " checked" : ""}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={monitorado}
-                                    onChange={() =>
-                                      toggleMonitoradoOut(grupo.id)
-                                    }
-                                  />
-                                  Monitorado
-                                </label>
-
-                                <button
-                                  type="button"
-                                  className={`painel-chegadas-google-btn${grupoOutCopiado === grupo.id ? " success" : ""}`}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    const ok =
-                                      await copiarMonitoramentoGrupo(grupo);
-                                    if (ok) {
-                                      setGrupoOutCopiado(grupo.id);
-                                      marcarComoMonitorado(grupo.id);
-                                      setTimeout(
-                                        () =>
-                                          setGrupoOutCopiado((atual) =>
-                                            atual === grupo.id ? null : atual,
-                                          ),
-                                        1800,
-                                      );
-                                    }
-                                  }}
-                                >
-                                  {grupoOutCopiado === grupo.id ? (
-                                    <CheckRounded fontSize="small" />
-                                  ) : (
-                                    <ContentCopyRounded fontSize="small" />
-                                  )}
-                                  {grupoOutCopiado === grupo.id
-                                    ? "Copiado!"
-                                    : "Copiar monitoramento"}
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="painel-chegadas-flight-meta">
-                              <span>
-                                Data: {formatarDataBr(grupo.dataServicoReal)}
-                              </span>
-                              <span>Hora: {grupo.primeiroHorario}</span>
-                              <span>Escala: {grupo.escalaId}</span>
-                              <span>Fornecedor: {grupo.fornecedor}</span>
-                              <span>Modalidade: {grupo.modalidade}</span>
-                              <span>
-                                Pax:{" "}
-                                {formatarQuantidadeDetalhada(
-                                  grupo.totalAdultos,
-                                  grupo.totalCriancas,
-                                  grupo.totalInfantes,
-                                )}
-                              </span>
-                            </div>
-
-                            <div className="painel-chegadas-expand-icon">
-                              {expandido ? (
-                                <KeyboardArrowUpRounded fontSize="small" />
-                              ) : (
-                                <KeyboardArrowDownRounded fontSize="small" />
-                              )}
-                            </div>
-                          </div>
-
-                          {expandido && (
-                            <div className="painel-chegadas-flight-expanded">
-                              {grupo.hoteisOrdenados.map(
-                                (hotel, hotelIndex) => (
-                                  <div
-                                    key={hotel.id}
-                                    className="painel-chegadas-driver-block"
-                                  >
-                                    <div className="painel-chegadas-driver-header">
-                                      <div className="painel-chegadas-driver-title">
-                                        <HotelRounded fontSize="small" />
-                                        <strong>
-                                          {grupo.tipoServico === "TRANSFER"
-                                            ? `${hotel.hotelOrigemAbreviado} → ${hotel.hotelDestinoAbreviado}`
-                                            : `${grupo.hoteisOrdenados.length > 1 ? `Origem ${hotelIndex + 1}: ` : ""}${hotel.hotelOrigemAbreviado}`}
-                                        </strong>
-                                      </div>
-
-                                      <div className="painel-chegadas-driver-meta">
-                                        <span>
-                                          Data:{" "}
-                                          {formatarDataBr(
-                                            hotel.dataServicoReal,
-                                          )}
-                                        </span>
-                                        <span>Hora: {hotel.horario}</span>
-                                        <span>Tipo: {grupo.tipoServico}</span>
-                                        <span>
-                                          Modalidade: {grupo.modalidade}
-                                        </span>
-                                        <span>
-                                          Pax:{" "}
-                                          {formatarQuantidadeDetalhada(
-                                            hotel.totalAdultos,
-                                            hotel.totalCriancas,
-                                            hotel.totalInfantes,
-                                          )}
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    <div className="painel-chegadas-table-wrap">
-                                      <table className="painel-chegadas-table">
-                                        <thead>
-                                          <tr>
-                                            <th>Data</th>
-                                            <th>Hora</th>
-                                            <th>Reserva</th>
-                                            <th>Contato</th>
-                                            <th>Nome do Pax</th>
-                                            <th>Qtd. Pax</th>
-                                            <th>Origem</th>
-                                            {grupo.tipoServico ===
-                                              "TRANSFER" && <th>Destino</th>}
-                                            <th>Voo Retorno</th>
-                                            <th>Modalidade</th>
-                                            <th>Buscar</th>
-                                            <th>OBS</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {hotel.reservas.map((reserva) => (
-                                            <tr key={reserva.id}>
-                                              <td>
-                                                {formatarDataBr(
-                                                  reserva.dataServicoReal,
-                                                )}
-                                              </td>
-                                              <td>{reserva.horarioHotel}</td>
-                                              <td>{reserva.reserva}</td>
-                                              <td>{reserva.telefone}</td>
-                                              <td>{reserva.cliente}</td>
-                                              <td>
-                                                {formatarQuantidadeDetalhada(
-                                                  reserva.adultos,
-                                                  reserva.criancas,
-                                                  reserva.infantes,
-                                                )}
-                                              </td>
-                                              <td>
-                                                {reserva.hotelOrigemAbreviado}
-                                              </td>
-                                              {grupo.tipoServico ===
-                                                "TRANSFER" && (
-                                                <td>
-                                                  {
-                                                    reserva.hotelDestinoAbreviado
-                                                  }
-                                                </td>
-                                              )}
-                                              <td>{reserva.vooRetorno}</td>
-                                              <td>{reserva.modalidade}</td>
-                                              <td>
-                                                <button
-                                                  type="button"
-                                                  className="painel-chegadas-google-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    abrirBuscaVooPratica(
-                                                      reserva.raw,
-                                                    );
-                                                  }}
-                                                >
-                                                  <SearchRounded fontSize="small" />
-                                                  Buscar voo
-                                                </button>
-                                              </td>
-                                              <td>
-                                                {reserva.observacao || "-"}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                ),
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
+          <Field label="Veículo" icon="truck">
+            <select
+              value={filtroVeiculo}
+              onChange={(e) => setFiltroVeiculo(e.target.value)}
+              disabled={carregando}
+            >
+              <option value="todos">Todos</option>
+              {veiculosDisponiveis.map((veiculo) => (
+                <option key={veiculo} value={veiculo}>
+                  {veiculo}
+                </option>
+              ))}
+            </select>
+          </Field>
         )}
 
         {abaAtiva === ABAS.GUIAS && (
-          <>
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>Resumo do dia</h3>
-                  <span className="painel-chegadas-badge">guias escalados</span>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-kpis">
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <PersonRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Guias</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoGuias.guias
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <DirectionsBusRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Veículos</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoGuias.veiculos
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <Inventory2Rounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Reservas</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoGuias.reservas
-                      )}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="painel-chegadas-kpi">
-                  <div className="painel-chegadas-kpi-icon">
-                    <GroupsRounded fontSize="small" />
-                  </div>
-                  <div>
-                    <span>Pax</span>
-                    <strong>
-                      {carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        resumoGuias.pax
-                      )}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="painel-chegadas-card painel-chegadas-card-full">
-              <div className="painel-chegadas-card-header">
-                <div className="painel-chegadas-card-title-row">
-                  <h3>Serviços do dia</h3>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <span className="painel-chegadas-badge">
-                      {gruposGuiasFiltrados.length} guia(s)
-                    </span>
-
-                    <button
-                      type="button"
-                      className={`painel-chegadas-btn-secondary painel-chegadas-copy-btn ${copiado ? "success" : ""}`}
-                      onClick={copiarResumo}
-                      disabled={carregando || !gruposGuiasFiltrados.length}
-                    >
-                      {copiado ? (
-                        <CheckRounded fontSize="small" />
-                      ) : carregando ? (
-                        <SyncRounded className="spin" fontSize="small" />
-                      ) : (
-                        <ContentCopyRounded fontSize="small" />
-                      )}
-                      {copiado
-                        ? "Copiado!"
-                        : carregando
-                          ? "Carregando..."
-                          : "Copiar resumo"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="painel-chegadas-panel-body">
-                {carregando ? (
-                  <div className="painel-chegadas-inline-loading">
-                    <SyncRounded className="spin" fontSize="small" />
-                    <span>Atualizando serviços do dia...</span>
-                  </div>
-                ) : !gruposGuiasFiltrados.length ? (
-                  <div className="painel-chegadas-inline-empty">
-                    <WarningAmberRounded fontSize="small" />
-                    <span>Nenhum guia encontrado para a data selecionada.</span>
-                  </div>
-                ) : (
-                  <div className="painel-chegadas-list">
-                    {gruposGuiasFiltrados.map((grupo) => {
-                      const expandido = !!gruposExpandidosGuia[grupo.id];
-
-                      return (
-                        <div
-                          className="painel-chegadas-flight-card"
-                          key={grupo.id}
-                        >
-                          <button
-                            type="button"
-                            className="painel-chegadas-flight-top"
-                            onClick={() => toggleExpandirGrupoGuia(grupo.id)}
-                          >
-                            <div className="painel-chegadas-flight-main">
-                              <div className="painel-chegadas-flight-code-wrap">
-                                <strong className="painel-chegadas-flight-code">
-                                  {grupo.guia}
-                                </strong>
-                              </div>
-                            </div>
-
-                            <div className="painel-chegadas-flight-meta">
-                              <span>
-                                {grupo.passeiosResumo || "Sem passeio"}
-                              </span>
-                              <span>Passeios: {grupo.totalPasseios}</span>
-                              <span>
-                                Veículos: {grupo.totalVeiculosUtilizados}
-                              </span>
-                              <span>Pax: {grupo.totalPax}</span>
-                            </div>
-
-                            <div className="painel-chegadas-expand-icon">
-                              {expandido ? (
-                                <KeyboardArrowUpRounded fontSize="small" />
-                              ) : (
-                                <KeyboardArrowDownRounded fontSize="small" />
-                              )}
-                            </div>
-                          </button>
-
-                          {expandido && (
-                            <div className="painel-chegadas-flight-expanded">
-                              {grupo.passeios.map((passeio) => (
-                                <div
-                                  key={`${grupo.id}_${passeio.passeio}`}
-                                  className="painel-chegadas-driver-block"
-                                >
-                                  <div className="painel-chegadas-driver-header">
-                                    <div className="painel-chegadas-driver-title">
-                                      <DirectionsBusRounded fontSize="small" />
-                                      <strong>{passeio.passeio}</strong>
-                                    </div>
-
-                                    <div className="painel-chegadas-driver-meta">
-                                      <span>
-                                        Veículos: {passeio.totalVeiculos}
-                                      </span>
-                                      <span>
-                                        Reservas: {passeio.totalReservasPasseio}
-                                      </span>
-                                      <span>
-                                        Pax: {passeio.totalPaxPasseio}
-                                      </span>
-                                      {passeio.pontoDeApoio ? (
-                                        <span>
-                                          Ponto de apoio: {passeio.pontoDeApoio}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </div>
-
-                                  <div
-                                    className="painel-chegadas-driver-meta"
-                                    style={{
-                                      padding: "0 14px 12px 14px",
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
-                                    {passeio.veiculos.map((veiculo) => (
-                                      <span
-                                        key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}`}
-                                      >
-                                        {veiculo.veiculo} • {veiculo.totalPax}{" "}
-                                        pax
-                                      </span>
-                                    ))}
-                                  </div>
-
-                                  {passeio.veiculos.map((veiculo) => (
-                                    <div
-                                      key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}_bloco`}
-                                      className="painel-chegadas-table-wrap"
-                                      style={{ marginBottom: 12 }}
-                                    >
-                                      <div
-                                        className="painel-chegadas-driver-meta"
-                                        style={{ padding: "0 14px 10px 14px" }}
-                                      >
-                                        <span>
-                                          <strong>Veículo:</strong>{" "}
-                                          {veiculo.veiculo}
-                                        </span>
-                                        <span>
-                                          <strong>Fornecedor:</strong>{" "}
-                                          {veiculo.fornecedor}
-                                        </span>
-                                        <span>
-                                          <strong>Primeiro horário:</strong>{" "}
-                                          {veiculo.primeiraHora}
-                                        </span>
-                                      </div>
-
-                                      <table className="painel-chegadas-table">
-                                        <thead>
-                                          <tr>
-                                            <th>Nome do Pax</th>
-                                            <th>Reserva</th>
-                                            <th>Contato</th>
-                                            <th>Quantidade</th>
-                                            <th>Hotel</th>
-                                            <th>Horário</th>
-                                            <th>OBS</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {veiculo.reservas.map((reserva) => (
-                                            <tr key={reserva.id}>
-                                              <td>{reserva.nomePax}</td>
-                                              <td>{reserva.numeroReserva}</td>
-                                              <td>{reserva.contato}</td>
-                                              <td>
-                                                {reserva.quantidadeDetalhada}
-                                              </td>
-                                              <td>{reserva.hotel}</td>
-                                              <td>
-                                                {reserva.horarioApresentacao}
-                                              </td>
-                                              <td>
-                                                {reserva.observacao || "-"}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
+          <Field label="Guia" icon="user">
+            <select
+              value={filtroGuia}
+              onChange={(e) => setFiltroGuia(e.target.value)}
+              disabled={carregando}
+            >
+              <option value="todos">Todos</option>
+              {guiasDisponiveis.map((guia) => (
+                <option key={guia} value={guia}>
+                  {guia}
+                </option>
+              ))}
+            </select>
+          </Field>
         )}
-      </div>
 
-      {popupPlacaAberto && (
-        <div
-          className="painel-chegadas-modal-overlay"
-          onClick={() => setPopupPlacaAberto(false)}
-        >
-          <div
-            className="painel-chegadas-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="painel-chegadas-modal-header">
-              <h3>Nova placa personalizada</h3>
-              <button
-                type="button"
-                className="painel-chegadas-modal-close"
-                onClick={() => setPopupPlacaAberto(false)}
-              >
-                <CloseRounded fontSize="small" />
-              </button>
-            </div>
+        <span className="painel-op-updated">
+          {carregando ? (
+            <>
+              <Icon name="loader" size={14} className="ui-spin" /> Atualizando...
+            </>
+          ) : ultimaAtualizacao ? (
+            `Atualizado em ${ultimaAtualizacao.toLocaleString("pt-BR")}`
+          ) : (
+            "Ainda não atualizado"
+          )}
+          {abaAtiva === ABAS.CHEGADAS && (
+            <span className="painel-op-aeroporto">
+              {!ehHoje ? (
+                "Status do aeroporto: só para hoje"
+              ) : aeroporto.carregando ? (
+                <>
+                  <Icon name="loader" size={13} className="ui-spin" /> Consultando aeroporto...
+                </>
+              ) : aeroporto.erro ? (
+                <span className="painel-op-alerta-texto">{aeroporto.erro}</span>
+              ) : aeroporto.atualizadoEm ? (
+                `Aeroporto SSA · ${aeroporto.atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+              ) : null}
+            </span>
+          )}
+        </span>
+      </FilterBar>
 
-            <div className="painel-chegadas-modal-field">
-              <label className="painel-chegadas-modal-label">
-                Nome do passageiro
-              </label>
-              <input
-                className="painel-chegadas-input"
-                value={placaPersonalizadaNome}
-                onChange={(e) => setPlacaPersonalizadaNome(e.target.value)}
-                placeholder="Ex: João Silva"
-              />
-            </div>
-
-            <div className="painel-chegadas-modal-field">
-              <label className="painel-chegadas-modal-label">
-                Voo (opcional)
-              </label>
-              <input
-                className="painel-chegadas-input"
-                value={placaPersonalizadaVoo}
-                onChange={(e) => setPlacaPersonalizadaVoo(e.target.value)}
-                placeholder="Ex: G3 1234"
-              />
-            </div>
-
-            <div className="painel-chegadas-modal-actions">
-              <button
-                type="button"
-                className="painel-chegadas-btn-primary"
-                onClick={gerarPlacaPersonalizada}
-                disabled={!placaPersonalizadaNome.trim()}
-              >
-                Gerar PDF da placa
-              </button>
-            </div>
-          </div>
+      {erro ? (
+        <div className="painel-op-erro" role="alert">
+          <Icon name="alert" size={16} />
+          <span>{erro}</span>
         </div>
+      ) : null}
+
+      {/* ===== RESULTADOS DA BUSCA ===== */}
+      {termoBusca.trim() ? (
+        <Card>
+          <CardHeader
+            icon="search"
+            title="Resultados da busca"
+            subtitle={`Busca restrita à aba atual: ${nomeAba} · ${resultadosBusca.length} encontrado(s)`}
+          />
+          {!resultadosBusca.length ? (
+            <EmptyState icon="search" title={`Nenhuma reserva encontrada para "${termoBusca}".`} />
+          ) : (
+            <Table
+              columns={
+                abaAtiva === ABAS.GUIAS
+                  ? "90px minmax(150px,1.4fr) 110px minmax(120px,1fr) minmax(130px,1fr) minmax(130px,1fr) 90px 80px minmax(120px,1fr)"
+                  : "90px minmax(150px,1.4fr) 110px minmax(120px,1fr) minmax(130px,1fr) minmax(130px,1fr) 90px 100px 80px minmax(120px,1fr)"
+              }
+              minWidth={1180}
+            >
+              <TableHead>
+                <span>Tipo</span>
+                <span>Cliente</span>
+                <span>Reserva</span>
+                <span>Fornecedor</span>
+                <span>Origem</span>
+                <span>Destino</span>
+                {abaAtiva === ABAS.CHEGADAS && (
+                  <>
+                    <span>Voo</span>
+                    <span>Chegada</span>
+                  </>
+                )}
+                {abaAtiva === ABAS.OUTS && (
+                  <>
+                    <span>Busca</span>
+                    <span>Voo de retorno</span>
+                  </>
+                )}
+                {abaAtiva === ABAS.GUIAS && <span>Busca no hotel</span>}
+                <span>Pax</span>
+                <span>OBS</span>
+              </TableHead>
+              {resultadosBusca.map((resultado) => (
+                <TableRow key={resultado.id}>
+                  <span className="ui-tag">{resultado.tipo}</span>
+                  <span className="ui-cell-main">{resultado.cliente}</span>
+                  <span className="tabular">{resultado.codigo}</span>
+                  <span>{resultado.fornecedor}</span>
+                  <span>{resultado.origem}</span>
+                  <span>{resultado.destino}</span>
+                  {abaAtiva === ABAS.CHEGADAS && (
+                    <>
+                      <span>{resultado.numeroVoo}</span>
+                      <span className="tabular">{resultado.horarioChegada}</span>
+                    </>
+                  )}
+                  {abaAtiva === ABAS.OUTS && (
+                    <>
+                      <span className="tabular">{resultado.horarioBusca}</span>
+                      <span>{resultado.vooRetorno}</span>
+                    </>
+                  )}
+                  {abaAtiva === ABAS.GUIAS && (
+                    <span className="tabular">{resultado.horarioBusca}</span>
+                  )}
+                  <span className="tabular">{resultado.pax}</span>
+                  <span className="painel-op-obs">{resultado.observacao || "-"}</span>
+                </TableRow>
+              ))}
+            </Table>
+          )}
+        </Card>
+      ) : null}
+
+      {/* ===== CHEGADAS ===== */}
+      {abaAtiva === ABAS.CHEGADAS && (
+        <>
+          <KpiTiles
+            items={[
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) },
+              {
+                key: "alterados",
+                label: "Voos alterados",
+                value: valorKpi(resumoChegadas.alterados),
+                tone: resumoChegadas.alterados ? "alert" : undefined,
+                hint: "atraso, antecipação ou cancelamento",
+              },
+            ]}
+          />
+
+          {carregando ? (
+            <Card>{renderCarregando()}</Card>
+          ) : !voosFiltrados.length ? (
+            <Card>
+              <EmptyState icon="planeLanding" title="Nenhum voo encontrado para a data selecionada." />
+            </Card>
+          ) : (
+            <Table
+              columns="20px minmax(150px,1.2fr) 82px 120px minmax(150px,1fr) 70px minmax(150px,1.2fr) 44px"
+              minWidth={900}
+            >
+              <TableHead>
+                <span />
+                <span>Voo</span>
+                <span>Previsto</span>
+                <span>Estimado</span>
+                <span>Status</span>
+                <span className="ui-cell-end painel-op-pax">Pax</span>
+                <span>Fornecedor</span>
+                <span />
+              </TableHead>
+
+              {voosFiltrados.map((voo) => {
+                const expandido = !!voosExpandidos[voo.vooKey];
+                const tom = tomStatusVoo(voo.statusKey);
+                const estimadoBruto = formatarHora(voo.horarioReal || voo.horarioAtualizado);
+                const estimado = estimadoBruto && estimadoBruto !== "--:--" ? estimadoBruto : "";
+                const fornecedores = voo.gruposPorVeiculo;
+                return (
+                  <Fragment key={voo.vooKey}>
+                    <TableRow
+                      expandable
+                      expanded={expandido}
+                      onToggle={() => toggleExpandirVoo(voo.vooKey)}
+                    >
+                      <span>
+                        <span className="ui-cell-main">{voo.voo}</span>
+                        <span className="ui-cell-sub">
+                          {voo.totalReservas} reserva(s)
+                          {voo.reservasNaoEscaladas.length > 0 && (
+                            <span className="painel-op-alerta-texto">
+                              {" · "}
+                              {voo.reservasNaoEscaladas.length} sem escala
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <span className="tabular">{formatarHora(voo.horarioPrevisto) || "--:--"}</span>
+                      <span>
+                        <span className="tabular">{estimado || "—"}</span>
+                        {voo.variacaoTexto ? (
+                          <span className="ui-cell-sub">{voo.variacaoTexto}</span>
+                        ) : null}
+                      </span>
+                      <span>
+                        <StatusDot tone={tom.tone} icon={tom.icon}>
+                          {voo.statusLabel}
+                        </StatusDot>
+                        {voo.aeroporto ? (
+                          <span className="ui-cell-sub" title="Painel do aeroporto de Salvador">
+                            Aeroporto: {voo.aeroporto.status || "sem status"}
+                          </span>
+                        ) : ehHoje && chegadasAeroporto.length > 0 ? (
+                          <span className="ui-cell-sub">Não está no painel do aeroporto</span>
+                        ) : null}
+                      </span>
+                      <span className="ui-cell-end ui-cell-main tabular painel-op-pax">{voo.totalPax}</span>
+                      <span>
+                        {fornecedores.length ? (
+                          <>
+                            <span className="ui-cell-main">{fornecedores[0].motorista}</span>
+                            <span className="ui-cell-sub">
+                              {fornecedores.length} veículo(s)
+                            </span>
+                          </>
+                        ) : (
+                          <StatusDot tone="alert">Sem escala</StatusDot>
+                        )}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        iconOnly
+                        size="sm"
+                        icon="search"
+                        title={`Buscar ${voo.voo} no Google`}
+                        aria-label="Buscar voo"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirBuscaGoogleVoo(voo.voo);
+                        }}
+                      />
+                    </TableRow>
+
+                    {expandido && (
+                      <TableExpansion>
+                        <div className="painel-op-acoes">
+                          <Button
+                            size="sm"
+                            icon="search"
+                            onClick={() => abrirBuscaGoogleVoo(voo.voo)}
+                          >
+                            Buscar voo
+                          </Button>
+                          <Button
+                            size="sm"
+                            icon="fileText"
+                            onClick={() => gerarPdfPlacasIndividuais(voo)}
+                          >
+                            Placas individuais
+                          </Button>
+                          <Button
+                            size="sm"
+                            icon="printer"
+                            onClick={() => gerarPdfPlacasColecao(voo)}
+                          >
+                            Placa coleção
+                          </Button>
+                        </div>
+
+                        {voo.gruposPorVeiculo.map((grupo, i) => (
+                          <section key={grupo.veiculo} className="painel-op-bloco is-fornecedor">
+                            <header className="painel-op-forn">
+                              <span className="painel-op-forn__icone" aria-hidden="true">
+                                <Icon name="truck" size={19} />
+                              </span>
+                              <span className="painel-op-forn__texto">
+                                <span className="painel-op-forn__rotulo">
+                                  Fornecedor · veículo {i + 1} de {voo.gruposPorVeiculo.length}
+                                </span>
+                                <strong className="painel-op-forn__nome">{grupo.motorista}</strong>
+                                <span className="painel-op-forn__sub">
+                                  {grupo.veiculo} · Modalidade:{" "}
+                                  {grupo.reservas[0]?.modalidadeServico || "Não informado"}
+                                </span>
+                              </span>
+                              <span className="painel-op-forn__totais tabular">
+                                <Icon name="users" size={15} />
+                                <span>
+                                  <strong>{grupo.totalPax} pax</strong> · {grupo.totalReservas} reserva(s)
+                                </span>
+                              </span>
+                            </header>
+
+                            <Table
+                              columns="minmax(140px,1.3fr) 100px 80px minmax(100px,1fr) 96px 124px minmax(120px,1fr) minmax(90px,1fr) 116px"
+                              minWidth={1000}
+                              compact
+                            >
+                              <TableHead>
+                                <span>Cliente</span>
+                                <span>Reserva</span>
+                                <span>Pax</span>
+                                <span>Operadora</span>
+                                <span>Modalidade</span>
+                                <span>Contato</span>
+                                <span>Destino</span>
+                                <span>OBS</span>
+                                <span className="ui-cell-end">Placa</span>
+                              </TableHead>
+                              {grupo.reservas.map((reserva) => (
+                                <TableRow key={reserva.id}>
+                                  <span className="ui-cell-main">{obterNomePlaca(reserva)}</span>
+                                  <span className="tabular">{reserva.codigoReserva}</span>
+                                  <span className="tabular">{reserva.resumoPax}</span>
+                                  <span>{reserva.operadora}</span>
+                                  <span>{reserva.modalidadeServico || "Não informado"}</span>
+                                  <span className="tabular">{reserva.contatoPax}</span>
+                                  <span>{reserva.destino}</span>
+                                  <span className="painel-op-obs">{reserva.observacao || "-"}</span>
+                                  <span className="ui-cell-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      icon="pencil"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirEdicaoPlaca(reserva, voo);
+                                      }}
+                                    >
+                                      Editar placa
+                                    </Button>
+                                  </span>
+                                </TableRow>
+                              ))}
+                            </Table>
+                          </section>
+                        ))}
+
+                        {voo.reservasNaoEscaladas.length > 0 && (
+                          <section className="painel-op-bloco is-alerta">
+                            <header className="painel-op-bloco__head">
+                              <div>
+                                <span className="painel-op-bloco__fornecedor">
+                                  <Icon name="alert" size={15} /> Reservas não escaladas
+                                </span>
+                              </div>
+                              <span className="painel-op-bloco__totais tabular">
+                                {voo.totaisNaoEscalados.totalReservas} reserva(s) ·{" "}
+                                {voo.totaisNaoEscalados.totalPax} pax
+                              </span>
+                            </header>
+                            <Table
+                              columns="minmax(160px,1.4fr) 120px 90px minmax(130px,1fr) 120px"
+                              minWidth={640}
+                              compact
+                            >
+                              <TableHead>
+                                <span>Cliente</span>
+                                <span>Reserva</span>
+                                <span>Pax</span>
+                                <span>Operadora</span>
+                                <span className="ui-cell-end">Placa</span>
+                              </TableHead>
+                              {voo.reservasNaoEscaladas.map((reserva) => (
+                                <TableRow key={reserva.id}>
+                                  <span className="ui-cell-main">{obterNomePlaca(reserva)}</span>
+                                  <span className="tabular">{reserva.codigoReserva}</span>
+                                  <span className="tabular">{reserva.resumoPax}</span>
+                                  <span>{reserva.operadora}</span>
+                                  <span className="ui-cell-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      icon="pencil"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirEdicaoPlaca(reserva, voo);
+                                      }}
+                                    >
+                                      Editar placa
+                                    </Button>
+                                  </span>
+                                </TableRow>
+                              ))}
+                            </Table>
+                          </section>
+                        )}
+                      </TableExpansion>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </Table>
+          )}
+        </>
       )}
 
-      {placaEmEdicao && (
-        <div
-          className="painel-chegadas-modal-overlay"
-          onClick={() => setPlacaEmEdicao(null)}
-        >
-          <div
-            className="painel-chegadas-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="painel-chegadas-modal-header">
-              <h3>Editar placa da reserva</h3>
-              <button
-                type="button"
-                className="painel-chegadas-modal-close"
-                onClick={() => setPlacaEmEdicao(null)}
-              >
-                <CloseRounded fontSize="small" />
-              </button>
-            </div>
+      {/* ===== OUT's + TRANSFERS ===== */}
+      {abaAtiva === ABAS.OUTS && (
+        <>
+          <KpiTiles
+            items={[
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) },
+              {
+                key: "monitorados",
+                label: "Monitorados",
+                value: valorKpi(`${totaisOut.monitorados} / ${gruposOutBase.length}`),
+              },
+            ]}
+          />
 
-            <p className="painel-chegadas-modal-hint">
-              Reserva {placaEmEdicao.codigoReserva} • Voo{" "}
-              {placaEmEdicao.voo || "-"}
-            </p>
+          {carregando ? (
+            <Card>{renderCarregando()}</Card>
+          ) : !gruposOutFiltrados.length ? (
+            <Card>
+              <EmptyState icon="planeTakeoff" title="Nenhum grupo encontrado para a data selecionada." />
+            </Card>
+          ) : (
+            <Table
+              columns="20px minmax(200px,1.3fr) 104px 84px minmax(220px,1.4fr) 112px 150px 132px 104px"
+              minWidth={1210}
+            >
+              <TableHead>
+                <span />
+                <span>Serviço · hotel</span>
+                <span>Data / hora</span>
+                <span>Escala</span>
+                <span>Fornecedor</span>
+                <span>Modalidade</span>
+                <span>Pax</span>
+                <span>Monitorado</span>
+                <span />
+              </TableHead>
 
-            <div className="painel-chegadas-modal-field">
-              <label className="painel-chegadas-modal-label">
-                Nome que aparecerá na placa
-              </label>
-              <input
-                className="painel-chegadas-input"
-                value={placaEmEdicao.nome}
-                onChange={(e) =>
-                  setPlacaEmEdicao((prev) => ({
-                    ...prev,
-                    nome: e.target.value,
-                  }))
-                }
-              />
-            </div>
+              {gruposOutFiltrados.map((grupo) => {
+                const expandido = !!gruposExpandidosOut[grupo.id];
+                const monitorado = !!monitoradosOut[grupo.id];
+                const copiadoGrupo = grupoOutCopiado === grupo.id;
+                return (
+                  <Fragment key={grupo.id}>
+                    <TableRow
+                      expandable
+                      expanded={expandido}
+                      onToggle={() => toggleExpandirGrupoOut(grupo.id)}
+                      className={monitorado ? "painel-op-monitorado" : ""}
+                    >
+                      <span>
+                        <span className="painel-op-servico">
+                          <span className="ui-tag painel-op-tag">
+                            <Icon name={iconeTipoServico(grupo.tipoServico)} size={12} />
+                            {grupo.tipoServico === "TRANSFER" ? "TRF" : grupo.tipoServico}
+                          </span>
+                          <span className="ui-cell-main">{grupo.hotelPrincipal}</span>
+                        </span>
+                        {grupo.alertaServicoHoje && (
+                          <span className="ui-cell-sub painel-op-alerta-texto">
+                            O serviço será realizado hoje ({formatarDataBr(grupo.dataServicoReal)})
+                          </span>
+                        )}
+                      </span>
+                      <span className="painel-op-quando tabular">
+                        <span className="painel-op-hora">
+                          <Icon name="clock" size={14} />
+                          {grupo.primeiroHorario}
+                        </span>
+                        <span className="ui-cell-sub">
+                          {formatarDataBr(grupo.dataServicoReal)}
+                        </span>
+                      </span>
+                      <span
+                        className={`painel-op-escala tabular ${grupo.escalaId && !/sem/i.test(grupo.escalaId) ? "" : "is-vazia"}`}
+                        title="Escala no Phoenix"
+                      >
+                        <Icon name="clipboardCheck" size={14} />
+                        {grupo.escalaId}
+                      </span>
+                      {fornecedorInformado(grupo.fornecedor) ? (
+                        <span className="painel-op-fornecedor-cel">
+                          <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
+                            <Icon name="truck" size={16} />
+                          </span>
+                          <span className="painel-op-fornecedor-cel__texto">
+                            <strong>{grupo.fornecedor}</strong>
+                            <span>{grupo.veiculo}</span>
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="painel-op-fornecedor-cel is-pendente">
+                          <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
+                            <Icon name="alert" size={16} />
+                          </span>
+                          <span className="painel-op-fornecedor-cel__texto">
+                            <strong>{grupo.fornecedor}</strong>
+                            <span>{grupo.veiculo}</span>
+                          </span>
+                        </span>
+                      )}
+                      <span className="painel-op-com-icone">
+                        {grupo.modalidade && grupo.modalidade !== "-" && (
+                          <Icon name={iconeModalidade(grupo.modalidade)} size={14} />
+                        )}
+                        {grupo.modalidade}
+                      </span>
+                      <span className="painel-op-com-icone tabular">
+                        <Icon name="users" size={14} />
+                        {formatarQuantidadeDetalhada(
+                          grupo.totalAdultos,
+                          grupo.totalCriancas,
+                          grupo.totalInfantes,
+                        )}
+                      </span>
+                      <label
+                        className={`painel-op-monitor ${monitorado ? "is-on" : ""}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={monitorado}
+                          onChange={() => toggleMonitoradoOut(grupo.id)}
+                        />
+                        <Icon name={monitorado ? "eye" : "eyeOff"} size={14} />
+                        Monitorado
+                      </label>
+                      <span className="ui-cell-end">
+                        <Button
+                          size="sm"
+                          icon={copiadoGrupo ? "check" : "copy"}
+                          title="Copiar monitoramento"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const ok = await copiarMonitoramentoGrupo(grupo);
+                            if (ok) {
+                              setGrupoOutCopiado(grupo.id);
+                              marcarComoMonitorado(grupo.id);
+                              setTimeout(
+                                () =>
+                                  setGrupoOutCopiado((atual) =>
+                                    atual === grupo.id ? null : atual,
+                                  ),
+                                1800,
+                              );
+                            }
+                          }}
+                        >
+                          {copiadoGrupo ? "Copiado!" : "Copiar"}
+                        </Button>
+                      </span>
+                    </TableRow>
 
-            <div className="painel-chegadas-modal-actions">
-              <button
-                type="button"
-                className="painel-chegadas-btn-primary"
-                onClick={salvarEdicaoPlaca}
-              >
-                Salvar nome
-              </button>
-              <button
-                type="button"
-                className="painel-chegadas-google-btn"
-                onClick={() => gerarPdfPlacaUnica(placaEmEdicao)}
-              >
-                Gerar PDF agora
-              </button>
-            </div>
-          </div>
-        </div>
+                    {expandido && (
+                      <TableExpansion>
+                        {grupo.hoteisOrdenados.map((hotel, hotelIndex) => (
+                          <section key={hotel.id} className="painel-op-bloco">
+                            <header className="painel-op-bloco__head">
+                              <div>
+                                <span className="painel-op-bloco__fornecedor">
+                                  <Icon name="building" size={15} />{" "}
+                                  {grupo.tipoServico === "TRANSFER"
+                                    ? `${hotel.hotelOrigemAbreviado} → ${hotel.hotelDestinoAbreviado}`
+                                    : `${grupo.hoteisOrdenados.length > 1 ? `Origem ${hotelIndex + 1}: ` : ""}${hotel.hotelOrigemAbreviado}`}
+                                </span>
+                                <span className="painel-op-bloco__sub">
+                                  {formatarDataBr(hotel.dataServicoReal)} · {hotel.horario} · Tipo:{" "}
+                                  {grupo.tipoServico} · Modalidade: {grupo.modalidade}
+                                </span>
+                              </div>
+                              <span className="painel-op-bloco__totais tabular">
+                                Pax{" "}
+                                {formatarQuantidadeDetalhada(
+                                  hotel.totalAdultos,
+                                  hotel.totalCriancas,
+                                  hotel.totalInfantes,
+                                )}
+                              </span>
+                            </header>
+
+                            <Table
+                              columns={
+                                grupo.tipoServico === "TRANSFER"
+                                  ? "90px 64px 110px 120px minmax(140px,1.3fr) 80px minmax(110px,1fr) minmax(110px,1fr) 110px 100px 120px minmax(100px,1fr)"
+                                  : "90px 64px 110px 120px minmax(140px,1.3fr) 80px minmax(110px,1fr) 110px 100px 120px minmax(100px,1fr)"
+                              }
+                              minWidth={1280}
+                              compact
+                            >
+                              <TableHead>
+                                <span>Data</span>
+                                <span>Hora</span>
+                                <span>Reserva</span>
+                                <span>Contato</span>
+                                <span>Nome do pax</span>
+                                <span>Qtd. pax</span>
+                                <span>Origem</span>
+                                {grupo.tipoServico === "TRANSFER" && <span>Destino</span>}
+                                <span>Voo retorno</span>
+                                <span>Modalidade</span>
+                                <span>Buscar</span>
+                                <span>OBS</span>
+                              </TableHead>
+                              {hotel.reservas.map((reserva) => (
+                                <TableRow key={reserva.id}>
+                                  <span className="tabular">{formatarDataBr(reserva.dataServicoReal)}</span>
+                                  <span className="tabular">{reserva.horarioHotel}</span>
+                                  <span className="tabular">{reserva.reserva}</span>
+                                  <span className="tabular">{reserva.telefone}</span>
+                                  <span className="ui-cell-main">{reserva.cliente}</span>
+                                  <span className="tabular">
+                                    {formatarQuantidadeDetalhada(
+                                      reserva.adultos,
+                                      reserva.criancas,
+                                      reserva.infantes,
+                                    )}
+                                  </span>
+                                  <span>{reserva.hotelOrigemAbreviado}</span>
+                                  {grupo.tipoServico === "TRANSFER" && (
+                                    <span>{reserva.hotelDestinoAbreviado}</span>
+                                  )}
+                                  <span>{reserva.vooRetorno}</span>
+                                  <span>{reserva.modalidade}</span>
+                                  <span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      icon="search"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirBuscaVooPratica(reserva.raw);
+                                      }}
+                                    >
+                                      Buscar voo
+                                    </Button>
+                                  </span>
+                                  <span className="painel-op-obs">{reserva.observacao || "-"}</span>
+                                </TableRow>
+                              ))}
+                            </Table>
+                          </section>
+                        ))}
+                      </TableExpansion>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </Table>
+          )}
+        </>
       )}
+
+      {/* ===== PASSEIOS (guias escalados) ===== */}
+      {abaAtiva === ABAS.GUIAS && (
+        <>
+          <KpiTiles
+            items={[
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) },
+            ]}
+          />
+
+          {carregando ? (
+            <Card>{renderCarregando()}</Card>
+          ) : !gruposGuiasFiltrados.length ? (
+            <Card>
+              <EmptyState icon="compass" title="Nenhum guia encontrado para a data selecionada." />
+            </Card>
+          ) : (
+            <Table
+              columns="20px minmax(150px,1fr) minmax(220px,2fr) 90px 90px 80px"
+              minWidth={760}
+            >
+              <TableHead>
+                <span />
+                <span>Guia</span>
+                <span>Passeios</span>
+                <span className="ui-cell-end">Passeios</span>
+                <span className="ui-cell-end">Veículos</span>
+                <span className="ui-cell-end">Pax</span>
+              </TableHead>
+
+              {gruposGuiasFiltrados.map((grupo) => {
+                const expandido = !!gruposExpandidosGuia[grupo.id];
+                return (
+                  <Fragment key={grupo.id}>
+                    <TableRow
+                      expandable
+                      expanded={expandido}
+                      onToggle={() => toggleExpandirGrupoGuia(grupo.id)}
+                    >
+                      <span className="ui-cell-main">{grupo.guia}</span>
+                      <span className="painel-op-resumo">{grupo.passeiosResumo || "Sem passeio"}</span>
+                      <span className="ui-cell-end tabular">{grupo.totalPasseios}</span>
+                      <span className="ui-cell-end tabular">{grupo.totalVeiculosUtilizados}</span>
+                      <span className="ui-cell-end ui-cell-main tabular">{grupo.totalPax}</span>
+                    </TableRow>
+
+                    {expandido && (
+                      <TableExpansion>
+                        {grupo.passeios.map((passeio) => (
+                          <section key={`${grupo.id}_${passeio.passeio}`} className="painel-op-bloco">
+                            <header className="painel-op-bloco__head">
+                              <div>
+                                <span className="painel-op-bloco__fornecedor">
+                                  <Icon name="compass" size={15} /> {passeio.passeio}
+                                </span>
+                                <span className="painel-op-bloco__sub">
+                                  {passeio.veiculos
+                                    .map((v) => `${v.veiculo} · ${v.totalPax} pax`)
+                                    .join("   |   ")}
+                                  {passeio.pontoDeApoio
+                                    ? ` · Ponto de apoio: ${passeio.pontoDeApoio}`
+                                    : ""}
+                                </span>
+                              </div>
+                              <span className="painel-op-bloco__totais tabular">
+                                {passeio.totalVeiculos} veículo(s) · {passeio.totalReservasPasseio}{" "}
+                                reserva(s) · {passeio.totalPaxPasseio} pax
+                              </span>
+                            </header>
+
+                            {passeio.veiculos.map((veiculo, i) => (
+                              <div
+                                key={`${grupo.id}_${passeio.passeio}_${veiculo.veiculo}_bloco`}
+                                className="painel-op-veiculo is-fornecedor"
+                              >
+                                <header className="painel-op-forn">
+                                  <span className="painel-op-forn__icone" aria-hidden="true">
+                                    <Icon name="truck" size={19} />
+                                  </span>
+                                  <span className="painel-op-forn__texto">
+                                    <span className="painel-op-forn__rotulo">
+                                      Fornecedor · veículo {i + 1} de {passeio.veiculos.length}
+                                    </span>
+                                    <strong className="painel-op-forn__nome">{veiculo.fornecedor}</strong>
+                                    <span className="painel-op-forn__sub">
+                                      {veiculo.veiculo} · Primeiro horário: {veiculo.primeiraHora}
+                                    </span>
+                                  </span>
+                                </header>
+                                <Table
+                                  columns="minmax(150px,1.4fr) 110px 130px 100px minmax(140px,1.2fr) 80px minmax(110px,1fr)"
+                                  minWidth={900}
+                                  compact
+                                >
+                                  <TableHead>
+                                    <span>Nome do pax</span>
+                                    <span>Reserva</span>
+                                    <span>Contato</span>
+                                    <span>Quantidade</span>
+                                    <span>Hotel</span>
+                                    <span>Horário</span>
+                                    <span>OBS</span>
+                                  </TableHead>
+                                  {veiculo.reservas.map((reserva) => (
+                                    <TableRow key={reserva.id}>
+                                      <span className="ui-cell-main">{reserva.nomePax}</span>
+                                      <span className="tabular">{reserva.numeroReserva}</span>
+                                      <span className="tabular">{reserva.contato}</span>
+                                      <span className="tabular">{reserva.quantidadeDetalhada}</span>
+                                      <span>{reserva.hotel}</span>
+                                      <span className="tabular">{reserva.horarioApresentacao}</span>
+                                      <span className="painel-op-obs">{reserva.observacao || "-"}</span>
+                                    </TableRow>
+                                  ))}
+                                </Table>
+                              </div>
+                            ))}
+                          </section>
+                        ))}
+                      </TableExpansion>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </Table>
+          )}
+        </>
+      )}
+
+      {/* ===== DRAWERS ===== */}
+      <Drawer
+        open={drawerConfigPlacas}
+        onClose={() => setDrawerConfigPlacas(false)}
+        title="Configurações das placas PDF"
+        subtitle="Valem para a impressão individual e a coleção. Salvas neste navegador."
+        footer={
+          <Button variant="primary" icon="check" onClick={() => setDrawerConfigPlacas(false)}>
+            Pronto
+          </Button>
+        }
+      >
+        <Field label="Qtd. por página na coleção">
+          <select
+            value={configPlacas.quantidadePorPaginaColecao}
+            onChange={(e) =>
+              setConfigPlacas((prev) => ({
+                ...prev,
+                quantidadePorPaginaColecao: Number(e.target.value),
+              }))
+            }
+          >
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+            <option value={4}>4</option>
+            <option value={5}>5</option>
+            <option value={6}>6</option>
+          </select>
+        </Field>
+
+        <Field label="Mostrar logo">
+          <select
+            value={configPlacas.mostrarLogoNasPlacas ? "sim" : "nao"}
+            onChange={(e) =>
+              setConfigPlacas((prev) => ({
+                ...prev,
+                mostrarLogoNasPlacas: e.target.value === "sim",
+              }))
+            }
+          >
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </Field>
+
+        <Field label="Repetir cabeçalho do voo em nova página">
+          <select
+            value={configPlacas.repetirCabecalhoVooAoQuebrarPagina ? "sim" : "nao"}
+            onChange={(e) =>
+              setConfigPlacas((prev) => ({
+                ...prev,
+                repetirCabecalhoVooAoQuebrarPagina: e.target.value === "sim",
+              }))
+            }
+          >
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </Field>
+        <p className="painel-op-dica">As mudanças valem na hora — não precisa salvar.</p>
+      </Drawer>
+
+      <Drawer
+        open={popupPlacaAberto}
+        onClose={() => setPopupPlacaAberto(false)}
+        title="Nova placa personalizada"
+        subtitle="Gera um PDF com uma placa avulsa."
+        footer={
+          <>
+            <Button onClick={() => setPopupPlacaAberto(false)}>Cancelar</Button>
+            <Button
+              variant="primary"
+              icon="fileText"
+              onClick={gerarPlacaPersonalizada}
+              disabled={!placaPersonalizadaNome.trim()}
+            >
+              Gerar PDF da placa
+            </Button>
+          </>
+        }
+      >
+        <Field label="Nome do passageiro">
+          <input
+            value={placaPersonalizadaNome}
+            onChange={(e) => setPlacaPersonalizadaNome(e.target.value)}
+            placeholder="Ex: João Silva"
+          />
+        </Field>
+        <Field label="Voo (opcional)">
+          <input
+            value={placaPersonalizadaVoo}
+            onChange={(e) => setPlacaPersonalizadaVoo(e.target.value)}
+            placeholder="Ex: G3 1234"
+          />
+        </Field>
+      </Drawer>
+
+      <Drawer
+        open={!!placaEmEdicao}
+        onClose={() => setPlacaEmEdicao(null)}
+        title="Editar placa da reserva"
+        subtitle={
+          placaEmEdicao
+            ? `Reserva ${placaEmEdicao.codigoReserva} • Voo ${placaEmEdicao.voo || "-"}`
+            : undefined
+        }
+        footer={
+          <>
+            <Button icon="fileText" onClick={() => gerarPdfPlacaUnica(placaEmEdicao)}>
+              Gerar PDF agora
+            </Button>
+            <Button variant="primary" icon="check" onClick={salvarEdicaoPlaca}>
+              Salvar nome
+            </Button>
+          </>
+        }
+      >
+        {placaEmEdicao && (
+          <Field label="Nome que aparecerá na placa">
+            <input
+              value={placaEmEdicao.nome}
+              onChange={(e) =>
+                setPlacaEmEdicao((prev) => ({
+                  ...prev,
+                  nome: e.target.value,
+                }))
+              }
+            />
+          </Field>
+        )}
+      </Drawer>
     </div>
   );
 }

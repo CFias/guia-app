@@ -1,0 +1,492 @@
+/* =========================================================
+   GERAR ESCALA — layout novo. Só tokens.
+   ========================================================= */
+
+.escala-toolbar {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.escala-semana {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.escala-semana__label {
+  min-width: 180px;
+  text-align: center;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.escala-regras {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.escala-regras strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.escala-regras:hover {
+  background: var(--raised);
+}
+
+.escala-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-md);
+  color: var(--text-2);
+}
+
+.escala-status .ui-icon {
+  color: var(--accent-text);
+}
+
+.escala-status.is-pendente .ui-icon {
+  color: var(--warning);
+}
+
+.escala-status__acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* ---- robô ---- */
+.escala-robo {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-color: var(--accent);
+}
+
+.escala-robo__topo {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.escala-robo__orb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  animation: escala-pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes escala-pulso {
+  50% {
+    box-shadow: 0 0 0 8px var(--accent-soft);
+  }
+}
+
+.escala-robo__kicker {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.escala-robo__titulo {
+  margin: 4px 0;
+  font-size: var(--fs-lg);
+}
+
+.escala-robo__texto {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--text-3);
+}
+
+.escala-robo__etapas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-2);
+}
+
+.escala-robo__etapas li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.escala-robo__etapas li.is-ativa {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.escala-robo__etapas li.is-feita {
+  color: var(--text-2);
+}
+
+.escala-robo__bullet {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--raised);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.escala-robo__etapas li.is-feita .escala-robo__bullet,
+.escala-robo__etapas li.is-ativa .escala-robo__bullet {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---- relatório ---- */
+.escala-relatorio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.escala-relatorio:empty {
+  display: none;
+}
+
+.escala-relatorio ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-md);
+  color: var(--text-2);
+}
+
+.escala-relatorio__titulo {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-md);
+}
+
+.escala-relatorio__titulo.is-aviso {
+  color: var(--warning);
+}
+
+.escala-relatorio__titulo.is-alerta {
+  color: var(--alert);
+}
+
+/* ---- faixa de dias ---- */
+.escala-dias {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(108px, 1fr));
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.escala-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.escala-dia:hover:not(.is-active) {
+  background: var(--raised);
+}
+
+.escala-dia.is-active {
+  background: var(--raised);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  color: var(--text);
+}
+
+.escala-dia__nome {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.escala-dia__data {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.escala-dia__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.escala-dia__alerta {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--alert);
+}
+
+.escala-dia-card > .ui-table {
+  border: 0;
+}
+
+.escala-passeio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.escala-idioma {
+  height: 20px;
+  padding: 0 7px;
+  font-size: var(--fs-xs);
+}
+
+.ui-table__row.escala-fechado {
+  opacity: 0.6;
+}
+
+.ui-table__row.escala-add {
+  background: var(--raised);
+}
+
+/* ---- por guia ---- */
+.escala-guias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.escala-guia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.escala-guia.is-livre {
+  border-style: dashed;
+}
+
+.escala-guia__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.escala-guia__nome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-base);
+  font-weight: 700;
+}
+
+.escala-guia__top {
+  color: var(--warning);
+}
+
+.escala-guia__pct {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.escala-guia__pct.is-alta {
+  color: var(--alert);
+}
+
+.escala-guia__barra {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.escala-guia__barra span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.escala-guia__rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.escala-guia__dias {
+  display: flex;
+  gap: 4px;
+}
+
+.escala-mini {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.escala-mini.is-servico {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.escala-mini.is-disponivel {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.escala-mini.is-bloqueado {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.escala-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.escala-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: var(--space-3);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-seg);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
+.escala-tooltip pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.escala-tooltip-wrap:hover .escala-tooltip,
+.escala-tooltip-wrap:focus-within .escala-tooltip {
+  display: block;
+}
+
+.escala-subtitulo {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.escala-subtitulo strong {
+  color: var(--text);
+}
+
+/* ---- drawer de regras ---- */
+.escala-regras-lista {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+}
+
+.escala-regras-lista > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--divider);
+}
+
+.escala-regras-lista > div:last-child {
+  border-bottom: 0;
+}
+
+.escala-regras-lista dt {
+  color: var(--text-3);
+  font-size: var(--fs-md);
+}
+
+.escala-regras-lista dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--fs-md);
+}
+
+.escala-dica {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+@media (max-width: 640px) {
+  .escala-status__acao {
+    margin-left: 0;
+  }
+
+  .escala-regras {
+    width: 100%;
+  }
+}

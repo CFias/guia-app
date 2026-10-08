@@ -9,15 +9,8 @@ import {
 import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
-import "./styles.css";
-import {
-  AssignmentIndRounded,
-  CloseRounded,
-  LanguageRounded,
-  LocalActivityRounded,
-  SaveRounded,
-  StarRounded,
-} from "@mui/icons-material";
+import "./guias.css";
+import { Drawer, Field, Icon } from "../ui";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não opera";
@@ -186,180 +179,129 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
   const bloqueado = loadingSalvar || loadingDados;
 
   return (
-    <div className="editar-guia-overlay">
-      <div className="editar-guia-modal">
-        <div className="editar-guia-modal-header">
-          <div>
-            <h2 className="editar-guia-modal-title">
-              Editar Guia <AssignmentIndRounded fontSize="small" />
-            </h2>
-            <p className="editar-guia-modal-subtitle">
-              Atualize dados principais, idiomas, prioridade e o resumo de
-              operação deste guia.
-            </p>
+    <Drawer
+      open
+      onClose={() => !loadingSalvar && onClose()}
+      title="Editar guia"
+      subtitle="Dados principais, idiomas, prioridade e o resumo de operação deste guia."
+      width={460}
+      onSave={salvar}
+      saving={loadingSalvar}
+      saveLabel={loadingSalvar ? "Salvando..." : "Salvar"}
+    >
+      <Field label="Nome">
+        <input
+          placeholder="Nome"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          disabled={bloqueado}
+        />
+      </Field>
+
+      <Field label="WhatsApp">
+        <input
+          type="text"
+          placeholder="WhatsApp"
+          value={formatarTelefone(whatsapp)}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          maxLength={15}
+          disabled={bloqueado}
+        />
+      </Field>
+
+      <div className="editar-guia-bloco">
+        <span className="ui-field__label">
+          <Icon name="languages" size={13} /> Idiomas
+        </span>
+        {loadingDados ? (
+          <CardSkeleton variant="list" rows={2} dense />
+        ) : (
+          <div className="guias-chips" role="group" aria-label="Idiomas">
+            {idiomasDisponiveis.map((idioma) => {
+              const ativoIdioma = idiomasSelecionados.includes(idioma);
+              return (
+                <button
+                  key={idioma}
+                  type="button"
+                  className={`guias-chip-toggle ${ativoIdioma ? "is-on" : ""}`}
+                  aria-pressed={ativoIdioma}
+                  onClick={() => !bloqueado && toggleIdioma(idioma)}
+                  disabled={bloqueado}
+                >
+                  {ativoIdioma && <Icon name="check" size={12} />}
+                  {idioma}
+                </button>
+              );
+            })}
           </div>
-
-          <button
-            className="editar-guia-close"
-            onClick={onClose}
-            disabled={loadingSalvar}
-          >
-            <CloseRounded fontSize="small" />
-          </button>
-        </div>
-
-        <div className="editar-guia-modal-body">
-          <div className="editar-guia-form-grid">
-            <div className="editar-guia-field">
-              <label>Nome</label>
-              <input
-                placeholder="Nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                disabled={bloqueado}
-              />
-            </div>
-
-            <div className="editar-guia-field">
-              <label>WhatsApp</label>
-              <input
-                type="text"
-                placeholder="WhatsApp"
-                value={formatarTelefone(whatsapp)}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                maxLength={15}
-                disabled={bloqueado}
-              />
-            </div>
-          </div>
-
-          <div className="editar-guia-section">
-            <label className="editar-guia-section-title">
-              Idiomas <LanguageRounded fontSize="small" />
-            </label>
-
-            {loadingDados ? (
-              <CardSkeleton variant="list" rows={2} dense />
-            ) : (
-              <div className="editar-guia-tag-selector">
-                {idiomasDisponiveis.map((idioma) => (
-                  <span
-                    key={idioma}
-                    className={`editar-guia-tag-option ${
-                      idiomasSelecionados.includes(idioma) ? "active" : ""
-                    }`}
-                    onClick={() => !bloqueado && toggleIdioma(idioma)}
-                  >
-                    {idioma}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="editar-guia-section">
-            <label className="editar-guia-section-title">
-              Passeios aptos + Nível de Guiamento{" "}
-              <LocalActivityRounded fontSize="small" />
-            </label>
-
-            <div className="editar-guia-operacao-lista somente-leitura">
-              {loadingDados ? (
-                <CardSkeleton variant="affinity" rows={4} />
-              ) : passeiosAptos.length === 0 ? (
-                <div className="editar-guia-passeios-vazio">
-                  Este guia ainda não possui passeios aptos definidos no
-                  mapeamento.
-                </div>
-              ) : (
-                passeiosAptos.map((passeio) => (
-                  <div key={passeio.id} className="editar-guia-operacao-item">
-                    <div className="editar-guia-operacao-topo">
-                      <div className="editar-guia-operacao-checkline leitura">
-                        <input type="checkbox" checked readOnly disabled />
-                        <span className="editar-guia-operacao-nome">
-                          {obterNomePasseio(passeio)}
-                        </span>
-                      </div>
-
-                      <div className="editar-guia-operacao-meta">
-                        <span className="editar-guia-operacao-status">
-                          {passeio.statusNivel}
-                        </span>
-                        <span
-                          className={`editar-guia-nivel-badge ${getNivelClass(
-                            passeio.nivel,
-                          )}`}
-                        >
-                          {passeio.nivel}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="editar-guia-options">
-            <label className="editar-guia-checkbox-line">
-              <input
-                type="checkbox"
-                checked={motoguia}
-                onChange={(e) => setMotoguia(e.target.checked)}
-                disabled={bloqueado}
-              />
-              Atua como motoguia
-            </label>
-
-            <label className="editar-guia-checkbox-line">
-              <input
-                type="checkbox"
-                checked={ativo}
-                onChange={(e) => setAtivo(e.target.checked)}
-                disabled={bloqueado}
-              />
-              Guia ativo
-            </label>
-          </div>
-
-          <div className="editar-guia-field">
-            <label className="editar-guia-section-title">
-              Nível de prioridade <StarRounded fontSize="small" />
-            </label>
-            <select
-              className="editar-guia-select"
-              value={nivelPrioridade}
-              onChange={(e) => setNivelPrioridade(Number(e.target.value))}
-              disabled={bloqueado}
-            >
-              <option value={1}>1 - Baixa</option>
-              <option value={2}>2 - Média</option>
-              <option value={3}>3 - Alta</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="editar-guia-modal-actions">
-          <button
-            className={`editar-guia-btn-save ${loadingSalvar ? "is-saving" : ""}`}
-            onClick={salvar}
-            disabled={loadingSalvar}
-          >
-            <SaveRounded fontSize="small" />
-            {loadingSalvar ? "Salvando..." : "Salvar"}
-          </button>
-
-          <button
-            className="editar-guia-btn-cancel"
-            onClick={onClose}
-            disabled={loadingSalvar}
-          >
-            Cancelar
-          </button>
-        </div>
+        )}
       </div>
-    </div>
+
+      <div className="editar-guia-bloco">
+        <span className="ui-field__label">
+          <Icon name="compass" size={13} /> Passeios aptos + nível de guiamento
+        </span>
+        <span className="ui-field__hint">
+          Somente leitura — o nível é definido no Mapa de afinidade.
+        </span>
+        {loadingDados ? (
+          <CardSkeleton variant="affinity" rows={4} />
+        ) : passeiosAptos.length === 0 ? (
+          <p className="editar-guia-vazio">
+            Este guia ainda não possui passeios aptos definidos no mapeamento.
+          </p>
+        ) : (
+          <ul className="editar-guia-passeios">
+            {passeiosAptos.map((passeio) => (
+              <li key={passeio.id} className={getNivelClass(passeio.nivel)}>
+                <span className="editar-guia-passeios__nome">{obterNomePasseio(passeio)}</span>
+                <span className="editar-guia-passeios__nivel">
+                  <span className="editar-guia-passeios__barra" aria-hidden="true">
+                    <span style={{ width: `${passeio.nivel}%` }} />
+                  </span>
+                  <span className="tabular">{passeio.nivel}</span>
+                  <span className="ui-cell-sub">{passeio.statusNivel}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="editar-guia-toggles">
+        <label className="editar-guia-toggle">
+          <input
+            type="checkbox"
+            checked={motoguia}
+            onChange={(e) => setMotoguia(e.target.checked)}
+            disabled={bloqueado}
+          />
+          <span>Atua como motoguia</span>
+        </label>
+
+        <label className="editar-guia-toggle">
+          <input
+            type="checkbox"
+            checked={ativo}
+            onChange={(e) => setAtivo(e.target.checked)}
+            disabled={bloqueado}
+          />
+          <span>Guia ativo</span>
+        </label>
+      </div>
+
+      <Field label="Nível de prioridade" icon="star">
+        <select
+          value={nivelPrioridade}
+          onChange={(e) => setNivelPrioridade(Number(e.target.value))}
+          disabled={bloqueado}
+        >
+          <option value={1}>1 - Baixa</option>
+          <option value={2}>2 - Média</option>
+          <option value={3}>3 - Alta</option>
+        </select>
+      </Field>
+    </Drawer>
   );
 };
 
