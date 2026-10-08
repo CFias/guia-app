@@ -386,3 +386,20 @@ body:is(.dark, .dark-pro) {
 .painel-op-fornecedor-cel.is-pendente strong {
   color: var(--warning);
 }
+
+/* ícone + rótulo nos cabeçalhos das tabelas do painel */
+.painel-op-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.painel-op-th svg {
+  flex: none;
+  opacity: 0.8;
+}
+
+.ui-cell-end.painel-op-com-icone {
+  justify-content: flex-end;
+}
