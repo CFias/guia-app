@@ -756,7 +756,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -765,11 +765,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -834,13 +834,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -904,7 +904,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                normalizarTexto(guia.nome || ""),
+                  normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -934,11 +934,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-        distribuicaoGuias.reduce(
-          (acc, guia) => acc + Number(guia.percentualUso || 0),
-          0,
-        ) / distribuicaoGuias.length,
-      )
+          distribuicaoGuias.reduce(
+            (acc, guia) => acc + Number(guia.percentualUso || 0),
+            0,
+          ) / distribuicaoGuias.length,
+        )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -990,8 +990,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1453,21 +1453,37 @@ Operacional - Luck Receptivo
 
   // ---- Copiar UM serviço do dia (texto pronto pra enviar ao guia) ----
   const montarTextoServicoDia = (item) => {
-    const nomeGuia = item.guiaNome || "Guia";
+    const nomeGuia = String(item.guiaNome || "Guia").trim();
+    const primeiroNome = nomeGuia.split(/\s+/)[0] || nomeGuia;
+
+    const [ano, mes, dia] = String(item.date || "").split("-").map(Number);
+    const diasSemana = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+    const diaSemana = ano ? diasSemana[new Date(ano, mes - 1, dia).getDay()] : "";
+    const quando = `${isAmanha(item.date) ? "amanhã, " : ""}*${diaSemana ? `${diaSemana}, ` : ""}${formatarDataBr(item.date)}*`;
+
+    const detalhePax = [
+      item.adultCount ? `${item.adultCount} ADT` : "",
+      item.childCount ? `${item.childCount} CHD` : "",
+      item.infantCount ? `${item.infantCount} INF` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const totalPax =
+      Number(item.adultCount || 0) + Number(item.childCount || 0) + Number(item.infantCount || 0);
 
     const partes = [
-      `Olá, ${nomeGuia}!`,
-      `Desejo que esteja bem.`,
+      item.guiaNome ? `Olá, ${primeiroNome}!` : "Olá!",
+      "Tudo bem?",
       "",
-      `Serviço para o dia (${formatarDataBr(item.date)}):`,
+      `Segue sua programação para ${quando}:`,
       "",
       `*${item.serviceName}*`,
-      `Status: ${item.statusOperacional} • ${item.statusGrupo}`,
-      `Pax: ADT ${item.adultCount || 0} • CHD ${item.childCount || 0} • INF ${item.infantCount || 0}`,
+      `Pax: *${totalPax}*${detalhePax ? ` (${detalhePax})` : ""}`,
       "",
+      "Qualquer dúvida, estamos à disposição.",
+      "Bom trabalho! 🍀",
       "",
-      `Cordialmente,`,
-      `_Operacional Luck SSA_`,
+      "_Operacional · Luck SSA_",
     ];
 
     return partes.join("\n");

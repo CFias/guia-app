@@ -258,107 +258,137 @@ const formatarHora = (valor = "") => {
   return "--:--";
 };
 
-const montarTextoMonitoramentoGrupo = (grupo) => {
-  if (!grupo) return "";
+/* ---------------------------------------------------------
+   SCRIPTS DE COPIAR (WhatsApp: *negrito*, _itálico_)
+   🍀 = marca Luck. OUT e TRANSFER têm modelos próprios.
+   --------------------------------------------------------- */
+const DIAS_SEMANA = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 
-  const ehTransfer = grupo.tipoServico === "TRANSFER";
+const diaDaSemana = (dataIso = "") => {
+  const [ano, mes, dia] = String(dataIso).split("-").map(Number);
+  if (!ano || !mes || !dia) return "";
+  return DIAS_SEMANA[new Date(ano, mes - 1, dia).getDay()];
+};
 
+const textoOuPadrao = (valor, padrao = "-") => {
+  const t = String(valor ?? "").trim();
+  return t && t !== "-" ? t : padrao;
+};
+
+const linhasPassageirosScript = (reservas = [], { mostrarVoo = false } = {}) => {
+  const linhas = [];
+  reservas.forEach((reserva, index) => {
+    const nome = textoOuPadrao(reserva?.cliente, "TITULAR NÃO INFORMADO").toUpperCase();
+    const quantidade = formatarQuantidadeDetalhada(
+      reserva?.adultos,
+      reserva?.criancas,
+      reserva?.infantes,
+    );
+    const telefone = textoOuPadrao(reserva?.telefone, "");
+    const codigo = textoOuPadrao(reserva?.reserva, "");
+    const voo = textoOuPadrao(reserva?.vooRetorno, "");
+
+    linhas.push(`${index + 1}. *${nome}* — ${quantidade}`);
+    if (codigo) linhas.push(`    🎫 Reserva: ${codigo}`);
+    if (telefone) linhas.push(`    📞 ${telefone}`);
+    if (mostrarVoo && voo) linhas.push(`    ✈️ Voo: ${voo}`);
+    linhas.push("");
+  });
+  return linhas;
+};
+
+// só mostra veículo/modalidade quando vierem preenchidos
+const linhasVeiculoModalidade = (grupo) =>
+  [
+    textoOuPadrao(grupo.veiculo, "") && `🚐 Veículo: *${textoOuPadrao(grupo.veiculo)}*`,
+    textoOuPadrao(grupo.modalidade, "") && `⭐ Modalidade: *${textoOuPadrao(grupo.modalidade)}*`,
+  ].filter(Boolean);
+
+const rodapeMonitoramento = [
+  "📍 Por favor, envie a *localização em tempo real*.",
+  "",
+  "_Equipe de Monitoramento · Luck SSA_ 🍀",
+];
+
+// OUT: hotel → aeroporto
+const montarTextoOut = (grupo, blocos) => {
   const linhas = [
-    "Olá!",
+    "🍀 *LUCK SSA · MONITORAMENTO DE OUT*",
     "",
-    ehTransfer
-      ? "TUDO CERTO PARA ESSE SERVIÇO ?"
-      : "TUDO CERTO PARA ESSE OUT ?",
+    "Olá! Tudo certo para este OUT?",
+    "",
+    `📅 ${formatarDataBr(blocos[0]?.dataServicoReal || grupo.dataServicoReal)}`,
+    ...linhasVeiculoModalidade(grupo),
     "",
   ];
 
-  const blocos = Array.isArray(grupo.hoteisOrdenados)
-    ? grupo.hoteisOrdenados
-    : [];
-
-  const montarLinhasPassageiros = (reservas = []) => {
-    const linhasPassageiros = [];
-
-    reservas.forEach((reserva, index) => {
-      const nome = String(
-        reserva?.cliente || "PASSAGEIRO NÃO INFORMADO",
-      ).trim();
-      const telefone = String(reserva?.telefone || "").trim();
-      const codigoReserva = String(reserva?.reserva || "").trim();
-      const quantidade = formatarQuantidadeDetalhada(
-        reserva?.adultos,
-        reserva?.criancas,
-        reserva?.infantes,
-      );
-
-      const partes = [`${index + 1}. ${nome}`];
-
-      if (quantidade && quantidade !== "0 ADT") {
-        partes.push(`(${quantidade})`);
-      }
-
-      if (telefone && telefone !== "-") {
-        partes.push(`— ${telefone}`);
-      }
-
-      linhasPassageiros.push(partes.join(" "));
-      linhasPassageiros.push(`-RESERVA: ${codigoReserva}`);
-      linhasPassageiros.push("");
-    });
-
-    return linhasPassageiros;
-  };
-
-  if (blocos.length) {
-    const mostrarContadorHotel = blocos.length > 1;
-
-    blocos.forEach((hotel, index) => {
-      const tituloHotel = mostrarContadorHotel
-        ? `HOTEL ${index + 1}:`
-        : "HOTEL:";
-
-      const nomeLocal = ehTransfer
-        ? `${hotel.hotelOrigemAbreviado || "ORIGEM NÃO INFORMADA"} → ${hotel.hotelDestinoAbreviado || "DESTINO NÃO INFORMADO"}`
-        : hotel.hotelOrigemAbreviado || "HOTEL NÃO INFORMADO";
-
-      linhas.push(
-        `${tituloHotel} ${nomeLocal}* - *${hotel.horario || "--:--"}*`,
-      );
-
-      linhas.push(
-        `QTD PAX: *${formatarQuantidadeDetalhada(
-          hotel.totalAdultos,
-          hotel.totalCriancas,
-          hotel.totalInfantes,
-        )}*`,
-      );
-
-      linhas.push("");
-      linhas.push("PASSAGEIROS:");
-
-      const linhasPassageiros = montarLinhasPassageiros(hotel.reservas);
-      if (linhasPassageiros.length) {
-        linhasPassageiros.forEach((linha) => linhas.push(linha));
-      } else {
-        linhas.push("-");
-        linhas.push("");
-      }
-    });
-  } else {
-    linhas.push("HOTEL: HOTEL NÃO INFORMADO* - *--:--*");
-    linhas.push("QTD PAX: *0 ADT*");
-    linhas.push("");
-    linhas.push("PASSAGEIROS:");
-    linhas.push("-");
-    linhas.push("");
+  if (!blocos.length) {
+    linhas.push("🏨 *HOTEL NÃO INFORMADO*", "");
   }
 
-  linhas.push(`MODALIDADE: *${grupo.modalidade || "-"}*`);
-  linhas.push("");
-  linhas.push("Favor enviar a localização em real.");
-  linhas.push("_Equipe de Monitoramento - Luck SSA_");
+  blocos.forEach((hotel, index) => {
+    const titulo = blocos.length > 1 ? `Hotel ${index + 1} · ` : "";
+    linhas.push("━━━━━━━━━━━━━━");
+    linhas.push(`🏨 *${titulo}${textoOuPadrao(hotel.hotelOrigemAbreviado, "HOTEL NÃO INFORMADO")}*`);
+    linhas.push(`🕓 Saída do hotel: *${hotel.horario || "--:--"}*`);
+    linhas.push(
+      `👥 Pax: *${formatarQuantidadeDetalhada(hotel.totalAdultos, hotel.totalCriancas, hotel.totalInfantes)}*`,
+    );
+    linhas.push("");
+    linhas.push("*Passageiros*");
+    linhas.push(...linhasPassageirosScript(hotel.reservas, { mostrarVoo: true }));
+  });
 
+  if (blocos.length > 1) {
+    linhas.push(
+      `👥 *Total do veículo: ${formatarQuantidadeDetalhada(grupo.totalAdultos, grupo.totalCriancas, grupo.totalInfantes)}*`,
+      "",
+    );
+  }
+
+  linhas.push(...rodapeMonitoramento);
   return linhas.join("\n");
+};
+
+// TRANSFER: origem → destino, pax, reserva, titular e modalidade
+const montarTextoTransfer = (grupo, blocos) => {
+  const linhas = [
+    "🍀 *LUCK SSA · TRANSFER*",
+    "",
+    "Olá! Tudo certo para este transfer?",
+    "",
+    ...linhasVeiculoModalidade(grupo),
+    "",
+  ];
+
+  if (!blocos.length) {
+    linhas.push("📍 *Origem:* NÃO INFORMADA", "🏁 *Destino:* NÃO INFORMADO", "");
+  }
+
+  blocos.forEach((trecho, index) => {
+    linhas.push("━━━━━━━━━━━━━━");
+    if (blocos.length > 1) linhas.push(`*Trecho ${index + 1}*`);
+    linhas.push(`📅 ${formatarDataBr(trecho.dataServicoReal)} · 🕓 *${trecho.horario || "--:--"}*`);
+    linhas.push(`📍 *Origem:* ${textoOuPadrao(trecho.hotelOrigem || trecho.hotelOrigemAbreviado, "NÃO INFORMADA")}`);
+    linhas.push(`🏁 *Destino:* ${textoOuPadrao(trecho.hotelDestino || trecho.hotelDestinoAbreviado, "NÃO INFORMADO")}`);
+    linhas.push(
+      `👥 Pax: *${formatarQuantidadeDetalhada(trecho.totalAdultos, trecho.totalCriancas, trecho.totalInfantes)}*`,
+    );
+    linhas.push("");
+    linhas.push("*Reservas*");
+    linhas.push(...linhasPassageirosScript(trecho.reservas));
+  });
+
+  linhas.push(...rodapeMonitoramento);
+  return linhas.join("\n");
+};
+
+const montarTextoMonitoramentoGrupo = (grupo) => {
+  if (!grupo) return "";
+  const blocos = Array.isArray(grupo.hoteisOrdenados) ? grupo.hoteisOrdenados : [];
+  return grupo.tipoServico === "TRANSFER"
+    ? montarTextoTransfer(grupo, blocos)
+    : montarTextoOut(grupo, blocos);
 };
 
 const copiarMonitoramentoGrupo = async (grupo) => {
@@ -2285,10 +2315,15 @@ export default function PainelOperacionalUnificado() {
   };
 
   const montarResumoTexto = () => {
+    const dia = diaDaSemana(dataSelecionada);
     const linhas = [
-      `LISTA DE PASSEIOS: ${formatarDataBr(dataSelecionada)}`,
+      "🍀 *LUCK SSA · PASSEIOS DO DIA*",
+      `📅 ${dia ? `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ` : ""}${formatarDataBr(dataSelecionada)}`,
       "",
     ];
+
+    let totalPasseios = 0;
+    let totalPax = 0;
 
     gruposGuiasFiltrados.forEach((grupo) => {
       grupo.passeios.forEach((passeio) => {
@@ -2331,36 +2366,43 @@ export default function PainelOperacionalUnificado() {
               (fornecedorNormalizado.includes(nomeGuiaNormalizado) ||
                 nomeGuiaNormalizado.includes(fornecedorNormalizado))));
 
-        linhas.push(`*${nomePasseio}*`);
-        linhas.push(`${ehMotoguia ? "MOTOGUIA" : "GUIA"}: ${nomeGuia}`);
-        linhas.push(`PAX: ${passeio.totalPaxPasseio || 0}`);
+        totalPasseios += 1;
+        totalPax += Number(passeio.totalPaxPasseio || 0);
+
+        linhas.push("━━━━━━━━━━━━━━");
+        linhas.push(`🧭 *${nomePasseio}*`);
+        linhas.push(`${ehMotoguia ? "🚗 Motoguia" : "👤 Guia"}: ${nomeGuia}`);
+        linhas.push(`👥 Pax: *${passeio.totalPaxPasseio || 0}*`);
 
         if (!ehMotoguia) {
           linesPushIfValue(
             linhas,
-            `VEÍCULO PRINCIPAL: ${veiculoPrincipal}`,
+            `🚐 Veículo principal: ${veiculoPrincipal}`,
             veiculoPrincipal && veiculoPrincipal !== "-",
           );
         }
 
         linesPushIfValue(
           linhas,
-          `VEÍCULO DE APOIO: ${veiculoApoio}`,
+          `🚐 Veículo de apoio: ${veiculoApoio}`,
           veiculoApoio && veiculoApoio !== "-",
         );
 
         linesPushIfValue(
           linhas,
-          `PONTO DE APOIO: ${pontoDeApoio}`,
+          `📍 Ponto de apoio: ${pontoDeApoio}`,
           pontoDeApoio,
         );
 
         linhas.push("");
-        linhas.push("");
       });
     });
 
-    linhas.push("PONTOS DE APOIO INFORMADOS!🍀");
+    linhas.push("━━━━━━━━━━━━━━");
+    linhas.push(`📊 *Total: ${totalPasseios} passeio(s) · ${totalPax} pax*`);
+    linhas.push("");
+    linhas.push("✅ Pontos de apoio informados!");
+    linhas.push("_Operacional · Luck SSA_ 🍀");
 
     return linhas.join("\n").trim();
   };
