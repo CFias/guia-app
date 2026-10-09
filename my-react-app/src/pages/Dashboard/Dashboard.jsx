@@ -14,6 +14,7 @@ import {
   ROTAS_FORA_DO_MENU,
 } from "../../components/Shell/navConfig";
 import { ShellContext } from "../../components/Shell/shellContext";
+import { definirTituloAba } from "../../components/Shell/tituloAba";
 
 /* =========================================================
    LAYOUT (shell) — sidebar 256px / 72px recolhida + topbar 64px.
@@ -109,6 +110,12 @@ const Dashboard = ({ loading }) => {
     }
     return ROTAS_FORA_DO_MENU[pathname] || null;
   }, [grupos, pathname]);
+
+  // título da aba do navegador acompanha a página aberta
+  const tituloPagina = migalhas ? migalhas[1] : "";
+  useEffect(() => {
+    definirTituloAba(tituloPagina);
+  }, [tituloPagina]);
 
   // data da topbar (atualiza sozinha na virada do dia)
   const [hoje, setHoje] = useState(() => new Date());

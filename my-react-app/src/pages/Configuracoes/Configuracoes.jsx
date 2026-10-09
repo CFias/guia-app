@@ -83,6 +83,7 @@ const Configuracoes = () => {
   const [paxMinimoParaGuia, setPaxMinimoParaGuia] = useState(2);
   const [pastaDriveTexto, setPastaDriveTexto] = useState("");
   const [driveClientId, setDriveClientId] = useState("");
+  const [whatsappOperacao, setWhatsappOperacao] = useState("");
   const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
@@ -117,6 +118,7 @@ const Configuracoes = () => {
           }
           if (data.driveFolderId) setPastaDriveTexto(data.driveFolderId);
           if (data.driveClientId) setDriveClientId(data.driveClientId);
+          if (data.whatsappOperacao) setWhatsappOperacao(data.whatsappOperacao);
         }
       } catch (err) {
         console.error("Erro ao carregar configurações:", err);
@@ -187,6 +189,13 @@ const Configuracoes = () => {
     const valor = driveClientId.trim();
     setDriveClientId(valor);
     await salvarConfiguracao({ driveClientId: valor });
+  };
+
+  // WhatsApp que aparece no botão "Falar com a operação" da área do guia
+  const salvarWhatsappOperacao = async () => {
+    const valor = String(whatsappOperacao).replace(/\D/g, "");
+    setWhatsappOperacao(valor);
+    await salvarConfiguracao({ whatsappOperacao: valor });
   };
 
   const salvarUsoAfinidade = async (valor) => {
@@ -459,6 +468,31 @@ const Configuracoes = () => {
                 onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                 disabled={salvando}
               />
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Contato da operação"
+            descricao='Número que aparece no botão "Falar com a operação" na área do guia. Deixe em branco para esconder o botão.'
+          >
+            <div className="cfg-campo-texto">
+              <label htmlFor="whatsapp-operacao">
+                <Icon name="message" size={14} /> WhatsApp da operação
+              </label>
+              <input
+                id="whatsapp-operacao"
+                type="tel"
+                inputMode="tel"
+                placeholder="(71) 99999-9999"
+                className="cfg-input"
+                value={whatsappOperacao}
+                onChange={(e) => setWhatsappOperacao(e.target.value)}
+                onBlur={salvarWhatsappOperacao}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                disabled={salvando}
+              />
+              <p>Com DDD. O guia abre uma conversa já com o nome dele na mensagem.</p>
             </div>
           </Secao>
 

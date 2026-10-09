@@ -1,0 +1,502 @@
+/* =========================================================
+   ÁREA DO GUIA — camada visual (só apresentação, só tokens).
+   ========================================================= */
+
+.minha-disp-page {
+  max-width: 720px;
+}
+
+/* ---------- cabeçalho ---------- */
+.guia-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 20px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--divider);
+  background:
+    radial-gradient(90% 90% at 0% 0%, color-mix(in oklch, var(--accent) 24%, transparent), transparent 65%),
+    linear-gradient(160deg, color-mix(in oklch, var(--accent) 8%, var(--surface)), var(--surface));
+}
+
+.guia-hero__paisagem {
+  position: absolute;
+  right: -20px;
+  bottom: -6px;
+  z-index: -1;
+  width: 70%;
+  max-width: 460px;
+  color: var(--accent-text);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.guia-hero__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guia-hero__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.guia-hero__marca img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.guia-hero__pessoa {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.guia-hero__pessoa h1 {
+  margin: 0 0 2px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.guia-hero__pessoa p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.guia-hero__avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent);
+}
+
+.guia-hero__avatar--grande {
+  width: 60px;
+  height: 60px;
+  font-size: 20px;
+}
+
+.guia-hero__resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guia-resumo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: color-mix(in oklch, var(--bg) 55%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.guia-resumo>svg {
+  flex: none;
+  color: var(--accent-text);
+}
+
+.guia-resumo span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.guia-resumo small {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.guia-resumo strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guia-resumo.is-fechado>svg {
+  color: var(--text-3);
+}
+
+/* ---------- janela de envio ---------- */
+.guia-janela-barra {
+  height: 6px;
+  margin: 10px 0 4px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--text) 10%, transparent);
+  overflow: hidden;
+}
+
+.guia-janela-barra>span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* ---------- semana ---------- */
+.guia-semana__topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guia-semana h2,
+.minha-disp-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guia-semana h2 svg {
+  color: var(--accent-text);
+}
+
+.guia-contador {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--divider);
+  background: var(--raised);
+  font-size: 14px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.guia-contador strong {
+  font-size: 18px;
+  color: var(--accent-text);
+}
+
+.guia-semana .minha-disp-dias {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.guia-semana .minha-disp-dia {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 92px;
+  padding: 12px 14px;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+
+.guia-semana .minha-disp-dia:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.guia-semana .minha-disp-dia .check {
+  display: none;
+}
+
+.guia-dia__check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--divider);
+  color: var(--on-accent);
+}
+
+.minha-disp-dia.ativo .guia-dia__check {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.guia-dia__estado {
+  margin-top: auto;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.minha-disp-dia.ativo .guia-dia__estado {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.minha-disp-acoes .minha-disp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* barra de salvar fica presa no rodapé enquanto houver alteração */
+.guia-acoes-fixas {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklch, var(--accent) 45%, var(--divider));
+  background: color-mix(in oklch, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow-pop);
+  backdrop-filter: blur(8px);
+}
+
+.guia-acoes-fixas__aviso {
+  flex-basis: 100%;
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+/* ---------- histórico em mini calendário ---------- */
+.guia-calendario {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.guia-calendario__dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--raised);
+  color: var(--text-3);
+}
+
+.guia-calendario__dia small {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.guia-calendario__dia strong {
+  font-size: 15px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.guia-calendario__vazio {
+  width: 12px;
+  height: 12px;
+}
+
+.guia-calendario__dia.is-marcado {
+  border-color: color-mix(in oklch, var(--accent) 50%, var(--divider));
+  background: color-mix(in oklch, var(--accent) 14%, var(--surface));
+  color: var(--accent-text);
+}
+
+.guia-calendario__dia.is-marcado strong {
+  color: var(--text);
+}
+
+.guia-calendario__dia.is-hoje {
+  box-shadow: inset 0 0 0 1.5px var(--text-3);
+}
+
+/* ---------- perfil ---------- */
+.guia-perfil__topo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.guia-perfil__topo h2 {
+  margin: 0;
+}
+
+.guia-perfil__numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guia-perfil__numeros span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 6px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  border: 1px solid var(--divider);
+}
+
+.guia-perfil__numeros strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.guia-perfil__numeros small {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.minha-disp-passeios strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.minha-disp-passeios strong svg {
+  color: var(--accent-text);
+  flex: none;
+}
+
+@media (max-width: 560px) {
+  .guia-hero__resumo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guia-hero__paisagem {
+    width: 110%;
+    opacity: 0.12;
+  }
+
+  .guia-semana .minha-disp-dias {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .guia-calendario {
+    gap: 4px;
+  }
+}
+
+/* ---------- incrementos: prazo, repetir semana, enviado, contato ---------- */
+.guia-hero__acoes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guia-hero__whats {
+  text-decoration: none;
+  color: inherit;
+}
+
+.minha-disp-janela.guia-prazo-apertado {
+  border-color: color-mix(in oklch, var(--warning) 55%, var(--divider));
+  background: color-mix(in oklch, var(--warning) 9%, var(--surface));
+}
+
+.guia-lembrete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.guia-repetir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in oklch, var(--accent) 50%, var(--divider));
+  background: color-mix(in oklch, var(--accent) 6%, transparent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guia-repetir span {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.guia-repetir:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+}
+
+.guia-repetir:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.guia-enviado {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklch, var(--accent) 35%, var(--divider));
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+}
+
+.guia-enviado>svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--accent-text);
+}
+
+.guia-enviado span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guia-enviado strong {
+  font-size: 14px;
+}
+
+.guia-enviado small {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+@media (max-width: 560px) {
+  .guia-hero__whats {
+    font-size: 0;
+    gap: 0;
+  }
+
+  .guia-hero__whats svg {
+    margin: 0;
+  }
+
+  .guia-repetir span {
+    display: none;
+  }
+}
