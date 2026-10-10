@@ -16,6 +16,7 @@ import Button from "../ui/Button";
 import Segmented from "../ui/Segmented";
 import PageHeader from "../ui/PageHeader";
 import AssistenteVeiculo from "./AssistenteVeiculo";
+import VisualizadorFoto from "./VisualizadorFoto";
 import {
   FORMATOS,
   MENSAGEM_VENCIDA,
@@ -32,6 +33,10 @@ import {
   normalizarConfigAssistente,
   recomendarVeiculo,
   descreverCombinacoes,
+  obterFichaEmbarcacao,
+  obterFichaLocal,
+  iconeTipoLocal,
+  linkWhatsappTelefone,
 } from "./catalogo";
 
 // ícones usados como componente (ex.: devolvidos por função)
@@ -44,6 +49,8 @@ const HotelRounded = iconeMui("building");
 const ChildCareRounded = iconeMui("baby");
 const GavelRounded = iconeMui("scale");
 const HelpRounded = iconeMui("help");
+const ShipRounded = iconeMui("ship");
+const PlaceRounded = iconeMui("mapPin");
 
 const getHojeIso = () => {
   const hoje = new Date();
@@ -181,6 +188,14 @@ const obterIconeCategoria = (categoria = "") => {
     texto.includes("onibus")
   )
     return DirectionsCarRounded;
+  if (texto.includes("embarca") || texto.includes("barco") || texto.includes("nautic"))
+    return ShipRounded;
+  if (
+    texto.includes("local") ||
+    texto.includes("restaurante") ||
+    texto.includes("apoio")
+  )
+    return PlaceRounded;
   if (texto.includes("documen")) return DescriptionRounded;
   if (
     texto.includes("cotac") ||
@@ -260,7 +275,7 @@ const renderizarResposta = (texto = "") => {
 const linkPerguntarOperacional = (contexto = "") => {
   const texto = contexto.trim()
     ? `Olá! Não encontrei uma resposta pra: "${contexto.trim()}". Pode me ajudar?`
-    : "Olá! Preciso de uma informação que não encontrei na Central de Dúvidas. Pode me ajudar?";
+    : "Olá! Preciso de uma informação que não encontrei na Central de Informações. Pode me ajudar?";
 
   return `https://wa.me/?text=${encodeURIComponent(texto)}`;
 };
@@ -287,6 +302,8 @@ const textoBuscavel = (item) => {
       ficha.tipoVeiculo,
       ...ficha.recursos,
       ...obterTabelaPrecos(item).flatMap((l) => [l.servico, l.detalhe]),
+      ...Object.values(obterFichaEmbarcacao(item)).flat().filter((v) => typeof v === "string"),
+      ...Object.values(obterFichaLocal(item)).filter((v) => !String(v).startsWith("http")),
       ...(Array.isArray(item.palavrasChave) ? item.palavrasChave : []),
     ]
       .filter(Boolean)
@@ -302,11 +319,13 @@ const veiculoComporta = (ficha, pax, malas) => {
   return (!pax || ficha.passageiros >= pax) && (!malas || ficha.malasGrandes >= malas);
 };
 
-const SEGMENTOS = [
+const segmentos = (nomes) => [
   { value: "todos", label: "Tudo", icon: "grid" },
-  { value: FORMATOS.VEICULO, label: "Frota", icon: "car" },
-  { value: FORMATOS.TABELA, label: "Valores", icon: "tag" },
-  { value: FORMATOS.RESPOSTA, label: "Respostas", icon: "message" },
+  { value: FORMATOS.VEICULO, label: nomes.veiculo, icon: "car" },
+  { value: FORMATOS.EMBARCACAO, label: nomes.embarcacao, icon: "ship" },
+  { value: FORMATOS.LOCAL, label: nomes.local, icon: "mapPin" },
+  { value: FORMATOS.TABELA, label: nomes.tabela, icon: "tag" },
+  { value: FORMATOS.RESPOSTA, label: nomes.resposta, icon: "message" },
 ];
 
 const FaqComercial = () => {
@@ -317,6 +336,8 @@ const FaqComercial = () => {
   const [formatoAtivo, setFormatoAtivo] = useState("todos");
   const [perguntaCopiadaId, setPerguntaCopiadaId] = useState(null);
   const [itemDetalhado, setItemDetalhado] = useState(null);
+  // null = automático (abre na aba de veículos ou quando já há grupo preenchido)
+  const [assistenteAberto, setAssistenteAberto] = useState(null);
   const [grupo, setGrupo] = useState({
     pax: 0,
     grandes: 0,
@@ -414,7 +435,7 @@ const FaqComercial = () => {
       if (dasAlternativas.has(item.id)) return "comporta";
       if (vinculados.has(item.id)) return "nao";
       const cabe = veiculoComporta(
-        obterFichaVeiculo(item),
+        obterFichaVeiculo(item, configAssistente),
         resultadoAssistente.efetivo.pax,
         resultadoAssistente.efetivo.grandes,
       );
@@ -424,7 +445,8 @@ const FaqComercial = () => {
 
   const veiculos = useMemo(() => {
     // vitrine da frota: do menor para o maior (sem ficha vai para o fim)
-    const capacidade = (item) => obterFichaVeiculo(item).passageiros ?? 999;
+    const capacidade = (item) =>
+      obterFichaVeiculo(item, configAssistente).passageiros ?? 999;
     const lista = itensFiltrados
       .filter((item) => obterFormato(item) === FORMATOS.VEICULO)
       .sort((a, b) => capacidade(a) - capacidade(b) || ordenarPorPergunta(a, b));
@@ -436,13 +458,36 @@ const FaqComercial = () => {
     return [...lista].sort(
       (a, b) =>
         peso(a) - peso(b) ||
-        (obterFichaVeiculo(a).passageiros ?? 999) -
-        (obterFichaVeiculo(b).passageiros ?? 999),
+        capacidade(a) - capacidade(b),
     );
-  }, [itensFiltrados, resultadoAssistente, seloVeiculo]);
+  }, [itensFiltrados, resultadoAssistente, seloVeiculo, configAssistente]);
 
   const tabelas = useMemo(
     () => itensFiltrados.filter((item) => obterFormato(item) === FORMATOS.TABELA),
+    [itensFiltrados],
+  );
+
+  const embarcacoes = useMemo(
+    () =>
+      itensFiltrados
+        .filter((item) => obterFormato(item) === FORMATOS.EMBARCACAO)
+        .sort(
+          (a, b) =>
+            (obterFichaEmbarcacao(a).capacidade ?? 9999) -
+              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+        ),
+    [itensFiltrados],
+  );
+
+  const locais = useMemo(
+    () =>
+      itensFiltrados
+        .filter((item) => obterFormato(item) === FORMATOS.LOCAL)
+        .sort(
+          (a, b) =>
+            obterFichaLocal(a).tipoLocal.localeCompare(obterFichaLocal(b).tipoLocal, "pt-BR") ||
+            ordenarPorPergunta(a, b),
+        ),
     [itensFiltrados],
   );
 
@@ -494,7 +539,7 @@ const FaqComercial = () => {
   const copiarResposta = async (item) => {
     try {
       await navigator.clipboard.writeText(
-        montarTextoCopia(item, itemEstaVencido(item)),
+        montarTextoCopia(item, itemEstaVencido(item), configAssistente),
       );
       marcarCopiado(item.id);
       registrarUso(item, "contadorCopias");
@@ -516,7 +561,7 @@ const FaqComercial = () => {
   };
 
   const compartilharWhatsapp = (item) => {
-    const texto = montarTextoCopia(item, itemEstaVencido(item));
+    const texto = montarTextoCopia(item, itemEstaVencido(item), configAssistente);
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(texto)}`,
@@ -542,9 +587,18 @@ const FaqComercial = () => {
     configAssistente.opcoes.some((o) => o.ativo && o.nome) &&
     (formatoAtivo === "todos" || formatoAtivo === FORMATOS.VEICULO);
 
+  const assistenteVisivel =
+    assistenteAberto ??
+    (formatoAtivo === FORMATOS.VEICULO || resultadoAssistente.preenchido);
+
   const mostrarFrota =
     veiculos.length > 0 &&
     (formatoAtivo === "todos" || formatoAtivo === FORMATOS.VEICULO);
+  const mostrarEmbarcacoes =
+    embarcacoes.length > 0 &&
+    (formatoAtivo === "todos" || formatoAtivo === FORMATOS.EMBARCACAO);
+  const mostrarLocais =
+    locais.length > 0 && (formatoAtivo === "todos" || formatoAtivo === FORMATOS.LOCAL);
   const mostrarTabelas =
     tabelas.length > 0 &&
     (formatoAtivo === "todos" || formatoAtivo === FORMATOS.TABELA);
@@ -555,8 +609,8 @@ const FaqComercial = () => {
   return (
     <div className="ui-page faq-cat">
       <PageHeader
-        title="Central de Dúvidas"
-        description="Catálogo de respostas prontas: frota, valores e políticas para agilizar o atendimento."
+        title="Central de Informações"
+        description="Tudo o que o atendimento precisa: veículos, valores e respostas prontas para enviar ao cliente."
         actions={
           <a
             className="ui-btn ui-btn--secondary"
@@ -577,7 +631,7 @@ const FaqComercial = () => {
           placeholder="O que o cliente perguntou? Ex.: malas na Spin, motoguia, cancelamento, criança…"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          aria-label="Buscar na Central de Dúvidas"
+          aria-label="Buscar na Central de Informações"
         />
         {busca && (
           <button
@@ -593,10 +647,18 @@ const FaqComercial = () => {
 
       <div className="faq-cat-filtros">
         <Segmented
-          options={SEGMENTOS.map((s) => ({
-            ...s,
-            count: contagemFormatos[s.value] || 0,
-          }))}
+          options={segmentos(configAssistente.nomesSecoes)
+            // tipos sem nenhum item cadastrado não aparecem
+            .filter(
+              (s) =>
+                s.value === "todos" ||
+                s.value === formatoAtivo ||
+                contagemFormatos[s.value],
+            )
+            .map((s) => ({
+              ...s,
+              count: contagemFormatos[s.value] || 0,
+            }))}
           value={formatoAtivo}
           onChange={setFormatoAtivo}
           ariaLabel="Tipo de conteúdo"
@@ -632,15 +694,55 @@ const FaqComercial = () => {
         )}
       </div>
 
-      {!loading && mostrarAssistente && (
-        <AssistenteVeiculo
-          config={configAssistente}
-          veiculos={itens.filter((i) => obterFormato(i) === FORMATOS.VEICULO)}
-          grupo={grupo}
-          onGrupoChange={setGrupo}
-          onAbrirVeiculo={abrirDetalhe}
-        />
+      {!loading && modoVitrine && itensDestaque.length > 0 && (
+        <div className="faq-cat-atalhos">
+          <span className="faq-cat-atalhos-titulo">
+            <Icon name="star" size={14} />
+            Mais buscadas
+          </span>
+          {itensDestaque.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="faq-cat-atalho"
+              onClick={() => abrirDetalhe(item)}
+            >
+              {obterFormato(item) === FORMATOS.VEICULO
+                ? item.nomeVeiculo || item.pergunta
+                : item.pergunta}
+            </button>
+          ))}
+        </div>
       )}
+
+      {!loading && mostrarAssistente &&
+        (assistenteVisivel ? (
+          <AssistenteVeiculo
+            config={configAssistente}
+            veiculos={itens.filter((i) => obterFormato(i) === FORMATOS.VEICULO)}
+            grupo={grupo}
+            onGrupoChange={setGrupo}
+            onAbrirVeiculo={abrirDetalhe}
+            onRecolher={() => setAssistenteAberto(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="faq-cat-assist-barra"
+            onClick={() => setAssistenteAberto(true)}
+          >
+            <span className="faq-cat-assist-icone">
+              <Icon name="sparkles" size={16} />
+            </span>
+            <span className="faq-cat-assist-texto">
+              <strong>Qual veículo usar?</strong>
+              <small>Informe passageiros e malas e veja a recomendação na hora.</small>
+            </span>
+            <span className="faq-cat-assist-abrir">
+              Abrir assistente <Icon name="arrowRight" size={14} />
+            </span>
+          </button>
+        ))}
 
       {loading ? (
         <CardSkeleton variant="list" rows={6} />
@@ -651,7 +753,7 @@ const FaqComercial = () => {
           </span>
           <strong>
             {itens.length === 0
-              ? "Nenhuma resposta cadastrada ainda."
+              ? "Nenhuma informação cadastrada ainda."
               : "Nada encontrado com esses filtros."}
           </strong>
           <span>
@@ -677,34 +779,13 @@ const FaqComercial = () => {
         </div>
       ) : (
         <div className="faq-cat-conteudo">
-          {modoVitrine && itensDestaque.length > 0 && (
-            <div className="faq-cat-atalhos">
-              <span className="faq-cat-atalhos-titulo">
-                <Icon name="star" size={14} />
-                Mais buscadas
-              </span>
-              {itensDestaque.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="faq-cat-atalho"
-                  onClick={() => abrirDetalhe(item)}
-                >
-                  {obterFormato(item) === FORMATOS.VEICULO
-                    ? item.nomeVeiculo || item.pergunta
-                    : item.pergunta}
-                </button>
-              ))}
-            </div>
-          )}
-
           {mostrarFrota && (
             <section className="faq-cat-secao">
               <header className="faq-cat-secao-topo">
                 <div className="faq-cat-secao-titulos">
                   <h2>
                     <Icon name="car" size={18} />
-                    Frota
+                    {configAssistente.nomesSecoes.veiculo}
                     <span className="faq-cat-contador">{veiculos.length}</span>
                   </h2>
                   <p>Fotos, capacidade e itens de cada veículo.</p>
@@ -720,6 +801,57 @@ const FaqComercial = () => {
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                     selo={seloVeiculo(item)}
+                    config={configAssistente}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {mostrarEmbarcacoes && (
+            <section className="faq-cat-secao">
+              <header className="faq-cat-secao-topo">
+                <div className="faq-cat-secao-titulos">
+                  <h2>
+                    <Icon name="ship" size={18} />
+                    {configAssistente.nomesSecoes.embarcacao}
+                    <span className="faq-cat-contador">{embarcacoes.length}</span>
+                  </h2>
+                  <p>Fotos, lotação, o que tem a bordo e roteiros.</p>
+                </div>
+              </header>
+              <div className="faq-cat-grade faq-cat-grade--frota">
+                {embarcacoes.map((item) => (
+                  <CardVisual
+                    key={item.id}
+                    item={item}
+                    {...acoesCard}
+                    copiado={perguntaCopiadaId === item.id}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {mostrarLocais && (
+            <section className="faq-cat-secao">
+              <header className="faq-cat-secao-topo">
+                <div className="faq-cat-secao-titulos">
+                  <h2>
+                    <Icon name="mapPin" size={18} />
+                    {configAssistente.nomesSecoes.local}
+                    <span className="faq-cat-contador">{locais.length}</span>
+                  </h2>
+                  <p>Hotéis, restaurantes e pontos de apoio com endereço e contato.</p>
+                </div>
+              </header>
+              <div className="faq-cat-grade faq-cat-grade--frota">
+                {locais.map((item) => (
+                  <CardVisual
+                    key={item.id}
+                    item={item}
+                    {...acoesCard}
+                    copiado={perguntaCopiadaId === item.id}
                   />
                 ))}
               </div>
@@ -732,7 +864,7 @@ const FaqComercial = () => {
                 <div className="faq-cat-secao-titulos">
                   <h2>
                     <Icon name="tag" size={18} />
-                    Valores
+                    {configAssistente.nomesSecoes.tabela}
                     <span className="faq-cat-contador">{tabelas.length}</span>
                   </h2>
                   <p>Tabelas por serviço — copie a tabela inteira ou só a linha.</p>
@@ -758,7 +890,7 @@ const FaqComercial = () => {
                 <div className="faq-cat-secao-titulos">
                   <h2>
                     <Icon name="message" size={18} />
-                    Respostas prontas
+                    {configAssistente.nomesSecoes.resposta}
                     <span className="faq-cat-contador">{respostas.length}</span>
                   </h2>
                   <p>Abra para ler inteira, ou copie direto do card.</p>
@@ -918,20 +1050,21 @@ const TEXTO_SELO = {
   nao: { texto: "Não comporta", icone: "x" },
 };
 
-const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo }) => {
-  const ficha = obterFichaVeiculo(item);
+const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, config }) => {
+  const ficha = obterFichaVeiculo(item, config);
   const imagens = item.veiculoForaCatalogo ? [] : obterImagensVeiculo(item);
   const nome = item.nomeVeiculo || item.pergunta;
   const temFicha = fichaTemDados(ficha);
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${
+        selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-        }`}
+      }`}
       {...propsCardClicavel(item, onAbrir)}
     >
       <div className="faq-cat-veiculo-foto">
@@ -995,6 +1128,123 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo })
         <span className="faq-cat-ver">
           Ver ficha <Icon name="arrowRight" size={13} />
         </span>
+        <AcoesRapidas
+          item={item}
+          onCopiar={onCopiar}
+          onCompartilhar={onCompartilhar}
+          copiado={copiado}
+        />
+      </footer>
+    </article>
+  );
+};
+
+/* Card com foto para embarcações e locais (mesma estrutura do veículo). */
+const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
+  const formato = obterFormato(item);
+  const ehLocal = formato === FORMATOS.LOCAL;
+  const fe = obterFichaEmbarcacao(item);
+  const fl = obterFichaLocal(item);
+  const imagens = obterImagensVeiculo(item);
+  const tipo = ehLocal ? fl.tipoLocal : fe.tipoEmbarcacao;
+  const iconeVazio = ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship";
+
+  return (
+    <article className="faq-cat-card faq-cat-veiculo" {...propsCardClicavel(item, onAbrir)}>
+      <div className="faq-cat-veiculo-foto">
+        {imagens.length > 0 ? (
+          <img src={imagens[0]} alt={item.pergunta} loading="lazy" />
+        ) : (
+          <div className="faq-cat-veiculo-sem-foto">
+            <Icon name={iconeVazio} size={34} />
+            <span>Sem foto</span>
+          </div>
+        )}
+        <div className="faq-cat-veiculo-selos">
+          {tipo && <span className="faq-cat-foto-selo">{tipo}</span>}
+          {item.destaque && (
+            <span className="faq-cat-foto-selo is-destaque" title="Mais buscada">
+              <Icon name="star" size={12} />
+            </span>
+          )}
+        </div>
+        {imagens.length > 1 && (
+          <span className="faq-cat-foto-contagem">
+            <Icon name="image" size={12} />
+            {imagens.length}
+          </span>
+        )}
+      </div>
+
+      <div className="faq-cat-card-corpo">
+        <h3 className="faq-cat-card-titulo">{item.pergunta}</h3>
+        {ehLocal ? (
+          <div className="faq-cat-local-info">
+            {(fl.bairro || fl.endereco) && (
+              <span>
+                <Icon name="mapPin" size={14} />
+                {fl.bairro || fl.endereco}
+              </span>
+            )}
+            {fl.horario && (
+              <span>
+                <Icon name="clock" size={14} />
+                {fl.horario}
+              </span>
+            )}
+            {fl.telefone && (
+              <span>
+                <Icon name="phone" size={14} />
+                {fl.telefone}
+              </span>
+            )}
+          </div>
+        ) : (
+          <>
+            {fe.capacidade && (
+              <div className="faq-cat-specs is-compacto">
+                <div className="faq-cat-spec">
+                  <Icon name="users" size={14} />
+                  <strong>{fe.capacidade}</strong>
+                  <span>passageiros</span>
+                </div>
+              </div>
+            )}
+            {fe.roteiros && <p className="faq-cat-card-sub">{fe.roteiros}</p>}
+            {fe.recursos.length > 0 && (
+              <div className="faq-cat-recursos-mini">
+                {fe.recursos.slice(0, 5).map((r) => (
+                  <span key={r} title={r}>
+                    <Icon name={iconeRecurso(r)} size={14} />
+                  </span>
+                ))}
+                {fe.recursos.length > 5 && <em>+{fe.recursos.length - 5}</em>}
+              </div>
+            )}
+          </>
+        )}
+        {!ehLocal && !fe.capacidade && !fe.roteiros && item.resposta && (
+          <p className="faq-cat-card-previa">{textoPrevia(item.resposta)}</p>
+        )}
+      </div>
+
+      <footer className="faq-cat-card-rodape">
+        {ehLocal && fl.linkMapa ? (
+          <a
+            className="faq-cat-ver faq-cat-mapa"
+            href={fl.linkMapa}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Icon name="navigation" size={13} />
+            Abrir no mapa
+          </a>
+        ) : (
+          <span className="faq-cat-ver">
+            Ver detalhes <Icon name="arrowRight" size={13} />
+          </span>
+        )}
         <AcoesRapidas
           item={item}
           onCopiar={onCopiar}
@@ -1123,13 +1373,14 @@ const CardResposta = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
 
 /* ---------- detalhe (painel lateral) ---------- */
 
-const Galeria = ({ imagens, nome }) => {
+const Galeria = ({ imagens, nome, icone = "car" }) => {
   const [indice, setIndice] = useState(0);
+  const [ampliada, setAmpliada] = useState(false);
 
   if (!imagens.length) {
     return (
       <div className="faq-cat-galeria faq-cat-galeria--vazia">
-        <Icon name="car" size={40} />
+        <Icon name={icone} size={40} />
         <span>Sem foto cadastrada</span>
       </div>
     );
@@ -1141,7 +1392,19 @@ const Galeria = ({ imagens, nome }) => {
   return (
     <div className="faq-cat-galeria">
       <div className="faq-cat-galeria-principal">
-        <img src={imagens[indice]} alt={`${nome} — foto ${indice + 1}`} />
+        <button
+          type="button"
+          className="faq-cat-galeria-ampliar"
+          onClick={() => setAmpliada(true)}
+          aria-label="Ver foto em tela cheia"
+          title="Ver em tela cheia"
+        >
+          <img src={imagens[indice]} alt={`${nome} — foto ${indice + 1}`} />
+          <span className="faq-cat-galeria-lupa">
+            <Icon name="maximize" size={15} />
+            Ampliar
+          </span>
+        </button>
         {imagens.length > 1 && (
           <>
             <button
@@ -1181,6 +1444,15 @@ const Galeria = ({ imagens, nome }) => {
           ))}
         </div>
       )}
+
+      {ampliada && (
+        <VisualizadorFoto
+          imagens={imagens}
+          inicial={indice}
+          nome={nome}
+          onFechar={() => setAmpliada(false)}
+        />
+      )}
     </div>
   );
 };
@@ -1194,30 +1466,39 @@ const FaqDetalhe = ({
   copiadoId,
   configAssistente,
 }) => {
-  const configuracoes = (configAssistente?.opcoes || []).filter(
-    (o) => o.ativo && o.veiculosIds.includes(item.id),
-  );
   const formato = obterFormato(item);
   const vencida = itemEstaVencido(item);
   const copiado = copiadoId === item.id;
-  const ficha = obterFichaVeiculo(item);
+  const ficha = obterFichaVeiculo(item, configAssistente);
+  const configuracoes = ficha.configuracoes;
   const linhas = obterTabelaPrecos(item);
   const linkVeiculo = obterLinkDetalheVeiculo(item);
   const imagens = item.veiculoForaCatalogo ? [] : obterImagensVeiculo(item);
   const ehVeiculo = formato === FORMATOS.VEICULO;
   const ehTabela = formato === FORMATOS.TABELA;
+  const ehEmbarcacao = formato === FORMATOS.EMBARCACAO;
+  const ehLocal = formato === FORMATOS.LOCAL;
+  const ehVisual = ehEmbarcacao || ehLocal;
+  const fe = obterFichaEmbarcacao(item);
+  const fl = obterFichaLocal(item);
+  const fotos = ehVisual ? obterImagensVeiculo(item) : imagens;
+  const whatsLocal = linkWhatsappTelefone(fl.telefone);
 
   const titulo = ehVeiculo ? item.nomeVeiculo || item.pergunta : item.pergunta;
 
   return (
     <Drawer
       open
-      width={ehVeiculo || ehTabela ? 560 : 500}
+      width={ehVeiculo || ehTabela || ehVisual ? 560 : 500}
       title={titulo}
       subtitle={
         ehVeiculo
           ? [ficha.tipoVeiculo, item.categoria].filter(Boolean).join(" · ")
-          : item.categoria
+          : ehEmbarcacao
+            ? [fe.tipoEmbarcacao, item.categoria].filter(Boolean).join(" · ")
+            : ehLocal
+              ? [fl.tipoLocal, item.categoria].filter(Boolean).join(" · ")
+              : item.categoria
       }
       onClose={onFechar}
       footer={
@@ -1256,9 +1537,15 @@ const FaqDetalhe = ({
               <p className="faq-cat-detalhe-pergunta">{item.pergunta}</p>
             )}
 
-            {fichaTemDados(ficha) && (
+            {(ficha.passageiros !== null ||
+              ficha.malasGrandes !== null ||
+              ficha.malasBordo !== null) && (
               <div className="faq-cat-bloco">
-                <h4>Capacidade</h4>
+                <h4>
+                  {configuracoes.length > 1
+                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                    : "Capacidade"}
+                </h4>
                 <Especificacoes ficha={ficha} />
               </div>
             )}
@@ -1347,9 +1634,108 @@ const FaqDetalhe = ({
           </div>
         )}
 
-        {(item.resposta || (!ehVeiculo && !ehTabela)) && (
+        {ehVisual && (
+          <>
+            <Galeria
+              imagens={fotos}
+              nome={item.pergunta}
+              icone={ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship"}
+            />
+
+            {ehEmbarcacao && fe.capacidade && (
+              <div className="faq-cat-bloco">
+                <h4>Lotação</h4>
+                <div className="faq-cat-specs">
+                  <div className="faq-cat-spec">
+                    <Icon name="users" size={18} />
+                    <strong>{fe.capacidade}</strong>
+                    <span>passageiros</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ehEmbarcacao && fe.recursos.length > 0 && (
+              <div className="faq-cat-bloco">
+                <h4>A bordo</h4>
+                <div className="faq-cat-recursos">
+                  {fe.recursos.map((r) => (
+                    <span key={r} className="faq-cat-recurso">
+                      <Icon name={iconeRecurso(r)} size={14} />
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {ehEmbarcacao && fe.roteiros && (
+              <div className="faq-cat-bloco">
+                <h4>Roteiros</h4>
+                <p className="faq-cat-detalhe-pergunta">{fe.roteiros}</p>
+              </div>
+            )}
+
+            {ehLocal && (
+              <div className="faq-cat-bloco">
+                <h4>Endereço e contato</h4>
+                <ul className="faq-cat-contato">
+                  {(fl.endereco || fl.bairro) && (
+                    <li>
+                      <Icon name="mapPin" size={16} />
+                      <span>
+                        {fl.endereco}
+                        {fl.bairro && <small>{fl.bairro}</small>}
+                      </span>
+                      {fl.linkMapa && (
+                        <a href={fl.linkMapa} target="_blank" rel="noopener noreferrer">
+                          Mapa
+                        </a>
+                      )}
+                    </li>
+                  )}
+                  {fl.telefone && (
+                    <li>
+                      <Icon name="phone" size={16} />
+                      <span>{fl.telefone}</span>
+                      {whatsLocal && (
+                        <a href={whatsLocal} target="_blank" rel="noopener noreferrer">
+                          WhatsApp
+                        </a>
+                      )}
+                    </li>
+                  )}
+                  {fl.horario && (
+                    <li>
+                      <Icon name="clock" size={16} />
+                      <span>{fl.horario}</span>
+                    </li>
+                  )}
+                  {fl.site && (
+                    <li>
+                      <Icon name="globe" size={16} />
+                      <span className="faq-cat-contato-link">{fl.site}</span>
+                      <a
+                        href={/^https?:\/\//i.test(fl.site) ? fl.site : `https://${fl.site}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Abrir
+                      </a>
+                    </li>
+                  )}
+                  {!fl.endereco && !fl.bairro && !fl.telefone && !fl.horario && !fl.site && (
+                    <li className="faq-cat-muted">Sem endereço ou contato cadastrado.</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+
+        {(item.resposta || (!ehVeiculo && !ehTabela && !ehVisual)) && (
           <div className="faq-cat-bloco">
-            {(ehVeiculo || ehTabela) && <h4>Observações</h4>}
+            {(ehVeiculo || ehTabela || ehVisual) && <h4>Observações</h4>}
             {vencida && !ehTabela ? (
               <p className="faq-cat-vencida-aviso">
                 <Icon name="alert" size={14} />
@@ -1377,7 +1763,7 @@ const FaqDetalhe = ({
 
         <div className="faq-cat-previa-copia">
           <span>Como o cliente vai receber</span>
-          <pre>{montarTextoCopia(item, vencida)}</pre>
+          <pre>{montarTextoCopia(item, vencida, configAssistente)}</pre>
         </div>
 
         {item.atualizadoEm && (

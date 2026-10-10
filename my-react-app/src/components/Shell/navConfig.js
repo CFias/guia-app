@@ -9,24 +9,57 @@ export const GRUPOS_MENU = [
   {
     chave: "visao",
     titulo: "Visão geral",
-    itens: [{ to: "/", label: "Dashboard", icon: "dashboard", area: "painel", end: true }],
+    itens: [
+      {
+        to: "/",
+        label: "Dashboard",
+        icon: "dashboard",
+        area: "painel",
+        end: true,
+      },
+    ],
   },
   {
     chave: "operacao",
     titulo: "Operação do dia",
     itens: [
-      { to: "/op", label: "Painel Operacional", icon: "painel", area: "painel" },
-      { to: "/previas", label: "Prévia de Serviços", icon: "send", area: "painel" },
-      { to: "/planilha", label: "Planilha operacional", icon: "planilha", area: "painel" },
+      {
+        to: "/op",
+        label: "Painel Operacional",
+        icon: "painel",
+        area: "painel",
+      },
+      {
+        to: "/previas",
+        label: "Prévia de Serviços",
+        icon: "send",
+        area: "painel",
+      },
+      {
+        to: "/planilha",
+        label: "Planilha operacional",
+        icon: "planilha",
+        area: "painel",
+      },
     ],
   },
   {
     chave: "escala",
     titulo: "Escala e guias",
     itens: [
-      { to: "/passeios", label: "Gerar Escala", icon: "sparkles", area: "painel" },
+      {
+        to: "/passeios",
+        label: "Gerar Escala",
+        icon: "sparkles",
+        area: "painel",
+      },
       { to: "/guias", label: "Lista de Guias", icon: "users", area: "painel" },
-      { to: "/mapear-guias", label: "Mapa de afinidade", icon: "map", area: "painel" },
+      {
+        to: "/mapear-guias",
+        label: "Mapa de afinidade",
+        icon: "map",
+        area: "painel",
+      },
       {
         to: "/disponibilidade-guia",
         label: "Disponibilidade da semana",
@@ -58,17 +91,32 @@ export const GRUPOS_MENU = [
         area: "painel",
         match: ["/register-guias", "/register-fornecedores", "/usuarios"],
       },
-      { to: "/faqadmin", label: "Central de Dúvidas", icon: "help", area: "painel" },
-      { to: "/faqcomercial", label: "Ver como o comercial", icon: "eye", area: "painel" },
+      {
+        to: "/faqadmin",
+        label: "Central de Informações",
+        icon: "bookOpen",
+        area: "painel",
+      },
+      {
+        to: "/faqcomercial",
+        label: "Ver como o comercial",
+        icon: "eye",
+        area: "painel",
+      },
     ],
   },
   {
-    // nível Comercial: só a Central de Dúvidas (como já era)
+    // nível Comercial: só a Central de Informações (como já era)
     chave: "comercial",
     titulo: "Comercial",
     somenteSemPainel: true,
     itens: [
-      { to: "/faqcomercial", label: "Central de Dúvidas", icon: "help", area: "faqComercial" },
+      {
+        to: "/faqcomercial",
+        label: "Central de Informações",
+        icon: "bookOpen",
+        area: "faqComercial",
+      },
     ],
   },
 ];

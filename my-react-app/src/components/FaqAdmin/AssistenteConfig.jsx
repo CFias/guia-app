@@ -13,6 +13,7 @@ import {
   ITENS_ESPECIAIS_PADRAO,
   TIPOS_VEICULO,
   normalizarConfigAssistente,
+  resumoCapacidade,
 } from "../FaqComercial/catalogo";
 
 /* Regras do Assistente de veículo (operacional).
@@ -22,32 +23,6 @@ import {
    7 de 10 kg) e pode exigir bagageiro ou carretinha. */
 
 const novoId = () => `op-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-
-const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
-
-// Frase do que a capacidade aceita, para o operacional conferir.
-const resumoCapacidade = (combinacoes, fator) => {
-  const linhas = combinacoes
-    .map((c) => ({ grandes: Number(c.grandes) || 0, bordo: Number(c.bordo) || 0 }))
-    .filter((c) => c.grandes > 0 || c.bordo > 0);
-  if (!linhas.length) return "Preencha o máximo que o veículo leva.";
-
-  const partes = [];
-  linhas.forEach((c, i) => {
-    const base = [
-      c.grandes > 0 && plural(c.grandes, "mala de 23 kg", "malas de 23 kg"),
-      c.bordo > 0 && plural(c.bordo, "de 10 kg", "de 10 kg"),
-    ]
-      .filter(Boolean)
-      .join(" + ");
-    partes.push(i === 0 ? `Aceita até ${base}` : `ou até ${base}`);
-    const soMao = c.bordo + Math.floor(c.grandes * fator);
-    if (c.grandes > 0 && fator > 0 && i === 0) {
-      partes.push(`ou até ${plural(soMao, "mala de 10 kg", "malas de 10 kg")} sem malas grandes`);
-    }
-  });
-  return `${partes.join(", ")} — e qualquer quantidade menor.`;
-};
 
 const OPCAO_VAZIA = () => ({
   id: novoId(),
@@ -64,6 +39,8 @@ const OPCAO_VAZIA = () => ({
 const rascunhoDe = (bruto) => {
   const base = bruto ? normalizarConfigAssistente(bruto) : null;
   return {
+    // nomes das seções são editados em outro lugar; só preserva aqui
+    nomesSecoes: base?.nomesSecoes,
     fatorBordoPorGrande: base ? base.fatorBordoPorGrande : 1,
     margemFolga: base ? base.margemFolga : 0,
     mensagemSemOpcao: base?.mensagemSemOpcao || MENSAGEM_SEM_OPCAO_PADRAO,
@@ -107,11 +84,11 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       opcoes: r.opcoes.map((o, i) =>
         i === indice
           ? {
-            ...o,
-            combinacoes: o.combinacoes.map((c, j) =>
-              j === ci ? { ...c, [campo]: valor } : c,
-            ),
-          }
+              ...o,
+              combinacoes: o.combinacoes.map((c, j) =>
+                j === ci ? { ...c, [campo]: valor } : c,
+              ),
+            }
           : o,
       ),
     }));
@@ -132,12 +109,12 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       opcoes: r.opcoes.map((o, i) =>
         i === indice
           ? {
-            ...o,
-            combinacoes:
-              o.combinacoes.length > 1
-                ? o.combinacoes.filter((_, j) => j !== ci)
-                : [{ grandes: "", bordo: "" }],
-          }
+              ...o,
+              combinacoes:
+                o.combinacoes.length > 1
+                  ? o.combinacoes.filter((_, j) => j !== ci)
+                  : [{ grandes: "", bordo: "" }],
+            }
           : o,
       ),
     }));
@@ -148,11 +125,11 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       opcoes: r.opcoes.map((o, i) =>
         i === indice
           ? {
-            ...o,
-            veiculosIds: o.veiculosIds.includes(id)
-              ? o.veiculosIds.filter((v) => v !== id)
-              : [...o.veiculosIds, id],
-          }
+              ...o,
+              veiculosIds: o.veiculosIds.includes(id)
+                ? o.veiculosIds.filter((v) => v !== id)
+                : [...o.veiculosIds, id],
+            }
           : o,
       ),
     }));
@@ -204,6 +181,14 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       itensEspeciais: r.itensEspeciais.filter((_, i) => i !== indice),
     }));
 
+  const restaurarEspeciais = () => {
+    if (!window.confirm("Trocar a lista atual pela lista padrão de mochilas e itens especiais?")) return;
+    setRascunho((r) => ({
+      ...r,
+      itensEspeciais: ITENS_ESPECIAIS_PADRAO.map((it) => ({ ...it })),
+    }));
+  };
+
   const adicionarOpcao = () =>
     setRascunho((r) => ({ ...r, opcoes: [...r.opcoes, OPCAO_VAZIA()] }));
 
@@ -213,7 +198,10 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       !window.confirm("Substituir as opções atuais pelo modelo de exemplo?")
     )
       return;
-    setRascunho(rascunhoDe(EXEMPLO_CONFIG_ASSISTENTE));
+    setRascunho((r) => ({
+      ...rascunhoDe(EXEMPLO_CONFIG_ASSISTENTE),
+      nomesSecoes: r.nomesSecoes,
+    }));
   };
 
   const salvar = async () => {
@@ -287,11 +275,11 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
             </div>
           </div>
           <p>
-            Da <b>menor para a maior</b>: o assistente recomenda a primeira que
-            comporta os passageiros e a bagagem. Informe só o <b>máximo</b> de
-            cada configuração — qualquer grupo menor também é atendido.
-            Cadastre cada configuração separada (ex.: Spin sem bagageiro,
-            Spin com bagageiro).
+            As capacidades nascem no cadastro de cada veículo (aba Itens) e
+            aparecem aqui. Mantenha a lista da <b>menor para a maior</b>: o
+            assistente recomenda a primeira que comporta os passageiros e a
+            bagagem. Aqui você também ajusta números, observações e cria
+            configurações sem veículo.
           </p>
         </div>
 
@@ -476,7 +464,7 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
                 <div className="assist-config-bloco">
                   <span className="assist-config-rotulo">
                     <Icon name="car" size={14} />
-                    Veículos da frota nesta opção
+                    Veículos nesta opção
                   </span>
                   {veiculos.length === 0 ? (
                     <span className="faq-admin-field-hint">
@@ -568,10 +556,13 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
           </div>
 
           <div className="faq-admin-field faq-admin-field-full">
-            <label>Itens especiais</label>
+            <label>Mochilas e itens especiais</label>
             <span className="faq-admin-field-hint">
-              Aparecem para o comercial marcar quantidade. Escolha como cada um
-              entra na conta.
+              O comercial marca a quantidade de cada um. Os que entram na conta
+              (ex.: mochila grande = mala de 10 kg; mochila pequena vai no colo)
+              aparecem logo abaixo das malas. Os marcados como "Consultar o
+              operacional" ficam em "Outros itens" e o assistente avisa que
+              precisa de análise antes de confirmar o veículo.
             </span>
             <div className="assist-config-especiais">
               {rascunho.itensEspeciais.map((item, i) => (
@@ -612,7 +603,15 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
                 onClick={adicionarEspecial}
               >
                 <Icon name="plus" size={14} />
-                adicionar item especial
+                adicionar item
+              </button>
+              <button
+                type="button"
+                className="assist-config-mais"
+                onClick={restaurarEspeciais}
+              >
+                <Icon name="undo" size={14} />
+                voltar à lista padrão
               </button>
             </div>
           </div>

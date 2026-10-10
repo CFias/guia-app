@@ -1,19 +1,116 @@
-// Catálogo da Central de Dúvidas — regras compartilhadas entre a tela do
+// Catálogo da Central de Informações — regras compartilhadas entre a tela do
 // comercial (FaqComercial) e a administração (FaqAdmin).
 //
 // Tudo continua na coleção `faq_itens` (mesmas regras do Firestore). Os
 // campos novos são opcionais, então os itens antigos seguem funcionando:
-//   formato        "resposta" | "veiculo" | "tabela"   (sem o campo: deduzido)
-//   fichaVeiculo   { tipoVeiculo, passageiros, malasGrandes, malasBordo, recursos[] }
-//   tabelaPrecos   [{ servico, valor, detalhe }]
+//   formato          "resposta" | "veiculo" | "tabela" | "embarcacao" | "local"
+//   fichaVeiculo     { tipoVeiculo, recursos[] }  (capacidade: Assistente)
+//   tabelaPrecos     [{ servico, valor, detalhe }]
+//   fichaEmbarcacao  { tipoEmbarcacao, capacidade, recursos[], roteiros }
+//   fichaLocal       { tipoLocal, endereco, bairro, telefone, horario, linkMapa, site }
+//   imagensVeiculo   fotos (o nome do campo é histórico; vale para todo item com foto)
 
 export const FORMATOS = {
   RESPOSTA: "resposta",
   VEICULO: "veiculo",
   TABELA: "tabela",
+  EMBARCACAO: "embarcacao",
+  LOCAL: "local",
 };
 
-export const MENSAGEM_VENCIDA = "Consultar Operacional para valores atualizados.";
+/* ---------- embarcações e locais ---------- */
+
+export const TIPOS_EMBARCACAO = [
+  "Catamarã",
+  "Escuna",
+  "Lancha",
+  "Saveiro",
+  "Barco",
+  "Ferry-boat",
+];
+
+export const RECURSOS_EMBARCACAO = [
+  { label: "Banheiro", icon: "check" },
+  { label: "Coletes salva-vidas", icon: "shield" },
+  { label: "Área coberta", icon: "sun" },
+  { label: "Bar a bordo", icon: "utensils" },
+  { label: "Som", icon: "message" },
+  { label: "Acessibilidade", icon: "user" },
+];
+
+export const TIPOS_LOCAL = [
+  "Hotel",
+  "Pousada",
+  "Resort",
+  "Restaurante",
+  "Ponto de apoio",
+  "Ponto de encontro",
+  "Atração turística",
+  "Praia",
+  "Aeroporto",
+  "Terminal / porto",
+];
+
+export const iconeTipoLocal = (tipo = "") => {
+  const t = String(tipo).toLowerCase();
+  if (/hotel|pousada|resort|hostel/.test(t)) return "bed";
+  if (/restaurante|bar|lanchonete|caf/.test(t)) return "utensils";
+  if (/aeroporto/.test(t)) return "plane";
+  if (/porto|terminal|marina/.test(t)) return "anchor";
+  return "mapPin";
+};
+
+export const obterFichaEmbarcacao = (item) => {
+  const f = item?.fichaEmbarcacao || {};
+  const capacidade = Number(f.capacidade);
+  return {
+    tipoEmbarcacao: String(f.tipoEmbarcacao || "").trim(),
+    capacidade:
+      Number.isFinite(capacidade) && capacidade > 0
+        ? Math.floor(capacidade)
+        : null,
+    recursos: Array.isArray(f.recursos) ? f.recursos.filter(Boolean) : [],
+    roteiros: String(f.roteiros || "").trim(),
+  };
+};
+
+export const linkMapaDoEndereco = (endereco = "", bairro = "") => {
+  const alvo = [endereco, bairro]
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .join(", ");
+  return alvo
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alvo)}`
+    : "";
+};
+
+export const obterFichaLocal = (item) => {
+  const f = item?.fichaLocal || {};
+  const endereco = String(f.endereco || "").trim();
+  const bairro = String(f.bairro || "").trim();
+  return {
+    tipoLocal: String(f.tipoLocal || "").trim(),
+    endereco,
+    bairro,
+    telefone: String(f.telefone || "").trim(),
+    horario: String(f.horario || "").trim(),
+    site: String(f.site || "").trim(),
+    linkMapa:
+      String(f.linkMapa || "").trim() || linkMapaDoEndereco(endereco, bairro),
+  };
+};
+
+// Telefone → link de WhatsApp (Brasil, DDD obrigatório).
+export const linkWhatsappTelefone = (telefone = "") => {
+  const digitos = String(telefone).replace(/\D/g, "");
+  if (digitos.length < 10) return "";
+  const comPais =
+    digitos.startsWith("55") && digitos.length > 11 ? digitos : `55${digitos}`;
+  return `https://wa.me/${comPais}`;
+};
+
+export const MENSAGEM_VENCIDA =
+  "Consultar Operacional para valores atualizados.";
 
 // Itens antigos não têm `formato`: quem tem veículo vira ficha de veículo,
 // o resto continua como resposta pronta.
@@ -30,6 +127,7 @@ export const TIPOS_VEICULO = [
   "Van",
   "Micro-ônibus",
   "Ônibus",
+  "Ônibus double deck",
   "Motoguia",
 ];
 
@@ -45,7 +143,8 @@ export const RECURSOS_VEICULO = [
 ];
 
 export const iconeRecurso = (label = "") =>
-  RECURSOS_VEICULO.find((r) => r.label === label)?.icon || "check";
+  [...RECURSOS_VEICULO, ...RECURSOS_EMBARCACAO].find((r) => r.label === label)
+    ?.icon || "check";
 
 const numeroOuNulo = (valor) => {
   if (valor === "" || valor === null || valor === undefined) return null;
@@ -53,19 +152,46 @@ const numeroOuNulo = (valor) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export const obterFichaVeiculo = (item) => {
+// Configurações do assistente em que o veículo aparece (na ordem do assistente).
+export const configuracoesDoVeiculo = (config, itemId) =>
+  (config?.opcoes || []).filter(
+    (o) =>
+      o.ativo !== false && itemId && (o.veiculosIds || []).includes(itemId),
+  );
+
+// Ficha do veículo. A capacidade vem do Assistente de veículo (fonte
+// única): usa a configuração base — a primeira sem bagageiro/carretinha.
+// Itens antigos sem vínculo continuam mostrando a capacidade que tinham.
+export const obterFichaVeiculo = (item, config) => {
   const ficha = item?.fichaVeiculo || {};
-  return {
+  const base = {
     tipoVeiculo: String(ficha.tipoVeiculo || "").trim(),
     passageiros: numeroOuNulo(ficha.passageiros),
     malasGrandes: numeroOuNulo(ficha.malasGrandes),
     malasBordo: numeroOuNulo(ficha.malasBordo),
-    recursos: Array.isArray(ficha.recursos) ? ficha.recursos.filter(Boolean) : [],
+    recursos: Array.isArray(ficha.recursos)
+      ? ficha.recursos.filter(Boolean)
+      : [],
+    configuracoes: [],
+  };
+
+  const configuracoes = configuracoesDoVeiculo(config, item?.id);
+  if (!configuracoes.length) return base;
+
+  const principal = configuracoes.find((o) => !o.acessorio) || configuracoes[0];
+  const combinacao = principal.combinacoes[0];
+  return {
+    ...base,
+    passageiros: principal.paxMax || null,
+    malasGrandes: combinacao ? combinacao.grandes : null,
+    malasBordo: combinacao ? combinacao.bordo : null,
+    configuracoes,
   };
 };
 
 export const fichaTemDados = (ficha) =>
   !!(
+    ficha.configuracoes?.length ||
     ficha.tipoVeiculo ||
     ficha.passageiros !== null ||
     ficha.malasGrandes !== null ||
@@ -111,28 +237,73 @@ const formatarDataBr = (dataIso) => {
 export const linhasFicha = (ficha) =>
   [
     ficha.tipoVeiculo && `Tipo: ${ficha.tipoVeiculo}`,
-    ficha.passageiros !== null && `Passageiros: até ${ficha.passageiros}`,
-    ficha.malasGrandes !== null &&
-    `Malas grandes (até 23 kg): ${ficha.malasGrandes}`,
-    ficha.malasBordo !== null && `Malas de bordo (até 10 kg): ${ficha.malasBordo}`,
+    ...(ficha.configuracoes?.length
+      ? ficha.configuracoes.map(
+          (o) =>
+            `${o.nome}: até ${o.paxMax} passageiros${
+              o.combinacoes.length
+                ? ` · ${descreverCombinacoes(o.combinacoes)}`
+                : ""
+            }`,
+        )
+      : [
+          ficha.passageiros !== null && `Passageiros: até ${ficha.passageiros}`,
+          ficha.malasGrandes !== null &&
+            `Malas grandes (até 23 kg): ${ficha.malasGrandes}`,
+          ficha.malasBordo !== null &&
+            `Malas de bordo (até 10 kg): ${ficha.malasBordo}`,
+        ]),
     ficha.recursos.length > 0 && `Itens: ${ficha.recursos.join(" · ")}`,
   ].filter(Boolean);
 
 export const linhaPreco = (linha) =>
-  `- ${linha.servico || "Serviço"}: ${formatarValor(linha.valor)}${linha.detalhe ? ` (${linha.detalhe})` : ""
+  `- ${linha.servico || "Serviço"}: ${formatarValor(linha.valor)}${
+    linha.detalhe ? ` (${linha.detalhe})` : ""
   }`;
 
 // Texto que vai para a área de transferência / WhatsApp.
 // Resposta pronta: exatamente o formato de antes (pergunta + resposta).
-export const montarTextoCopia = (item, vencida = false) => {
+export const montarTextoCopia = (item, vencida = false, config = null) => {
   const formato = obterFormato(item);
   const resposta = vencida ? MENSAGEM_VENCIDA : item?.resposta || "";
 
   if (formato === FORMATOS.VEICULO) {
-    const ficha = obterFichaVeiculo(item);
+    const ficha = obterFichaVeiculo(item, config);
     if (!fichaTemDados(ficha)) return `${item.pergunta}\n\n${resposta}`.trim();
     const titulo = item.nomeVeiculo || item.pergunta;
     return [`*${titulo}*`, ...linhasFicha(ficha), resposta && `\n${resposta}`]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+
+  if (formato === FORMATOS.EMBARCACAO) {
+    const f = obterFichaEmbarcacao(item);
+    return [
+      `*${item.pergunta}*`,
+      f.tipoEmbarcacao && `Tipo: ${f.tipoEmbarcacao}`,
+      f.capacidade && `Capacidade: até ${f.capacidade} passageiros`,
+      f.recursos.length > 0 && `A bordo: ${f.recursos.join(" · ")}`,
+      f.roteiros && `Roteiros: ${f.roteiros}`,
+      resposta && `\n${resposta}`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+
+  if (formato === FORMATOS.LOCAL) {
+    const f = obterFichaLocal(item);
+    return [
+      `*${item.pergunta}*`,
+      f.tipoLocal && f.tipoLocal,
+      (f.endereco || f.bairro) &&
+        `Endereço: ${[f.endereco, f.bairro].filter(Boolean).join(" — ")}`,
+      f.telefone && `Telefone: ${f.telefone}`,
+      f.horario && `Horário: ${f.horario}`,
+      f.linkMapa && `Mapa: ${f.linkMapa}`,
+      resposta && `\n${resposta}`,
+    ]
       .filter(Boolean)
       .join("\n")
       .trim();
@@ -196,46 +367,86 @@ const inteiro = (v) => {
 export const COMO_CONTA = {
   grande: "Conta como mala de 23 kg",
   bordo: "Conta como mala de 10 kg",
+  nao_ocupa: "Não ocupa espaço (vai no colo)",
   lugar: "Ocupa um lugar de passageiro",
-  consultar: "Pedir confirmação ao operacional",
+  consultar: "Consultar o operacional",
 };
 
+// Entram na conta do assistente (o resto pede análise do operacional).
+export const contaNaCapacidade = (conta) => conta !== "consultar";
+
+// Padrão: mochilas entram na conta; o que foge do comum vai para o
+// operacional analisar com calma.
 export const ITENS_ESPECIAIS_PADRAO = [
-  { id: "mala-grande", nome: "Mala acima de 23 kg", conta: "grande" },
-  { id: "carrinho", nome: "Carrinho de bebê", conta: "grande" },
-  { id: "cadeirinha", nome: "Cadeirinha / assento infantil", conta: "consultar" },
-  { id: "cadeira-rodas", nome: "Cadeira de rodas dobrável", conta: "grande" },
-  { id: "golfe", nome: "Bolsa de golfe", conta: "grande" },
+  {
+    id: "mochila-pequena",
+    nome: "Mochila pequena (de mão)",
+    conta: "nao_ocupa",
+  },
+  { id: "mochila-grande", nome: "Mochila grande (de viagem)", conta: "bordo" },
+  { id: "mala-grande", nome: "Mala acima de 23 kg", conta: "consultar" },
+  { id: "carrinho", nome: "Carrinho de bebê", conta: "consultar" },
+  {
+    id: "cadeirinha",
+    nome: "Cadeirinha / assento infantil",
+    conta: "consultar",
+  },
+  { id: "cadeira-rodas", nome: "Cadeira de rodas", conta: "consultar" },
+  { id: "golfe", nome: "Bolsa de golfe", conta: "consultar" },
   { id: "prancha", nome: "Prancha de surf", conta: "consultar" },
+  { id: "instrumento", nome: "Instrumento musical grande", conta: "consultar" },
 ];
 
+// Nomes das seções da Central (editáveis pelo operacional).
+export const NOMES_SECOES_PADRAO = {
+  veiculo: "Veículos cadastrados",
+  embarcacao: "Embarcações",
+  local: "Locais e pontos de apoio",
+  tabela: "Valores",
+  resposta: "Respostas prontas",
+};
+
 export const normalizarConfigAssistente = (bruto) => {
-  const opcoes = (Array.isArray(bruto?.opcoes) ? bruto.opcoes : []).map((o, i) => ({
-    id: String(o?.id || `op-${i}`),
-    nome: String(o?.nome || "").trim(),
-    grupo: String(o?.grupo || "").trim(),
-    paxMax: inteiro(o?.paxMax),
-    acessorio: ACESSORIOS.includes(o?.acessorio) ? o.acessorio : "",
-    combinacoes: (Array.isArray(o?.combinacoes) ? o.combinacoes : [])
-      .map((c) => ({ grandes: inteiro(c?.grandes), bordo: inteiro(c?.bordo) }))
-      .filter((c) => c.grandes > 0 || c.bordo > 0),
-    veiculosIds: Array.isArray(o?.veiculosIds) ? o.veiculosIds.filter(Boolean) : [],
-    observacao: String(o?.observacao || "").trim(),
-    ativo: o?.ativo !== false,
-  }));
+  const opcoes = (Array.isArray(bruto?.opcoes) ? bruto.opcoes : []).map(
+    (o, i) => ({
+      id: String(o?.id || `op-${i}`),
+      nome: String(o?.nome || "").trim(),
+      grupo: String(o?.grupo || "").trim(),
+      paxMax: inteiro(o?.paxMax),
+      acessorio: ACESSORIOS.includes(o?.acessorio) ? o.acessorio : "",
+      combinacoes: (Array.isArray(o?.combinacoes) ? o.combinacoes : [])
+        .map((c) => ({
+          grandes: inteiro(c?.grandes),
+          bordo: inteiro(c?.bordo),
+        }))
+        .filter((c) => c.grandes > 0 || c.bordo > 0),
+      veiculosIds: Array.isArray(o?.veiculosIds)
+        ? o.veiculosIds.filter(Boolean)
+        : [],
+      observacao: String(o?.observacao || "").trim(),
+      ativo: o?.ativo !== false,
+    }),
+  );
 
   const fator = Number(bruto?.fatorBordoPorGrande);
   const itensEspeciais = Array.isArray(bruto?.itensEspeciais)
     ? bruto.itensEspeciais
-      .map((it, i) => ({
-        id: String(it?.id || `esp-${i}`),
-        nome: String(it?.nome || "").trim(),
-        conta: COMO_CONTA[it?.conta] ? it.conta : "consultar",
-      }))
-      .filter((it) => it.nome)
+        .map((it, i) => ({
+          id: String(it?.id || `esp-${i}`),
+          nome: String(it?.nome || "").trim(),
+          conta: COMO_CONTA[it?.conta] ? it.conta : "consultar",
+        }))
+        .filter((it) => it.nome)
     : ITENS_ESPECIAIS_PADRAO;
 
+  const nomes = bruto?.nomesSecoes || {};
   return {
+    nomesSecoes: Object.fromEntries(
+      Object.entries(NOMES_SECOES_PADRAO).map(([chave, padrao]) => [
+        chave,
+        String(nomes[chave] || "").trim() || padrao,
+      ]),
+    ),
     fatorBordoPorGrande: Number.isFinite(fator) && fator >= 0 ? fator : 1,
     margemFolga: inteiro(bruto?.margemFolga),
     mensagemSemOpcao:
@@ -252,12 +463,69 @@ export const EXEMPLO_CONFIG_ASSISTENTE = {
   itensEspeciais: ITENS_ESPECIAIS_PADRAO,
   mensagemSemOpcao: MENSAGEM_SEM_OPCAO_PADRAO,
   opcoes: [
-    { id: "ex-1", nome: "Spin sem bagageiro", grupo: "Carro", paxMax: 4, acessorio: "", combinacoes: [{ grandes: 3, bordo: 2 }, { grandes: 0, bordo: 7 }], veiculosIds: [], observacao: "" },
-    { id: "ex-2", nome: "Spin com bagageiro", grupo: "Carro", paxMax: 4, acessorio: "Bagageiro", combinacoes: [{ grandes: 5, bordo: 3 }], veiculosIds: [], observacao: "Bagageiro sujeito a disponibilidade." },
-    { id: "ex-3", nome: "Van sem carretinha", grupo: "Van", paxMax: 15, acessorio: "", combinacoes: [{ grandes: 8, bordo: 8 }], veiculosIds: [], observacao: "" },
-    { id: "ex-4", nome: "Van com carretinha", grupo: "Van", paxMax: 15, acessorio: "Carretinha", combinacoes: [{ grandes: 18, bordo: 15 }], veiculosIds: [], observacao: "" },
-    { id: "ex-5", nome: "Van alongada sem carretinha", grupo: "Van alongada", paxMax: 19, acessorio: "", combinacoes: [{ grandes: 12, bordo: 10 }], veiculosIds: [], observacao: "" },
-    { id: "ex-6", nome: "Van alongada com carretinha", grupo: "Van alongada", paxMax: 19, acessorio: "Carretinha", combinacoes: [{ grandes: 22, bordo: 19 }], veiculosIds: [], observacao: "" },
+    {
+      id: "ex-1",
+      nome: "Spin sem bagageiro",
+      grupo: "Carro",
+      paxMax: 4,
+      acessorio: "",
+      combinacoes: [
+        { grandes: 3, bordo: 2 },
+        { grandes: 0, bordo: 7 },
+      ],
+      veiculosIds: [],
+      observacao: "",
+    },
+    {
+      id: "ex-2",
+      nome: "Spin com bagageiro",
+      grupo: "Carro",
+      paxMax: 4,
+      acessorio: "Bagageiro",
+      combinacoes: [{ grandes: 5, bordo: 3 }],
+      veiculosIds: [],
+      observacao: "Bagageiro sujeito a disponibilidade.",
+    },
+    {
+      id: "ex-3",
+      nome: "Van sem carretinha",
+      grupo: "Van",
+      paxMax: 15,
+      acessorio: "",
+      combinacoes: [{ grandes: 8, bordo: 8 }],
+      veiculosIds: [],
+      observacao: "",
+    },
+    {
+      id: "ex-4",
+      nome: "Van com carretinha",
+      grupo: "Van",
+      paxMax: 15,
+      acessorio: "Carretinha",
+      combinacoes: [{ grandes: 18, bordo: 15 }],
+      veiculosIds: [],
+      observacao: "",
+    },
+    {
+      id: "ex-5",
+      nome: "Van alongada sem carretinha",
+      grupo: "Van alongada",
+      paxMax: 19,
+      acessorio: "",
+      combinacoes: [{ grandes: 12, bordo: 10 }],
+      veiculosIds: [],
+      observacao: "",
+    },
+    {
+      id: "ex-6",
+      nome: "Van alongada com carretinha",
+      grupo: "Van alongada",
+      paxMax: 19,
+      acessorio: "Carretinha",
+      combinacoes: [{ grandes: 22, bordo: 19 }],
+      veiculosIds: [],
+      observacao: "",
+    },
   ],
 };
 
@@ -300,7 +568,7 @@ export const aplicarEspeciais = (config, grupo = {}) => {
     if (item.conta === "grande") efetivo.grandes += qtd;
     else if (item.conta === "bordo") efetivo.bordo += qtd;
     else if (item.conta === "lugar") efetivo.pax += qtd;
-    else consultar.push({ ...item, qtd });
+    else if (item.conta === "consultar") consultar.push({ ...item, qtd });
   });
 
   return { efetivo, especiais, consultar };
@@ -312,7 +580,8 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const fator = config.fatorBordoPorGrande;
   const margem = config.margemFolga;
   const opcoes = config.opcoes.filter((o) => o.ativo && o.nome && o.paxMax > 0);
-  const preenchido = pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
+  const preenchido =
+    pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
   const temMalas = grandes > 0 || bordo > 0;
 
   const cabe = (o, g, b) => bagagemCabe(o.combinacoes, g, b, fator);
@@ -327,7 +596,9 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const noLimite = (o) => temMalas && !cabeComFolga(o, 1);
 
   const pelaQuantidade = opcoes.find(cabePax) || null;
-  const comMargem = opcoes.find((o) => cabePax(o) && cabeMalas(o) && cabeComFolga(o, margem));
+  const comMargem = opcoes.find(
+    (o) => cabePax(o) && cabeMalas(o) && cabeComFolga(o, margem),
+  );
   const semMargem = opcoes.find((o) => cabePax(o) && cabeMalas(o)) || null;
   const recomendada = comMargem || semMargem;
 
@@ -338,23 +609,27 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const recomendadaNoLimite = !!(recomendada && noLimite(recomendada));
   const maisFolgada = recomendadaNoLimite
     ? opcoes.find(
-      (o) =>
-        o !== recomendada &&
-        opcoes.indexOf(o) > opcoes.indexOf(recomendada) &&
-        cabePax(o) &&
-        !noLimite(o),
-    ) || null
+        (o) =>
+          o !== recomendada &&
+          opcoes.indexOf(o) > opcoes.indexOf(recomendada) &&
+          cabePax(o) &&
+          !noLimite(o),
+      ) || null
     : null;
 
   // a mesma família tem uma versão com/sem acessório?
   const variacaoSemAcessorio =
     recomendada && !recomendada.acessorio
       ? opcoes.find(
-        (o) => o.grupo && o.grupo === recomendada.grupo && o.acessorio,
-      ) || null
+          (o) => o.grupo && o.grupo === recomendada.grupo && o.acessorio,
+        ) || null
       : null;
 
-  const subiu = !!(recomendada && pelaQuantidade && recomendada.id !== pelaQuantidade.id);
+  const subiu = !!(
+    recomendada &&
+    pelaQuantidade &&
+    recomendada.id !== pelaQuantidade.id
+  );
 
   return {
     efetivo,
@@ -366,7 +641,12 @@ export const recomendarVeiculo = (config, grupo = {}) => {
     alternativas,
     subiuPorBagagem: subiu,
     // a menor opção comportava a bagagem, mas sem a margem de segurança
-    subiuPorMargem: !!(subiu && margem > 0 && pelaQuantidade && cabeMalas(pelaQuantidade)),
+    subiuPorMargem: !!(
+      subiu &&
+      margem > 0 &&
+      pelaQuantidade &&
+      cabeMalas(pelaQuantidade)
+    ),
     semMargem: !!(margem > 0 && recomendada && !comMargem),
     noLimite: recomendadaNoLimite,
     maisFolgada,
@@ -389,7 +669,11 @@ export const descreverGrupo = ({ pax = 0, grandes = 0, bordo = 0 }) =>
 export const descreverEspeciais = (especiais = []) =>
   especiais.map((e) => `${e.qtd}× ${e.nome.toLowerCase()}`).join(", ");
 
-export const montarTextoRecomendacao = (resultado, grupo, nomesVeiculos = []) => {
+export const montarTextoRecomendacao = (
+  resultado,
+  grupo,
+  nomesVeiculos = [],
+) => {
   const { recomendada, especiais, consultar } = resultado;
   if (!recomendada) return "";
   return [
@@ -400,13 +684,46 @@ export const montarTextoRecomendacao = (resultado, grupo, nomesVeiculos = []) =>
       bordo: grupo.bordo || 0,
     })}`,
     especiais.length > 0 && `Itens especiais: ${descreverEspeciais(especiais)}`,
-    `Veículo: *${recomendada.nome}*${nomesVeiculos.length ? ` (${nomesVeiculos.join(", ")} ou similar)` : ""
+    `Veículo: *${recomendada.nome}*${
+      nomesVeiculos.length ? ` (${nomesVeiculos.join(", ")} ou similar)` : ""
     }`,
     recomendada.acessorio && `Inclui ${recomendada.acessorio.toLowerCase()}.`,
     recomendada.observacao,
     consultar.length > 0 &&
-    `Sujeito a confirmação do operacional: ${descreverEspeciais(consultar)}.`,
+      `Sujeito a confirmação do operacional: ${descreverEspeciais(consultar)}.`,
   ]
     .filter(Boolean)
     .join("\n");
+};
+
+// Frase do que uma capacidade aceita (para quem cadastra conferir).
+const pluralCap = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+// Frase do que a capacidade aceita, para o operacional conferir.
+export const resumoCapacidade = (combinacoes, fator) => {
+  const linhas = combinacoes
+    .map((c) => ({
+      grandes: Number(c.grandes) || 0,
+      bordo: Number(c.bordo) || 0,
+    }))
+    .filter((c) => c.grandes > 0 || c.bordo > 0);
+  if (!linhas.length) return "Preencha o máximo que o veículo leva.";
+
+  const partes = [];
+  linhas.forEach((c, i) => {
+    const base = [
+      c.grandes > 0 && pluralCap(c.grandes, "mala de 23 kg", "malas de 23 kg"),
+      c.bordo > 0 && pluralCap(c.bordo, "de 10 kg", "de 10 kg"),
+    ]
+      .filter(Boolean)
+      .join(" + ");
+    partes.push(i === 0 ? `Aceita até ${base}` : `ou até ${base}`);
+    const soMao = c.bordo + Math.floor(c.grandes * fator);
+    if (c.grandes > 0 && fator > 0 && i === 0) {
+      partes.push(
+        `ou até ${pluralCap(soMao, "mala de 10 kg", "malas de 10 kg")} sem malas grandes`,
+      );
+    }
+  });
+  return `${partes.join(", ")} — e qualquer quantidade menor.`;
 };

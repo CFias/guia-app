@@ -554,3 +554,35 @@ button.assist-veiculo:hover {
 .assist-nota.is-alerta svg {
   color: var(--alert);
 }
+
+.assist-cabeca>div {
+  flex: 1;
+}
+
+.assist-recolher {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.assist-recolher:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.assist-especiais-lista.is-fixa {
+  padding-top: 6px;
+  border-top: 1px dashed var(--divider);
+}
+
+.assist-especiais-toggle {
+  min-width: 0;
+  white-space: nowrap;
+}

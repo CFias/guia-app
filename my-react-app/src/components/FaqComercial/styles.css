@@ -1151,3 +1151,380 @@
         font-size: var(--fs-lg);
     }
 }
+
+/* ---------- assistente recolhido ---------- */
+.faq-cat-assist-barra {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: 14px var(--space-4);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--divider));
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.faq-cat-assist-barra:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-pop);
+}
+
+.faq-cat-assist-icone {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.faq-cat-assist-texto {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.faq-cat-assist-texto strong {
+    color: var(--text);
+    font-size: var(--fs-base);
+}
+
+.faq-cat-assist-texto small {
+    color: var(--text-3);
+    font-size: var(--fs-sm);
+}
+
+.faq-cat-assist-abrir {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-text);
+    font-size: var(--fs-md);
+    font-weight: 600;
+}
+
+@media (max-width: 720px) {
+    .faq-cat-assist-abrir {
+        font-size: 0;
+    }
+
+    .faq-cat-assist-abrir svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* ---------- embarcações e locais ---------- */
+.faq-cat-local-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--text-2);
+    font-size: var(--fs-md);
+}
+
+.faq-cat-local-info span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.faq-cat-local-info svg {
+    flex-shrink: 0;
+    color: var(--accent-text);
+}
+
+.faq-cat-mapa {
+    color: var(--accent-text) !important;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.faq-cat-contato {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    list-style: none;
+}
+
+.faq-cat-contato li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: var(--fs-base);
+}
+
+.faq-cat-contato li+li {
+    border-top: 1px solid var(--divider);
+}
+
+.faq-cat-contato li>svg {
+    flex-shrink: 0;
+    color: var(--accent-text);
+}
+
+.faq-cat-contato li>span {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.faq-cat-contato small {
+    color: var(--text-3);
+    font-size: var(--fs-sm);
+}
+
+.faq-cat-contato a {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-pill);
+    color: var(--accent-text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.faq-cat-contato a:hover {
+    border-color: var(--accent);
+}
+
+/* ---------- ampliar foto ---------- */
+.faq-cat-galeria-ampliar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+}
+
+.faq-cat-galeria-ampliar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.faq-cat-galeria-lupa {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(17, 17, 16, 0.7);
+    color: #fff;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+
+.faq-cat-galeria-ampliar:hover .faq-cat-galeria-lupa,
+.faq-cat-galeria-ampliar:focus-visible .faq-cat-galeria-lupa {
+    opacity: 1;
+}
+
+/* visualizador em tela cheia */
+.faq-visor {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    background: rgba(8, 8, 8, 0.97);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    animation: faq-visor-entra 0.15s ease-out;
+}
+
+@keyframes faq-visor-entra {
+    from {
+        opacity: 0;
+    }
+}
+
+.faq-visor-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.faq-visor-titulo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.faq-visor-titulo small {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.faq-visor-acoes {
+    display: flex;
+    gap: 6px;
+}
+
+.faq-visor-acoes a,
+.faq-visor-acoes button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+}
+
+.faq-visor-acoes a:hover,
+.faq-visor-acoes button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.faq-visor-palco {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    padding: 0 72px;
+    overflow: hidden;
+}
+
+.faq-visor-palco img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+    cursor: zoom-in;
+    transition: transform 0.2s ease;
+    user-select: none;
+}
+
+.faq-visor-palco img.is-zoom {
+    cursor: zoom-out;
+    transform: scale(2.2);
+}
+
+.faq-visor-seta {
+    position: absolute;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.faq-visor-seta:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.faq-visor-seta.is-esq {
+    left: 12px;
+}
+
+.faq-visor-seta.is-dir {
+    right: 12px;
+}
+
+.faq-visor-miniaturas {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px 4px;
+    overflow-x: auto;
+}
+
+.faq-visor-miniaturas button {
+    flex: 0 0 72px;
+    height: 48px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    opacity: 0.55;
+}
+
+.faq-visor-miniaturas button.is-ativa {
+    border-color: #fff;
+    opacity: 1;
+}
+
+.faq-visor-miniaturas img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.faq-visor-dica {
+    margin: 0;
+    padding: 6px 16px 14px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: var(--fs-sm);
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .faq-visor-palco {
+        padding: 0 8px;
+    }
+
+    .faq-visor-seta {
+        width: 40px;
+        height: 40px;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    .faq-visor-seta.is-esq {
+        left: 8px;
+    }
+
+    .faq-visor-seta.is-dir {
+        right: 8px;
+    }
+
+    .faq-visor-dica {
+        display: none;
+    }
+}

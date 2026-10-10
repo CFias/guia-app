@@ -242,7 +242,7 @@ const FotosVeiculo = ({ valor = [], onChange, disabled = false, nome = "Veículo
         <div className="faq-fotos-colar">
           <input
             type="text"
-            className="faq-admin-input"
+            className="fi-input"
             placeholder="ou cole o link de uma imagem"
             value={link}
             onChange={(e) => setLink(e.target.value)}
@@ -256,7 +256,7 @@ const FotosVeiculo = ({ valor = [], onChange, disabled = false, nome = "Veículo
           />
           <button
             type="button"
-            className="faq-admin-btn-secondary"
+            className="fi-adicionar"
             onClick={adicionarLink}
             disabled={disabled || !link.trim()}
           >

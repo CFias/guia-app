@@ -7,7 +7,6 @@ import {
   descreverGrupo,
   montarTextoRecomendacao,
   descreverEspeciais,
-  COMO_CONTA,
 } from "./catalogo";
 import "./assistente.css";
 
@@ -59,9 +58,37 @@ const Passo = ({ campo, valor, onChange }) => (
 const ROTULO_CONTA = {
   grande: "conta como 23 kg",
   bordo: "conta como 10 kg",
+  nao_ocupa: "vai no colo, não ocupa espaço",
   lugar: "ocupa 1 lugar",
-  consultar: "confirmar com operacional",
+  consultar: "o operacional analisa",
 };
+
+const ItemEspecial = ({ item, valor, onChange }) => (
+  <li className={valor > 0 ? "is-ativo" : ""}>
+    <span className="assist-especial-nome">
+      {item.nome}
+      <small>{ROTULO_CONTA[item.conta]}</small>
+    </span>
+    <span className="assist-passo-ctrl is-mini">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(0, valor - 1))}
+        disabled={valor === 0}
+        aria-label={`Menos ${item.nome.toLowerCase()}`}
+      >
+        <Icon name="minus" size={14} />
+      </button>
+      <span className="assist-mini-valor">{valor}</span>
+      <button
+        type="button"
+        onClick={() => onChange(valor + 1)}
+        aria-label={`Mais ${item.nome.toLowerCase()}`}
+      >
+        <Icon name="plus" size={14} />
+      </button>
+    </span>
+  </li>
+);
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
@@ -79,6 +106,7 @@ const AssistenteVeiculo = ({
   grupo,
   onGrupoChange,
   onAbrirVeiculo,
+  onRecolher,
   titulo = "Assistente de veículo",
 }) => {
   const [copiado, setCopiado] = useState(false);
@@ -116,9 +144,11 @@ const AssistenteVeiculo = ({
     );
 
   const { efetivo, especiais, consultar } = resultado;
-  const totalEspeciais = especiais.reduce((t, e) => t + e.qtd, 0);
-  const mostrarEspeciais =
-    config.itensEspeciais.length > 0 && (especiaisAbertos || totalEspeciais > 0);
+  const itensNaConta = config.itensEspeciais.filter((i) => i.conta !== "consultar");
+  const itensConsultar = config.itensEspeciais.filter((i) => i.conta === "consultar");
+  const totalConsultar = consultar.reduce((t, e) => t + e.qtd, 0);
+  const mostrarEspeciais = especiaisAbertos || totalConsultar > 0;
+  const valorEspecial = (id) => Number(grupo.especiais?.[id]) || 0;
 
   const alterarEspecial = (id, valor) =>
     onGrupoChange({ ...grupo, especiais: { ...(grupo.especiais || {}), [id]: valor } });
@@ -141,6 +171,17 @@ const AssistenteVeiculo = ({
             <h2>{titulo}</h2>
             <p>Informe o grupo e veja qual veículo atende.</p>
           </div>
+          {onRecolher && (
+            <button
+              type="button"
+              className="assist-recolher"
+              onClick={onRecolher}
+              title="Recolher assistente"
+              aria-label="Recolher assistente"
+            >
+              <Icon name="chevronUp" size={16} />
+            </button>
+          )}
         </div>
 
         <div className="assist-campos">
@@ -154,7 +195,20 @@ const AssistenteVeiculo = ({
           ))}
         </div>
 
-        {config.itensEspeciais.length > 0 && (
+        {itensNaConta.length > 0 && (
+          <ul className="assist-especiais-lista is-fixa" aria-label="Mochilas e outros volumes">
+            {itensNaConta.map((item) => (
+              <ItemEspecial
+                key={item.id}
+                item={item}
+                valor={valorEspecial(item.id)}
+                onChange={(v) => alterarEspecial(item.id, v)}
+              />
+            ))}
+          </ul>
+        )}
+
+        {itensConsultar.length > 0 && (
           <div className="assist-especiais">
             <button
               type="button"
@@ -163,42 +217,23 @@ const AssistenteVeiculo = ({
               aria-expanded={mostrarEspeciais}
             >
               <Icon name={mostrarEspeciais ? "chevronDown" : "chevronRight"} size={14} />
-              Itens especiais
-              {totalEspeciais > 0 && <span className="assist-especiais-qtd">{totalEspeciais}</span>}
-              <em>prancha, carrinho, cadeirinha…</em>
+              Outros itens
+              {totalConsultar > 0 && (
+                <span className="assist-especiais-qtd">{totalConsultar}</span>
+              )}
+              <em>carrinho, prancha, cadeirinha… — o operacional analisa</em>
             </button>
 
             {mostrarEspeciais && (
               <ul className="assist-especiais-lista">
-                {config.itensEspeciais.map((item) => {
-                  const valor = Number(grupo.especiais?.[item.id]) || 0;
-                  return (
-                    <li key={item.id} className={valor > 0 ? "is-ativo" : ""}>
-                      <span className="assist-especial-nome">
-                        {item.nome}
-                        <small title={COMO_CONTA[item.conta]}>{ROTULO_CONTA[item.conta]}</small>
-                      </span>
-                      <span className="assist-passo-ctrl is-mini">
-                        <button
-                          type="button"
-                          onClick={() => alterarEspecial(item.id, Math.max(0, valor - 1))}
-                          disabled={valor === 0}
-                          aria-label={`Menos ${item.nome.toLowerCase()}`}
-                        >
-                          <Icon name="minus" size={14} />
-                        </button>
-                        <span className="assist-mini-valor">{valor}</span>
-                        <button
-                          type="button"
-                          onClick={() => alterarEspecial(item.id, valor + 1)}
-                          aria-label={`Mais ${item.nome.toLowerCase()}`}
-                        >
-                          <Icon name="plus" size={14} />
-                        </button>
-                      </span>
-                    </li>
-                  );
-                })}
+                {itensConsultar.map((item) => (
+                  <ItemEspecial
+                    key={item.id}
+                    item={item}
+                    valor={valorEspecial(item.id)}
+                    onChange={(v) => alterarEspecial(item.id, v)}
+                  />
+                ))}
               </ul>
             )}
           </div>
@@ -327,18 +362,19 @@ const AssistenteVeiculo = ({
               <div className="assist-nota is-alerta">
                 <Icon name="message" size={15} />
                 <span>
-                  <b>Confirme com o operacional:</b> {descreverEspeciais(consultar)}.
-                  A recomendação não considera esse item.
+                  <b>Consultar o operacional:</b> {descreverEspeciais(consultar)}.
+                  Esse item precisa de uma análise antes de confirmar o veículo —
+                  a recomendação acima não conta com ele.
                 </span>
               </div>
             )}
 
-            {especiais.some((e) => e.conta !== "consultar") && (
+            {especiais.some((e) => e.conta !== "consultar" && e.conta !== "nao_ocupa") && (
               <p className="assist-obs">
                 <Icon name="info" size={14} />
                 Considerado na conta:{" "}
                 {especiais
-                  .filter((e) => e.conta !== "consultar")
+                  .filter((e) => e.conta !== "consultar" && e.conta !== "nao_ocupa")
                   .map((e) => `${e.qtd}× ${e.nome.toLowerCase()} (${ROTULO_CONTA[e.conta]})`)
                   .join(", ")}
                 .
