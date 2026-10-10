@@ -8,23 +8,8 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
-import {
-  AccessTimeRounded,
-  CalendarMonthRounded,
-  CheckRounded,
-  HistoryRounded,
-  InfoOutlined,
-  LanguageRounded,
-  LocalActivityRounded,
-  LockClockRounded,
-  LogoutRounded,
-  NavigateBeforeRounded,
-  NavigateNextRounded,
-  PersonRounded,
-  StarRounded,
-  TwoWheelerRounded,
-  WarningAmberRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
+import { definirTituloAba } from "../Shell/tituloAba";
 import { db } from "../../Services/Services/firebase";
 import { useAuth } from "../../Context/AuthContext";
 import { getLanguages } from "../../Services/Services/languages.service";
@@ -37,7 +22,29 @@ import {
   getEstadoJanela,
   somarDias,
 } from "../../Services/Utils/janelaDisponibilidade";
+import PaisagemNordeste from "../Auth/PaisagemNordeste";
+import logo from "../../assets/clover.png";
 import "./styles.css";
+import "./guia-visual.css";
+
+const iniciais = (nome = "") =>
+  String(nome)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
+// quanto da janela de envio já passou (0–100), só para a barra de progresso
+const progressoJanela = (restanteMin, config) => {
+  const ab = Number(config?.dowAbertura ?? 4);
+  const fe = Number(config?.dowFechamento ?? 5);
+  const totalMin = ((((fe - ab + 7) % 7) + 1) * 24 * 60) || 1;
+  const pct = 100 - (Number(restanteMin || 0) / totalMin) * 100;
+  return Math.max(0, Math.min(100, pct));
+};
 
 const nomePasseio = (p) =>
   p?.nome || p?.externalName || p?.name || p?.titulo || "Passeio sem nome";
@@ -52,6 +59,10 @@ const formatarWhatsapp = (valor) => {
 };
 
 const MinhaDisponibilidade = () => {
+  useEffect(() => {
+    definirTituloAba("Minha disponibilidade");
+  }, []);
+
   const { perfil, user, logout } = useAuth();
   const guideId = perfil?.guideId;
 
@@ -67,12 +78,14 @@ const MinhaDisponibilidade = () => {
   // Dias em que a janela abre/fecha: configurados pelo operacional em
   // Configurações → Escala. Carrega uma vez (independe do guia).
   const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
+  const [whatsappOperacao, setWhatsappOperacao] = useState("");
   useEffect(() => {
     let ativo = true;
     getDoc(doc(db, "settings", "scale"))
       .then((snap) => {
         if (!ativo || !snap.exists()) return;
         const data = snap.data();
+        if (data.whatsappOperacao) setWhatsappOperacao(String(data.whatsappOperacao));
         if (
           data.janelaDisponibilidadeAbertura !== undefined ||
           data.janelaDisponibilidadeFechamento !== undefined
@@ -419,21 +432,112 @@ const MinhaDisponibilidade = () => {
   const podeAvancarHistorico = offsetHistorico < 1;
 
   const intervalo = `${dataBr(janela.semanaInicio)} a ${dataBr(janela.semanaFim)}`;
+
+  // Lembrete: menos de 6 h para fechar e nada enviado para a semana que vem.
+  const prazoApertado =
+    janela.aberta && Number(janela.restanteMin) <= 360 && salvasNaSemana.size === 0 && !alterado;
+
+  // Repetir a semana anterior: mesmos dias da semana (seg..dom) marcados na
+  // semana que antecede a semana alvo.
+  const diasSemanaAnterior = useMemo(() => {
+    const inicioAnterior = somarDias(janela.semanaInicio, -7);
+    const fimAnterior = somarDias(janela.semanaInicio, -1);
+    const marcadosAntes = new Set(
+      salvos.filter((s) => s.date >= inicioAnterior && s.date <= fimAnterior).map((s) => s.date),
+    );
+    return janela.dias.filter((d) => marcadosAntes.has(somarDias(d.date, -7)));
+  }, [salvos, janela.semanaInicio, janela.dias]);
+
+  const repetirSemanaAnterior = () => {
+    if (!podeEditar || !diasSemanaAnterior.length) return;
+    setMsg(null);
+    setEdicao({
+      semana: janela.semanaInicio,
+      datas: new Set(diasSemanaAnterior.map((d) => d.date)),
+    });
+  };
+
+  const linkWhatsappOperacao = (() => {
+    const n = String(whatsappOperacao).replace(/\D/g, "");
+    if (n.length < 10) return "";
+    const numero = n.length <= 11 ? `55${n}` : n;
+    const texto = encodeURIComponent(
+      `Olá! Aqui é ${perfil?.nome?.split(" ")[0] || "o guia"}, da Luck. `,
+    );
+    return `https://wa.me/${numero}?text=${texto}`;
+  })();
   const todosMarcados = janela.dias.every((d) => marcadas.has(d.date));
 
   return (
     <div className="minha-disp-page">
-      <header className="minha-disp-topo">
-        <div>
-          <h1>
-            <CalendarMonthRounded /> Olá, {perfil?.nome?.split(" ")[0]}!
-          </h1>
-          <p>Informe seus dias disponíveis e confira seu perfil.</p>
+      <header className="guia-hero">
+        <PaisagemNordeste className="guia-hero__paisagem" />
+
+        <div className="guia-hero__barra">
+          <span className="guia-hero__marca">
+            <img src={logo} alt="" />
+            Luck SSA · Área do guia
+          </span>
+          <span className="guia-hero__acoes">
+            {linkWhatsappOperacao && (
+              <a
+                className="minha-disp-sair guia-hero__whats"
+                href={linkWhatsappOperacao}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="message" size={16} />
+                Falar com a operação
+              </a>
+            )}
+            <button type="button" className="minha-disp-sair" onClick={logout}>
+              <Icon name="logout" size={16} />
+              Sair
+            </button>
+          </span>
         </div>
-        <button type="button" className="minha-disp-sair" onClick={logout}>
-          <LogoutRounded fontSize="small" />
-          Sair
-        </button>
+
+        <div className="guia-hero__pessoa">
+          <span className="guia-hero__avatar" aria-hidden="true">
+            {iniciais(perfil?.nome)}
+          </span>
+          <div>
+            <h1>Olá, {perfil?.nome?.split(" ")[0]}!</h1>
+            <p>Informe seus dias disponíveis e confira seu perfil.</p>
+          </div>
+        </div>
+
+        {guideId && !loading && (
+          <div className="guia-hero__resumo">
+            <div className={`guia-resumo ${janela.aberta ? "is-aberto" : "is-fechado"}`}>
+              <Icon name="clock" size={16} />
+              <span>
+                <small>Envio</small>
+                <strong>
+                  {janela.aberta
+                    ? `Aberto · ${formatarRestante(janela.restanteMin)}`
+                    : `Abre ${janela.nomeDiaAbertura.toLowerCase()}`}
+                </strong>
+              </span>
+            </div>
+            <div className="guia-resumo">
+              <Icon name="calendarCheck" size={16} />
+              <span>
+                <small>Semana que vem</small>
+                <strong>
+                  {marcadas.size} de {janela.dias.length} dias
+                </strong>
+              </span>
+            </div>
+            <div className="guia-resumo">
+              <Icon name="compass" size={16} />
+              <span>
+                <small>Passeios aptos</small>
+                <strong>{passeiosAptos.length}</strong>
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
       {!guideId ? (
@@ -451,14 +555,14 @@ const MinhaDisponibilidade = () => {
               className={aba === "disponibilidade" ? "ativa" : ""}
               onClick={() => setAba("disponibilidade")}
             >
-              <CalendarMonthRounded fontSize="small" /> Disponibilidade
+              <Icon name="calendar" size={16} /> Disponibilidade
             </button>
             <button
               type="button"
               className={aba === "perfil" ? "ativa" : ""}
               onClick={() => setAba("perfil")}
             >
-              <PersonRounded fontSize="small" /> Meu perfil
+              <Icon name="user" size={16} /> Meu perfil
             </button>
           </nav>
 
@@ -466,13 +570,19 @@ const MinhaDisponibilidade = () => {
           {aba === "disponibilidade" && (
             <>
               <section
-                className={`minha-disp-janela ${janela.aberta ? "aberta" : "fechada"}`}
+                className={`minha-disp-janela ${janela.aberta ? "aberta" : "fechada"} ${prazoApertado ? "guia-prazo-apertado" : ""}`}
               >
+                {prazoApertado && (
+                  <p className="guia-lembrete" role="alert">
+                    <Icon name="alert" size={16} />
+                    Você ainda não enviou sua disponibilidade da semana que vem.
+                  </p>
+                )}
                 <div className="minha-disp-janela-titulo">
                   {janela.aberta ? (
-                    <AccessTimeRounded fontSize="small" />
+                    <Icon name="clock" size={16} />
                   ) : (
-                    <LockClockRounded fontSize="small" />
+                    <Icon name="clock" size={16} />
                   )}
                   <strong>
                     {janela.aberta
@@ -483,14 +593,25 @@ const MinhaDisponibilidade = () => {
                 <p>
                   {janela.aberta
                     ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
-                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
-                        janela.diasAteAbrir > 0
-                          ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
-                          : ""
-                      }.`}
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${janela.diasAteAbrir > 0
+                      ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
+                      : ""
+                    }.`}
                 </p>
+                {janela.aberta && (
+                  <div
+                    className="guia-janela-barra"
+                    role="progressbar"
+                    aria-label="Tempo da janela de envio"
+                    aria-valuenow={Math.round(progressoJanela(janela.restanteMin, janelaConfig))}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <span style={{ width: `${progressoJanela(janela.restanteMin, janelaConfig)}%` }} />
+                  </div>
+                )}
                 <p className="minha-disp-janela-info">
-                  <InfoOutlined fontSize="inherit" /> O envio é feito de{" "}
+                  <Icon name="info" size={14} /> O envio é feito de{" "}
                   {janela.rotulo.toLowerCase()}, com as datas da semana que
                   vem (segunda a domingo). A escala será montada aos sábados
                   e os bloqueios serão enviados a você.
@@ -498,7 +619,7 @@ const MinhaDisponibilidade = () => {
               </section>
 
               <section className="minha-disp-alerta">
-                <WarningAmberRounded fontSize="small" />
+                <Icon name="alert" size={16} />
                 <p>
                   <strong>Marque apenas os dias em que você está totalmente livre.</strong>{" "}
                   Se você tem algum compromisso no dia, mesmo que parcial, não
@@ -510,14 +631,21 @@ const MinhaDisponibilidade = () => {
                 <div className="minha-disp-card minha-disp-aviso">{erroCarga}</div>
               ) : (
                 <>
-                  <section className="minha-disp-card">
-                    <div>
-                      <h2>Semana que vem: {intervalo}</h2>
-                      <p className="minha-disp-nota">
-                        {janela.aberta
-                          ? "Toque só nos dias em que você está totalmente livre."
-                          : "O envio dos dias da semana que vem abre na quinta-feira."}
-                      </p>
+                  <section className="minha-disp-card guia-semana">
+                    <div className="guia-semana__topo">
+                      <div>
+                        <h2>
+                          <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
+                        </h2>
+                        <p className="minha-disp-nota">
+                          {janela.aberta
+                            ? "Toque só nos dias em que você está totalmente livre."
+                            : "O envio dos dias da semana que vem abre na quinta-feira."}
+                        </p>
+                      </div>
+                      <span className="guia-contador" aria-label={`${marcadas.size} de ${janela.dias.length} dias marcados`}>
+                        <strong>{marcadas.size}</strong>/{janela.dias.length}
+                      </span>
                     </div>
 
                     {janela.aberta ? (
@@ -534,23 +662,68 @@ const MinhaDisponibilidade = () => {
                                 disabled={!podeEditar}
                                 aria-pressed={ativo}
                               >
+                                <span className="guia-dia__check" aria-hidden="true">
+                                  {ativo && <Icon name="check" size={13} />}
+                                </span>
                                 <span className="nome">{d.day}</span>
                                 <span className="data">{dataBr(d.date)}</span>
-                                {ativo && (
-                                  <CheckRounded fontSize="small" className="check" />
-                                )}
+                                <span className="guia-dia__estado">
+                                  {ativo ? "Livre" : "Toque para marcar"}
+                                </span>
                               </button>
                             );
                           })}
                         </div>
 
-                        <div className="minha-disp-acoes">
+                        {diasSemanaAnterior.length > 0 && (
+                          <button
+                            type="button"
+                            className="guia-repetir"
+                            onClick={repetirSemanaAnterior}
+                            disabled={!podeEditar}
+                          >
+                            <Icon name="history" size={15} />
+                            Repetir a semana anterior
+                            <span>
+                              {diasSemanaAnterior.map((d) => diaAbreviado(d.date)).join(" · ")}
+                            </span>
+                          </button>
+                        )}
+
+                        {!alterado && salvasNaSemana.size > 0 && (
+                          <div className="guia-enviado">
+                            <Icon name="circleCheck" size={16} />
+                            <span>
+                              <strong>
+                                Enviado:{" "}
+                                {janela.dias
+                                  .filter((d) => salvasNaSemana.has(d.date))
+                                  .map((d) => `${diaAbreviado(d.date)} ${dataBr(d.date).slice(0, 2)}`)
+                                  .join(" · ")}
+                              </strong>
+                              <small>
+                                {salvasNaSemana.size} dia(s)
+                                {atualizadoEm
+                                  ? ` · às ${atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} de ${atualizadoEm.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+                                  : ""}
+                              </small>
+                            </span>
+                          </div>
+                        )}
+
+                        <div className={`minha-disp-acoes ${alterado ? "guia-acoes-fixas" : ""}`}>
+                          {alterado && !salvando && (
+                            <span className="guia-acoes-fixas__aviso">
+                              <Icon name="info" size={14} /> Alterações não salvas
+                            </span>
+                          )}
                           <button
                             type="button"
                             className="minha-disp-btn ghost"
                             onClick={marcarTodos}
                             disabled={!podeEditar}
                           >
+                            <Icon name={todosMarcados ? "x" : "listCheck"} size={15} />
                             {todosMarcados ? "Desmarcar todos" : "Marcar todos"}
                           </button>
                           <button
@@ -559,15 +732,10 @@ const MinhaDisponibilidade = () => {
                             onClick={salvar}
                             disabled={!alterado || salvando}
                           >
+                            <Icon name={salvando ? "loader" : "save"} size={15} className={salvando ? "ui-spin" : undefined} />
                             {salvando ? "Salvando..." : "Salvar"}
                           </button>
                         </div>
-
-                        {alterado && !salvando && (
-                          <p className="minha-disp-nota">
-                            Você tem alterações não salvas.
-                          </p>
-                        )}
                       </>
                     ) : (
                       <div className="minha-disp-chips">
@@ -594,7 +762,7 @@ const MinhaDisponibilidade = () => {
 
                   <section className="minha-disp-card">
                     <h2>
-                      <HistoryRounded fontSize="small" /> Histórico
+                      <Icon name="history" size={16} /> Histórico
                     </h2>
 
                     <div className="minha-disp-semana-nav">
@@ -603,7 +771,7 @@ const MinhaDisponibilidade = () => {
                         onClick={() => setOffsetHistorico((o) => o - 1)}
                         aria-label="Semana anterior"
                       >
-                        <NavigateBeforeRounded />
+                        <Icon name="chevronLeft" size={16} />
                       </button>
                       <div>
                         <strong>
@@ -625,23 +793,30 @@ const MinhaDisponibilidade = () => {
                         disabled={!podeAvancarHistorico}
                         aria-label="Próxima semana"
                       >
-                        <NavigateNextRounded />
+                        <Icon name="chevronRight" size={16} />
                       </button>
                     </div>
 
+                    <div className="guia-calendario" role="list">
+                      {semanaHistorico.dias.map((d) => (
+                        <span
+                          key={d.date}
+                          role="listitem"
+                          className={`guia-calendario__dia ${d.marcado ? "is-marcado" : ""} ${d.date === janela.hojeIso ? "is-hoje" : ""}`}
+                          title={d.marcado ? "Disponível" : "Não marcado"}
+                        >
+                          <small>{diaAbreviado(d.date)}</small>
+                          <strong>{dataBr(d.date).slice(0, 2)}</strong>
+                          {d.marcado ? <Icon name="check" size={12} /> : <span className="guia-calendario__vazio" />}
+                        </span>
+                      ))}
+                    </div>
+
                     {semanaHistorico.dias.some((d) => d.marcado) ? (
-                      <div className="minha-disp-chips minha-disp-historico-chips">
-                        {semanaHistorico.dias
-                          .filter((d) => d.marcado)
-                          .map((d) => (
-                            <span
-                              key={d.date}
-                              className="minha-disp-chip historico marcado"
-                            >
-                              {diaAbreviado(d.date)} {dataBr(d.date)}
-                            </span>
-                          ))}
-                      </div>
+                      <p className="minha-disp-nota">
+                        {semanaHistorico.dias.filter((d) => d.marcado).length} dia(s)
+                        marcado(s) nessa semana.
+                      </p>
                     ) : (
                       <p className="minha-disp-vazio">
                         Nenhum dia marcado nessa semana.
@@ -663,7 +838,7 @@ const MinhaDisponibilidade = () => {
           {aba === "perfil" && (
             <>
               <p className="minha-disp-somente-leitura">
-                <InfoOutlined fontSize="inherit" /> Você pode atualizar os seus
+                <Icon name="info" size={14} /> Você pode atualizar os seus
                 idiomas. O restante é mantido pelo operacional e não pode ser
                 alterado por aqui — se algo estiver errado, fale com a equipe.
               </p>
@@ -674,10 +849,30 @@ const MinhaDisponibilidade = () => {
                 </div>
               ) : (
                 <>
-                  <section className="minha-disp-card">
-                    <h2>
-                      <PersonRounded fontSize="small" /> {guia.nome}
-                    </h2>
+                  <section className="minha-disp-card guia-perfil">
+                    <div className="guia-perfil__topo">
+                      <span className="guia-hero__avatar guia-hero__avatar--grande" aria-hidden="true">
+                        {iniciais(guia.nome)}
+                      </span>
+                      <div>
+                        <h2>{guia.nome}</h2>
+                        <p className="minha-disp-nota">Guia Luck Receptivo · Salvador</p>
+                      </div>
+                    </div>
+                    <div className="guia-perfil__numeros">
+                      <span>
+                        <strong>{idiomasSalvos.length}</strong>
+                        <small>idioma(s)</small>
+                      </span>
+                      <span>
+                        <strong>{passeiosAptos.length}</strong>
+                        <small>passeio(s) apto(s)</small>
+                      </span>
+                      <span>
+                        <strong>{guia.motoguia ? "Sim" : "Não"}</strong>
+                        <small>motoguia</small>
+                      </span>
+                    </div>
                     <dl className="minha-disp-dados">
                       <div>
                         <dt>WhatsApp</dt>
@@ -688,7 +883,7 @@ const MinhaDisponibilidade = () => {
                         <dd>
                           {guia.motoguia ? (
                             <span className="minha-disp-tag">
-                              <TwoWheelerRounded fontSize="inherit" /> Motoguia
+                              <Icon name="bike" size={14} /> Motoguia
                             </span>
                           ) : (
                             "Guia"
@@ -700,7 +895,7 @@ const MinhaDisponibilidade = () => {
 
                   <section className="minha-disp-card">
                     <h2>
-                      <LanguageRounded fontSize="small" /> Idiomas que eu guio
+                      <Icon name="languages" size={16} /> Idiomas que eu guio
                     </h2>
                     <p className="minha-disp-nota">
                       Toque para marcar ou desmarcar os idiomas em que você
@@ -719,7 +914,7 @@ const MinhaDisponibilidade = () => {
                             disabled={salvandoIdiomas}
                             aria-pressed={ativo}
                           >
-                            {ativo && <CheckRounded fontSize="inherit" />}
+                            {ativo && <Icon name="check" size={14} />}
                             {idioma}
                           </button>
                         );
@@ -749,7 +944,7 @@ const MinhaDisponibilidade = () => {
 
                   <section className="minha-disp-card">
                     <h2>
-                      <StarRounded fontSize="small" /> Portfólio e diferencial
+                      <Icon name="star" size={16} /> Portfólio e diferencial
                     </h2>
                     {guia.diferencial ? (
                       <p className="minha-disp-texto">{guia.diferencial}</p>
@@ -762,7 +957,7 @@ const MinhaDisponibilidade = () => {
 
                   <section className="minha-disp-card">
                     <h2>
-                      <LocalActivityRounded fontSize="small" /> Catálogo de
+                      <Icon name="ticket" size={16} /> Catálogo de
                       passeios aptos
                       <span className="minha-disp-contador">
                         {passeiosAptos.length}
@@ -776,17 +971,19 @@ const MinhaDisponibilidade = () => {
                       <ul className="minha-disp-passeios">
                         {passeiosAptos.map((p) => (
                           <li key={p.id}>
-                            <strong>{nomePasseio(p)}</strong>
+                            <strong>
+                              <Icon name="compass" size={15} /> {nomePasseio(p)}
+                            </strong>
                             {p.descricao && <p>{p.descricao}</p>}
                             {(Array.isArray(p.frequencia)
                               ? p.frequencia.length > 0
                               : p.frequencia) && (
-                              <span className="minha-disp-freq">
-                                {Array.isArray(p.frequencia)
-                                  ? p.frequencia.join(" · ")
-                                  : p.frequencia}
-                              </span>
-                            )}
+                                <span className="minha-disp-freq">
+                                  {Array.isArray(p.frequencia)
+                                    ? p.frequencia.join(" · ")
+                                    : p.frequencia}
+                                </span>
+                              )}
                           </li>
                         ))}
                       </ul>

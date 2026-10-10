@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import Icon from "../../components/ui/Icon";
 import { auth } from "../../Services/Services/firebase";
+import { definirTituloAba } from "../../components/Shell/tituloAba";
 import logo from "../../assets/clover.png";
 import "../../components/Auth/styles.css";
 
@@ -32,6 +33,10 @@ const mensagemErro = (code) => {
 };
 
 const RedefinirSenha = () => {
+  useEffect(() => {
+    definirTituloAba("Redefinir senha");
+  }, []);
+
   const [params] = useSearchParams();
   const mode = params.get("mode");
   const oobCode = params.get("oobCode");

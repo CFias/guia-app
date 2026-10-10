@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { definirTituloAba } from "../../components/Shell/tituloAba";
 import { Navigate, useLocation } from "react-router-dom";
 import Icon from "../../components/ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
@@ -6,6 +7,8 @@ import { HOME_BY_ROLE } from "../../Context/permissions";
 import { SemAcesso, TelaCarregando } from "../../components/Auth/RouteGuards";
 import logo from "../../assets/clover.png";
 import "../../components/Auth/styles.css";
+import "../../components/Auth/login.css";
+import PaisagemNordeste from "../../components/Auth/PaisagemNordeste";
 
 const mensagemErro = (code) => {
   switch (code) {
@@ -26,6 +29,10 @@ const mensagemErro = (code) => {
 };
 
 const Login = () => {
+  useEffect(() => {
+    definirTituloAba("Entrar");
+  }, []);
+
   const { user, role, loading, login, enviarRedefinicaoSenha } = useAuth();
   const location = useLocation();
 
@@ -102,23 +109,69 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-fullscreen">
-      <form className="auth-card" onSubmit={entrar} noValidate>
-        <div className="auth-brand">
-          <img src={logo} alt="Operacional SSA" />
-          <strong>Operacional SSA</strong>
-          <span>Entre com o acesso fornecido pela equipe</span>
+    <div className="login">
+      {/* ---------- lado da marca ---------- */}
+      <aside className="login-arte" aria-hidden="true">
+        <header className="login-marca">
+          <span className="login-marca__logo">
+            <img src={logo} alt="" />
+          </span>
+          <span>
+            <strong>Operacional SSA</strong>
+            <small>Luck Receptivo · Salvador, Bahia</small>
+          </span>
+        </header>
+
+        <div className="login-chamada">
+          <span className="login-chamada__selo">Central de operações</span>
+          <h1>
+            Da chegada no aeroporto
+            <br />
+            ao último passeio do dia.
+          </h1>
+          <ul className="login-recursos">
+            <li>
+              <Icon name="planeLanding" size={16} />
+              Chegadas e OUT's com status do voo
+            </li>
+            <li>
+              <Icon name="sparkles" size={16} />
+              Escala de guias e mapa de afinidade
+            </li>
+            <li>
+              <Icon name="send" size={16} />
+              Prévias e envio aos fornecedores
+            </li>
+          </ul>
         </div>
 
-        <div className="auth-form">
-          <div className="auth-field">
+        <div className="login-paisagem">
+          <PaisagemNordeste className="login-paisagem__svg" />
+        </div>
+      </aside>
+
+      {/* ---------- formulário ---------- */}
+      <main className="login-lado-form">
+        <form className="login-form" onSubmit={entrar} noValidate>
+          <span className="login-form__logo-mobile">
+            <img src={logo} alt="Operacional SSA" />
+          </span>
+
+          <div className="login-form__titulo">
+            <h2>Entrar</h2>
+            <p>Use o e-mail e a senha fornecidos pela equipe operacional.</p>
+          </div>
+
+          <div className="login-campo">
             <label htmlFor="login-email">E-mail</label>
-            <div className="auth-input-wrap">
+            <div className="login-input">
+              <Icon name="mail" size={16} className="login-input__icone" />
               <input
                 id="login-email"
                 type="email"
                 autoComplete="username"
                 inputMode="email"
+                placeholder="seu.nome@luck.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={enviando}
@@ -127,51 +180,79 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="auth-field">
-            <label htmlFor="login-senha">Senha</label>
-            <div className="auth-input-wrap">
+          <div className="login-campo">
+            <div className="login-campo__topo">
+              <label htmlFor="login-senha">Senha</label>
+              <button
+                type="button"
+                className="login-link"
+                onClick={esqueciSenha}
+                disabled={enviando}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+            <div className="login-input">
+              <Icon name="lock" size={16} className="login-input__icone" />
               <input
                 id="login-senha"
-                className="has-toggle"
                 type={mostrarSenha ? "text" : "password"}
                 autoComplete="current-password"
+                placeholder="••••••••"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 disabled={enviando}
               />
               <button
                 type="button"
-                className="auth-toggle-visibility"
+                className="login-input__olho"
                 onClick={() => setMostrarSenha((v) => !v)}
                 aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
               >
-                {mostrarSenha ? (
-                  <Icon name="eyeOff" size={16} />
-                ) : (
-                  <Icon name="eye" size={16} />
-                )}
+                <Icon name={mostrarSenha ? "eyeOff" : "eye"} size={16} />
               </button>
             </div>
           </div>
 
-          {erro && <div className="auth-alert erro">{erro}</div>}
-          {aviso && <div className="auth-alert ok">{aviso}</div>}
+          {erro && (
+            <div className="login-alerta is-erro" role="alert">
+              <Icon name="alert" size={16} />
+              <span>{erro}</span>
+            </div>
+          )}
+          {aviso && (
+            <div className="login-alerta is-ok" role="status">
+              <Icon name="circleCheck" size={16} />
+              <span>{aviso}</span>
+            </div>
+          )}
 
-          <button type="submit" className="auth-btn-primary" disabled={enviando}>
-            <Icon name="logout" size={16} />
-            {enviando ? "Entrando..." : "Entrar"}
+          <button type="submit" className="login-botao" disabled={enviando}>
+            {enviando ? (
+              <>
+                <Icon name="loader" size={16} className="ui-spin" />
+                Entrando...
+              </>
+            ) : (
+              <>
+                Entrar
+                <Icon name="arrowRight" size={16} />
+              </>
+            )}
           </button>
 
-          <button
-            type="button"
-            className="auth-link-btn"
-            onClick={esqueciSenha}
-            disabled={enviando}
-          >
-            Esqueci minha senha
-          </button>
-        </div>
-      </form>
+          <p className="login-ajuda">
+            <Icon name="shield" size={14} />
+            Acesso restrito. Contas são criadas pelo operacional.
+          </p>
+        </form>
+
+        <footer className="login-rodape">
+          <span>© Luck Receptivo</span>
+          <span>Uso interno</span>
+        </footer>
+      </main>
     </div>
   );
 };
