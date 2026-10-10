@@ -1,0 +1,283 @@
+/* Sobre a FiaSystem */
+
+.sobre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 920px;
+}
+
+.sobre--guia {
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.sobre-voltar {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sobre-voltar:hover {
+  color: var(--accent-text);
+}
+
+/* topo */
+.sobre-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 40px 40px 36px;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    radial-gradient(600px 300px at 100% 0%, rgba(43, 179, 196, 0.35), transparent 60%),
+    linear-gradient(135deg, #0d3b3a, #0b2a33);
+  color: #f3f6f5;
+}
+
+.sobre-hero-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sobre-hero-marca img {
+  width: 44px;
+  height: 44px;
+}
+
+.sobre-hero-marca span {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sobre-hero-marca b {
+  color: #2bd0a6;
+  font-weight: 800;
+}
+
+.sobre-hero h1 {
+  max-width: 680px;
+  margin: 6px 0 0;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.sobre-hero p {
+  max-width: 700px;
+  margin: 0;
+  color: rgba(243, 246, 245, 0.82);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+}
+
+/* blocos de texto */
+.sobre-bloco {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.sobre-bloco-icone {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.sobre-bloco h2,
+.sobre-secao h2 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+}
+
+.sobre-bloco p {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  line-height: 1.7;
+}
+
+.sobre-citacao {
+  margin: 14px 0 0;
+  padding: 14px 18px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+/* o que já construímos */
+.sobre-secao-sub {
+  margin: 0 0 var(--space-4);
+  color: var(--text-3);
+  font-size: var(--fs-md);
+}
+
+.sobre-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.sobre-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.sobre-card-icone {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.sobre-card strong {
+  color: var(--text);
+  font-size: var(--fs-base);
+}
+
+.sobre-card > span:last-child {
+  color: var(--text-3);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+
+/* futuro */
+.sobre-metas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sobre-metas span {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+/* princípios */
+.sobre-principios {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.sobre-principios div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sobre-principios svg {
+  flex-shrink: 0;
+  color: var(--accent-text);
+}
+
+/* chamada */
+.sobre-cta {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--divider));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.sobre-cta > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-text);
+}
+
+.sobre-cta strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: var(--fs-lg);
+}
+
+.sobre-cta span {
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+}
+
+.sobre-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: var(--space-2);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.sobre-rodape img {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 720px) {
+  .sobre-hero {
+    padding: 28px 22px 24px;
+    border-radius: 16px;
+  }
+
+  .sobre-hero h1 {
+    font-size: 27px;
+  }
+
+  .sobre-hero p {
+    font-size: var(--fs-base);
+  }
+
+  .sobre-bloco {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .sobre-principios {
+    grid-template-columns: 1fr 1fr;
+  }
+}

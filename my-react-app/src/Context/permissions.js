@@ -21,7 +21,8 @@ export const ROLE_LABELS = {
 export const ROLE_DESCRIPTIONS = {
   [ROLES.OPERACIONAL]:
     "Acesso total ao sistema, inclusive cadastro de usuários.",
-  [ROLES.COMERCIAL]: "Somente as telas de teor comercial (Central de Informações).",
+  [ROLES.COMERCIAL]:
+    "Somente as telas de teor comercial (Central de Informações).",
   [ROLES.GUIA]: "Somente a tela para preencher a própria disponibilidade.",
 };
 
@@ -35,6 +36,8 @@ export const ACESSO = {
   painel: [ROLES.OPERACIONAL], // todas as telas operacionais
   faqComercial: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   minhaDisponibilidade: [ROLES.GUIA],
+  // página "Sobre a FiaSystem": todos os perfis
+  sobre: [ROLES.OPERACIONAL, ROLES.COMERCIAL, ROLES.GUIA],
 };
 
 /* Para onde cada nível cai depois do login. Cada destino precisa

@@ -1392,6 +1392,7 @@ const Galeria = ({ imagens, nome, icone = "car" }) => {
   return (
     <div className="faq-cat-galeria">
       <div className="faq-cat-galeria-principal">
+        <img className="faq-cat-galeria-fundo" src={imagens[indice]} alt="" aria-hidden="true" />
         <button
           type="button"
           className="faq-cat-galeria-ampliar"

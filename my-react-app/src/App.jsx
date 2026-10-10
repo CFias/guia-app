@@ -22,6 +22,7 @@ import RoboConferenteVoos from "./components/RoboConferenteVoos/RoboConferenteVo
 import FaqComercial from "./components/FaqComercial/FaqComercial";
 import FaqAdmin from "./components/FaqAdmin/FaqAdmin";
 import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponibilidade";
+import Sobre from "./components/Sobre/Sobre";
 import Login from "./pages/Login/Login";
 import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
 import { RedirectHome, RequireRole } from "./components/Auth/RouteGuards";
@@ -78,6 +79,11 @@ function App() {
             <Route path="passeios" element={<ListaPasseios />} />
           </Route>
 
+          {/* ---- Sobre a FiaSystem (todos que usam o menu lateral) ---- */}
+          <Route element={<RequireRole roles={ACESSO.sobre} />}>
+            <Route path="sobre" element={<Sobre />} />
+          </Route>
+
           {/* ---- Telas do COMERCIAL (Operacional também acessa) ---- */}
           <Route element={<RequireRole roles={ACESSO.faqComercial} />}>
             <Route path="faqcomercial" element={<FaqComercial />} />
@@ -88,6 +94,8 @@ function App() {
       {/* ===== GUIA: só a própria disponibilidade ===== */}
       <Route element={<RequireRole roles={ACESSO.minhaDisponibilidade} />}>
         <Route path="/minha-disponibilidade" element={<MinhaDisponibilidade />} />
+        {/* Sobre a FiaSystem na versão da área do guia (sem menu lateral) */}
+        <Route path="/guia/sobre" element={<Sobre modo="guia" />} />
       </Route>
 
       {/* Qualquer outra URL volta pra home do nível de cada um */}

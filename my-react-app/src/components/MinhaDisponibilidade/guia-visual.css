@@ -500,3 +500,7 @@
     display: none;
   }
 }
+
+a.minha-disp-sair {
+  text-decoration: none;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Timestamp,
   collection,
@@ -490,6 +491,10 @@ const MinhaDisponibilidade = () => {
                 Falar com a operação
               </a>
             )}
+            <Link to="/guia/sobre" className="minha-disp-sair" title="Sobre a FiaSystem">
+              <Icon name="info" size={16} />
+              Sobre
+            </Link>
             <button type="button" className="minha-disp-sair" onClick={logout}>
               <Icon name="logout" size={16} />
               Sair
@@ -593,10 +598,11 @@ const MinhaDisponibilidade = () => {
                 <p>
                   {janela.aberta
                     ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
-                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${janela.diasAteAbrir > 0
-                      ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
-                      : ""
-                    }.`}
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
+                        janela.diasAteAbrir > 0
+                          ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
+                          : ""
+                      }.`}
                 </p>
                 {janela.aberta && (
                   <div
@@ -634,14 +640,14 @@ const MinhaDisponibilidade = () => {
                   <section className="minha-disp-card guia-semana">
                     <div className="guia-semana__topo">
                       <div>
-                        <h2>
-                          <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
-                        </h2>
-                        <p className="minha-disp-nota">
-                          {janela.aberta
-                            ? "Toque só nos dias em que você está totalmente livre."
-                            : "O envio dos dias da semana que vem abre na quinta-feira."}
-                        </p>
+                      <h2>
+                        <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
+                      </h2>
+                      <p className="minha-disp-nota">
+                        {janela.aberta
+                          ? "Toque só nos dias em que você está totalmente livre."
+                          : "O envio dos dias da semana que vem abre na quinta-feira."}
+                      </p>
                       </div>
                       <span className="guia-contador" aria-label={`${marcadas.size} de ${janela.dias.length} dias marcados`}>
                         <strong>{marcadas.size}</strong>/{janela.dias.length}
@@ -978,12 +984,12 @@ const MinhaDisponibilidade = () => {
                             {(Array.isArray(p.frequencia)
                               ? p.frequencia.length > 0
                               : p.frequencia) && (
-                                <span className="minha-disp-freq">
-                                  {Array.isArray(p.frequencia)
-                                    ? p.frequencia.join(" · ")
-                                    : p.frequencia}
-                                </span>
-                              )}
+                              <span className="minha-disp-freq">
+                                {Array.isArray(p.frequencia)
+                                  ? p.frequencia.join(" · ")
+                                  : p.frequencia}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>

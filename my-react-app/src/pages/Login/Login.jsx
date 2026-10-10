@@ -28,6 +28,18 @@ const mensagemErro = (code) => {
   }
 };
 
+// "F" da FiaSystem em uma cor só (marca d'água e assinatura do rodapé)
+const SimboloFiaSystem = ({ className = "" }) => (
+  <svg className={className} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <g fill="currentColor">
+      <rect x="17" y="14" width="9" height="36" rx="4.5" />
+      <rect x="17" y="14" width="30" height="9" rx="4.5" />
+      <rect x="17" y="28.5" width="19" height="8.5" rx="4.25" />
+      <circle cx="44.5" cy="32.75" r="5" />
+    </g>
+  </svg>
+);
+
 const Login = () => {
   useEffect(() => {
     definirTituloAba("Entrar");
@@ -152,6 +164,12 @@ const Login = () => {
 
       {/* ---------- formulário ---------- */}
       <main className="login-lado-form">
+        {/* marca d'água da FiaSystem */}
+        <div className="login-marca-dagua" aria-hidden="true">
+          <SimboloFiaSystem className="login-marca-dagua__simbolo" />
+          <span className="login-marca-dagua__nome">FiaSystem</span>
+        </div>
+
         <form className="login-form" onSubmit={entrar} noValidate>
           <span className="login-form__logo-mobile">
             <img src={logo} alt="Operacional SSA" />
@@ -251,6 +269,10 @@ const Login = () => {
         <footer className="login-rodape">
           <span>© Luck Receptivo</span>
           <span>Uso interno</span>
+          <span className="login-rodape__fia">
+            <img src="/favicon.svg" alt="" />
+            Desenvolvido com <b>FiaSystem</b>
+          </span>
         </footer>
       </main>
     </div>

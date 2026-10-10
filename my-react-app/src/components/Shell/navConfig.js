@@ -121,6 +121,13 @@ export const GRUPOS_MENU = [
   },
 ];
 
+export const ITEM_SOBRE = {
+  to: "/sobre",
+  label: "Sobre a FiaSystem",
+  icon: "info",
+  area: "sobre",
+};
+
 export const ITEM_CONFIGURACOES = {
   to: "/configuracoes",
   label: "Configurações",
@@ -137,4 +144,5 @@ export const ROTAS_FORA_DO_MENU = {
   "/escala-semanal": ["Escala e guias", "Escala semanal"],
   "/register-tours": ["Gestão", "Cadastro de passeios"],
   "/configuracoes": ["Conta", "Configurações"],
+  "/sobre": ["Conta", "Sobre a FiaSystem"],
 };

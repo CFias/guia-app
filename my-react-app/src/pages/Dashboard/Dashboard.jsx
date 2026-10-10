@@ -11,6 +11,7 @@ import Icon from "../../components/ui/Icon";
 import {
   GRUPOS_MENU,
   ITEM_CONFIGURACOES,
+  ITEM_SOBRE,
   ROTAS_FORA_DO_MENU,
 } from "../../components/Shell/navConfig";
 import { ShellContext } from "../../components/Shell/shellContext";
@@ -233,6 +234,7 @@ const Dashboard = ({ loading }) => {
 
           <div className="sidebar-footer">
             {podeVer(ITEM_CONFIGURACOES) && renderItem(ITEM_CONFIGURACOES)}
+            {podeVer(ITEM_SOBRE) && renderItem(ITEM_SOBRE)}
 
             <div className="sidebar-user">
               <span className="sidebar-avatar" aria-hidden="true">

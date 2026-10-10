@@ -814,18 +814,27 @@
     gap: 8px;
 }
 
+/* a foto aparece inteira (contain), seja deitada ou em pé; o fundo é a
+   mesma foto desfocada, então as sobras laterais não ficam “vazias” */
 .faq-cat-galeria-principal {
     position: relative;
-    aspect-ratio: 16 / 10;
+    isolation: isolate;
+    height: clamp(220px, 46vh, 420px);
     overflow: hidden;
     border-radius: var(--radius-lg);
     background: var(--raised);
 }
 
-.faq-cat-galeria-principal img {
-    width: 100%;
-    height: 100%;
+.faq-cat-galeria-principal .faq-cat-galeria-fundo {
+    position: absolute;
+    inset: -48px;
+    z-index: -1;
+    width: calc(100% + 96px);
+    height: calc(100% + 96px);
     object-fit: cover;
+    filter: blur(22px) saturate(1.1);
+    opacity: 0.55;
+    pointer-events: none;
 }
 
 .faq-cat-galeria--vazia {
@@ -1318,9 +1327,10 @@
 }
 
 .faq-cat-galeria-ampliar img {
+    display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .faq-cat-galeria-lupa {
@@ -1424,11 +1434,14 @@
     overflow: hidden;
 }
 
+/* a imagem ocupa o palco todo e se ajusta por dentro (contain):
+   respeita qualquer proporção sem cortar nem estourar a altura */
 .faq-visor-palco img {
-    max-width: 100%;
-    max-height: 100%;
+    position: absolute;
+    inset: 0 72px;
+    width: calc(100% - 144px);
+    height: 100%;
     object-fit: contain;
-    border-radius: 6px;
     cursor: zoom-in;
     transition: transform 0.2s ease;
     user-select: none;
@@ -1508,6 +1521,15 @@
 @media (max-width: 720px) {
     .faq-visor-palco {
         padding: 0 8px;
+    }
+
+    .faq-cat-galeria-principal {
+        height: clamp(200px, 62vw, 320px);
+    }
+
+    .faq-visor-palco img {
+        inset: 0 8px;
+        width: calc(100% - 16px);
     }
 
     .faq-visor-seta {
