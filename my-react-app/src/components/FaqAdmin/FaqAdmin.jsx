@@ -535,6 +535,7 @@ const FaqAdmin = () => {
         id: o.id,
         nome: o.nome,
         paxMax: o.paxMax || "",
+        paxIdeal: o.paxIdeal || "",
         acessorio: o.acessorio,
         combinacoes: o.combinacoes.length
           ? o.combinacoes.map((x) => ({ ...x }))
@@ -605,6 +606,7 @@ const FaqAdmin = () => {
       const dados = {
         nome: c.nome.trim() || nomeAutomaticoConfig(c, formulario.nomeVeiculo),
         paxMax: Math.max(0, Math.floor(Number(c.paxMax) || 0)),
+        paxIdeal: Math.max(0, Math.floor(Number(c.paxIdeal) || 0)),
         acessorio: c.acessorio || "",
         combinacoes: c.combinacoes
           .map((x) => ({

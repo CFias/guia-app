@@ -343,18 +343,27 @@ export const carregarHistoricoServicosReaisPorNomeGuia = async (datas = []) => {
   );
 
   const contagemPorNome = {};
+  // o Phoenix devolve uma linha por RESERVA: conta cada dia + passeio +
+  // guia uma vez só (antes um passeio com 12 reservas contava 12)
+  const vistos = new Set();
 
-  respostasApi.flat().forEach((item) => {
-    const nomeGuia = extrairGuiaEscalado(item);
-    if (!String(nomeGuia || "").trim()) return;
+  respostasApi.forEach((lista, i) => {
+    const date = datasUnicas[i];
+    lista.forEach((item) => {
+      const nomeGuia = extrairGuiaEscalado(item);
+      if (!String(nomeGuia || "").trim()) return;
 
-    const nomePasseio = extrairNomePasseio(item);
-    const nomeExibicao = montarNomeServicoExibicao(item);
-    if (!nomeExibicao || deveIgnorarServico(nomeExibicao || nomePasseio))
-      return;
+      const nomePasseio = extrairNomePasseio(item);
+      const nomeExibicao = montarNomeServicoExibicao(item);
+      if (!nomeExibicao || deveIgnorarServico(nomeExibicao || nomePasseio))
+        return;
 
-    const chaveGuia = normalizarTexto(nomeGuia);
-    contagemPorNome[chaveGuia] = Number(contagemPorNome[chaveGuia] || 0) + 1;
+      const chaveGuia = normalizarTexto(nomeGuia);
+      const chave = `${date}|${chaveGuia}|${extrairServiceIdExterno(item) || normalizarTexto(nomeExibicao)}`;
+      if (vistos.has(chave)) return;
+      vistos.add(chave);
+      contagemPorNome[chaveGuia] = Number(contagemPorNome[chaveGuia] || 0) + 1;
+    });
   });
 
   return contagemPorNome;

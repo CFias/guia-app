@@ -1085,7 +1085,7 @@
 
 .assist-config-linha {
     display: grid;
-    grid-template-columns: 32px minmax(180px, 2fr) minmax(120px, 1fr) 96px minmax(130px, 1fr) auto;
+    grid-template-columns: 32px minmax(180px, 2fr) minmax(120px, 1fr) 96px 120px minmax(130px, 1fr) auto;
     align-items: end;
     gap: 10px;
 }
@@ -1260,5 +1260,113 @@
 
     .assist-config-especial select {
         grid-column: 1;
+    }
+}
+
+/* ---------- regras por passageiros (faixas) ---------- */
+.faixas-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.faixa-linha {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 8px 16px;
+    padding: 12px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.faixa-pax {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    align-self: start;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+}
+
+.faixa-pax label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.faixa-pax input {
+    width: 64px;
+}
+
+.faixa-categorias {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.faixa-categorias li {
+    display: grid;
+    grid-template-columns: 150px minmax(160px, 1fr) auto auto 32px;
+    align-items: center;
+    gap: 8px;
+}
+
+.faixa-ordem {
+    color: var(--text-3);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+}
+
+.faixa-categorias li:first-child .faixa-ordem {
+    color: var(--accent-text);
+}
+
+.faixa-mala {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-3);
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+}
+
+.faixa-mala input {
+    width: 58px;
+}
+
+.faixa-rodape {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.faixa-obs {
+    flex: 1;
+    min-width: 200px;
+}
+
+@media (max-width: 900px) {
+    .faixa-linha {
+        grid-template-columns: 1fr;
+    }
+
+    .faixa-rodape {
+        grid-column: 1;
+    }
+
+    .faixa-categorias li {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .faixa-ordem,
+    .faixa-nome {
+        grid-column: 1 / -1;
     }
 }

@@ -242,6 +242,7 @@ const FormularioItem = ({
           id: opcao.id,
           nome: opcao.nome,
           paxMax: opcao.paxMax,
+          paxIdeal: opcao.paxIdeal || "",
           acessorio: opcao.acessorio,
           combinacoes: opcao.combinacoes.length
             ? opcao.combinacoes.map((x) => ({ ...x }))
@@ -335,6 +336,7 @@ const FormularioItem = ({
       id: c.id || `previa-${i}`,
       nome: c.nome.trim() || nomeAutomaticoConfig(c, f.nomeVeiculo),
       paxMax: Number(c.paxMax) || 0,
+      paxIdeal: Number(c.paxIdeal) || 0,
       acessorio: c.acessorio,
       combinacoes: c.combinacoes
         .map((x) => ({ grandes: Number(x.grandes) || 0, bordo: Number(x.bordo) || 0 }))
@@ -601,7 +603,7 @@ const FormularioItem = ({
                       ) : null}
                     </div>
 
-                    <div className="fi-grade">
+                    <div className="fi-grade fi-grade--4">
                       <Campo
                         id={`fi-cap-pax-${i}`}
                         rotulo="Passageiros (vagas)"
@@ -616,6 +618,23 @@ const FormularioItem = ({
                           placeholder="Ex.: 28"
                           value={c.paxMax}
                           onChange={(e) => atualizarConfig(i, "paxMax", e.target.value)}
+                          disabled={salvando}
+                        />
+                      </Campo>
+                      <Campo
+                        id={`fi-cap-ideal-${i}`}
+                        rotulo="Recomendado até (pax)"
+                        erro={mostrarErros ? validacao.erros[`config-${i}-ideal`] : null}
+                        dica="Vazio = todas as vagas. Ex.: van recomendada até 9; BYD até 3."
+                      >
+                        <input
+                          id={`fi-cap-ideal-${i}`}
+                          type="number"
+                          min={1}
+                          className="fi-input"
+                          placeholder={c.paxMax ? String(c.paxMax) : "Ex.: 9"}
+                          value={c.paxIdeal ?? ""}
+                          onChange={(e) => atualizarConfig(i, "paxIdeal", e.target.value)}
                           disabled={salvando}
                         />
                       </Campo>

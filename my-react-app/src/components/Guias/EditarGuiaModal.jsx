@@ -10,7 +10,7 @@ import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./guias.css";
-import { Drawer, Field, Icon } from "../ui";
+import { Bandeira, Drawer, Field, Icon } from "../ui";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não opera";
@@ -229,6 +229,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
                   disabled={bloqueado}
                 >
                   {ativoIdioma && <Icon name="check" size={12} />}
+                  <Bandeira idioma={idioma} size={12} />
                   {idioma}
                 </button>
               );

@@ -186,12 +186,10 @@
   width: 100%;
   height: 6px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(
-    to right,
-    var(--nivel-cor) 0,
-    var(--nivel-cor) var(--nivel-pct),
-    var(--raised) var(--nivel-pct)
-  );
+  background: linear-gradient(to right,
+      var(--nivel-cor) 0,
+      var(--nivel-cor) var(--nivel-pct),
+      var(--raised) var(--nivel-pct));
   outline: none;
   cursor: pointer;
 }
@@ -236,4 +234,310 @@
     grid-column: 1 / -1;
     order: 3;
   }
+}
+
+/* ---------- busca de passeio e passeios fora da escala ---------- */
+.afinidade-passeios__ferramentas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--divider);
+}
+
+.afinidade-passeios__ferramentas .ui-search {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.afinidade-passeios__dica {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.afinidade-passeios__dica a {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.afinidade-passeio__nome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.afinidade-passeio__escala {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.afinidade-lista-nova li:hover .afinidade-passeio__escala,
+.afinidade-passeio__escala:focus-visible,
+.afinidade-lista-nova li.is-fora .afinidade-passeio__escala {
+  opacity: 1;
+}
+
+.afinidade-passeio__escala:hover {
+  color: var(--accent-text);
+}
+
+.afinidade-lista-nova li.is-fora .afinidade-passeio__nome> :first-child,
+.afinidade-lista-nova li.is-fora {
+  color: var(--text-3);
+}
+
+.afinidade-lista-nova li.is-fora .afinidade-passeio__escala {
+  color: var(--accent-text);
+}
+
+.afinidade-lista-vazia {
+  display: block !important;
+  color: var(--text-3);
+  font-size: var(--fs-md);
+}
+
+.afinidade-fora {
+  border-top: 1px solid var(--divider);
+}
+
+.afinidade-fora__toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  border: 0;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.afinidade-fora__qtd {
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.afinidade-fora__toggle small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+/* ---------- conferência com o Phoenix ---------- */
+.afinidade-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+}
+
+.afinidade-aviso.is-ok>svg {
+  color: var(--accent-text);
+}
+
+.afinidade-aviso.is-erro>svg {
+  color: var(--alert);
+}
+
+.afinidade-aviso__girando {
+  animation: afinidade-girar 1s linear infinite;
+  color: var(--accent-text);
+}
+
+@keyframes afinidade-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.afinidade-aviso__barra {
+  flex: 1 1 120px;
+  max-width: 220px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--divider);
+}
+
+.afinidade-aviso__barra span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.afinidade-aviso__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.afinidade-sem-mapa {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--divider));
+}
+
+.afinidade-sem-mapa__cab {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: var(--space-4) var(--space-5);
+}
+
+.afinidade-sem-mapa__icone {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+
+.afinidade-sem-mapa__cab strong {
+  color: var(--text);
+  font-size: var(--fs-base);
+}
+
+.afinidade-sem-mapa__cab p {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.afinidade-sem-mapa__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.afinidade-sem-mapa__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--divider);
+}
+
+.afinidade-sem-mapa__lista li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px var(--space-5);
+  border-bottom: 1px solid var(--divider);
+}
+
+.afinidade-sem-mapa__nome {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.afinidade-sem-mapa__nome strong {
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.afinidade-sem-mapa__nome span {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.afinidade-sem-mapa__botoes {
+  display: flex;
+  gap: 6px;
+}
+
+.afinidade-sem-mapa__mais {
+  margin: 10px var(--space-5);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 720px) {
+  .afinidade-sem-mapa__cab {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .afinidade-sem-mapa__acoes {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- histórico do guia no passeio ---------- */
+.afinidade-historico {
+  display: block;
+  line-height: 1.6;
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.afinidade-historico.is-alerta {
+  color: var(--warning);
+}
+
+.afinidade-historico button {
+  margin-left: 4px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.afinidade-aviso.is-guias {
+  align-items: flex-start;
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--divider));
+  line-height: 1.5;
+}
+
+.afinidade-aviso.is-guias>svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--warning);
+}
+
+.afinidade-historico>svg {
+  margin-right: 4px;
+  vertical-align: -2px;
 }

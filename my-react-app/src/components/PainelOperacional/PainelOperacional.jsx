@@ -13,6 +13,7 @@ import { db } from "../../Services/Services/firebase";
 
 import jsPDF from "jspdf";
 import logoLuck from "../../assets/clover.png";
+import "./styles.css";
 import "./painel.css";
 import {
   Button,
@@ -243,6 +244,12 @@ const formatarDataBr = (dataIso) => {
   return `${dia}/${mes}/${ano}`;
 };
 
+// "--:--" vira vazio (para comparar e esconder quando não há horário)
+const formatarHoraOuVazio = (valor = "") => {
+  const h = formatarHora(valor);
+  return h === "--:--" ? "" : h;
+};
+
 const formatarHora = (valor = "") => {
   if (!valor) return "--:--";
 
@@ -289,9 +296,9 @@ const linhasPassageirosScript = (reservas = [], { mostrarVoo = false } = {}) => 
     const voo = textoOuPadrao(reserva?.vooRetorno, "");
 
     linhas.push(`${index + 1}. *${nome}* — ${quantidade}`);
-    if (codigo) linhas.push(`    🎫 Reserva: ${codigo}`);
-    if (telefone) linhas.push(`    📞 ${telefone}`);
-    if (mostrarVoo && voo) linhas.push(`    ✈️ Voo: ${voo}`);
+    if (codigo) linhas.push(`   Reserva: ${codigo}`);
+    if (telefone) linhas.push(`   Contato: ${telefone}`);
+    if (mostrarVoo && voo) linhas.push(`   Voo: ${voo}`);
     linhas.push("");
   });
   return linhas;
@@ -300,14 +307,14 @@ const linhasPassageirosScript = (reservas = [], { mostrarVoo = false } = {}) => 
 // só mostra veículo/modalidade quando vierem preenchidos
 const linhasVeiculoModalidade = (grupo) =>
   [
-    textoOuPadrao(grupo.veiculo, "") && `🚐 Veículo: *${textoOuPadrao(grupo.veiculo)}*`,
-    textoOuPadrao(grupo.modalidade, "") && `⭐ Modalidade: *${textoOuPadrao(grupo.modalidade)}*`,
+    textoOuPadrao(grupo.veiculo, "") && `Veículo: *${textoOuPadrao(grupo.veiculo)}*`,
+    textoOuPadrao(grupo.modalidade, "") && `Modalidade: *${textoOuPadrao(grupo.modalidade)}*`,
   ].filter(Boolean);
 
 const rodapeMonitoramento = [
-  "📍 Por favor, envie a *localização em tempo real*.",
+  "Por favor, envie a *localização em tempo real*.",
   "",
-  "_Equipe de Monitoramento · Luck SSA_ 🍀",
+  "_Equipe de Monitoramento · Luck SSA_",
 ];
 
 // OUT: hotel → aeroporto
@@ -317,22 +324,21 @@ const montarTextoOut = (grupo, blocos) => {
     "",
     "Olá! Tudo certo para este OUT?",
     "",
-    `📅 ${formatarDataBr(blocos[0]?.dataServicoReal || grupo.dataServicoReal)}`,
+    `Data: *${formatarDataBr(blocos[0]?.dataServicoReal || grupo.dataServicoReal)}*`,
     ...linhasVeiculoModalidade(grupo),
     "",
   ];
 
   if (!blocos.length) {
-    linhas.push("🏨 *HOTEL NÃO INFORMADO*", "");
+    linhas.push("*HOTEL NÃO INFORMADO*", "");
   }
 
   blocos.forEach((hotel, index) => {
     const titulo = blocos.length > 1 ? `Hotel ${index + 1} · ` : "";
-    linhas.push("━━━━━━━━━━━━━━");
-    linhas.push(`🏨 *${titulo}${textoOuPadrao(hotel.hotelOrigemAbreviado, "HOTEL NÃO INFORMADO")}*`);
-    linhas.push(`🕓 Saída do hotel: *${hotel.horario || "--:--"}*`);
+    linhas.push(`*${titulo}${textoOuPadrao(hotel.hotelOrigemAbreviado, "HOTEL NÃO INFORMADO")}*`);
+    linhas.push(`Saída do hotel: *${hotel.horario || "--:--"}*`);
     linhas.push(
-      `👥 Pax: *${formatarQuantidadeDetalhada(hotel.totalAdultos, hotel.totalCriancas, hotel.totalInfantes)}*`,
+      `Pax: *${formatarQuantidadeDetalhada(hotel.totalAdultos, hotel.totalCriancas, hotel.totalInfantes)}*`,
     );
     linhas.push("");
     linhas.push("*Passageiros*");
@@ -341,7 +347,7 @@ const montarTextoOut = (grupo, blocos) => {
 
   if (blocos.length > 1) {
     linhas.push(
-      `👥 *Total do veículo: ${formatarQuantidadeDetalhada(grupo.totalAdultos, grupo.totalCriancas, grupo.totalInfantes)}*`,
+      `*Total do veículo: ${formatarQuantidadeDetalhada(grupo.totalAdultos, grupo.totalCriancas, grupo.totalInfantes)}*`,
       "",
     );
   }
@@ -362,17 +368,16 @@ const montarTextoTransfer = (grupo, blocos) => {
   ];
 
   if (!blocos.length) {
-    linhas.push("📍 *Origem:* NÃO INFORMADA", "🏁 *Destino:* NÃO INFORMADO", "");
+    linhas.push("Origem: *NÃO INFORMADA*", "Destino: *NÃO INFORMADO*", "");
   }
 
   blocos.forEach((trecho, index) => {
-    linhas.push("━━━━━━━━━━━━━━");
     if (blocos.length > 1) linhas.push(`*Trecho ${index + 1}*`);
-    linhas.push(`📅 ${formatarDataBr(trecho.dataServicoReal)} · 🕓 *${trecho.horario || "--:--"}*`);
-    linhas.push(`📍 *Origem:* ${textoOuPadrao(trecho.hotelOrigem || trecho.hotelOrigemAbreviado, "NÃO INFORMADA")}`);
-    linhas.push(`🏁 *Destino:* ${textoOuPadrao(trecho.hotelDestino || trecho.hotelDestinoAbreviado, "NÃO INFORMADO")}`);
+    linhas.push(`Data: *${formatarDataBr(trecho.dataServicoReal)}* · Horário: *${trecho.horario || "--:--"}*`);
+    linhas.push(`Origem: *${textoOuPadrao(trecho.hotelOrigem || trecho.hotelOrigemAbreviado, "NÃO INFORMADA")}*`);
+    linhas.push(`Destino: *${textoOuPadrao(trecho.hotelDestino || trecho.hotelDestinoAbreviado, "NÃO INFORMADO")}*`);
     linhas.push(
-      `👥 Pax: *${formatarQuantidadeDetalhada(trecho.totalAdultos, trecho.totalCriancas, trecho.totalInfantes)}*`,
+      `Pax: *${formatarQuantidadeDetalhada(trecho.totalAdultos, trecho.totalCriancas, trecho.totalInfantes)}*`,
     );
     linhas.push("");
     linhas.push("*Reservas*");
@@ -682,7 +687,20 @@ const extrairHorarioServico = (item) => {
   return match?.[1] || "";
 };
 
+// Horário do voo como está no Phoenix. No Phoenix ele vem em "fly_hour"
+// (o mesmo campo que o Robô conferente usa); os demais são alternativas.
+const extrairHorarioVooPhoenix = (item) =>
+  item?.fly_hour ||
+  item?.reserve?.flight_time ||
+  item?.reserve?.flight?.scheduled_time ||
+  item?.reserve?.flight?.arrival_time ||
+  item?.reserve?.arrival_flight_time ||
+  item?.flight_time ||
+  item?.flight?.scheduled_time ||
+  "";
+
 const extrairHorarioPrevistoVoo = (item) =>
+  item?.fly_hour ||
   item?.reserve?.flight_time ||
   item?.reserve?.flight?.scheduled_time ||
   item?.reserve?.arrival_flight_time ||
@@ -1640,6 +1658,7 @@ export default function PainelOperacionalUnificado() {
           vooKey: vooNormalizado,
           horarioPrevisto:
             extrairHorarioPrevistoVoo(item) || extrairHorarioServico(item),
+          horarioVooPhoenix: "",
           horarioAtualizado: extrairHorarioAtualizadoVoo(item),
           horarioReal: extrairHorarioRealVoo(item),
           horarioDecolagem: extrairHorarioDecolagemVoo(item),
@@ -1670,7 +1689,20 @@ export default function PainelOperacionalUnificado() {
         motorista: extrairMotorista(item),
         veiculo: extrairVeiculoEscalado(item),
         observacao: extrairObservacao(item),
+        horarioVoo: formatarHoraOuVazio(extrairHorarioVooPhoenix(item)),
       });
+    });
+
+    // horário do voo no Phoenix: o mais comum entre as reservas; se as
+    // reservas do mesmo voo trazem horários diferentes, avisa
+    Object.values(mapa).forEach((voo) => {
+      const contagem = {};
+      voo.reservas.forEach((r) => {
+        if (r.horarioVoo) contagem[r.horarioVoo] = (contagem[r.horarioVoo] || 0) + 1;
+      });
+      const horarios = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
+      voo.horarioVooPhoenix = horarios[0] || "";
+      voo.horariosPhoenixDivergentes = horarios.length > 1;
     });
 
     return Object.values(mapa).sort((a, b) =>
@@ -2306,7 +2338,7 @@ export default function PainelOperacionalUnificado() {
 
   const formatarNomePasseio = (nome) => {
     if (!nome) return "-";
-    return String(nome).trim().toUpperCase();
+    return String(nome).replace(/\s+/g, " ").trim().toUpperCase();
   };
 
   const formatarTextoApoio = (texto) => {
@@ -2318,7 +2350,7 @@ export default function PainelOperacionalUnificado() {
     const dia = diaDaSemana(dataSelecionada);
     const linhas = [
       "🍀 *LUCK SSA · PASSEIOS DO DIA*",
-      `📅 ${dia ? `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ` : ""}${formatarDataBr(dataSelecionada)}`,
+      `${dia ? `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ` : ""}${formatarDataBr(dataSelecionada)}`,
       "",
     ];
 
@@ -2369,28 +2401,28 @@ export default function PainelOperacionalUnificado() {
         totalPasseios += 1;
         totalPax += Number(passeio.totalPaxPasseio || 0);
 
-        linhas.push("━━━━━━━━━━━━━━");
-        linhas.push(`🧭 *${nomePasseio}*`);
-        linhas.push(`${ehMotoguia ? "🚗 Motoguia" : "👤 Guia"}: ${nomeGuia}`);
-        linhas.push(`👥 Pax: *${passeio.totalPaxPasseio || 0}*`);
+        linhas.push(`*${nomePasseio}*`);
+        linhas.push(`${ehMotoguia ? "Motoguia" : "Guia"}: ${nomeGuia}`);
+        linhas.push(`Pax: ${passeio.totalPaxPasseio || 0}`);
 
         if (!ehMotoguia) {
           linesPushIfValue(
             linhas,
-            `🚐 Veículo principal: ${veiculoPrincipal}`,
+            `Veículo principal: ${veiculoPrincipal}`,
             veiculoPrincipal && veiculoPrincipal !== "-",
           );
         }
 
         linesPushIfValue(
           linhas,
-          `🚐 Veículo de apoio: ${veiculoApoio}`,
-          veiculoApoio && veiculoApoio !== "-",
+          `Veículo de apoio: ${veiculoApoio}`,
+          // não repete quando o apoio é o mesmo veículo do principal
+          veiculoApoio && veiculoApoio !== "-" && veiculoApoio !== veiculoPrincipal,
         );
 
         linesPushIfValue(
           linhas,
-          `📍 Ponto de apoio: ${pontoDeApoio}`,
+          `Ponto de apoio: ${pontoDeApoio}`,
           pontoDeApoio,
         );
 
@@ -2398,11 +2430,10 @@ export default function PainelOperacionalUnificado() {
       });
     });
 
-    linhas.push("━━━━━━━━━━━━━━");
-    linhas.push(`📊 *Total: ${totalPasseios} passeio(s) · ${totalPax} pax*`);
+    linhas.push(`*Total: ${totalPasseios} passeio(s) · ${totalPax} pax*`);
     linhas.push("");
-    linhas.push("✅ Pontos de apoio informados!");
-    linhas.push("_Operacional · Luck SSA_ 🍀");
+    linhas.push("Pontos de apoio informados! 🍀");
+    linhas.push("_Operacional · Luck SSA_");
 
     return linhas.join("\n").trim();
   };
@@ -2978,7 +3009,7 @@ export default function PainelOperacionalUnificado() {
             </Card>
           ) : (
             <Table
-              columns="20px minmax(150px,1.2fr) 82px 120px minmax(150px,1fr) 70px minmax(150px,1.2fr) 44px"
+              columns="20px minmax(150px,1.2fr) 118px 120px minmax(150px,1fr) 70px minmax(150px,1.2fr) 44px"
               minWidth={900}
             >
               <TableHead>
@@ -3020,9 +3051,49 @@ export default function PainelOperacionalUnificado() {
                           )}
                         </span>
                       </span>
-                      <span className="tabular painel-op-hora">
-                        <Icon name="clock" size={14} />
-                        {formatarHora(voo.horarioPrevisto) || "--:--"}
+                      <span>
+                        <span className="tabular painel-op-hora">
+                          <Icon name="clock" size={14} />
+                          {formatarHora(voo.horarioPrevisto) || "--:--"}
+                        </span>
+                        {(() => {
+                          // horário do voo no Phoenix x painel do aeroporto
+                          const phoenix = voo.horarioVooPhoenix;
+                          const aero = formatarHoraOuVazio(voo.aeroporto?.previsto);
+                          const minP = extrairHoraMinutos(phoenix);
+                          const minA = extrairHoraMinutos(aero);
+                          const difere =
+                            minP !== null && minA !== null && Math.abs(minP - minA) >= 10;
+                          return (
+                            <>
+                              <span
+                                className={`ui-cell-sub tabular painel-op-fonte ${
+                                  voo.horariosPhoenixDivergentes ? "is-alerta" : ""
+                                }`}
+                                title={
+                                  voo.horariosPhoenixDivergentes
+                                    ? "As reservas deste voo têm horários diferentes no Phoenix"
+                                    : "Horário do voo cadastrado no Phoenix"
+                                }
+                              >
+                                Phoenix {phoenix || "sem horário"}
+                                {voo.horariosPhoenixDivergentes && <Icon name="alert" size={11} />}
+                              </span>
+                              {aero && (
+                                <span
+                                  className={`ui-cell-sub tabular painel-op-fonte ${difere ? "is-alerta" : ""}`}
+                                  title={
+                                    difere
+                                      ? "O horário do Phoenix é diferente do previsto no painel do aeroporto"
+                                      : "Horário previsto no painel do aeroporto"
+                                  }
+                                >
+                                  Aeroporto {aero}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </span>
                       <span>
                         <span className="tabular painel-op-com-icone">
@@ -3152,7 +3223,19 @@ export default function PainelOperacionalUnificado() {
                               {grupo.reservas.map((reserva) => (
                                 <TableRow key={reserva.id}>
                                   <span className="ui-cell-main">{obterNomePlaca(reserva)}</span>
-                                  <span className="tabular">{reserva.codigoReserva}</span>
+                                  <span className="tabular">
+                                    {reserva.codigoReserva}
+                                    {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
+                                      <span
+                                        className={`ui-cell-sub painel-op-fonte ${
+                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                        }`}
+                                        title="Horário do voo desta reserva no Phoenix"
+                                      >
+                                        voo {reserva.horarioVoo}
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="tabular">{reserva.resumoPax}</span>
                                   <span>{reserva.operadora}</span>
                                   <span>{reserva.modalidadeServico || "Não informado"}</span>
@@ -3206,7 +3289,19 @@ export default function PainelOperacionalUnificado() {
                               {voo.reservasNaoEscaladas.map((reserva) => (
                                 <TableRow key={reserva.id}>
                                   <span className="ui-cell-main">{obterNomePlaca(reserva)}</span>
-                                  <span className="tabular">{reserva.codigoReserva}</span>
+                                  <span className="tabular">
+                                    {reserva.codigoReserva}
+                                    {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
+                                      <span
+                                        className={`ui-cell-sub painel-op-fonte ${
+                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                        }`}
+                                        title="Horário do voo desta reserva no Phoenix"
+                                      >
+                                        voo {reserva.horarioVoo}
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="tabular">{reserva.resumoPax}</span>
                                   <span>{reserva.operadora}</span>
                                   <span className="ui-cell-end">

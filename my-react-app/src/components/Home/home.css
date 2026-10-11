@@ -316,3 +316,79 @@
 .dash-pax {
   padding-right: var(--space-4);
 }
+
+.dash-idiomas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 3px;
+}
+
+/* ---------- esqueletos do dashboard ---------- */
+.dash-sk {
+  padding: var(--space-3) var(--space-5) var(--space-4);
+}
+
+.dash-sk__duas {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dash-sk__linha-tabela {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(150px, 1.2fr) 64px minmax(120px, 1fr) minmax(130px, 1fr) 150px;
+  gap: var(--space-4);
+  align-items: center;
+  min-height: 64px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.dash-sk__linha-tabela:last-child {
+  border-bottom: 0;
+}
+
+.dash-sk__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.dash-sk__item:last-child {
+  border-bottom: 0;
+}
+
+.dash-sk__barra {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.dash-sk__grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 180px;
+  padding-top: 10px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.dash-sk__grafico .ui-sk {
+  flex: 1;
+  border-radius: 6px 6px 0 0;
+}
+
+@media (max-width: 720px) {
+  .dash-sk__linha-tabela {
+    grid-template-columns: 1fr 80px;
+  }
+
+  .dash-sk__linha-tabela> :nth-child(n + 3) {
+    display: none;
+  }
+}

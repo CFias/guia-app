@@ -2,6 +2,11 @@
 
 import { ehServicoDisp } from "./plannerUtils";
 import { avaliarMatchIdioma, listarIdiomasExigidos } from "../Utils/idiomas";
+import {
+  notaDeEncaixe,
+  melhorCombinacaoDoDia,
+  pesoDoServico,
+} from "./plannerEncaixe";
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -476,6 +481,7 @@ const construirMetricasSemana = ({
   normalizarTexto,
   historicoPorGuia = {},
   numeroSemanasHistorico = NUMERO_SEMANAS_HISTORICO_PADRAO,
+  cargaHistoricaPorGuiaId = null,
   modoIdioma = "desligado",
   paxMinimoParaGuia = PAX_MINIMO_PADRAO,
 }) => {
@@ -553,6 +559,14 @@ const construirMetricasSemana = ({
   // garantia mínima da semana atual — só entra no equilíbrio/desempate.
   const historicoMedioSemanalPorGuia = {};
   guias.forEach((g) => {
+    // carga já calculada por guia (historicoEscala.js: serviços distintos,
+    // 4 semanas com peso) — preferida quando vier
+    if (cargaHistoricaPorGuiaId) {
+      historicoMedioSemanalPorGuia[g.id] = Number(
+        cargaHistoricaPorGuiaId[g.id] || 0,
+      );
+      return;
+    }
     const chaves = obterChavesNomeGuia(g, normalizarTexto);
     const totalHistorico = chaves.length
       ? Math.max(
@@ -581,7 +595,7 @@ const construirMetricasSemana = ({
 // outros níveis"). A garantia mínima olha só a semana atual; o
 // equilíbrio/desempate usa "carga recente" (semana atual + média das
 // últimas semanas de histórico real), pra não repetir sempre os mesmos.
-const calcularIndicadoresGuia = ({ guia, estado, metricasSemana }) => {
+export const calcularIndicadoresGuia = ({ guia, estado, metricasSemana }) => {
   const atual = Number(estado.contadorSemana[guia.id] || 0);
   const diasTrabalhados = estado.diasTrabalhadosSemana[guia.id]?.size || 0;
   const oportunidades = Number(
@@ -973,6 +987,22 @@ const rebalancearGarantiasDePrioridade = ({
 
         if (!recipientElegivel.length) return false;
 
+        // serviço exigente (grupo grande, privativo) não vai para quem tem
+        // afinidade baixa só para fechar a garantia mínima
+        if (
+          usarAfinidadeGuiaPasseio &&
+          pesoDoServico(item) >= 1.4 &&
+          obterNivelAfinidade(
+            mapaAfinidade,
+            guiaAlvo.id,
+            item,
+            servicesData,
+            normalizarTexto,
+          ) < 50
+        ) {
+          return false;
+        }
+
         // o rebalanceamento nunca piora o idioma: se o serviço pede um idioma,
         // quem recebe também precisa falar.
         if (modoIdioma !== "desligado") {
@@ -1040,6 +1070,8 @@ const rebalancearGarantiasDePrioridade = ({
       date: itemEscolhido.date,
       serviceName: itemEscolhido.serviceName,
       externalServiceId: itemEscolhido.externalServiceId || null,
+      nota: null,
+      motivos: ["trocado para garantir o mínimo da semana"],
     });
 
     estado.contadorSemana[doador.id] = Math.max(
@@ -1101,8 +1133,18 @@ export const gerarPlanoAlocacaoSemana = ({
   // tamanho mínimo do grupo pra receber guia (0 ou 1 = regra desligada).
   modoIdioma: modoIdiomaBruto = "preferencial",
   paxMinimoParaGuia = PAX_MINIMO_PADRAO,
+  // "encaixe" (padrão): nota de encaixe + melhor combinação do dia.
+  // "fila": regra antiga (fila de critérios, um serviço por vez).
+  motorEscala = "encaixe",
+  pesosEscala = {},
+  // histórico do Phoenix já processado (historicoEscala.js):
+  //  cargaHistoricaPorGuiaId: guiaId -> serviços por semana (recente)
+  //  experienciaPorGuiaId:    guiaId -> { passeioId -> dias que fez }
+  cargaHistoricaPorGuiaId = null,
+  experienciaPorGuiaId = {},
 }) => {
   const modoIdioma = normalizarModoIdioma(modoIdiomaBruto);
+  const usarEncaixe = motorEscala !== "fila";
 
   const estado = aplicarRegistrosExistentesNoEstado(
     registrosSemana,
@@ -1122,6 +1164,7 @@ export const gerarPlanoAlocacaoSemana = ({
     normalizarTexto,
     historicoPorGuia,
     numeroSemanasHistorico,
+    cargaHistoricaPorGuiaId,
     modoIdioma,
     paxMinimoParaGuia,
   });
@@ -1195,7 +1238,100 @@ export const gerarPlanoAlocacaoSemana = ({
 
     const alocadosNoDia = new Set();
 
-    for (const item of itensOrdenados) {
+    if (usarEncaixe) {
+      // nota de cada guia em cada serviço do dia (null = não pode)
+      const candidatosDia = guiasDisponiveis.filter(
+        (g) => !usadosNoDia.has(g.id),
+      );
+      const indicadoresPorGuia = {};
+      candidatosDia.forEach((g) => {
+        indicadoresPorGuia[g.id] = calcularIndicadoresGuia({
+          guia: g,
+          estado,
+          metricasSemana,
+        });
+      });
+
+      const detalhes = itensOrdenados.map(() => ({}));
+      const notas = itensOrdenados.map((item, i) => {
+        const elegiveis = new Set(
+          filtrarGuiasElegiveisParaServico({
+            item,
+            guiasDisponiveis: candidatosDia,
+            usadosNoDia,
+            mapaAfinidade,
+            servicesData,
+            usarAfinidadeGuiaPasseio,
+            normalizarTexto,
+            modoIdioma,
+          }).map((g) => g.id),
+        );
+        const exigidos =
+          modoIdioma !== "desligado" ? idiomasExigidosDoItem(item) : [];
+        const passeioId = resolverServiceIdDoItem(
+          item,
+          servicesData,
+          normalizarTexto,
+        );
+
+        return candidatosDia.map((g) => {
+          if (!elegiveis.has(g.id)) return null;
+          const r = notaDeEncaixe({
+            guia: g,
+            item,
+            afinidade: usarAfinidadeGuiaPasseio
+              ? obterNivelAfinidade(
+                  mapaAfinidade,
+                  g.id,
+                  item,
+                  servicesData,
+                  normalizarTexto,
+                )
+              : 0,
+            usarAfinidade: usarAfinidadeGuiaPasseio,
+            exigidos,
+            indicadores: indicadoresPorGuia[g.id],
+            modoPrioridade: metricasSemana.modoPrioridade,
+            experiencia: passeioId
+              ? Number(experienciaPorGuiaId?.[g.id]?.[passeioId] || 0)
+              : 0,
+            pesos: pesosEscala,
+          });
+          detalhes[i][g.id] = r;
+          return r.nota;
+        });
+      });
+
+      melhorCombinacaoDoDia(notas).forEach(({ servico, guia: j }) => {
+        const item = itensOrdenados[servico];
+        const guiaSelecionado = candidatosDia[j];
+        const det = detalhes[servico][guiaSelecionado.id] || {};
+
+        upsertAtualizacao(atualizacoes, {
+          registroId: item.id,
+          guiaId: guiaSelecionado.id,
+          guiaNome: guiaSelecionado.nome,
+          date: dia.date,
+          serviceName: item.serviceName,
+          externalServiceId: item.externalServiceId || null,
+          // só para o relatório (não é gravado no banco)
+          nota: Math.round(det.nota || 0),
+          motivos: det.motivos || [],
+        });
+
+        alocadosNoDia.add(item.id);
+        atualizarEstadoAposAlocacao({
+          guiaSelecionado,
+          date: dia.date,
+          contadorSemana: estado.contadorSemana,
+          diasTrabalhadosSemana: estado.diasTrabalhadosSemana,
+          usedByDate: estado.usedByDate,
+        });
+        usadosNoDia.add(guiaSelecionado.id);
+      });
+    }
+
+    for (const item of usarEncaixe ? [] : itensOrdenados) {
       if (usadosNoDia.size >= guiasDisponiveis.length) break;
 
       const guiaSelecionado = selecionarGuiaParaServico({
@@ -1257,6 +1393,15 @@ export const gerarPlanoAlocacaoSemana = ({
             modoIdioma === "obrigatorio" && semContarUso("desligado").length
               ? "sem_match_idioma"
               : "sem_guia_apto";
+          // com afinidade ligada, passeio que não está no cadastro (Mapa de
+          // afinidade) nunca tem guia apto — avisa o motivo de verdade
+          if (
+            motivo === "sem_guia_apto" &&
+            usarAfinidadeGuiaPasseio &&
+            !resolverServiceIdDoItem(item, servicesData, normalizarTexto)
+          ) {
+            motivo = "fora_do_mapa";
+          }
         }
 
         registrarNaoAlocado(item, dia, motivo);

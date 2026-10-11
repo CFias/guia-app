@@ -23,6 +23,7 @@ import {
   Field,
   FilterBar,
   Icon,
+  IdiomaTag,
   KpiTiles,
   PageHeader,
   Segmented,
@@ -32,6 +33,11 @@ import {
   TableRow,
 } from "../ui";
 import { usePhoenixStatus } from "../Shell/shellContext";
+import {
+  acumularIdiomas,
+  extrairIdiomasDoItem,
+  listarIdiomasExigidos,
+} from "../../Services/Utils/idiomas";
 
 const DIAS = [
   "Segunda",
@@ -556,8 +562,13 @@ const Home = () => {
           serviceType: Number(item?.service?.type || 0),
           serviceModeAsText: extrairModoServico(item),
           isDisp: ehServicoDispPorNomeOuTipo(item),
+          idiomas: {}, // pax por idioma estrangeiro (Phoenix), ex.: { en: 3 }
         };
       }
+
+      // idioma dos passageiros desta reserva
+      const { ids: idiomasItem } = extrairIdiomasDoItem(item, { nomeServico: nomeOriginal });
+      acumularIdiomas(itensApiAgrupados[chave].idiomas, idiomasItem, pax.total);
 
       itensApiAgrupados[chave].passengers += pax.total;
       itensApiAgrupados[chave].adultCount += pax.adultos;
@@ -1554,13 +1565,60 @@ Operacional - Luck Receptivo
     atualizar: carregarApiSemana,
   });
 
+  // enquanto carrega: uma barra "esqueleto" no lugar do número
   const renderValorCard = (valor, suffix = "") =>
-    carregandoCards ? "…" : `${valor}${suffix}`;
+    carregandoCards ? <span className="ui-sk ui-sk--valor" aria-hidden="true" /> : `${valor}${suffix}`;
 
-  const renderCardLoading = (texto = "Atualizando dados...") => (
-    <div className="dash-loading">
-      <Icon name="loader" size={16} className="ui-spin" />
-      <span>{texto}</span>
+  // Esqueleto no formato do conteúdo que vai aparecer (tabela, lista,
+  // barras, gráfico ou texto) — sem spinner nem frase em cada card.
+  const renderCardLoading = (texto = "Carregando", tipo = "lista") => (
+    <div className={`dash-sk dash-sk--${tipo}`} role="status" aria-label={texto}>
+      {tipo === "tabela" &&
+        [0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="dash-sk__linha-tabela">
+            <span className="dash-sk__duas">
+              <span className="ui-sk" style={{ width: `${70 - i * 6}%` }} />
+              <span className="ui-sk ui-sk--fina" style={{ width: "38%" }} />
+            </span>
+            <span className="ui-sk" style={{ width: `${55 - (i % 2) * 15}%` }} />
+            <span className="ui-sk" style={{ width: "28px", justifySelf: "end" }} />
+            <span className="ui-sk ui-sk--pilula" />
+            <span className="ui-sk ui-sk--pilula" />
+            <span className="ui-sk ui-sk--botao" />
+          </div>
+        ))}
+      {tipo === "lista" &&
+        [0, 1, 2].map((i) => (
+          <div key={i} className="dash-sk__item">
+            <span className="ui-sk ui-sk--ponto" />
+            <span className="dash-sk__duas">
+              <span className="ui-sk" style={{ width: `${62 - i * 10}%` }} />
+              <span className="ui-sk ui-sk--fina" style={{ width: `${85 - i * 12}%` }} />
+            </span>
+          </div>
+        ))}
+      {tipo === "barras" &&
+        [0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="dash-sk__barra">
+            <span className="ui-sk ui-sk--fina" style={{ width: "30%" }} />
+            <span className="ui-sk ui-sk--barra" style={{ width: `${90 - i * 16}%` }} />
+          </div>
+        ))}
+      {tipo === "grafico" && (
+        <div className="dash-sk__grafico">
+          {[55, 80, 65, 95, 70, 40, 60].map((h, i) => (
+            <span key={i} className="ui-sk" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      )}
+      {tipo === "texto" && (
+        <div className="dash-sk__duas">
+          <span className="ui-sk" style={{ width: "92%" }} />
+          <span className="ui-sk" style={{ width: "84%" }} />
+          <span className="ui-sk" style={{ width: "60%" }} />
+          <span className="ui-sk ui-sk--fina" style={{ width: "28%", marginTop: 6 }} />
+        </div>
+      )}
     </div>
   );
 
@@ -1691,9 +1749,7 @@ Operacional - Luck Receptivo
 
         <span className="dash-updated">
           {carregandoCards ? (
-            <>
-              <Icon name="loader" size={14} className="ui-spin" /> Atualizando...
-            </>
+            "Atualizando…"
           ) : abaAtiva === "comparativo" ? (
             formatarUltimaAtualizacao(ultimaAtualizacaoComparativo)
           ) : (
@@ -1704,35 +1760,7 @@ Operacional - Luck Receptivo
 
       {abaAtiva === "operacao" && (
         <>
-          {/* ---- dias da semana ---- */}
-          <div className="dash-days" role="tablist" aria-label="Dia">
-            {semana.map((dia) => {
-              const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
-              const ativo = diaSelecionadoHome === dia.date;
-              return (
-                <button
-                  key={dia.date}
-                  type="button"
-                  role="tab"
-                  aria-selected={ativo}
-                  className={`dash-day ${ativo ? "is-active" : ""}`}
-                  onClick={() => setDiaSelecionadoHome(dia.date)}
-                  disabled={carregandoCards}
-                >
-                  <span className="dash-day__nome">{dia.day}</span>
-                  <span className="dash-day__data tabular">{dia.label}</span>
-                  <span className="dash-day__meta tabular">
-                    {carregandoCards
-                      ? "…"
-                      : `${info?.comGuia ?? 0}/${info?.total ?? 0} com guia`}
-                    {!carregandoCards && info?.semGuia > 0 && (
-                      <span className="dash-day__alerta" title={`${info.semGuia} sem guia`} />
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+  
 
           {/* ---- tiles do dia (clicar filtra a tabela) ---- */}
           <KpiTiles
@@ -1768,6 +1796,38 @@ Operacional - Luck Receptivo
               },
             ]}
           />
+
+                  {/* ---- dias da semana ---- */}
+          <div className="dash-days" role="tablist" aria-label="Dia">
+            {semana.map((dia) => {
+              const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
+              const ativo = diaSelecionadoHome === dia.date;
+              return (
+                <button
+                  key={dia.date}
+                  type="button"
+                  role="tab"
+                  aria-selected={ativo}
+                  className={`dash-day ${ativo ? "is-active" : ""}`}
+                  onClick={() => setDiaSelecionadoHome(dia.date)}
+                  disabled={carregandoCards}
+                >
+                  <span className="dash-day__nome">{dia.day}</span>
+                  <span className="dash-day__data tabular">{dia.label}</span>
+                  <span className="dash-day__meta tabular">
+                    {carregandoCards ? (
+                      <span className="ui-sk ui-sk--fina" style={{ width: 64 }} aria-hidden="true" />
+                    ) : (
+                      `${info?.comGuia ?? 0}/${info?.total ?? 0} com guia`
+                    )}
+                    {!carregandoCards && info?.semGuia > 0 && (
+                      <span className="dash-day__alerta" title={`${info.semGuia} sem guia`} />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* ---- guias e serviços do dia ---- */}
           <Card>
@@ -1820,7 +1880,7 @@ Operacional - Luck Receptivo
             />
 
             {carregandoCards ? (
-              renderCardLoading("Atualizando serviços do dia...")
+              renderCardLoading("Carregando serviços do dia", "tabela")
             ) : servicosDoDia.length === 0 ? (
               <EmptyState icon="calendar" title="Nenhum serviço encontrado para o dia selecionado.">
                 {filtroStatusDia !== "todos" || filtroGuiaDia !== "todos"
@@ -1849,6 +1909,13 @@ Operacional - Luck Receptivo
                     <TableRow key={item.chave}>
                       <span>
                         <span className="ui-cell-main">{item.serviceName}</span>
+                        {listarIdiomasExigidos(item.idiomas).length > 0 && (
+                          <span className="dash-idiomas">
+                            {listarIdiomasExigidos(item.idiomas).map((id) => (
+                              <IdiomaTag key={id} idioma={id} qtd={item.idiomas[id]} />
+                            ))}
+                          </span>
+                        )}
                         <span className="ui-cell-sub tabular">
                           ADT {item.adultCount || 0} · CHD {item.childCount || 0} · INF{" "}
                           {item.infantCount || 0}
@@ -1937,7 +2004,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="alert" title="Alertas operacionais automáticos" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando alertas operacionais...")
+                renderCardLoading("Carregando alertas", "lista")
               ) : dashboard.alertas.length === 0 ? (
                 <EmptyState icon="circleCheck" title="Nenhum alerta crítico detectado nesta semana." />
               ) : (
@@ -1959,7 +2026,7 @@ Operacional - Luck Receptivo
                 subtitle={carregandoCards ? undefined : `${totalPaxOperadoras} pax no total`}
               />
               {carregandoCards ? (
-                renderCardLoading("Atualizando operadoras da semana...")
+                renderCardLoading("Carregando operadoras", "barras")
               ) : dashboard.operadorasSemana.length === 0 ? (
                 <EmptyState icon="building" title="Nenhuma operadora identificada nesta semana." />
               ) : (
@@ -1988,7 +2055,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="barChart" title="Demanda da semana" subtitle="Serviços por dia" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando demanda da semana...")
+                renderCardLoading("Carregando demanda", "grafico")
               ) : (
                 <div className="dash-chart">
                   <ResponsiveContainer>
@@ -2013,7 +2080,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="users" title="Pax da semana" subtitle="Passageiros por dia" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando demanda da semana...")
+                renderCardLoading("Carregando demanda", "grafico")
               ) : (
                 <div className="dash-chart">
                   <ResponsiveContainer>
@@ -2047,7 +2114,7 @@ Operacional - Luck Receptivo
           <Card className="dash-verse">
             <CardHeader icon="bookOpen" title="Versículo do dia" />
             {loading ? (
-              renderCardLoading("Atualizando versículo do dia...")
+              renderCardLoading("Carregando versículo", "texto")
             ) : versiculo ? (
               <blockquote className="dash-verse__body">
                 <p>“{versiculo.texto}”</p>
@@ -2100,7 +2167,7 @@ Operacional - Luck Receptivo
               }
             />
             {carregandoCards ? (
-              renderCardLoading("Atualizando card...")
+              renderCardLoading("Carregando", "texto")
             ) : (
               <div className="dash-reading">
                 <StatusDot tone={tomAlerta(dashboard.alertaComparativoPax)}>
@@ -2115,7 +2182,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="barChart" title="Serviços por dia" subtitle="Semana atual x semana anterior" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando card...")
+                renderCardLoading("Carregando", "grafico")
               ) : (
                 <div className="dash-chart">
                   <ResponsiveContainer>
@@ -2140,7 +2207,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="users" title="Pax por dia" subtitle="Semana atual x semana anterior" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando card...")
+                renderCardLoading("Carregando", "grafico")
               ) : (
                 <div className="dash-chart">
                   <ResponsiveContainer>
@@ -2181,7 +2248,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="trendingUp" title="Passeios com maior variação" subtitle="Δ pax vs semana anterior" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando card...")
+                renderCardLoading("Carregando", "lista")
               ) : dashboard.comparativoPasseios.length === 0 ? (
                 <EmptyState icon="compass" title="Sem dados comparativos de passeios." />
               ) : (
@@ -2220,7 +2287,7 @@ Operacional - Luck Receptivo
             <Card>
               <CardHeader icon="building" title="Operadoras da semana" />
               {carregandoCards ? (
-                renderCardLoading("Atualizando card...")
+                renderCardLoading("Carregando", "barras")
               ) : dashboard.operadorasSemana.length === 0 ? (
                 <EmptyState icon="building" title="Nenhuma operadora identificada nesta semana." />
               ) : (

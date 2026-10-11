@@ -12,17 +12,8 @@ import {
 import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import {
-  CalendarMonthRounded,
-  DeleteOutlineRounded,
-  DriveFileRenameOutlineRounded,
-  EditRounded,
-  FileDownloadDoneRounded,
-  InfoOutlined,
-  PlaylistAddCheckCircleRounded,
-  SaveRounded,
-  SyncRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
+import { datasDoPeriodo } from "../../Services/Services/servicosPhoenix";
 
 const diasSemana = [
   "Segunda",
@@ -40,24 +31,9 @@ const API_BASE =
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
 
-const SERVICOS_IGNORADOS = [
-  "01 PASSEIO A ESCOLHER NO DESTINO",
-  "CITY TOUR PANORAMICO",
-  "VOLTA FRADES COM ITAPARICA",
-  "STAFF MSC - PORTO SALVADOR",
-  "COORDENAÇÃO MSC - PORTO SALVADOR",
-  "PASSEIO PRAIA DO FORTE 4H (LTN-VOLTA)",
-  "COMBO FLEX 03 PASSEIOS",
-  "PRAIA DO FORTE E GUARAJUBA",
-  "PRAIAS DO LITORAL",
-  "CITY TOUR SAINDO DO LITORAL",
-  "CITY TOUR HISTÓRICO + PANORÂMICO",
-  "PASSEIO À PRAIA DO FORTE (SHUTTLE)",
-];
-
-const TERMOS_IGNORADOS = [
-  // "PANORAMICO",
-];
+// Todos os passeios do Phoenix entram no cadastro (e no Mapa de afinidade).
+// O que não deve receber guia é decidido em Configurações → Escala
+// ("Serviços fora da escala"), não mais por uma lista no código.
 
 const MAPA_NOMES_CANONICOS = {
   "city tour historico e panoramico": "CITY TOUR HISTORICO E PANORAMICO",
@@ -83,39 +59,6 @@ const normalizarTexto = (texto = "") =>
 const obterNomeCanonico = (nome = "") => {
   const normalizado = normalizarTexto(nome);
   return MAPA_NOMES_CANONICOS[normalizado] || String(nome).trim().toUpperCase();
-};
-
-const deveIgnorarServico = (nome = "") => {
-  const nomeCanonico = obterNomeCanonico(nome);
-  const nomeNormalizado = normalizarTexto(nomeCanonico);
-
-  const ignoradoExato = SERVICOS_IGNORADOS.some(
-    (servico) =>
-      normalizarTexto(obterNomeCanonico(servico)) === nomeNormalizado,
-  );
-
-  const ignoradoPorTrecho = TERMOS_IGNORADOS.some((termo) =>
-    nomeNormalizado.includes(normalizarTexto(termo)),
-  );
-
-  return ignoradoExato || ignoradoPorTrecho;
-};
-
-const gerarDiasImportacao = (quantidadeDias = 30) => {
-  const dias = [];
-
-  for (let i = 0; i < quantidadeDias; i++) {
-    const data = new Date();
-    data.setDate(data.getDate() + i);
-
-    const yyyy = data.getFullYear();
-    const mm = String(data.getMonth() + 1).padStart(2, "0");
-    const dd = String(data.getDate()).padStart(2, "0");
-
-    dias.push(`${yyyy}-${mm}-${dd}`);
-  }
-
-  return dias;
 };
 
 const obterDiaSemanaPt = (dataIso) => {
@@ -319,7 +262,9 @@ const CadastroPasseio = () => {
     try {
       setImportandoApi(true);
 
-      const datas = gerarDiasImportacao(30);
+      // histórico (4 semanas) + próximas 2 semanas: pega também passeio que
+      // não acontece todo mês e o que já está vendido para a semana que vem
+      const datas = datasDoPeriodo(28, 14);
       const snap = await getDocs(collection(db, "services"));
 
       const servicesExistentes = snap.docs.map((d) => ({
@@ -367,7 +312,6 @@ const CadastroPasseio = () => {
             if (!nomeApi) return;
 
             const nomeCanonico = obterNomeCanonico(nomeApi);
-            if (deveIgnorarServico(nomeCanonico)) return;
 
             const diaSemanaApi = obterDiaSemanaPt(data);
 
@@ -471,7 +415,7 @@ const CadastroPasseio = () => {
             {editandoId
               ? "Editar Passeio / Serviço"
               : "Cadastrar Passeio / Serviço"}{" "}
-            <PlaylistAddCheckCircleRounded fontSize="small" />
+            <Icon name="listCheck" size={16} />
           </h2>
           <p className="cadastro-passeio-subtitle">
             Cadastre manualmente os serviços, defina frequência operacional e
@@ -504,7 +448,7 @@ const CadastroPasseio = () => {
                   <div className="cadastro-passeio-field">
                     <label htmlFor="nome-passeio">
                       Nome do passeio{" "}
-                      <DriveFileRenameOutlineRounded fontSize="small" />
+                      <Icon name="pencil" size={16} />
                     </label>
                     <input
                       id="nome-passeio"
@@ -518,7 +462,7 @@ const CadastroPasseio = () => {
 
                   <div className="cadastro-passeio-field">
                     <label htmlFor="external-id">
-                      ID externo <InfoOutlined fontSize="small" />
+                      ID externo <Icon name="info" size={16} />
                     </label>
                     <input
                       id="external-id"
@@ -533,7 +477,7 @@ const CadastroPasseio = () => {
 
                 <div className="cadastro-passeio-field">
                   <label htmlFor="descricao-passeio">
-                    Descrição do passeio <InfoOutlined fontSize="small" />
+                    Descrição do passeio <Icon name="info" size={16} />
                   </label>
                   <textarea
                     id="descricao-passeio"
@@ -547,7 +491,7 @@ const CadastroPasseio = () => {
                 <div className="cadastro-passeio-field">
                   <label>
                     Frequência do passeio{" "}
-                    <CalendarMonthRounded fontSize="small" />
+                    <Icon name="calendar" size={16} />
                   </label>
 
                   <div className="cadastro-passeio-dropdown">
@@ -593,7 +537,7 @@ const CadastroPasseio = () => {
                       }`}
                     disabled={salvando || importandoApi}
                   >
-                    <SaveRounded fontSize="small" />
+                    <Icon name="save" size={16} />
                     {salvando
                       ? "Salvando..."
                       : editandoId
@@ -633,7 +577,7 @@ const CadastroPasseio = () => {
             ) : (
               <div className="cadastro-passeio-import-box">
                 <div className="cadastro-passeio-import-icon">
-                  <SyncRounded fontSize="small" />
+                  <Icon name="refresh" size={16} />
                 </div>
 
                 <button
@@ -643,7 +587,7 @@ const CadastroPasseio = () => {
                   onClick={importarPasseiosDaApi}
                   disabled={importandoApi || salvando}
                 >
-                  <FileDownloadDoneRounded fontSize="small" />
+                  <Icon name="download" size={16} />
                   {importandoApi ? "Importando..." : "Puxar dados do Phoenix"}
                 </button>
               </div>
@@ -719,7 +663,7 @@ const CadastroPasseio = () => {
                         onClick={() => editarPasseio(p)}
                         disabled={bloqueado || !!excluindoId}
                       >
-                        <EditRounded fontSize="small" />
+                        <Icon name="pencil" size={16} />
                         Editar
                       </button>
 
@@ -729,7 +673,7 @@ const CadastroPasseio = () => {
                         onClick={() => excluirPasseio(p)}
                         disabled={bloqueado || !!excluindoId}
                       >
-                        <DeleteOutlineRounded fontSize="small" />
+                        <Icon name="trash" size={16} />
                         Apagar
                       </button>
                     </div>

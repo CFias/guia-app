@@ -68,6 +68,7 @@ export const CONFIG_VEICULO_VAZIA = () => ({
   id: null,
   nome: "",
   paxMax: "",
+  paxIdeal: "", // recomendado até N pax (vazio = a capacidade)
   acessorio: "",
   combinacoes: [{ grandes: "", bordo: "" }],
   usadaPor: [],
@@ -86,7 +87,10 @@ export const configPreenchida = (c) =>
 // Nome automático quando não informado: "Spin" / "Spin com bagageiro".
 export const nomeAutomaticoConfig = (c, nomeVeiculo) => {
   const base = String(nomeVeiculo || "").trim() || "Veículo";
-  return c.acessorio ? `${base} com ${c.acessorio.toLowerCase()}` : base;
+  if (!c.acessorio) return base;
+  // o nome do veículo já diz o acessório (ex.: "VAN 15L COM CARRETINHA")
+  if (base.toLowerCase().includes(c.acessorio.toLowerCase())) return base;
+  return `${base} com ${c.acessorio.toLowerCase()}`;
 };
 
 const obterImagens = (item) => {
@@ -231,6 +235,8 @@ export const validarFormulario = (f) => {
       if (!configPreenchida(c)) return;
       if (!(Number(c.paxMax) > 0)) {
         erros[`config-${i}-pax`] = "Informe quantos passageiros cabem.";
+      } else if (Number(c.paxIdeal) > Number(c.paxMax)) {
+        erros[`config-${i}-ideal`] = "Não pode passar da quantidade de vagas.";
       }
       const temMalas = c.combinacoes.some(
         (x) => Number(x.grandes) > 0 || Number(x.bordo) > 0,

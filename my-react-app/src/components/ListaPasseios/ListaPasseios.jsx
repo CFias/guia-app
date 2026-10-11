@@ -10,6 +10,7 @@ import {
   EmptyState,
   FilterBar,
   Icon,
+  IdiomaTag,
   KpiTiles,
   PageHeader,
   Segmented,
@@ -17,6 +18,7 @@ import {
   Table,
   TableHead,
   TableRow,
+  useToast,
 } from "../ui";
 
 import {
@@ -33,9 +35,21 @@ import {
 import {
   carregarSemanaApiListaPasseios,
   sincronizarPasseiosDaApiNaSemana,
-  carregarHistoricoServicosReaisPorNomeGuia,
 } from "../../Services/Services/plannerApi";
 
+import {
+  alternarServicoForaDaEscala,
+  carregarServicosForaDaEscala,
+} from "../../Services/Services/servicosEscala";
+import { buscarDatas } from "../../Services/Services/servicosPhoenix";
+import {
+  SEMANAS_EXPERIENCIA,
+  cargaHistoricaPorGuia,
+  datasAntesDe,
+  experienciaPorGuia,
+  extrairEntradasHistorico,
+  guiasPhoenixSemCadastro,
+} from "../../Services/Services/historicoEscala";
 import {
   carregarBasePlanner,
   carregarWeeklyServicesDaSemana,
@@ -83,8 +97,9 @@ const ETAPAS_ROBO_ESCALA = [
   "Finalizando escala",
 ];
 
-// filtro "Semana" da faixa de dias (mostra todos os dias, como antes)
-const TODOS_OS_DIAS = "__semana__";
+// a escala sempre mostra a semana inteira; os cards de dia só rolam a
+// tela até o dia escolhido (e destacam ele por um instante)
+const idAncoraDia = (date) => `escala-dia-${date}`;
 
 const formatarDataCurta = (iso) =>
   String(iso || "").split("-").reverse().slice(0, 2).join("/");
@@ -97,6 +112,8 @@ const textoMotivoNaoAlocado = (n, paxMinimo) => {
       return "nenhum guia disponível nesse dia";
     case "sem_guia_apto":
       return "nenhum guia disponível é apto a esse passeio";
+    case "fora_do_mapa":
+      return "o passeio não está no Mapa de afinidade — coloque no mapa ou tire da escala";
     case "sem_match_idioma":
       return "nenhum guia disponível fala o idioma do grupo";
     case "todos_ocupados":
@@ -110,7 +127,14 @@ const ListaPasseiosSemana = () => {
   const navigate = useNavigate();
   // estado só de interface (abas, dia aberto, drawer de regras)
   const [abaEscala, setAbaEscala] = useState("dia");
-  const [diaSelecionado, setDiaSelecionado] = useState(null);
+  const [diaDestacado, setDiaDestacado] = useState(null);
+  const { mostrarToast } = useToast();
+  // "Por guia": guia escolhido no card — os dias e linhas dele ficam marcados
+  const [guiaFoco, setGuiaFoco] = useState(null);
+  const [diaEmVista, setDiaEmVista] = useState(null);
+  const destaqueTimer = useRef(null);
+  // depois de um clique, o dia clicado fica marcado até a rolagem terminar
+  const diaClicadoRef = useRef(null);
   const [drawerRegras, setDrawerRegras] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [semana, setSemana] = useState([]);
@@ -296,6 +320,9 @@ const ListaPasseiosSemana = () => {
       // Base, modo gerado, lista da API e os registros já salvos da
       // semana são buscados em paralelo — a tela é liberada assim que
       // isso chegar, sem esperar a sincronização com o Phoenix.
+      // a lista de serviços fora da escala precisa estar pronta antes de
+      // ler a semana (ela decide o que entra)
+      await carregarServicosForaDaEscala();
       const [base, modoGerado, apiAgrupada, weeklyServices] = await Promise.all(
         [
           carregarBasePlanner(),
@@ -522,30 +549,46 @@ const ListaPasseiosSemana = () => {
       avancarEtapaRobo(0);
       // Base (guias, serviços, disponibilidade, afinidade e configuração)
       // já está carregada em memória — só busca fresco o que realmente
-      // muda com frequência: os registros da semana e o histórico real
-      // das duas semanas anteriores (equilíbrio de médio prazo), direto
-      // da API do sistema.
-      const semanaAnterior1 = gerarSemana(semanaOffset - 1);
-      const semanaAnterior2 = gerarSemana(semanaOffset - 2);
-      const datasHistorico = [...semanaAnterior1, ...semanaAnterior2].map(
-        (d) => d.date,
-      );
-
-      const [registrosSemanaMap, historicoPorGuia] = await Promise.all([
+      // muda com frequência: os registros da semana e o histórico real do
+      // Phoenix das 8 semanas anteriores (carga das últimas 4, com peso, e
+      // experiência de cada guia com cada passeio).
+      const inicioSemana = semana[0]?.date;
+      const [registrosSemanaMap, entradasHistorico] = await Promise.all([
         carregarWeeklyServicesDaSemana(semana),
-        carregarHistoricoServicosReaisPorNomeGuia(datasHistorico),
+        buscarDatas(datasAntesDe(inicioSemana, SEMANAS_EXPERIENCIA), null, 8)
+          .then(extrairEntradasHistorico)
+          .catch((err) => {
+            console.error("Histórico do Phoenix indisponível:", err);
+            return null;
+          }),
       ]);
       const registrosSemana = Object.values(registrosSemanaMap).flat();
+      const guiasAtivos = guias.filter((g) => g.ativo);
 
       avancarEtapaRobo(1);
       const mapaAfinidade = construirMapaAfinidade(afinidades);
       const mapaDisponibilidade =
         construirMapaDisponibilidade(disponibilidades);
 
+      const cargaHistoricaPorGuiaId = entradasHistorico
+        ? cargaHistoricaPorGuia({
+            entradas: entradasHistorico,
+            guias: guiasAtivos,
+            inicioSemana,
+            mapaDisponibilidade,
+          })
+        : null;
+      const experienciaPorGuiaId = entradasHistorico
+        ? experienciaPorGuia({ entradas: entradasHistorico, guias: guiasAtivos, servicesData: services })
+        : {};
+      const guiasSemCadastro = entradasHistorico
+        ? guiasPhoenixSemCadastro({ entradas: entradasHistorico, guias })
+        : [];
+
       avancarEtapaRobo(2);
       const { atualizacoes, naoAlocados, avisosIdioma } = gerarPlanoAlocacaoSemana({
         semana,
-        guias: guias.filter((g) => g.ativo),
+        guias: guiasAtivos,
         registrosSemana,
         mapaAfinidade,
         mapaDisponibilidade,
@@ -554,8 +597,8 @@ const ListaPasseiosSemana = () => {
         usarAfinidadeGuiaPasseio,
         agruparRegistrosPorServico,
         normalizarTexto,
-        historicoPorGuia,
-        numeroSemanasHistorico: 2,
+        cargaHistoricaPorGuiaId,
+        experienciaPorGuiaId,
         modoIdioma,
         paxMinimoParaGuia,
       });
@@ -563,7 +606,18 @@ const ListaPasseiosSemana = () => {
       avancarEtapaRobo(3);
       await aplicarPlanoDeAlocacao(atualizacoes);
 
+      // por que o robô escolheu cada guia (mostrado embaixo do nome)
+      const motivosPorRegistro = {};
+      atualizacoes.forEach((a) => {
+        if (a.motivos?.length) {
+          motivosPorRegistro[a.registroId] = { guiaId: a.guiaId, texto: a.motivos.join(" · ") };
+        }
+      });
+
       setRelatorioEscala({
+        motivosPorRegistro,
+        guiasSemCadastro,
+        semHistorico: !entradasHistorico,
         alocados: atualizacoes.length,
         naoAlocados,
         avisosIdioma,
@@ -786,16 +840,78 @@ Operacional - Luck Receptivo 🍀
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
 
-  const diaAtivo =
-    diaSelecionado === TODOS_OS_DIAS ||
-    semana.some((d) => d.date === diaSelecionado)
-      ? diaSelecionado
-      : semana.some((d) => d.date === hojeIso)
-        ? hojeIso
-        : TODOS_OS_DIAS;
+  // marca na faixa de dias qual dia está aparecendo na tela agora
+  const chaveDiasSemana = semana.map((d) => d.date).join("|");
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const cards = Array.from(document.querySelectorAll(".escala-dia-card[data-dia]"));
+    if (!cards.length) return undefined;
+    const visiveis = new Map();
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((e) => {
+          if (e.isIntersecting) visiveis.set(e.target.dataset.dia, e.boundingClientRect.top);
+          else visiveis.delete(e.target.dataset.dia);
+        });
+        if (diaClicadoRef.current) return;
+        const primeiro = [...visiveis.entries()].sort((a, b) => a[1] - b[1])[0];
+        setDiaEmVista(primeiro ? primeiro[0] : null);
+      },
+      { rootMargin: "-170px 0px -45% 0px" },
+    );
+    cards.forEach((c) => observador.observe(c));
+    return () => observador.disconnect();
+  }, [abaEscala, chaveDiasSemana, carregandoEstrutura]);
 
-  const diasVisiveis =
-    diaAtivo === TODOS_OS_DIAS ? semana : semana.filter((d) => d.date === diaAtivo);
+  useEffect(() => () => clearTimeout(destaqueTimer.current), []);
+
+  const guiaFocoObj =
+    abaEscala === "guia" && guiaFoco
+      ? resumoGuias.find((g) => g.guiaId === guiaFoco) || null
+      : null;
+
+  // clique no card do guia: marca os dias dele e desce até o primeiro
+  const focarGuia = (g) => {
+    if (guiaFoco === g.guiaId) {
+      setGuiaFoco(null);
+      return;
+    }
+    setGuiaFoco(g.guiaId);
+    const primeiro = semana.find((d) => g.datas?.has(d.date));
+    if (primeiro) setTimeout(() => irParaDia(primeiro.date), 30);
+  };
+
+  const irParaDia = (date) => {
+    const alvo = document.getElementById(idAncoraDia(date));
+    if (!alvo) return;
+    // rola só a área de rolagem do app (scrollIntoView também mexia na
+    // moldura da página); desconta a barra do topo e a faixa de dias
+    let area = alvo.parentElement;
+    while (area && area !== document.body) {
+      const { overflowY } = getComputedStyle(area);
+      if (/(auto|scroll)/.test(overflowY) && area.scrollHeight > area.clientHeight) break;
+      area = area.parentElement;
+    }
+    const faixa = document.querySelector(".escala-dias");
+    const alturaTopo =
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 56;
+    const desconto = alturaTopo + (faixa ? faixa.offsetHeight : 80) + 12;
+    if (area && area !== document.body) {
+      const topo = alvo.getBoundingClientRect().top - desconto + area.scrollTop;
+      area.scrollTo({ top: topo, behavior: "smooth" });
+    } else {
+      const topo = alvo.getBoundingClientRect().top - desconto + window.scrollY;
+      window.scrollTo({ top: topo, behavior: "smooth" });
+    }
+    setDiaDestacado(date);
+    setDiaEmVista(date);
+    diaClicadoRef.current = date;
+    clearTimeout(destaqueTimer.current);
+    destaqueTimer.current = setTimeout(() => {
+      setDiaDestacado(null);
+      diaClicadoRef.current = null;
+    }, 1800);
+  };
 
   const rotuloModo = modoPrioridadeAtivo ? "Prioridade" : "Equilibrado";
   const rotuloIdioma =
@@ -838,22 +954,61 @@ Operacional - Luck Receptivo 🍀
     return `${dia.day} • SEM SERVIÇO`;
   };
 
+  // Tira o serviço da escala (vai para Configurações → Serviços fora da
+  // escala): some da tabela e o robô deixa de alocar guia nele.
+  const ocultarServico = async (item) => {
+    const nome = item.serviceName;
+    const ok = window.confirm(
+      `Ocultar "${nome}" da escala?\n\nEle vai para Configurações → Escala → Serviços fora da escala: ` +
+        "deixa de aparecer aqui e não recebe guia. Dá para desfazer lá ou no Mapa de afinidade.",
+    );
+    if (!ok) return;
+    try {
+      setProcessandoAcao(true);
+      const lista = await carregarServicosForaDaEscala();
+      await alternarServicoForaDaEscala(nome, lista, true);
+      // recalcula as tabelas da semana já sem o serviço
+      setExtras((prev) => ({ ...prev }));
+      mostrarToast(`${nome} saiu da escala`);
+    } catch (err) {
+      console.error("Erro ao ocultar serviço:", err);
+      alert("Não foi possível ocultar o serviço.");
+    } finally {
+      setProcessandoAcao(false);
+    }
+  };
+
+  const botaoOcultar = (item) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      icon="eyeOff"
+      className="escala-ocultar"
+      title="Ocultar este serviço da escala (Serviços fora da escala)"
+      aria-label={`Ocultar ${item.serviceName} da escala`}
+      onClick={() => ocultarServico(item)}
+      disabled={processandoAcao || gerandoEscala}
+    />
+  );
+
   const renderItemDia = (dia, item) => (
     <TableRow
       key={`${dia.date}-${item.externalServiceId || item.id}-${item.serviceName}`}
-      className={item.allocationStatus === "CLOSED" ? "escala-fechado" : ""}
+      className={`${item.allocationStatus === "CLOSED" ? "escala-fechado" : ""} ${
+        guiaFoco && item.guiaId === guiaFoco ? "escala-linha-foco" : ""
+      }`}
     >
       <span>
         <span className="escala-passeio">
           <span className="ui-cell-main">{item.serviceName}</span>
           {listarIdiomasExigidos(item.idiomas).map((id) => (
-            <span
+            <IdiomaTag
               key={id}
-              className="ui-chip escala-idioma"
+              idioma={id}
+              qtd={item.idiomas[id]}
               title={`Passageiros em ${rotuloDoIdioma(id)} (${item.idiomas[id]} pax)`}
-            >
-              {siglaDoIdioma(id)}
-            </span>
+            />
           ))}
         </span>
         {!item.guiaId && servicoDispensaGuiaPorPax(item, paxMinimoParaGuia) && (
@@ -864,14 +1019,20 @@ Operacional - Luck Receptivo 🍀
             {item.passengers} pax · sem guia pela regra de pax mínimo
           </span>
         )}
-        {diaAtivo === TODOS_OS_DIAS && <span className="ui-cell-sub">{dia.day}</span>}
       </span>
 
       {modoVisualizacao ? (
         <>
           <span>
             {item.guiaNome ? (
-              <span className="ui-cell-main">{item.guiaNome}</span>
+              <>
+                <span className="ui-cell-main">{item.guiaNome}</span>
+                {relatorioEscala?.motivosPorRegistro?.[item.id]?.guiaId === item.guiaId && (
+                  <span className="ui-cell-sub escala-motivo" title="Por que o robô escolheu esse guia">
+                    {relatorioEscala.motivosPorRegistro[item.id].texto}
+                  </span>
+                )}
+              </>
             ) : item.allocationStatus === "CLOSED" ? (
               <span className="ui-cell-sub">—</span>
             ) : (
@@ -887,7 +1048,7 @@ Operacional - Luck Receptivo 🍀
             </span>
           </span>
           {statusGrupo(item)}
-          <span />
+          <span className="ui-cell-end">{!item.manual && botaoOcultar(item)}</span>
         </>
       ) : (
         <>
@@ -942,6 +1103,7 @@ Operacional - Luck Receptivo 🍀
             </select>
           </span>
           <span className="ui-cell-end">
+            {!item.manual && botaoOcultar(item)}
             {item.manual && (
               <Button
                 variant="danger"
@@ -959,6 +1121,221 @@ Operacional - Luck Receptivo 🍀
       )}
     </TableRow>
   );
+
+  // faixa de dias + tabelas da semana inteira (usada em "Por dia" e "Por guia")
+  const renderSemanaDias = () => (
+    <>
+              <nav className="escala-dias" aria-label="Ir para o dia">
+                {guiaFocoObj ? (
+                  <div className="escala-todos is-guia" title="Guia marcado nas tabelas">
+                    <span className="escala-todos__icone">
+                      <Icon name="user" size={18} />
+                    </span>
+                    <span className="escala-todos__texto">
+                      <span className="escala-todos__nome">{guiaFocoObj.nome}</span>
+                      <span className="escala-todos__meta tabular">
+                        {guiaFocoObj.totalServicos} serviço{guiaFocoObj.totalServicos === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      className="escala-todos__limpar"
+                      onClick={() => setGuiaFoco(null)}
+                      aria-label="Desmarcar guia"
+                      title="Desmarcar guia"
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  </div>
+                ) : (
+                <div className="escala-todos" title="A escala mostra sempre a semana inteira">
+                  <span className="escala-todos__icone">
+                    <Icon name="calendar" size={18} />
+                  </span>
+                  <span className="escala-todos__texto">
+                    <span className="escala-todos__nome">Semana inteira</span>
+                    <span className="escala-todos__meta tabular">
+                      {totaisSemana.comGuia}/{totaisSemana.total - totaisSemana.fechados} com guia
+                    </span>
+                    {/* um traço por dia: status de cada dia da semana */}
+                    <span className="escala-todos__dias" aria-hidden="true">
+                      {semana.map((dia) => {
+                        const i = infoDia(dia.date);
+                        const estado =
+                          i.total - i.fechados === 0 ? "vazio" : i.semGuia > 0 ? "falta" : "ok";
+                        return <span key={dia.date} className={`is-${estado}`} />;
+                      })}
+                    </span>
+                  </span>
+                </div>
+                )}
+                {semana.map((dia) => {
+                  const i = infoDia(dia.date);
+                  const emVista = diaEmVista === dia.date;
+                  return (
+                    <button
+                      key={dia.date}
+                      type="button"
+                      aria-current={emVista ? "true" : undefined}
+                      className={`escala-dia ${emVista ? "is-em-vista" : ""} ${
+                        dia.date === hojeIso ? "is-hoje" : ""
+                      } ${
+                        guiaFocoObj
+                          ? guiaFocoObj.datas?.has(dia.date)
+                            ? "is-do-guia"
+                            : "is-fora-do-guia"
+                          : ""
+                      }`}
+                      onClick={() => irParaDia(dia.date)}
+                      title={`Ir para ${dia.label}`}
+                    >
+                      <span className="escala-dia__nome">
+                        {dia.day}
+                        <span className="escala-dia__data tabular">
+                          {dia.date === hojeIso ? "hoje" : formatarDataCurta(dia.date)}
+                        </span>
+                        <Icon name="arrowDown" size={12} className="escala-dia__ir" />
+                      </span>
+                      <span className="escala-dia__meta tabular">
+                        {i.comGuia}/{i.total - i.fechados} com guia
+                        {i.semGuia > 0 && (
+                          <span className="escala-dia__alerta" title={`${i.semGuia} sem guia`} />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {semana.map((dia) => {
+                const registrosOrdenados = registrosPorDia[dia.date] || [];
+                const i = infoDia(dia.date);
+
+                return (
+                  <Card
+                    key={dia.date}
+                    id={idAncoraDia(dia.date)}
+                    data-dia={dia.date}
+                    className={`escala-dia-card ${diaDestacado === dia.date ? "is-destacado" : ""} ${
+                      guiaFocoObj?.datas?.has(dia.date) ? "is-do-guia" : ""
+                    }`}
+                  >
+                    <CardHeader
+                      icon="calendar"
+                      title={dia.label}
+                      subtitle={`Passeios com guia: ${i.comGuia} · Total de passeios: ${i.total}${
+                        i.fechados ? ` · Fechados: ${i.fechados}` : ""
+                      }`}
+                    />
+
+                    {registrosOrdenados.length === 0 && modoVisualizacao ? (
+                      <EmptyState icon="compass" title="Nenhum passeio neste dia." />
+                    ) : (
+                      <Table
+                        columns={
+                          modoVisualizacao
+                            ? "minmax(220px,2fr) minmax(150px,1.2fr) minmax(130px,1fr) minmax(140px,1fr) 40px"
+                            : "minmax(220px,2fr) minmax(170px,1.3fr) 90px 120px 48px"
+                        }
+                        minWidth={760}
+                      >
+                        <TableHead>
+                          <span>Passeio</span>
+                          <span>Guia</span>
+                          <span>Pax</span>
+                          <span>{modoVisualizacao ? "Grupo" : "Status"}</span>
+                          <span />
+                        </TableHead>
+
+                        {registrosOrdenados.map((item) => renderItemDia(dia, item))}
+
+                        {!modoVisualizacao && (
+                          <TableRow className="escala-add">
+                            <span className="ui-field">
+                              <input
+                                type="text"
+                                placeholder="Nome do serviço"
+                                aria-label="Nome do serviço"
+                                value={novoServico[dia.date]?.nome || ""}
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) =>
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      nome: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </span>
+                            <span className="ui-field">
+                              <select
+                                value={novoServico[dia.date]?.guiaId || ""}
+                                aria-label="Guia"
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) => {
+                                  const guia = guias.find((g) => g.id === e.target.value);
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      guiaId: guia?.id || null,
+                                      guiaNome: guia?.nome || null,
+                                    },
+                                  }));
+                                }}
+                              >
+                                <option value="">Selecione o guia</option>
+                                {guias.map((g) => (
+                                  <option key={g.id} value={g.id}>
+                                    {g.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </span>
+                            <span className="ui-field">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Pax"
+                                aria-label="Pax"
+                                value={novoServico[dia.date]?.pax || ""}
+                                disabled={processandoAcao || gerandoEscala}
+                                onChange={(e) =>
+                                  setNovoServico((prev) => ({
+                                    ...prev,
+                                    [dia.date]: {
+                                      ...prev[dia.date],
+                                      pax: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </span>
+                            <span className="ui-cell-sub">Passeio manual</span>
+                            <span className="ui-cell-end">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                iconOnly
+                                icon="plus"
+                                title="Adicionar passeio"
+                                aria-label="Adicionar passeio"
+                                onClick={() => adicionarPasseioManual(dia)}
+                                disabled={processandoAcao || gerandoEscala}
+                              />
+                            </span>
+                          </TableRow>
+                        )}
+                      </Table>
+                    )}
+                  </Card>
+                );
+              })}
+    </>
+  );
+
 
   return (
     <div className="page-container escala ui-page">
@@ -1026,7 +1403,7 @@ Operacional - Luck Receptivo 🍀
             onClick={() => setSemanaOffset((o) => o - 1)}
             disabled={travadoSemana}
           />
-          <span className="escala-semana__label tabular">{formatarPeriodoSemana(semana)}</span>
+          <span className="escala-todos__label tabular">{formatarPeriodoSemana(semana)}</span>
           <Button
             iconOnly
             icon="chevronRight"
@@ -1135,6 +1512,30 @@ Operacional - Luck Receptivo 🍀
             }
           />
           <div className="escala-relatorio">
+            {relatorioEscala.semHistorico && (
+              <p className="escala-relatorio-nota">
+                <Icon name="alert" size={14} />
+                O histórico do Phoenix não respondeu: a escala saiu sem considerar as últimas
+                semanas (carga e experiência).
+              </p>
+            )}
+            {relatorioEscala.guiasSemCadastro?.length > 0 && (
+              <p className="escala-relatorio-nota">
+                <Icon name="user" size={14} />
+                <span>
+                  Guias do Phoenix que não batem com o cadastro (o histórico deles não entrou):{" "}
+                  <b>
+                    {relatorioEscala.guiasSemCadastro
+                      .slice(0, 8)
+                      .map((g) => g.nome)
+                      .join(", ")}
+                  </b>
+                  {relatorioEscala.guiasSemCadastro.length > 8 &&
+                    ` e mais ${relatorioEscala.guiasSemCadastro.length - 8}`}
+                  . Ajuste o apelido no cadastro do guia para ficar igual ao do Phoenix.
+                </span>
+              </p>
+            )}
             {relatorioEscala.avisosIdioma.length > 0 && (
               <div>
                 <h4 className="escala-relatorio__titulo is-aviso">Guia sem o idioma do grupo</h4>
@@ -1222,169 +1623,7 @@ Operacional - Luck Receptivo 🍀
           />
 
           {/* ===== POR DIA ===== */}
-          {abaEscala === "dia" && (
-            <>
-              <div className="escala-dias" role="tablist" aria-label="Dia">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={diaAtivo === TODOS_OS_DIAS}
-                  className={`escala-dia ${diaAtivo === TODOS_OS_DIAS ? "is-active" : ""}`}
-                  onClick={() => setDiaSelecionado(TODOS_OS_DIAS)}
-                >
-                  <span className="escala-dia__nome">Semana</span>
-                  <span className="escala-dia__meta tabular">
-                    {totaisSemana.comGuia}/{totaisSemana.total} com guia
-                  </span>
-                </button>
-                {semana.map((dia) => {
-                  const i = infoDia(dia.date);
-                  const ativo = diaAtivo === dia.date;
-                  return (
-                    <button
-                      key={dia.date}
-                      type="button"
-                      role="tab"
-                      aria-selected={ativo}
-                      className={`escala-dia ${ativo ? "is-active" : ""}`}
-                      onClick={() => setDiaSelecionado(dia.date)}
-                    >
-                      <span className="escala-dia__nome">
-                        {dia.day}
-                        <span className="escala-dia__data tabular">{formatarDataCurta(dia.date)}</span>
-                      </span>
-                      <span className="escala-dia__meta tabular">
-                        {i.comGuia}/{i.total - i.fechados} com guia
-                        {i.semGuia > 0 && (
-                          <span className="escala-dia__alerta" title={`${i.semGuia} sem guia`} />
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {diasVisiveis.map((dia) => {
-                const registrosOrdenados = registrosPorDia[dia.date] || [];
-                const i = infoDia(dia.date);
-
-                return (
-                  <Card key={dia.date} className="escala-dia-card">
-                    <CardHeader
-                      icon="calendar"
-                      title={dia.label}
-                      subtitle={`Passeios com guia: ${i.comGuia} · Total de passeios: ${i.total}${
-                        i.fechados ? ` · Fechados: ${i.fechados}` : ""
-                      }`}
-                    />
-
-                    {registrosOrdenados.length === 0 && modoVisualizacao ? (
-                      <EmptyState icon="compass" title="Nenhum passeio neste dia." />
-                    ) : (
-                      <Table
-                        columns={
-                          modoVisualizacao
-                            ? "minmax(220px,2fr) minmax(150px,1.2fr) minmax(130px,1fr) minmax(140px,1fr) 8px"
-                            : "minmax(220px,2fr) minmax(170px,1.3fr) 90px 120px 48px"
-                        }
-                        minWidth={760}
-                      >
-                        <TableHead>
-                          <span>Passeio</span>
-                          <span>Guia</span>
-                          <span>Pax</span>
-                          <span>{modoVisualizacao ? "Grupo" : "Status"}</span>
-                          <span />
-                        </TableHead>
-
-                        {registrosOrdenados.map((item) => renderItemDia(dia, item))}
-
-                        {!modoVisualizacao && (
-                          <TableRow className="escala-add">
-                            <span className="ui-field">
-                              <input
-                                type="text"
-                                placeholder="Nome do serviço"
-                                aria-label="Nome do serviço"
-                                value={novoServico[dia.date]?.nome || ""}
-                                disabled={processandoAcao || gerandoEscala}
-                                onChange={(e) =>
-                                  setNovoServico((prev) => ({
-                                    ...prev,
-                                    [dia.date]: {
-                                      ...prev[dia.date],
-                                      nome: e.target.value,
-                                    },
-                                  }))
-                                }
-                              />
-                            </span>
-                            <span className="ui-field">
-                              <select
-                                value={novoServico[dia.date]?.guiaId || ""}
-                                aria-label="Guia"
-                                disabled={processandoAcao || gerandoEscala}
-                                onChange={(e) => {
-                                  const guia = guias.find((g) => g.id === e.target.value);
-                                  setNovoServico((prev) => ({
-                                    ...prev,
-                                    [dia.date]: {
-                                      ...prev[dia.date],
-                                      guiaId: guia?.id || null,
-                                      guiaNome: guia?.nome || null,
-                                    },
-                                  }));
-                                }}
-                              >
-                                <option value="">Selecione o guia</option>
-                                {guias.map((g) => (
-                                  <option key={g.id} value={g.id}>
-                                    {g.nome}
-                                  </option>
-                                ))}
-                              </select>
-                            </span>
-                            <span className="ui-field">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="Pax"
-                                aria-label="Pax"
-                                value={novoServico[dia.date]?.pax || ""}
-                                disabled={processandoAcao || gerandoEscala}
-                                onChange={(e) =>
-                                  setNovoServico((prev) => ({
-                                    ...prev,
-                                    [dia.date]: {
-                                      ...prev[dia.date],
-                                      pax: e.target.value,
-                                    },
-                                  }))
-                                }
-                              />
-                            </span>
-                            <span className="ui-cell-sub">Passeio manual</span>
-                            <span className="ui-cell-end">
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                iconOnly
-                                icon="plus"
-                                title="Adicionar passeio"
-                                aria-label="Adicionar passeio"
-                                onClick={() => adicionarPasseioManual(dia)}
-                                disabled={processandoAcao || gerandoEscala}
-                              />
-                            </span>
-                          </TableRow>
-                        )}
-                      </Table>
-                    )}
-                  </Card>
-                );
-              })}
-            </>
-          )}
+          {abaEscala === "dia" && renderSemanaDias()}
 
           {/* ===== POR GUIA ===== */}
           {abaEscala === "guia" && (
@@ -1396,7 +1635,22 @@ Operacional - Luck Receptivo 🍀
               ) : (
                 <div className="escala-guias">
                   {resumoGuias.map((g, index) => (
-                    <Card key={g.guiaId} className="escala-guia">
+                    <Card
+                      key={g.guiaId}
+                      className={`escala-guia is-clicavel ${guiaFoco === g.guiaId ? "is-foco" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={guiaFoco === g.guiaId}
+                      title="Ver os dias e serviços deste guia na semana"
+                      onClick={() => focarGuia(g)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          focarGuia(g);
+                        }
+                      }}
+                    >
                       <div className="escala-guia__topo">
                         <span className="escala-guia__nome">
                           {modoPrioridadeAtivo && (
@@ -1438,7 +1692,11 @@ Operacional - Luck Receptivo 🍀
                             </span>
                           ))}
                         </div>
-                        <span className="escala-tooltip-wrap">
+                        <span
+                          className="escala-tooltip-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
                           <Button
                             size="sm"
                             icon="send"
@@ -1496,6 +1754,32 @@ Operacional - Luck Receptivo 🍀
                   ))}
                 </div>
               )}
+
+              {/* serviços da semana, dia a dia, para conferir o guia escolhido */}
+              <div className="escala-foco-cab">
+                <h3 className="escala-subtitulo">Serviços da semana</h3>
+                {guiaFocoObj ? (
+                  <span className="escala-foco-aviso">
+                    <Icon name="user" size={14} />
+                    <span>
+                      <b>{guiaFocoObj.nome}</b> trabalha em{" "}
+                      {semana
+                        .filter((d) => guiaFocoObj.datas?.has(d.date))
+                        .map((d) => d.day)
+                        .join(", ") || "nenhum dia"}{" "}
+                      — dias e serviços dele estão marcados
+                    </span>
+                    <button type="button" onClick={() => setGuiaFoco(null)}>
+                      Limpar
+                    </button>
+                  </span>
+                ) : (
+                  <span className="ui-cell-sub">
+                    Clique no card de um guia para marcar os dias e os serviços dele.
+                  </span>
+                )}
+              </div>
+              {renderSemanaDias()}
             </>
           )}
         </>

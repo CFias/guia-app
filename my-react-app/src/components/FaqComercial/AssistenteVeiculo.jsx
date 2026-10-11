@@ -7,12 +7,13 @@ import {
   descreverGrupo,
   montarTextoRecomendacao,
   descreverEspeciais,
+  rotuloFaixa,
 } from "./catalogo";
 import "./assistente.css";
 
 /* Assistente de veículo: o vendedor informa o grupo e recebe a
-   configuração recomendada (com ou sem bagageiro/carretinha), o motivo
-   e as alternativas. As regras vêm do operacional (FaqAdmin).
+   lista de veículos recomendados (com ou sem bagageiro/carretinha),
+   da mais indicada para a maior. As regras vêm do operacional (FaqAdmin).
    Componente controlado: `grupo` + `onGrupoChange`. */
 
 const CAMPOS = [
@@ -100,6 +101,205 @@ const fotoDe = (item) => {
   return item?.imagemVeiculoUrl || null;
 };
 
+// Uma opção da lista de recomendados: foto, nome, selos e capacidade.
+const OpcaoRecomendada = ({ item, primeira = false, veiculos, onAbrirVeiculo }) => {
+  const { opcao, noLimite, apertado } = item;
+  const foto = veiculos.map(fotoDe).find(Boolean);
+  return (
+    <li className={`assist-opcao ${primeira ? "is-primeira" : ""}`}>
+      <span className="assist-opcao-foto">
+        {foto ? <img src={foto} alt="" /> : <Icon name="car" size={20} />}
+      </span>
+      <div className="assist-opcao-corpo">
+        <div className="assist-opcao-nome">
+          <strong>{opcao.nome}</strong>
+          {primeira && !noLimite && !apertado && (
+            <span className="assist-tag is-ok">
+              <Icon name="check" size={12} />
+              Mais indicada
+            </span>
+          )}
+          {opcao.acessorio && (
+            <span className="assist-tag is-aviso">
+              Precisa de {opcao.acessorio.toLowerCase()}
+            </span>
+          )}
+          {noLimite && (
+            <span className="assist-tag is-aviso">
+              <Icon name="alert" size={12} />
+              No limite
+            </span>
+          )}
+          {apertado && (
+            <span
+              className="assist-tag is-aviso"
+              title={`Recomendado até ${opcao.paxIdeal} passageiros`}
+            >
+              <Icon name="alert" size={12} />
+              Apertado
+            </span>
+          )}
+        </div>
+        <span className="assist-opcao-cap">
+          {opcao.paxIdeal && opcao.paxIdeal < opcao.paxMax
+            ? `recomendado até ${opcao.paxIdeal} · leva até ${opcao.paxMax} passageiros`
+            : `até ${opcao.paxMax} passageiro${opcao.paxMax === 1 ? "" : "s"}`}
+          {opcao.combinacoes.length > 0 && ` · ${descreverCombinacoes(opcao.combinacoes)}`}
+        </span>
+        {opcao.observacao && <span className="assist-opcao-obs">{opcao.observacao}</span>}
+        {veiculos.length > 0 && (
+          <div className="assist-veiculos">
+            {veiculos.map((v) => {
+              const fotoV = fotoDe(v);
+              const Tag = onAbrirVeiculo ? "button" : "span";
+              return (
+                <Tag
+                  key={v.id}
+                  type={onAbrirVeiculo ? "button" : undefined}
+                  className="assist-veiculo"
+                  onClick={onAbrirVeiculo ? () => onAbrirVeiculo(v) : undefined}
+                  title={onAbrirVeiculo ? "Abrir ficha do veículo" : undefined}
+                >
+                  <span className="assist-veiculo-foto">
+                    {fotoV ? <img src={fotoV} alt="" /> : <Icon name="car" size={14} />}
+                  </span>
+                  {v.nomeVeiculo || v.pergunta}
+                </Tag>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+};
+
+// Resposta pelas regras da operação: o veículo (categoria), o porquê e a
+// régua das faixas — sem lista de carros, para não gerar dúvida.
+const ResultadoFaixas = ({ resultado, grupo, malasTexto, mensagemSemOpcao, acoes }) => {
+  const { categoria, faixaPax, padrao, escolha, especiais, consultar, faixas } = resultado;
+  const qtd = resultado.efetivo.pax || 1;
+
+  if (!faixaPax) {
+    return (
+      <div className="assist-alerta">
+        <span className="assist-alerta-icone">
+          <Icon name="alert" size={18} />
+        </span>
+        <div>
+          <strong>Nenhuma regra para {qtd} passageiros</strong>
+          <p>{mensagemSemOpcao}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!categoria) {
+    return (
+      <div className="assist-alerta">
+        <span className="assist-alerta-icone">
+          <Icon name="alert" size={18} />
+        </span>
+        <div>
+          <strong>A bagagem não cabe em nenhum veículo da regra</strong>
+          <p>
+            Para {qtd} passageiros o padrão é <b>{padrao.nome}</b>, mas a bagagem ({malasTexto})
+            passa da capacidade de todas as opções.
+          </p>
+          <p>{mensagemSemOpcao}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const faixaEscolhida = escolha.faixa;
+  return (
+    <div className="assist-resultado assist-faixa">
+      <span className="assist-kicker">
+        <Icon name="circleCheck" size={14} />
+        Veículo recomendado para{" "}
+        {descreverGrupo({ pax: grupo.pax || 0, grandes: grupo.grandes || 0, bordo: grupo.bordo || 0 })}
+        {especiais.length > 0 && ` + ${descreverEspeciais(especiais)}`}
+      </span>
+
+      <h3 className="assist-faixa-nome">{categoria.nome}</h3>
+
+      {resultado.subiuPorBagagem ? (
+        <p className="assist-motivo is-bagagem">
+          <Icon name="briefcase" size={15} />
+          <span>
+            Para {qtd} passageiro{qtd === 1 ? "" : "s"} o padrão é <b>{padrao.nome}</b>, mas a
+            bagagem ({malasTexto}) não cabe — por isso <b>{categoria.nome}</b>.
+          </span>
+        </p>
+      ) : (
+        <p className="assist-motivo">
+          <Icon name="check" size={15} />
+          <span>
+            {faixaPax.de === faixaPax.ate
+              ? `Com ${faixaPax.de} passageiro${faixaPax.de === 1 ? "" : "s"}`
+              : `De ${faixaPax.de} a ${faixaPax.ate} passageiros`}{" "}
+            a operação usa <b>{categoria.nome}</b>.
+            {faixaPax.observacao && ` ${faixaPax.observacao}`}
+          </span>
+        </p>
+      )}
+
+      {categoria.combinacoes.length > 0 && (
+        <p className="assist-faixa-cap">
+          <Icon name="briefcase" size={14} />
+          Bagagem: {descreverCombinacoes(categoria.combinacoes)}
+        </p>
+      )}
+
+      {resultado.noLimite && (
+        <div className="assist-nota is-aviso">
+          <Icon name="alert" size={15} />
+          <span>
+            <b>Atende no limite</b> — não sobra espaço para nenhuma mala a mais. Confirme a
+            bagagem com o cliente.
+          </span>
+        </div>
+      )}
+      {resultado.semMargem && (
+        <div className="assist-nota is-aviso">
+          <Icon name="alert" size={15} />
+          <span>Sem a margem de segurança pedida pelo operacional. Confirme a bagagem.</span>
+        </div>
+      )}
+      {consultar.length > 0 && (
+        <div className="assist-nota is-alerta">
+          <Icon name="message" size={15} />
+          <span>
+            <b>Consultar o operacional:</b> {descreverEspeciais(consultar)}. Esse item precisa de
+            análise antes de confirmar o veículo.
+          </span>
+        </div>
+      )}
+
+      {/* régua das regras: mostra onde o grupo caiu */}
+      <div className="assist-regua" aria-label="Regras da operação por passageiros">
+        <span className="assist-regua-titulo">Regra da operação</span>
+        <ol>
+          {faixas.map((f) => (
+            <li
+              key={f.id}
+              className={`${f.id === faixaEscolhida.id ? "is-escolhida" : ""} ${
+                f.id === faixaPax.id && f.id !== faixaEscolhida.id ? "is-pax" : ""
+              }`}
+            >
+              <b>{rotuloFaixa(f)}</b>
+              <span>{f.categorias[0].nome}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {acoes}
+    </div>
+  );
+};
+
 const AssistenteVeiculo = ({
   config,
   veiculos = [],
@@ -111,6 +311,7 @@ const AssistenteVeiculo = ({
 }) => {
   const [copiado, setCopiado] = useState(false);
   const [especiaisAbertos, setEspeciaisAbertos] = useState(false);
+  const [verMaiores, setVerMaiores] = useState(false);
   const resultado = recomendarVeiculo(config, grupo);
   const { recomendada } = resultado;
 
@@ -119,9 +320,9 @@ const AssistenteVeiculo = ({
       .map((id) => veiculos.find((v) => v.id === id))
       .filter(Boolean);
 
-  const veiculosRecomendados = veiculosDa(recomendada);
-  const nomesVeiculos = veiculosRecomendados.map((v) => v.nomeVeiculo || v.pergunta);
-  const texto = montarTextoRecomendacao(resultado, grupo, nomesVeiculos);
+  const nomesDaOpcao = (opcao) =>
+    veiculosDa(opcao).map((v) => v.nomeVeiculo || v.pergunta);
+  const texto = montarTextoRecomendacao(resultado, grupo, nomesDaOpcao);
 
   const alterar = (chave, valor) => onGrupoChange({ ...grupo, [chave]: valor });
 
@@ -264,6 +465,28 @@ const AssistenteVeiculo = ({
             <Icon name="car" size={26} />
             <span>A recomendação aparece aqui assim que você preencher o grupo.</span>
           </div>
+        ) : resultado.modo === "faixas" ? (
+          <ResultadoFaixas
+            resultado={resultado}
+            grupo={grupo}
+            malasTexto={malasTexto}
+            mensagemSemOpcao={config.mensagemSemOpcao}
+            acoes={
+              <div className="assist-acoes">
+                <Button variant="secondary" size="sm" icon="message" onClick={enviar}>
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={copiado ? "check" : "copy"}
+                  onClick={copiar}
+                >
+                  {copiado ? "Copiado!" : "Copiar sugestão"}
+                </Button>
+              </div>
+            }
+          />
         ) : !recomendada ? (
           <div className="assist-alerta">
             <span className="assist-alerta-icone">
@@ -286,74 +509,89 @@ const AssistenteVeiculo = ({
           </div>
         ) : (
           <div className="assist-resultado">
-            <span className="assist-kicker">
-              <Icon name="circleCheck" size={14} />
-              Recomendado para{" "}
-              {descreverGrupo({
-                pax: grupo.pax || 0,
-                grandes: grupo.grandes || 0,
-                bordo: grupo.bordo || 0,
-              })}
-              {especiais.length > 0 && ` + ${descreverEspeciais(especiais)}`}
-            </span>
-
-            <div className="assist-nome-linha">
-              <h3>{recomendada.nome}</h3>
-              {recomendada.acessorio ? (
-                <span className="assist-tag is-aviso">
-                  <Icon name="alert" size={13} />
-                  Precisa de {recomendada.acessorio.toLowerCase()}
-                </span>
-              ) : resultado.acessorioDispensado ? (
-                <span className="assist-tag is-ok">
-                  <Icon name="check" size={13} />
-                  Sem {resultado.acessorioDispensado.toLowerCase()}
-                </span>
-              ) : null}
+            <div className="assist-lista-cab">
+              <span className="assist-kicker">
+                <Icon name="circleCheck" size={14} />
+                {resultado.recomendadas.length === 1
+                  ? "Veículo recomendado"
+                  : "Veículos recomendados"}
+              </span>
+              <span className="assist-lista-grupo">
+                para{" "}
+                {descreverGrupo({
+                  pax: grupo.pax || 0,
+                  grandes: grupo.grandes || 0,
+                  bordo: grupo.bordo || 0,
+                })}
+                {especiais.length > 0 && ` + ${descreverEspeciais(especiais)}`}
+              </span>
             </div>
 
-            {resultado.subiuPorMargem ? (
+            {(resultado.subiuPorBagagem || resultado.subiuPorMargem) && (
               <p className="assist-motivo is-bagagem">
                 <Icon name="briefcase" size={15} />
                 <span>
-                  <b>Recomendação pela margem de segurança.</b>{" "}
-                  {resultado.pelaQuantidade.nome} levaria a bagagem no limite;
-                  a regra pede espaço para mais{" "}
-                  {plural(resultado.margem, "mala", "malas")}.
-                </span>
-              </p>
-            ) : resultado.subiuPorBagagem ? (
-              <p className="assist-motivo is-bagagem">
-                <Icon name="briefcase" size={15} />
-                <span>
-                  <b>Recomendação por causa da bagagem.</b> Pelo número de
-                  pessoas, {resultado.pelaQuantidade.nome} atenderia, mas{" "}
-                  a bagagem ({malasTexto}) não cabe.
-                </span>
-              </p>
-            ) : (
-              <p className="assist-motivo">
-                <Icon name="check" size={15} />
-                <span>
-                  Comporta {efetivo.pax || "o"} passageiro{efetivo.pax === 1 ? "" : "s"}
-                  {malasTexto ? ` e ${malasTexto}` : ""}.
+                  {resultado.subiuPorMargem ? (
+                    <>
+                      <b>{resultado.pelaQuantidade.nome}</b> levaria a bagagem no
+                      limite e a regra pede espaço para mais{" "}
+                      {plural(resultado.margem, "mala", "malas")} — por isso ela
+                      não aparece primeiro.
+                    </>
+                  ) : (
+                    <>
+                      Pelo número de pessoas, <b>{resultado.pelaQuantidade.nome}</b>{" "}
+                      atenderia, mas a bagagem ({malasTexto}) não cabe nela.
+                    </>
+                  )}
                 </span>
               </p>
             )}
 
-            {resultado.noLimite && (
+            <ul className="assist-lista">
+              {resultado.recomendadas.map((r, i) => (
+                <OpcaoRecomendada
+                  key={r.opcao.id}
+                  item={r}
+                  primeira={i === 0}
+                  veiculos={veiculosDa(r.opcao)}
+                  onAbrirVeiculo={onAbrirVeiculo}
+                />
+              ))}
+              {verMaiores && resultado.maiores.length > 0 && (
+                <li className="assist-lista-sep">Também comportam</li>
+              )}
+              {verMaiores &&
+                resultado.maiores.map((r) => (
+                  <OpcaoRecomendada
+                    key={r.opcao.id}
+                    item={r}
+                    veiculos={veiculosDa(r.opcao)}
+                    onAbrirVeiculo={onAbrirVeiculo}
+                  />
+                ))}
+            </ul>
+
+            {resultado.maiores.length > 0 && (
+              <button
+                type="button"
+                className="assist-ver-mais"
+                onClick={() => setVerMaiores((v) => !v)}
+              >
+                <Icon name={verMaiores ? "chevronUp" : "chevronDown"} size={14} />
+                {verMaiores
+                  ? "Mostrar só as recomendadas"
+                  : `Também comportam (${resultado.maiores.length})`}
+              </button>
+            )}
+
+            {resultado.semMargem && (
               <div className="assist-nota is-aviso">
                 <Icon name="alert" size={15} />
                 <span>
-                  <b>Atende no limite</b> — não sobra espaço para nenhuma mala a
-                  mais. Confirme a bagagem com o cliente.
-                  {resultado.maisFolgada && (
-                    <>
-                      {" "}Mais confortável: <b>{resultado.maisFolgada.nome}</b>.
-                    </>
-                  )}
-                  {resultado.semMargem &&
-                    ` Nenhuma opção deixa a margem de ${plural(resultado.margem, "mala", "malas")} pedida pelo operacional.`}
+                  Nenhuma opção deixa a margem de{" "}
+                  {plural(resultado.margem, "mala", "malas")} pedida pelo
+                  operacional. Confirme a bagagem com o cliente.
                 </span>
               </div>
             )}
@@ -364,7 +602,7 @@ const AssistenteVeiculo = ({
                 <span>
                   <b>Consultar o operacional:</b> {descreverEspeciais(consultar)}.
                   Esse item precisa de uma análise antes de confirmar o veículo —
-                  a recomendação acima não conta com ele.
+                  a lista acima não conta com ele.
                 </span>
               </div>
             )}
@@ -378,60 +616,6 @@ const AssistenteVeiculo = ({
                   .map((e) => `${e.qtd}× ${e.nome.toLowerCase()} (${ROTULO_CONTA[e.conta]})`)
                   .join(", ")}
                 .
-              </p>
-            )}
-
-            <dl className="assist-capacidade">
-              <div>
-                <dt>Passageiros</dt>
-                <dd>até {recomendada.paxMax}</dd>
-              </div>
-              {recomendada.combinacoes.length > 0 && (
-                <div>
-                  <dt>Bagagem</dt>
-                  <dd>{descreverCombinacoes(recomendada.combinacoes)}</dd>
-                </div>
-              )}
-            </dl>
-
-            {recomendada.observacao && (
-              <p className="assist-obs">
-                <Icon name="info" size={14} />
-                {recomendada.observacao}
-              </p>
-            )}
-
-            {veiculosRecomendados.length > 0 && (
-              <div className="assist-veiculos">
-                {veiculosRecomendados.map((v) => {
-                  const foto = fotoDe(v);
-                  const Tag = onAbrirVeiculo ? "button" : "span";
-                  return (
-                    <Tag
-                      key={v.id}
-                      type={onAbrirVeiculo ? "button" : undefined}
-                      className="assist-veiculo"
-                      onClick={onAbrirVeiculo ? () => onAbrirVeiculo(v) : undefined}
-                    >
-                      <span className="assist-veiculo-foto">
-                        {foto ? <img src={foto} alt="" /> : <Icon name="car" size={16} />}
-                      </span>
-                      {v.nomeVeiculo || v.pergunta}
-                    </Tag>
-                  );
-                })}
-              </div>
-            )}
-
-            {resultado.alternativas.length > 0 && (
-              <p className="assist-alternativas">
-                Também atendem:{" "}
-                {resultado.alternativas.map((o, i) => (
-                  <span key={o.id}>
-                    {i > 0 && ", "}
-                    {o.nome}
-                  </span>
-                ))}
               </p>
             )}
 

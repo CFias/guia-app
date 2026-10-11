@@ -8,6 +8,27 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import {
+  alternarServicoForaDaEscala,
+  carregarServicosForaDaEscala,
+  estaForaDaEscala,
+} from "../../Services/Services/servicosEscala";
+import { Link } from "react-router-dom";
+import {
+  DIAS_A_FRENTE_PADRAO,
+  DIAS_HISTORICO_PADRAO,
+  cadastrarServicosDoPhoenix,
+  levantarServicosDoPhoenix,
+  separarSemMapeamento,
+} from "../../Services/Services/servicosPhoenix";
+import {
+  SEMANAS_EXPERIENCIA,
+  chavesNomeGuia,
+  guiasPhoenixSemCadastro,
+  nivelSugeridoPeloHistorico,
+} from "../../Services/Services/historicoEscala";
+import { encontrarServiceCatalogo } from "../../Services/Services/plannerApi";
+import { normalizarTexto } from "../../Services/Services/plannerUtils";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./afinidade.css";
 import {
@@ -56,6 +77,192 @@ const obterNomePasseio = (passeio) => {
   );
 };
 
+// Uma linha do mapa: nome do passeio, régua de afinidade e nível.
+// `fora` = o passeio está fora da escala automática (não recebe guia).
+const LinhaPasseio = ({
+  passeio,
+  valor,
+  salvando,
+  fora,
+  alternando,
+  historico,
+  onNivel,
+  onAlternar,
+  onAplicarSugestao,
+}) => {
+  const nome = obterNomePasseio(passeio);
+  const corNivel = obterCorNivel(valor);
+  return (
+    <li className={`${salvando ? "is-saving" : ""} ${fora ? "is-fora" : ""}`}>
+      <span className="afinidade-passeio__nome">
+        {nome}
+        <button
+          type="button"
+          className="afinidade-passeio__escala"
+          onClick={onAlternar}
+          disabled={alternando}
+          title={
+            fora
+              ? "Voltar a receber guia na escala automática"
+              : "Este passeio não recebe guia: tirar da escala automática"
+          }
+        >
+          <Icon name={fora ? "plus" : "eyeOff"} size={12} />
+          {fora ? "Colocar na escala" : "Tirar da escala"}
+        </button>
+        {historico && (
+          <span className={`afinidade-historico ${historico.naoOpera ? "is-alerta" : ""}`}>
+            <Icon name="history" size={12} />
+            fez {historico.vezes}× nas últimas {SEMANAS_EXPERIENCIA} semanas
+            {historico.naoOpera && " — está como Não operar"}
+            {historico.sugestao && (
+              <>
+                {" · "}sugerido {historico.sugestao}
+                <button
+                  type="button"
+                  onClick={onAplicarSugestao}
+                  disabled={salvando}
+                  title={`Usar ${historico.sugestao} neste passeio`}
+                >
+                  Aplicar
+                </button>
+              </>
+            )}
+          </span>
+        )}
+      </span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        value={valor}
+        onChange={(e) => onNivel(e.target.value)}
+        className="afinidade-slider"
+        disabled={salvando}
+        aria-label={`Nível em ${nome}`}
+        style={{ "--nivel-cor": corNivel, "--nivel-pct": `${valor}%` }}
+      />
+      <span className="afinidade-passeio__valor">
+        <strong className="tabular">{valor}</strong>
+        <span>{LABEL_NIVEL(valor)}</span>
+      </span>
+    </li>
+  );
+};
+
+const dataCurta = (iso) => (iso ? iso.split("-").reverse().slice(0, 2).join("/") : "");
+
+// Aviso de passeios que aparecem no Phoenix mas não estão no mapa nem
+// fora da escala (na escala eles ficam sem nenhum guia apto).
+const AvisoSemMapa = ({ varredura, semMapa, ocupado, onConferir, onAdicionar, onTirar, onAdicionarTodos }) => {
+  const [verTodos, setVerTodos] = useState(false);
+  const periodo = `últimas ${DIAS_HISTORICO_PADRAO / 7} semanas e próximas ${DIAS_A_FRENTE_PADRAO / 7}`;
+
+  if (varredura.estado === "varrendo") {
+    const pct = varredura.total ? Math.round((varredura.feitas / varredura.total) * 100) : 0;
+    return (
+      <div className="afinidade-aviso is-varrendo" role="status">
+        <Icon name="refresh" size={15} className="afinidade-aviso__girando" />
+        <span>
+          Conferindo os passeios do Phoenix ({periodo})… {varredura.feitas}/{varredura.total}
+        </span>
+        <span className="afinidade-aviso__barra" aria-hidden="true">
+          <span style={{ width: `${pct}%` }} />
+        </span>
+      </div>
+    );
+  }
+
+  if (varredura.estado === "erro") {
+    return (
+      <div className="afinidade-aviso is-erro" role="status">
+        <Icon name="alert" size={15} />
+        <span>Não foi possível conferir os passeios do Phoenix agora.</span>
+        <button type="button" className="afinidade-aviso__link" onClick={onConferir}>
+          Tentar de novo
+        </button>
+      </div>
+    );
+  }
+
+  if (varredura.estado !== "pronto") return null;
+
+  if (!semMapa.length) {
+    return (
+      <div className="afinidade-aviso is-ok" role="status">
+        <Icon name="circleCheck" size={15} />
+        <span>
+          Todos os passeios do Phoenix ({periodo}) estão no mapa ou fora da escala.
+        </span>
+        <button type="button" className="afinidade-aviso__link" onClick={onConferir}>
+          Conferir de novo
+        </button>
+      </div>
+    );
+  }
+
+  const visiveis = verTodos ? semMapa : semMapa.slice(0, 6);
+  return (
+    <Card className="afinidade-sem-mapa">
+      <div className="afinidade-sem-mapa__cab">
+        <span className="afinidade-sem-mapa__icone">
+          <Icon name="alert" size={18} />
+        </span>
+        <div>
+          <strong>
+            {semMapa.length} passeio{semMapa.length === 1 ? "" : "s"} do Phoenix sem mapeamento
+          </strong>
+          <p>
+            Aparecem no Phoenix ({periodo}) mas não estão no mapa nem fora da escala — na
+            escala eles ficam sem guia apto. Coloque no mapa para dar afinidade aos guias, ou
+            tire da escala se não recebem guia.
+          </p>
+        </div>
+        <div className="afinidade-sem-mapa__acoes">
+          <Button size="sm" variant="ghost" icon="refresh" onClick={onConferir} disabled={ocupado}>
+            Conferir de novo
+          </Button>
+          {semMapa.length > 1 && (
+            <Button size="sm" icon="plus" onClick={onAdicionarTodos} disabled={ocupado}>
+              Colocar todos no mapa
+            </Button>
+          )}
+        </div>
+      </div>
+      <ul className="afinidade-sem-mapa__lista">
+        {visiveis.map((s) => (
+          <li key={s.chave}>
+            <div className="afinidade-sem-mapa__nome">
+              <strong>{s.nome}</strong>
+              <span>
+                {s.proximo ? `próximo: ${dataCurta(s.proximo)}` : `último: ${dataCurta(s.ultimo)}`}
+                {" · "}
+                {s.totalDias} dia{s.totalDias === 1 ? "" : "s"} no período
+                {s.frequencia.length > 0 && ` · ${s.frequencia.map((d) => d.slice(0, 3)).join(", ")}`}
+                {s.externalServiceId && ` · id ${s.externalServiceId}`}
+              </span>
+            </div>
+            <div className="afinidade-sem-mapa__botoes">
+              <Button size="sm" variant="primary" icon="plus" onClick={() => onAdicionar(s)} disabled={ocupado}>
+                Colocar no mapa
+              </Button>
+              <Button size="sm" variant="ghost" icon="eyeOff" onClick={() => onTirar(s)} disabled={ocupado}>
+                Fora da escala
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {semMapa.length > 6 && (
+        <button type="button" className="afinidade-aviso__link afinidade-sem-mapa__mais" onClick={() => setVerTodos((v) => !v)}>
+          {verTodos ? "Mostrar menos" : `Ver todos os ${semMapa.length}`}
+        </button>
+      )}
+    </Card>
+  );
+};
+
 const MapaAfinidadeGuias = () => {
   const [guias, setGuias] = useState([]);
   const [passeios, setPasseios] = useState([]);
@@ -67,6 +274,12 @@ const MapaAfinidadeGuias = () => {
   const [salvando, setSalvando] = useState(false);
 
   const [buscaGuia, setBuscaGuia] = useState(""); // só filtra a lista visual
+  const [buscaPasseio, setBuscaPasseio] = useState("");
+  const [foraDaEscala, setForaDaEscala] = useState([]);
+  const [verFora, setVerFora] = useState(false);
+  const [alternando, setAlternando] = useState(false);
+  // conferência com o Phoenix (histórico + próximas semanas)
+  const [varredura, setVarredura] = useState({ estado: "idle", feitas: 0, total: 0, servicos: [], historico: [] });
   const [mensagem, setMensagem] = useState("");
   const [tipoMensagem, setTipoMensagem] = useState("");
 
@@ -75,10 +288,12 @@ const MapaAfinidadeGuias = () => {
       try {
         setLoadingInicial(true);
 
-        const [snapGuias, snapPasseios] = await Promise.all([
+        const [snapGuias, snapPasseios, listaFora] = await Promise.all([
           getDocs(collection(db, "guides")),
           getDocs(collection(db, "services")),
+          carregarServicosForaDaEscala(true),
         ]);
+        setForaDaEscala(listaFora);
 
         const listaGuias = snapGuias.docs
           .map((docSnap) => ({
@@ -213,6 +428,154 @@ const MapaAfinidadeGuias = () => {
     }
   };
 
+  const conferirPhoenix = async () => {
+    setVarredura({ estado: "varrendo", feitas: 0, total: 0, servicos: [], historico: [] });
+    try {
+      const { servicos, historico } = await levantarServicosDoPhoenix({
+        onProgresso: (feitas, total) =>
+          setVarredura((v) => ({ ...v, feitas, total })),
+      });
+      setVarredura({ estado: "pronto", feitas: 0, total: 0, servicos, historico });
+    } catch (err) {
+      console.error("Erro ao conferir os passeios do Phoenix:", err);
+      setVarredura({ estado: "erro", feitas: 0, total: 0, servicos: [], historico: [] });
+    }
+  };
+
+  // confere sozinho ao abrir a tela (depois de carregar o cadastro)
+  useEffect(() => {
+    if (!loadingInicial && varredura.estado === "idle") conferirPhoenix();
+  }, [loadingInicial]);
+
+  const semMapa = useMemo(
+    () =>
+      varredura.estado === "pronto"
+        ? separarSemMapeamento({ servicos: varredura.servicos, catalogo: passeios, foraDaEscala })
+        : [],
+    [varredura, passeios, foraDaEscala],
+  );
+
+  // guias do Phoenix que não batem com nenhum nome/apelido do cadastro
+  const guiasSemCadastro = useMemo(
+    () => guiasPhoenixSemCadastro({ entradas: varredura.historico || [], guias }),
+    [varredura, guias],
+  );
+
+  // quantos dias o guia selecionado fez cada passeio nas últimas semanas
+  const vezesPorPasseio = useMemo(() => {
+    if (!guiaAtual || !varredura.historico?.length) return {};
+    const chaves = new Set(chavesNomeGuia(guiaAtual));
+    const contagem = {};
+    varredura.historico
+      .filter((e) => chaves.has(e.guiaChave))
+      .forEach((e) => {
+        const p = encontrarServiceCatalogo(e.externalServiceId, e.serviceName, passeios, normalizarTexto);
+        if (p) contagem[p.id] = (contagem[p.id] || 0) + 1;
+      });
+    return contagem;
+  }, [guiaAtual, varredura, passeios]);
+
+  const historicoDoPasseio = (passeio) => {
+    const vezes = vezesPorPasseio[passeio.id] || 0;
+    if (!vezes) return null;
+    const atual = niveis[String(passeio.id)] ?? 0;
+    const sugestao = nivelSugeridoPeloHistorico(vezes);
+    return { vezes, sugestao: sugestao > atual ? sugestao : null, naoOpera: atual === 0 };
+  };
+
+  const sugestoesPendentes = passeios.filter((p) => historicoDoPasseio(p)?.sugestao);
+
+  const aplicarSugestoes = (lista) => {
+    setNiveis((prev) => {
+      const prox = { ...prev };
+      lista.forEach((p) => {
+        const h = historicoDoPasseio(p);
+        if (h?.sugestao) prox[String(p.id)] = h.sugestao;
+      });
+      return prox;
+    });
+    setTipoMensagem("sucesso");
+    setMensagem(
+      lista.length === 1
+        ? "Sugestão aplicada — clique em Salvar mapeamento para gravar."
+        : `${lista.length} sugestões aplicadas — clique em Salvar mapeamento para gravar.`,
+    );
+  };
+
+  const colocarNoMapa = async (lista) => {
+    try {
+      setAlternando(true);
+      const criados = await cadastrarServicosDoPhoenix(lista);
+      setPasseios((prev) =>
+        [...prev, ...criados.map((c) => ({ ...c, nomeExibicao: c.nome }))].sort((a, b) =>
+          obterNomePasseio(a).localeCompare(obterNomePasseio(b), "pt-BR", { sensitivity: "base" }),
+        ),
+      );
+      setTipoMensagem("sucesso");
+      setMensagem(
+        criados.length === 1
+          ? `${criados[0].nome} entrou no mapa — ajuste a afinidade dos guias com ele.`
+          : `${criados.length} passeios entraram no mapa — ajuste a afinidade dos guias com eles.`,
+      );
+    } catch (err) {
+      console.error("Erro ao colocar passeio no mapa:", err);
+      setTipoMensagem("erro");
+      setMensagem("Não foi possível colocar o passeio no mapa.");
+    } finally {
+      setAlternando(false);
+    }
+  };
+
+  const tirarDaEscalaPeloNome = async (nome) => {
+    try {
+      setAlternando(true);
+      setForaDaEscala(await alternarServicoForaDaEscala(nome, foraDaEscala, true));
+      setTipoMensagem("sucesso");
+      setMensagem(`${nome} saiu da escala automática.`);
+    } catch (err) {
+      console.error("Erro ao tirar serviço da escala:", err);
+      setTipoMensagem("erro");
+      setMensagem("Não foi possível tirar o serviço da escala.");
+    } finally {
+      setAlternando(false);
+    }
+  };
+
+  const alternarEscala = async (passeio, colocarFora) => {
+    try {
+      setAlternando(true);
+      const lista = await alternarServicoForaDaEscala(
+        obterNomePasseio(passeio),
+        foraDaEscala,
+        colocarFora,
+      );
+      setForaDaEscala(lista);
+      setTipoMensagem("sucesso");
+      setMensagem(
+        colocarFora
+          ? `${obterNomePasseio(passeio)} saiu da escala automática.`
+          : `${obterNomePasseio(passeio)} voltou para a escala automática.`,
+      );
+    } catch (err) {
+      console.error("Erro ao alterar serviço da escala:", err);
+      setTipoMensagem("erro");
+      setMensagem("Não foi possível alterar o passeio na escala.");
+    } finally {
+      setAlternando(false);
+    }
+  };
+
+  const termoPasseio = buscaPasseio.trim().toLowerCase();
+  const passeiosFiltrados = termoPasseio
+    ? passeios.filter((p) => obterNomePasseio(p).toLowerCase().includes(termoPasseio))
+    : passeios;
+  const passeiosNaEscala = passeiosFiltrados.filter(
+    (p) => !estaForaDaEscala(obterNomePasseio(p), foraDaEscala),
+  );
+  const passeiosFora = passeiosFiltrados.filter((p) =>
+    estaForaDaEscala(obterNomePasseio(p), foraDaEscala),
+  );
+
   const termo = buscaGuia.trim().toLowerCase();
   const guiasVisiveis = termo
     ? guias.filter((g) => String(g.nome || "").toLowerCase().includes(termo))
@@ -251,6 +614,34 @@ const MapaAfinidadeGuias = () => {
           {mensagem}
         </div>
       )}
+
+      {varredura.estado === "pronto" && guiasSemCadastro.length > 0 && (
+        <div className="afinidade-aviso is-guias" role="status">
+          <Icon name="user" size={15} />
+          <span>
+            Guias do Phoenix que não batem com o cadastro (o histórico deles não conta na escala
+            nem nas sugestões):{" "}
+            <b>
+              {guiasSemCadastro
+                .slice(0, 10)
+                .map((g) => `${g.nome} (${g.vezes}×)`)
+                .join(", ")}
+            </b>
+            {guiasSemCadastro.length > 10 && ` e mais ${guiasSemCadastro.length - 10}`}. Ajuste o
+            apelido no cadastro do guia (Lista de guias) para ficar igual ao do Phoenix.
+          </span>
+        </div>
+      )}
+
+      <AvisoSemMapa
+        varredura={varredura}
+        semMapa={semMapa}
+        ocupado={alternando || salvando}
+        onConferir={conferirPhoenix}
+        onAdicionar={(sv) => colocarNoMapa([sv])}
+        onAdicionarTodos={() => colocarNoMapa(semMapa)}
+        onTirar={(sv) => tirarDaEscalaPeloNome(sv.nome)}
+      />
 
       <div className="afinidade-layout">
         {/* ---- guias ---- */}
@@ -309,43 +700,96 @@ const MapaAfinidadeGuias = () => {
                 subtitle={
                   loadingMapa
                     ? "Carregando..."
-                    : `Relações de afinidade · ${passeios.length} passeio(s)`
+                    : `${passeios.length - passeiosFora.length} passeio(s) na escala${
+                        passeiosFora.length ? ` · ${passeiosFora.length} fora` : ""
+                      }`
                 }
               />
+              <div className="afinidade-passeios__ferramentas">
+                {sugestoesPendentes.length > 0 && (
+                  <Button
+                    size="sm"
+                    icon="history"
+                    onClick={() => aplicarSugestoes(sugestoesPendentes)}
+                    disabled={salvando}
+                    title="Sobe a afinidade dos passeios que o guia fez nas últimas semanas (nunca baixa)"
+                  >
+                    Aplicar sugestões do histórico ({sugestoesPendentes.length})
+                  </Button>
+                )}
+                <SearchInput
+                  value={buscaPasseio}
+                  onChange={(e) => setBuscaPasseio(e.target.value)}
+                  placeholder="Buscar passeio"
+                  aria-label="Buscar passeio"
+                />
+                <span className="afinidade-passeios__dica">
+                  <Icon name="info" size={13} />
+                  Faltou algum passeio?{" "}
+                  <Link to="/register-tours">Puxe do Phoenix no Cadastro de passeios</Link>.
+                </span>
+              </div>
               {loadingMapa ? (
                 <CardSkeleton variant="affinity" rows={8} />
               ) : passeios.length > 0 ? (
-                <ul className="afinidade-lista-nova">
-                  {passeios.map((passeio) => {
-                    const valor = niveis[String(passeio.id)] ?? 0;
-                    const corNivel = obterCorNivel(valor);
+                <>
+                  <ul className="afinidade-lista-nova">
+                    {passeiosNaEscala.map((passeio) => (
+                      <LinhaPasseio
+                        key={passeio.id}
+                        passeio={passeio}
+                        valor={niveis[String(passeio.id)] ?? 0}
+                        salvando={salvando}
+                        alternando={alternando}
+                        onNivel={(v) => atualizarNivel(passeio.id, v)}
+                        onAlternar={() => alternarEscala(passeio, true)}
+                        historico={historicoDoPasseio(passeio)}
+                        onAplicarSugestao={() => aplicarSugestoes([passeio])}
+                      />
+                    ))}
+                    {!passeiosNaEscala.length && (
+                      <li className="afinidade-lista-vazia">Nenhum passeio encontrado.</li>
+                    )}
+                  </ul>
 
-                    return (
-                      <li key={passeio.id} className={salvando ? "is-saving" : ""}>
-                        <span className="afinidade-passeio__nome">{obterNomePasseio(passeio)}</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={valor}
-                          onChange={(e) => atualizarNivel(passeio.id, e.target.value)}
-                          className="afinidade-slider"
-                          disabled={salvando}
-                          aria-label={`Nível em ${obterNomePasseio(passeio)}`}
-                          style={{ "--nivel-cor": corNivel, "--nivel-pct": `${valor}%` }}
-                        />
-                        <span className="afinidade-passeio__valor">
-                          <strong className="tabular">{valor}</strong>
-                          <span>{LABEL_NIVEL(valor)}</span>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                  {passeiosFora.length > 0 && (
+                    <div className="afinidade-fora">
+                      <button
+                        type="button"
+                        className="afinidade-fora__toggle"
+                        onClick={() => setVerFora((v) => !v)}
+                        aria-expanded={verFora}
+                      >
+                        <Icon name={verFora ? "chevronUp" : "chevronDown"} size={15} />
+                        Fora da escala automática
+                        <span className="afinidade-fora__qtd">{passeiosFora.length}</span>
+                        <small>não recebem guia — ajuste em Configurações → Escala ou aqui</small>
+                      </button>
+                      {verFora && (
+                        <ul className="afinidade-lista-nova">
+                          {passeiosFora.map((passeio) => (
+                            <LinhaPasseio
+                              key={passeio.id}
+                              passeio={passeio}
+                              fora
+                              valor={niveis[String(passeio.id)] ?? 0}
+                              salvando={salvando}
+                              alternando={alternando}
+                              onNivel={(v) => atualizarNivel(passeio.id, v)}
+                              onAlternar={() => alternarEscala(passeio, false)}
+                              historico={historicoDoPasseio(passeio)}
+                              onAplicarSugestao={() => aplicarSugestoes([passeio])}
+                            />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </>
               ) : (
-                <EmptyState icon="compass" title="Nenhum passeio encontrado para configurar.">
-                  Nenhum passeio na coleção services.
+                <EmptyState icon="compass" title="Nenhum passeio cadastrado.">
+                  Puxe os passeios do Phoenix no{" "}
+                  <Link to="/register-tours">Cadastro de passeios</Link>.
                 </EmptyState>
               )}
             </>

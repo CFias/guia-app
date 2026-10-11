@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import {
   JANELA_PADRAO,
@@ -23,6 +23,11 @@ import {
   StatusDot,
 } from "../../components/ui";
 import { extrairIdPastaDrive } from "../../Services/Services/googleDrive";
+import {
+  listaForaDaEscalaDe,
+  salvarServicosForaDaEscala,
+} from "../../Services/Services/servicosEscala";
+import { SERVICOS_FORA_DA_ESCALA_PADRAO } from "../../Services/Services/plannerUtils";
 
 /* ---------- peças de layout (só apresentação) ---------- */
 
@@ -85,6 +90,9 @@ const Configuracoes = () => {
   const [driveClientId, setDriveClientId] = useState("");
   const [whatsappOperacao, setWhatsappOperacao] = useState("");
   const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
+  const [foraDaEscala, setForaDaEscala] = useState([]);
+  const [novoForaDaEscala, setNovoForaDaEscala] = useState("");
+  const [nomesServicos, setNomesServicos] = useState([]);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -95,7 +103,20 @@ const Configuracoes = () => {
         setLoadingInicial(true);
 
         const ref = doc(db, "settings", "scale");
-        const snap = await getDoc(ref);
+        const [snap, snapServicos] = await Promise.all([
+          getDoc(ref),
+          getDocs(collection(db, "services")).catch(() => null),
+        ]);
+
+        setForaDaEscala(listaForaDaEscalaDe(snap.exists() ? snap.data() : {}));
+        if (snapServicos) {
+          setNomesServicos(
+            snapServicos.docs
+              .map((d) => d.data().nome || d.data().externalName || "")
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b, "pt-BR")),
+          );
+        }
 
         if (snap.exists()) {
           const data = snap.data();
@@ -189,6 +210,26 @@ const Configuracoes = () => {
     const valor = driveClientId.trim();
     setDriveClientId(valor);
     await salvarConfiguracao({ driveClientId: valor });
+  };
+
+  // Serviços fora da escala (não recebem guia nem aparecem no Gerar Escala)
+  const gravarForaDaEscala = async (lista) => {
+    try {
+      setSalvando(true);
+      setForaDaEscala(await salvarServicosForaDaEscala(lista));
+    } catch (err) {
+      console.error("Erro ao salvar serviços fora da escala:", err);
+      alert("Erro ao salvar a lista de serviços fora da escala");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const adicionarForaDaEscala = async () => {
+    const nome = novoForaDaEscala.trim();
+    if (!nome) return;
+    setNovoForaDaEscala("");
+    await gravarForaDaEscala([...foraDaEscala, nome]);
   };
 
   // WhatsApp que aparece no botão "Falar com a operação" da área do guia
@@ -358,6 +399,93 @@ const Configuracoes = () => {
                 ligado={usarAfinidadeGuiaPasseio}
                 onClick={() => salvarUsoAfinidade(!usarAfinidadeGuiaPasseio)}
               />
+            </div>
+          </Secao>
+
+          <Secao
+            carregando={loadingInicial}
+            titulo="Serviços fora da escala"
+            descricao="Serviços que não recebem guia: não aparecem no Gerar Escala e a escala automática ignora. Os demais aparecem normalmente e no Mapa de afinidade."
+          >
+            <div className="cfg-fora">
+              {foraDaEscala.length > 0 ? (
+                <ul className="cfg-fora__lista">
+                  {foraDaEscala.map((nome) => (
+                    <li key={nome}>
+                      <span>{nome}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          gravarForaDaEscala(foraDaEscala.filter((n) => n !== nome))
+                        }
+                        disabled={salvando}
+                        aria-label={`Colocar ${nome} de volta na escala`}
+                        title="Colocar de volta na escala"
+                      >
+                        <Icon name="x" size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="cfg-ajuda">
+                  <Icon name="circleCheck" size={14} />
+                  <span>Todos os serviços entram na escala.</span>
+                </p>
+              )}
+
+              <form
+                className="cfg-fora__novo"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  adicionarForaDaEscala();
+                }}
+              >
+                <input
+                  type="text"
+                  list="cfg-fora-sugestoes"
+                  value={novoForaDaEscala}
+                  onChange={(e) => setNovoForaDaEscala(e.target.value)}
+                  placeholder="Nome do serviço (como vem do Phoenix)"
+                  disabled={salvando}
+                  aria-label="Nome do serviço para tirar da escala"
+                />
+                <datalist id="cfg-fora-sugestoes">
+                  {nomesServicos
+                    .filter((n) => !foraDaEscala.includes(n))
+                    .map((n) => (
+                      <option key={n} value={n} />
+                    ))}
+                </datalist>
+                <button
+                  type="submit"
+                  className="cfg-fora__adicionar"
+                  disabled={salvando || !novoForaDaEscala.trim()}
+                >
+                  <Icon name="plus" size={14} />
+                  Tirar da escala
+                </button>
+              </form>
+
+              <p className="cfg-ajuda">
+                <Icon name="info" size={14} />
+                <span>
+                  {foraDaEscala.length} serviço(s) fora. Também dá para tirar ou colocar um passeio
+                  direto no Mapa de afinidade.{" "}
+                  <button
+                    type="button"
+                    className="cfg-link"
+                    disabled={salvando}
+                    onClick={() => {
+                      if (window.confirm("Voltar para a lista inicial de serviços fora da escala?")) {
+                        gravarForaDaEscala([...SERVICOS_FORA_DA_ESCALA_PADRAO]);
+                      }
+                    }}
+                  >
+                    Restaurar lista inicial
+                  </button>
+                </span>
+              </p>
             </div>
           </Secao>
 

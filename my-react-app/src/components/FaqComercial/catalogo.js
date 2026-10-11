@@ -406,6 +406,118 @@ export const NOMES_SECOES_PADRAO = {
   resposta: "Respostas prontas",
 };
 
+// ---------------------------------------------------------------------
+// Regras da operação por quantidade de passageiros (escopos). Cada faixa
+// diz o veículo padrão e, em ordem, para onde subir se a bagagem não
+// couber (ex.: Spin → Spin com bagageiro). Se nada da faixa levar a
+// bagagem, sobe para a próxima faixa. Os números de malas são de partida
+// — o operacional ajusta na aba "Assistente de veículo".
+// ---------------------------------------------------------------------
+const cat = (nome, ...combinacoes) => ({
+  nome,
+  combinacoes: combinacoes.map(([grandes, bordo]) => ({ grandes, bordo })),
+});
+
+export const FAIXAS_PADRAO = [
+  {
+    id: "f-1-3",
+    de: 1,
+    ate: 3,
+    categorias: [
+      cat("Carro de passeio ou Spin", [2, 2], [0, 5]),
+      cat("Spin", [3, 2], [0, 6]),
+      cat("Spin com bagageiro", [5, 3]),
+    ],
+    observacao: "Carros variados (sedan, SUV) ou Spin.",
+  },
+  {
+    id: "f-4",
+    de: 4,
+    ate: 4,
+    categorias: [
+      cat("Spin", [3, 2], [0, 6]),
+      cat("Spin com bagageiro", [5, 3]),
+    ],
+    observacao: "",
+  },
+  {
+    id: "f-5-9",
+    de: 5,
+    ate: 9,
+    categorias: [
+      cat("Van sem carretinha", [9, 9]),
+      cat("Van com carretinha", [18, 15]),
+    ],
+    observacao: "",
+  },
+  {
+    id: "f-10-15",
+    de: 10,
+    ate: 15,
+    categorias: [cat("Van com carretinha", [18, 15])],
+    observacao: "",
+  },
+  {
+    id: "f-16-19",
+    de: 16,
+    ate: 19,
+    categorias: [cat("Van alongada com carretinha", [22, 19])],
+    observacao: "",
+  },
+  {
+    id: "f-20-28",
+    de: 20,
+    ate: 28,
+    categorias: [cat("Micro-ônibus", [28, 28])],
+    observacao: "",
+  },
+  {
+    id: "f-29-46",
+    de: 29,
+    ate: 46,
+    categorias: [cat("Ônibus", [46, 46])],
+    observacao: "",
+  },
+];
+
+const clonarFaixas = (lista) =>
+  lista.map((f) => ({
+    ...f,
+    categorias: f.categorias.map((c) => ({
+      ...c,
+      combinacoes: c.combinacoes.map((x) => ({ ...x })),
+    })),
+  }));
+
+// sem o campo salvo = regras padrão; lista vazia = regras desligadas
+// (volta a recomendar pelas opções de veículo)
+export const normalizarFaixas = (bruto) => {
+  if (!Array.isArray(bruto)) return clonarFaixas(FAIXAS_PADRAO);
+  return bruto
+    .map((f, i) => ({
+      id: String(f?.id || `f-${i}`),
+      de: inteiro(f?.de),
+      ate: inteiro(f?.ate),
+      observacao: String(f?.observacao || "").trim(),
+      categorias: (Array.isArray(f?.categorias) ? f.categorias : [])
+        .map((c) => ({
+          nome: String(c?.nome || "").trim(),
+          combinacoes: (Array.isArray(c?.combinacoes) ? c.combinacoes : [])
+            .map((x) => ({
+              grandes: inteiro(x?.grandes),
+              bordo: inteiro(x?.bordo),
+            }))
+            .filter((x) => x.grandes > 0 || x.bordo > 0),
+        }))
+        .filter((c) => c.nome),
+    }))
+    .filter((f) => f.de > 0 && f.ate >= f.de && f.categorias.length)
+    .sort((a, b) => a.de - b.de);
+};
+
+export const rotuloFaixa = (f) =>
+  f.de === f.ate ? `${f.de} pax` : `${f.de}–${f.ate} pax`;
+
 export const normalizarConfigAssistente = (bruto) => {
   const opcoes = (Array.isArray(bruto?.opcoes) ? bruto.opcoes : []).map(
     (o, i) => ({
@@ -413,6 +525,10 @@ export const normalizarConfigAssistente = (bruto) => {
       nome: String(o?.nome || "").trim(),
       grupo: String(o?.grupo || "").trim(),
       paxMax: inteiro(o?.paxMax),
+      // até quantos passageiros este veículo é o RECOMENDADO (conforto da
+      // operação); vazio = a própria capacidade. Ex.: BYD leva 4, mas é
+      // recomendado até 3; van sem carretinha leva 14, recomendada até 9.
+      paxIdeal: inteiro(o?.paxIdeal) || 0,
       acessorio: ACESSORIOS.includes(o?.acessorio) ? o.acessorio : "",
       combinacoes: (Array.isArray(o?.combinacoes) ? o.combinacoes : [])
         .map((c) => ({
@@ -453,6 +569,7 @@ export const normalizarConfigAssistente = (bruto) => {
       String(bruto?.mensagemSemOpcao || "").trim() || MENSAGEM_SEM_OPCAO_PADRAO,
     itensEspeciais,
     opcoes,
+    faixas: normalizarFaixas(bruto?.faixas),
   };
 };
 
@@ -574,7 +691,85 @@ export const aplicarEspeciais = (config, grupo = {}) => {
   return { efetivo, especiais, consultar };
 };
 
+// quantas opções aparecem de cara na lista de recomendados
+export const LIMITE_RECOMENDADAS = 4;
+
+// Recomendação pelas regras da operação (faixas de passageiros).
+export const recomendarPorFaixa = (config, grupo = {}) => {
+  const { efetivo, especiais, consultar } = aplicarEspeciais(config, grupo);
+  const { pax, grandes, bordo } = efetivo;
+  const fator = config.fatorBordoPorGrande;
+  const margem = config.margemFolga;
+  const faixas = config.faixas || [];
+  const preenchido =
+    pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
+  const temMalas = grandes > 0 || bordo > 0;
+  const qtd = pax || 1;
+
+  // categoria sem capacidade de malas informada: não dá para checar — aceita
+  const cabe = (c, g = grandes, b = bordo) =>
+    !temMalas ||
+    !c.combinacoes.length ||
+    bagagemCabe(c.combinacoes, g, b, fator);
+  const cabeComFolga = (c, n) =>
+    !temMalas ||
+    n === 0 ||
+    !c.combinacoes.length ||
+    cabe(c, grandes + n, bordo) ||
+    cabe(c, grandes, bordo + Math.ceil(n * Math.max(fator, 1)));
+
+  const base = {
+    modo: "faixas",
+    efetivo,
+    especiais,
+    consultar,
+    preenchido,
+    faixas,
+    margem,
+    totalOpcoes: faixas.length,
+    recomendada: null,
+    recomendadas: [],
+    maiores: [],
+    alternativas: [],
+  };
+
+  const indice = faixas.findIndex((f) => qtd >= f.de && qtd <= f.ate);
+  if (indice < 0) {
+    return { ...base, excedePax: preenchido, faixaPax: null, escolha: null };
+  }
+
+  // a faixa dos passageiros e, se a bagagem pedir, as seguintes
+  const sequencia = [];
+  for (let k = indice; k < faixas.length; k += 1) {
+    faixas[k].categorias.forEach((categoria, ci) =>
+      sequencia.push({ faixa: faixas[k], categoria, k, ci }),
+    );
+  }
+
+  const comMargem = sequencia.find(
+    (s) => cabe(s.categoria) && cabeComFolga(s.categoria, margem),
+  );
+  const escolha = comMargem || sequencia.find((s) => cabe(s.categoria)) || null;
+  const faixaPax = faixas[indice];
+
+  return {
+    ...base,
+    faixaPax,
+    padrao: faixaPax.categorias[0],
+    escolha,
+    categoria: escolha?.categoria || null,
+    // bagagem fez trocar o veículo padrão da faixa
+    subiuPorBagagem: !!(escolha && (escolha.k !== indice || escolha.ci > 0)),
+    noLimite: !!(escolha && temMalas && !cabeComFolga(escolha.categoria, 1)),
+    semMargem: !!(escolha && margem > 0 && !comMargem),
+    excedeBagagem: !escolha,
+    excedePax: false,
+  };
+};
+
 export const recomendarVeiculo = (config, grupo = {}) => {
+  // com regras da operação configuradas, elas mandam
+  if (config.faixas?.length) return recomendarPorFaixa(config, grupo);
   const { efetivo, especiais, consultar } = aplicarEspeciais(config, grupo);
   const { pax, grandes, bordo } = efetivo;
   const fator = config.fatorBordoPorGrande;
@@ -595,29 +790,110 @@ export const recomendarVeiculo = (config, grupo = {}) => {
     cabe(o, grandes, bordo + Math.ceil(n * Math.max(fator, 1)));
   const noLimite = (o) => temMalas && !cabeComFolga(o, 1);
 
-  const pelaQuantidade = opcoes.find(cabePax) || null;
-  const comMargem = opcoes.find(
-    (o) => cabePax(o) && cabeMalas(o) && cabeComFolga(o, margem),
-  );
-  const semMargem = opcoes.find((o) => cabePax(o) && cabeMalas(o)) || null;
-  const recomendada = comMargem || semMargem;
+  // ---------------------------------------------------------------
+  // Regra do operacional:
+  //  1) cada opção tem uma faixa "recomendado até N pax" (paxIdeal; se
+  //     vazio, a capacidade). As opções formam degraus por esse número;
+  //     o grupo vai para o MENOR degrau que o comporta com conforto.
+  //  2) dentro do degrau, quem não precisa de acessório (bagageiro,
+  //     carretinha) vem antes — o acessório só entra se a bagagem pedir.
+  //  3) bagagem: primeiro procura quem leva com a margem de segurança;
+  //     se ninguém deixa margem, aceita quem leva no limite (e avisa).
+  //  4) se nada no degrau leva a bagagem, sobe para o próximo degrau.
+  //  O resto que também comporta fica em "Também comportam".
+  // ---------------------------------------------------------------
+  const ideal = (o) => Math.min(o.paxIdeal || o.paxMax, o.paxMax);
+  const qtdPax = pax || 1;
+  const tamanho = (o) =>
+    o.paxMax * 1000 +
+    Math.max(0, ...o.combinacoes.map((c) => c.grandes * 10 + c.bordo));
+  const porTamanho = (a, b) =>
+    ideal(a) - ideal(b) ||
+    (a.acessorio ? 1 : 0) - (b.acessorio ? 1 : 0) ||
+    tamanho(a) - tamanho(b);
 
-  const alternativas = opcoes
-    .filter((o) => o !== recomendada && cabePax(o) && cabeMalas(o))
-    .slice(0, 3);
+  const degraus = [...new Set(opcoes.map(ideal))]
+    .filter((d) => d >= qtdPax)
+    .sort((a, b) => a - b);
+
+  const escolherNoDegrau = (exigeFolga) => {
+    for (const d of degraus) {
+      const doDegrau = opcoes
+        .filter((o) => ideal(o) === d && cabePax(o) && cabeMalas(o))
+        .filter((o) => !exigeFolga || cabeComFolga(o, margem));
+      if (!doDegrau.length) continue;
+      const semAcessorio = doDegrau.filter((o) => !o.acessorio);
+      return {
+        degrau: d,
+        lista: (semAcessorio.length ? semAcessorio : doDegrau).sort(porTamanho),
+      };
+    }
+    return null;
+  };
+
+  // nenhum degrau "recomenda" tanta gente, mas a capacidade comporta:
+  // mostra o menor que leva (marcado como apertado)
+  const pelaCapacidade = (exigeFolga) => {
+    const lista = opcoes
+      .filter(
+        (o) =>
+          cabePax(o) &&
+          cabeMalas(o) &&
+          (!exigeFolga || cabeComFolga(o, margem)),
+      )
+      .sort((a, b) => a.paxMax - b.paxMax || porTamanho(a, b));
+    return lista.length ? { degrau: null, lista: lista.slice(0, 1) } : null;
+  };
+
+  const escolhaComMargem =
+    escolherNoDegrau(true) || (!degraus.length && pelaCapacidade(true));
+  const escolha =
+    escolhaComMargem ||
+    escolherNoDegrau(false) ||
+    pelaCapacidade(true) ||
+    pelaCapacidade(false);
+  const listaRecomendada = escolha ? escolha.lista : [];
+  const recomendada = listaRecomendada[0] || null;
+
+  const item = (o) => ({
+    opcao: o,
+    noLimite: noLimite(o),
+    semMargem: margem > 0 && !cabeComFolga(o, margem),
+    // comporta pela capacidade, mas acima do "recomendado até"
+    apertado: qtdPax > ideal(o),
+  });
+
+  const recomendadas = listaRecomendada.slice(0, LIMITE_RECOMENDADAS).map(item);
+  const idsRecomendadas = new Set(recomendadas.map((r) => r.opcao.id));
+
+  // também comportam: primeiro os do mesmo tamanho (ex.: com acessório),
+  // depois os maiores; por último os que cabem só apertado
+  const atendem = opcoes.filter((o) => cabePax(o) && cabeMalas(o));
+  const maiores = atendem
+    .filter((o) => !idsRecomendadas.has(o.id))
+    .sort((a, b) => {
+      const apA = qtdPax > ideal(a) ? 1 : 0;
+      const apB = qtdPax > ideal(b) ? 1 : 0;
+      return apA - apB || porTamanho(a, b);
+    })
+    .map(item);
+
+  const alternativas = atendem.filter((o) => !idsRecomendadas.has(o.id));
+
+  // o que atenderia só pelo número de pessoas (sem olhar bagagem)
+  const pelaQuantidade =
+    opcoes
+      .filter((o) => cabePax(o) && degraus.length && ideal(o) === degraus[0])
+      .sort(porTamanho)[0] ||
+    opcoes.filter(cabePax).sort(porTamanho)[0] ||
+    null;
 
   const recomendadaNoLimite = !!(recomendada && noLimite(recomendada));
   const maisFolgada = recomendadaNoLimite
-    ? opcoes.find(
-        (o) =>
-          o !== recomendada &&
-          opcoes.indexOf(o) > opcoes.indexOf(recomendada) &&
-          cabePax(o) &&
-          !noLimite(o),
-      ) || null
+    ? maiores.find((m) => !m.noLimite && !m.apertado)?.opcao || null
     : null;
 
-  // a mesma família tem uma versão com/sem acessório?
+  // a mesma família tem uma versão com acessório? (para o selo "Sem …")
   const variacaoSemAcessorio =
     recomendada && !recomendada.acessorio
       ? opcoes.find(
@@ -628,8 +904,10 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const subiu = !!(
     recomendada &&
     pelaQuantidade &&
-    recomendada.id !== pelaQuantidade.id
+    (ideal(recomendada) !== ideal(pelaQuantidade) ||
+      (!!recomendada.acessorio && !pelaQuantidade.acessorio))
   );
+  const comMargem = escolhaComMargem ? recomendada : null;
 
   return {
     efetivo,
@@ -637,6 +915,8 @@ export const recomendarVeiculo = (config, grupo = {}) => {
     consultar,
     preenchido,
     recomendada,
+    recomendadas,
+    maiores,
     pelaQuantidade,
     alternativas,
     subiuPorBagagem: subiu,
@@ -672,27 +952,52 @@ export const descreverEspeciais = (especiais = []) =>
 export const montarTextoRecomendacao = (
   resultado,
   grupo,
-  nomesVeiculos = [],
+  nomesDaOpcao = () => [],
 ) => {
-  const { recomendada, especiais, consultar } = resultado;
-  if (!recomendada) return "";
+  if (resultado.modo === "faixas") {
+    if (!resultado.categoria) return "";
+    return [
+      `*Veículo recomendado: ${resultado.categoria.nome}*`,
+      `Grupo: ${descreverGrupo({
+        pax: grupo.pax || 0,
+        grandes: grupo.grandes || 0,
+        bordo: grupo.bordo || 0,
+      })}`,
+      resultado.especiais.length > 0 &&
+        `Itens especiais: ${descreverEspeciais(resultado.especiais)}`,
+      resultado.consultar.length > 0 &&
+        `Sujeito a confirmação do operacional: ${descreverEspeciais(resultado.consultar)}.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  const { recomendadas = [], especiais, consultar } = resultado;
+  if (!recomendadas.length) return "";
+  const linhaOpcao = ({ opcao }) => {
+    const nomes = nomesDaOpcao(opcao);
+    return [
+      `• *${opcao.nome}*`,
+      nomes.length ? ` (${nomes.join(", ")} ou similar)` : "",
+      opcao.acessorio ? ` — com ${opcao.acessorio.toLowerCase()}` : "",
+    ].join("");
+  };
   return [
-    "*Sugestão de veículo*",
+    recomendadas.length === 1
+      ? "*Veículo recomendado*"
+      : "*Veículos recomendados*",
     `Grupo: ${descreverGrupo({
       pax: grupo.pax || 0,
       grandes: grupo.grandes || 0,
       bordo: grupo.bordo || 0,
     })}`,
     especiais.length > 0 && `Itens especiais: ${descreverEspeciais(especiais)}`,
-    `Veículo: *${recomendada.nome}*${
-      nomesVeiculos.length ? ` (${nomesVeiculos.join(", ")} ou similar)` : ""
-    }`,
-    recomendada.acessorio && `Inclui ${recomendada.acessorio.toLowerCase()}.`,
-    recomendada.observacao,
+    "",
+    ...recomendadas.map(linhaOpcao),
+    consultar.length > 0 && "",
     consultar.length > 0 &&
       `Sujeito a confirmação do operacional: ${descreverEspeciais(consultar)}.`,
   ]
-    .filter(Boolean)
+    .filter((l) => l !== false && l !== null && l !== undefined)
     .join("\n");
 };
 

@@ -206,12 +206,53 @@
 }
 
 /* ---- faixa de dias ---- */
+/* faixa de dias: fica presa abaixo da barra do topo enquanto rola a
+   semana; cada dia é um atalho que desce até a tabela daquele dia */
 .escala-dias {
+  position: sticky;
+  top: var(--topbar-h, 56px);
+  z-index: 20;
   display: grid;
-  grid-template-columns: repeat(8, minmax(108px, 1fr));
+  grid-template-columns: minmax(196px, 1.45fr) repeat(7, minmax(108px, 1fr));
   gap: var(--space-2);
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-2);
   overflow-x: auto;
-  padding-bottom: 2px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.escala-dia-card {
+  scroll-margin-top: calc(var(--topbar-h, 56px) + 96px);
+  transition: box-shadow 0.25s, border-color 0.25s;
+}
+
+.escala-dia-card.is-destacado {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.escala-dia.is-em-vista {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--text);
+}
+
+.escala-dia.is-hoje .escala-dia__data {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.escala-dia__ir {
+  margin-left: auto;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.escala-dia:hover .escala-dia__ir,
+.escala-dia:focus-visible .escala-dia__ir {
+  opacity: 1;
 }
 
 .escala-dia {
@@ -238,6 +279,87 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
   color: var(--text);
+}
+
+/* ---- card "Semana inteira": diferente dos dias de propósito ---- */
+.escala-todos {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 10px;
+  padding: 10px 14px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--divider));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--text);
+}
+
+/* divisória entre "semana" e os dias */
+.escala-todos::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: -10px;
+  width: 1px;
+  background: var(--divider);
+}
+
+.escala-todos__icone {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.escala-todos__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.escala-todos__nome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.escala-todos__meta {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.escala-todos__dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  width: 112px;
+  margin-top: 2px;
+}
+
+.escala-todos__dias span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--divider);
+}
+
+.escala-todos__dias .is-ok {
+  background: var(--accent);
+}
+
+.escala-todos__dias .is-falta {
+  background: var(--alert);
 }
 
 .escala-dia__nome {
@@ -271,7 +393,7 @@
   background: var(--alert);
 }
 
-.escala-dia-card > .ui-table {
+.escala-dia-card>.ui-table {
   border: 0;
 }
 
@@ -452,7 +574,7 @@
   border-radius: var(--radius-lg);
 }
 
-.escala-regras-lista > div {
+.escala-regras-lista>div {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
@@ -460,7 +582,7 @@
   border-bottom: 1px solid var(--divider);
 }
 
-.escala-regras-lista > div:last-child {
+.escala-regras-lista>div:last-child {
   border-bottom: 0;
 }
 
@@ -489,4 +611,169 @@
   .escala-regras {
     width: 100%;
   }
+}
+
+.escala-dia .escala-dia__nome {
+  align-self: stretch;
+}
+
+/* por que o robô escolheu o guia (aparece depois de gerar a escala) */
+.escala-motivo {
+  display: block;
+  margin-top: 2px;
+  color: var(--accent-text);
+}
+
+/* ---------- "Por guia": guia escolhido no card ---------- */
+.escala-guia.is-clicavel {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.escala-guia.is-clicavel:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--divider));
+}
+
+.escala-guia.is-clicavel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.escala-guia.is-foco {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.escala-foco-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.escala-foco-cab .escala-subtitulo {
+  margin: 0;
+}
+
+.escala-foco-aviso {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--divider));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.escala-foco-aviso b {
+  color: var(--text);
+}
+
+.escala-foco-aviso button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* dias do guia na faixa: contornados; os outros ficam apagados */
+.escala-dia.is-do-guia {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.escala-dia.is-fora-do-guia {
+  opacity: 0.45;
+}
+
+.escala-dia-card.is-do-guia {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--divider));
+}
+
+/* linhas do guia escolhido nas tabelas */
+.escala-linha-foco {
+  position: relative;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.escala-linha-foco::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.escala-todos.is-guia {
+  border-color: var(--accent);
+}
+
+.escala-todos__limpar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.escala-todos__limpar:hover {
+  color: var(--alert);
+}
+
+.escala-todos.is-guia .escala-todos__texto {
+  flex: 1;
+  overflow: hidden;
+}
+
+.escala-todos.is-guia .escala-todos__nome,
+.escala-todos.is-guia .escala-todos__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.escala-relatorio-nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 var(--space-5) var(--space-3);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.escala-relatorio-nota>svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--warning);
+}
+
+/* ocultar serviço: discreto, aparece mais forte ao passar o mouse na linha */
+.escala-ocultar {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.ui-table__row:hover .escala-ocultar,
+.escala-ocultar:focus-visible {
+  opacity: 1;
 }

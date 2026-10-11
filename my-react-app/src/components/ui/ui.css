@@ -292,7 +292,7 @@
   border-bottom: 1px solid var(--divider);
 }
 
-.ui-card--padded > .ui-card__head {
+.ui-card--padded>.ui-card__head {
   margin: calc(var(--space-4) * -1) calc(var(--space-5) * -1) var(--space-4);
 }
 
@@ -362,8 +362,8 @@
   border-bottom: 1px solid var(--divider);
 }
 
-.ui-table__inner > .ui-table__row:last-child,
-.ui-table__inner > .ui-table__expansion:last-child {
+.ui-table__inner>.ui-table__row:last-child,
+.ui-table__inner>.ui-table__expansion:last-child {
   border-bottom: 0;
 }
 
@@ -858,7 +858,7 @@
 }
 
 /* tabela direto dentro de um card: sem borda dupla */
-.ui-card > .ui-table {
+.ui-card>.ui-table {
   border: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
@@ -875,7 +875,144 @@
 }
 
 @media (max-width: 640px) {
-  .ui-filters > .ui-field {
+  .ui-filters>.ui-field {
     flex: 1 1 100%;
+  }
+}
+
+/* ---------- etiqueta de idioma (bandeira + sigla, cor por idioma) ---------- */
+.lang-tag {
+  --idioma-cor: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px 0 4px;
+  border: 1px solid color-mix(in srgb, var(--idioma-cor) 45%, var(--divider));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--idioma-cor) 12%, var(--surface));
+  color: color-mix(in srgb, var(--idioma-cor) 70%, var(--text));
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.lang-tag b {
+  margin-left: 1px;
+  padding-left: 5px;
+  border-left: 1px solid color-mix(in srgb, var(--idioma-cor) 35%, transparent);
+  font-weight: 600;
+}
+
+.lang-bandeira {
+  flex-shrink: 0;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.lang-tag--pt {
+  --idioma-cor: #1f9a4b;
+}
+
+.lang-tag--en {
+  --idioma-cor: #2f6fd6;
+}
+
+.lang-tag--es {
+  --idioma-cor: #e0751b;
+}
+
+.lang-tag--fr {
+  --idioma-cor: #6a5be0;
+}
+
+.lang-tag--it {
+  --idioma-cor: #16a34a;
+}
+
+.lang-tag--de {
+  --idioma-cor: #b8860b;
+}
+
+.lang-tag--jp {
+  --idioma-cor: #db2777;
+}
+
+.lang-tag--cn {
+  --idioma-cor: #dc2626;
+}
+
+/* ---------- esqueleto de carregamento (barra com brilho passando) ---------- */
+.ui-sk {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--text) 7%, transparent) 0%,
+      color-mix(in srgb, var(--text) 13%, transparent) 50%,
+      color-mix(in srgb, var(--text) 7%, transparent) 100%);
+  background-size: 200% 100%;
+  animation: ui-sk-brilho 1.4s ease-in-out infinite;
+}
+
+.ui-sk--fina {
+  height: 9px;
+}
+
+.ui-sk--valor {
+  display: inline-block;
+  width: 56px;
+  height: 26px;
+  border-radius: 8px;
+  vertical-align: middle;
+}
+
+.ui-sk--pilula {
+  width: 78px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.ui-sk--botao {
+  width: 110px;
+  height: 28px;
+  border-radius: 8px;
+  justify-self: end;
+}
+
+.ui-sk--ponto {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.ui-sk--barra {
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* no cartão destacado (fundo de cor) o esqueleto fica claro */
+.ui-kpi.is-highlight .ui-sk,
+.is-highlight .ui-sk {
+  background: linear-gradient(90deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .32), rgba(255, 255, 255, .18));
+  background-size: 200% 100%;
+}
+
+@keyframes ui-sk-brilho {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-sk {
+    animation: none;
   }
 }

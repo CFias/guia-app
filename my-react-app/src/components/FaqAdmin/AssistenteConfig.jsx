@@ -14,6 +14,7 @@ import {
   TIPOS_VEICULO,
   normalizarConfigAssistente,
   resumoCapacidade,
+  FAIXAS_PADRAO,
 } from "../FaqComercial/catalogo";
 
 /* Regras do Assistente de veículo (operacional).
@@ -29,12 +30,191 @@ const OPCAO_VAZIA = () => ({
   nome: "",
   grupo: "",
   paxMax: "",
+  paxIdeal: "",
   acessorio: "",
   combinacoes: [{ grandes: "", bordo: "" }],
   veiculosIds: [],
   observacao: "",
   ativo: true,
 });
+
+// faixas para edição: cada veículo da faixa com pelo menos uma linha de malas
+const rascunhoFaixas = (faixas = []) =>
+  faixas.map((f) => ({
+    ...f,
+    categorias: f.categorias.map((c) => ({
+      ...c,
+      combinacoes: c.combinacoes.length
+        ? c.combinacoes.map((x) => ({ ...x }))
+        : [{ grandes: "", bordo: "" }],
+    })),
+  }));
+
+const FAIXA_VAZIA = (de = "") => ({
+  id: `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+  de,
+  ate: "",
+  observacao: "",
+  categorias: [{ nome: "", combinacoes: [{ grandes: "", bordo: "" }] }],
+});
+
+// Editor das regras por passageiros (escopos da operação)
+const EditorFaixas = ({ faixas, onChange }) => {
+  const alterarFaixa = (i, campo, valor) =>
+    onChange(faixas.map((f, k) => (k === i ? { ...f, [campo]: valor } : f)));
+  const alterarCategoria = (i, ci, mudanca) =>
+    onChange(
+      faixas.map((f, k) =>
+        k === i
+          ? { ...f, categorias: f.categorias.map((c, j) => (j === ci ? { ...c, ...mudanca } : c)) }
+          : f,
+      ),
+    );
+  const alterarMala = (i, ci, campo, valor) => {
+    const c = faixas[i].categorias[ci];
+    const [primeira, ...resto] = c.combinacoes;
+    alterarCategoria(i, ci, { combinacoes: [{ ...primeira, [campo]: valor }, ...resto] });
+  };
+  const adicionarCategoria = (i) =>
+    onChange(
+      faixas.map((f, k) =>
+        k === i
+          ? { ...f, categorias: [...f.categorias, { nome: "", combinacoes: [{ grandes: "", bordo: "" }] }] }
+          : f,
+      ),
+    );
+  const removerCategoria = (i, ci) =>
+    onChange(
+      faixas.map((f, k) =>
+        k === i ? { ...f, categorias: f.categorias.filter((_, j) => j !== ci) } : f,
+      ),
+    );
+  const adicionarFaixa = () => {
+    const ultima = faixas[faixas.length - 1];
+    onChange([...faixas, FAIXA_VAZIA(ultima?.ate ? Number(ultima.ate) + 1 : 1)]);
+  };
+
+  return (
+    <div className="faixas-editor">
+      {faixas.map((f, i) => (
+        <div key={f.id} className="faixa-linha">
+          <div className="faixa-pax">
+            <label>
+              De
+              <input
+                type="number"
+                min={1}
+                className="faq-admin-input"
+                value={f.de}
+                onChange={(e) => alterarFaixa(i, "de", e.target.value)}
+              />
+            </label>
+            <label>
+              até
+              <input
+                type="number"
+                min={1}
+                className="faq-admin-input"
+                value={f.ate}
+                onChange={(e) => alterarFaixa(i, "ate", e.target.value)}
+              />
+            </label>
+            <span>passageiros</span>
+          </div>
+
+          <ol className="faixa-categorias">
+            {f.categorias.map((c, ci) => (
+              <li key={ci}>
+                <span className="faixa-ordem">{ci === 0 ? "Padrão" : "Se a bagagem não couber"}</span>
+                <input
+                  type="text"
+                  className="faq-admin-input faixa-nome"
+                  placeholder={ci === 0 ? "Ex.: Van sem carretinha" : "Ex.: Van com carretinha"}
+                  value={c.nome}
+                  onChange={(e) => alterarCategoria(i, ci, { nome: e.target.value })}
+                  aria-label="Veículo"
+                />
+                <label className="faixa-mala">
+                  <input
+                    type="number"
+                    min={0}
+                    className="faq-admin-input"
+                    value={c.combinacoes[0]?.grandes ?? ""}
+                    onChange={(e) => alterarMala(i, ci, "grandes", e.target.value)}
+                  />
+                  de 23 kg
+                </label>
+                <label className="faixa-mala">
+                  +
+                  <input
+                    type="number"
+                    min={0}
+                    className="faq-admin-input"
+                    value={c.combinacoes[0]?.bordo ?? ""}
+                    onChange={(e) => alterarMala(i, ci, "bordo", e.target.value)}
+                  />
+                  de 10 kg
+                </label>
+                {f.categorias.length > 1 && (
+                  <button
+                    type="button"
+                    className="faq-admin-icon-btn danger"
+                    onClick={() => removerCategoria(i, ci)}
+                    title="Remover"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ol>
+
+          <div className="faixa-rodape">
+            <button type="button" className="assist-config-mais" onClick={() => adicionarCategoria(i)}>
+              <Icon name="plus" size={14} />
+              opção se a bagagem não couber
+            </button>
+            <input
+              type="text"
+              className="faq-admin-input faixa-obs"
+              placeholder="Observação para o comercial (opcional)"
+              value={f.observacao}
+              onChange={(e) => alterarFaixa(i, "observacao", e.target.value)}
+            />
+            <button
+              type="button"
+              className="faq-admin-icon-btn danger"
+              onClick={() => onChange(faixas.filter((_, k) => k !== i))}
+              title="Remover faixa"
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
+        </div>
+      ))}
+      <button type="button" className="assist-config-mais" onClick={adicionarFaixa}>
+        <Icon name="plus" size={14} />
+        adicionar faixa
+      </button>
+    </div>
+  );
+};
+
+// faixas com problema (sobreposição, campos faltando) — para avisar ao salvar
+const problemaNasFaixas = (faixas = []) => {
+  const usadas = [];
+  for (let i = 0; i < faixas.length; i += 1) {
+    const f = faixas[i];
+    const de = Number(f.de);
+    const ate = Number(f.ate);
+    if (!(de > 0) || !(ate >= de)) return `Faixa ${i + 1}: confira o "de" e o "até".`;
+    if (!f.categorias.some((c) => String(c.nome).trim())) return `Faixa ${i + 1}: informe o veículo.`;
+    const choque = usadas.find(([a, b]) => de <= b && ate >= a);
+    if (choque) return `Faixa ${i + 1} (${de}–${ate}) cruza com a faixa ${choque[0]}–${choque[1]}.`;
+    usadas.push([de, ate]);
+  }
+  return null;
+};
 
 const rascunhoDe = (bruto) => {
   const base = bruto ? normalizarConfigAssistente(bruto) : null;
@@ -49,6 +229,7 @@ const rascunhoDe = (bruto) => {
       ...o,
       combinacoes: o.combinacoes.length ? o.combinacoes : [{ grandes: "", bordo: "" }],
     })),
+    faixas: rascunhoFaixas(base ? base.faixas : FAIXAS_PADRAO),
   };
 };
 
@@ -205,6 +386,11 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
   };
 
   const salvar = async () => {
+    const erroFaixas = problemaNasFaixas(rascunho.faixas);
+    if (erroFaixas) {
+      setAviso({ tipo: "erro", texto: erroFaixas });
+      return;
+    }
     const semNome = rascunho.opcoes.findIndex(
       (o) => !String(o.nome).trim() || !(Number(o.paxMax) > 0),
     );
@@ -266,6 +452,49 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
       <div className="faq-admin-card faq-admin-card-full">
         <div className="faq-admin-card-header">
           <div className="faq-admin-card-title-row">
+            <h3>Regras da operação por passageiros</h3>
+            <div className="assist-config-topo-acoes">
+              <button
+                type="button"
+                className="faq-admin-btn-secondary"
+                onClick={() => alterarGeral("faixas", rascunhoFaixas(FAIXAS_PADRAO))}
+              >
+                <Icon name="undo" size={16} />
+                Regras padrão
+              </button>
+              {rascunho.faixas.length > 0 && (
+                <button
+                  type="button"
+                  className="faq-admin-btn-secondary"
+                  onClick={() => alterarGeral("faixas", [])}
+                  title="Volta a recomendar pela lista de opções de veículo"
+                >
+                  Desligar regras
+                </button>
+              )}
+            </div>
+          </div>
+          <p>
+            É o que o comercial vê como resposta: para cada faixa de passageiros, o
+            veículo <b>padrão</b> e, em ordem, para qual trocar <b>se a bagagem não
+            couber</b> (ex.: Spin → Spin com bagageiro). Se nada da faixa levar a
+            bagagem, o assistente sobe para a faixa seguinte. As malas são o máximo
+            que cada um leva.
+          </p>
+        </div>
+        {rascunho.faixas.length === 0 ? (
+          <div className="faq-admin-vazio">
+            Regras desligadas — o assistente recomenda pela lista de opções de veículo
+            abaixo. Clique em <b>Regras padrão</b> para ligar.
+          </div>
+        ) : (
+          <EditorFaixas faixas={rascunho.faixas} onChange={(v) => alterarGeral("faixas", v)} />
+        )}
+      </div>
+
+      <div className="faq-admin-card faq-admin-card-full">
+        <div className="faq-admin-card-header">
+          <div className="faq-admin-card-title-row">
             <h3>Opções de veículo</h3>
             <div className="assist-config-topo-acoes">
               <button type="button" className="faq-admin-btn-secondary" onClick={carregarExemplo}>
@@ -275,6 +504,12 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
             </div>
           </div>
           <p>
+            {rascunho.faixas.length > 0 && (
+              <>
+                <b>Com as regras por passageiros ligadas</b>, estas opções servem
+                para a capacidade mostrada nos cards dos veículos.{" "}
+              </>
+            )}
             As capacidades nascem no cadastro de cada veículo (aba Itens) e
             aparecem aqui. Mantenha a lista da <b>menor para a maior</b>: o
             assistente recomenda a primeira que comporta os passageiros e a
@@ -334,6 +569,21 @@ const AssistenteConfig = ({ configSalva, veiculos = [], onSalvo }) => {
                       className="faq-admin-input"
                       value={opcao.paxMax}
                       onChange={(e) => alterarOpcao(i, "paxMax", e.target.value)}
+                    />
+                  </div>
+
+                  <div
+                    className="faq-admin-field assist-config-num"
+                    title="Até quantos passageiros este é o veículo recomendado (vazio = todas as vagas)"
+                  >
+                    <label>Recomendado até</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="faq-admin-input"
+                      placeholder={opcao.paxMax ? String(opcao.paxMax) : "—"}
+                      value={opcao.paxIdeal || ""}
+                      onChange={(e) => alterarOpcao(i, "paxIdeal", e.target.value)}
                     />
                   </div>
 

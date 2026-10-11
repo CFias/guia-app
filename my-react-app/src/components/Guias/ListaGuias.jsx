@@ -10,6 +10,7 @@ import {
   EmptyState,
   Field,
   FilterBar,
+  IdiomaTag,
   PageHeader,
   StatusDot,
   Table,
@@ -175,9 +176,7 @@ const ListaGuias = () => {
                 <span className="tabular">{guia.whatsapp}</span>
                 <span className="guias-chips">
                   {(guia.idiomas || []).map((idioma) => (
-                    <span key={idioma} className="ui-chip">
-                      {idioma}
-                    </span>
+                    <IdiomaTag key={idioma} idioma={idioma} />
                   ))}
                 </span>
                 <span

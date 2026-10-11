@@ -30,7 +30,7 @@ const KpiTiles = ({ items = [], highlightFirst = true, className = "" }) => {
             title={item.title}
           >
             <span className="ui-kpi__value tabular">
-              {item.loading ? "…" : item.value}
+              {item.loading ? <span className="ui-sk ui-sk--valor" aria-hidden="true" /> : item.value}
             </span>
             <span className="ui-kpi__label">
               {item.icon && <Icon name={item.icon} size={14} />}

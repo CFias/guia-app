@@ -422,15 +422,17 @@ const FaqComercial = () => {
   // Selo de cada veículo na frota conforme o grupo do assistente:
   // "recomendado" | "comporta" | "nao" | null (sem dado para afirmar).
   const seloVeiculo = useMemo(() => {
-    const { preenchido, recomendada, alternativas } = resultadoAssistente;
+    const { preenchido, recomendadas, alternativas } = resultadoAssistente;
     const vinculados = new Set(
       configAssistente.opcoes.flatMap((o) => o.veiculosIds),
     );
-    const daRecomendada = new Set(recomendada?.veiculosIds || []);
+    const daRecomendada = new Set(recomendadas.flatMap((r) => r.opcao.veiculosIds));
     const dasAlternativas = new Set(alternativas.flatMap((o) => o.veiculosIds));
 
     return (item) => {
       if (!preenchido) return null;
+      // com as regras por faixa a resposta é a categoria, não um carro
+      if (resultadoAssistente.modo === "faixas") return null;
       if (daRecomendada.has(item.id)) return "recomendado";
       if (dasAlternativas.has(item.id)) return "comporta";
       if (vinculados.has(item.id)) return "nao";
