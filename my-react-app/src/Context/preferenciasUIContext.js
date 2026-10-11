@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 /* Preferências de interface POR PESSOA (salvas no navegador, por uid):
    - accent: cor de destaque escolhida em Configurações → Aparência
    - sidebarRecolhida: menu lateral expandido (256px) ou só ícones (72px)
+   - escalaFonte: tamanho do texto (0,9 a 1,25 — vira --escala-fonte no <html>)
    O tema (Claro / Escuro / Escuro profundo) continua no ThemeContext. */
 
 export const PALETA_ACCENT = [
@@ -17,11 +18,22 @@ export const PALETA_ACCENT = [
 
 export const ACCENT_PADRAO = "#167a8a";
 
+// Tamanho do texto em todo o sistema (multiplica todos os tamanhos de fonte)
+export const TAMANHOS_FONTE = [
+  { valor: 0.9, nome: "Pequeno" },
+  { valor: 1, nome: "Padrão" },
+  { valor: 1.12, nome: "Grande" },
+  { valor: 1.25, nome: "Muito grande" },
+];
+export const FONTE_PADRAO = 1;
+
 export const PreferenciasUIContext = createContext({
   accent: ACCENT_PADRAO,
-  setAccent: () => { },
+  setAccent: () => {},
   sidebarRecolhida: false,
-  setSidebarRecolhida: () => { },
+  setSidebarRecolhida: () => {},
+  escalaFonte: 1,
+  setEscalaFonte: () => {},
 });
 
 export const usePreferenciasUI = () => useContext(PreferenciasUIContext);
@@ -34,6 +46,7 @@ export const corSobreAccent = (hex = ACCENT_PADRAO) => {
     const c = v / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   });
-  const luminancia = 0.2126 * canais[0] + 0.7152 * canais[1] + 0.0722 * canais[2];
+  const luminancia =
+    0.2126 * canais[0] + 0.7152 * canais[1] + 0.0722 * canais[2];
   return luminancia > 0.28 ? "#111110" : "#ffffff";
 };

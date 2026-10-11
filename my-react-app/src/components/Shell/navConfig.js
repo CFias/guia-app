@@ -132,7 +132,7 @@ export const ITEM_CONFIGURACOES = {
   to: "/configuracoes",
   label: "Configurações",
   icon: "settings",
-  area: "painel",
+  area: "configuracoes",
 };
 
 /* Telas que existem mas não aparecem no menu (como antes): só para o breadcrumb */

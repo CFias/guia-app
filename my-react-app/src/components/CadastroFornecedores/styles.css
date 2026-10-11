@@ -15,7 +15,7 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 8px;
-    font-size: 20px;
+    font-size: calc(20px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
     letter-spacing: -0.03em;
@@ -23,7 +23,7 @@
 
 .cadastro-fornecedor-subtitle {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -40,8 +40,8 @@
 }
 
 .cadastro-fornecedor-card {
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 24px;
     padding: 24px;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
@@ -67,7 +67,7 @@
 
 .cadastro-fornecedor-card-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
     letter-spacing: -0.02em;
@@ -75,7 +75,7 @@
 
 .cadastro-fornecedor-card-header p {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -86,12 +86,12 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 500;
     letter-spacing: 0.02em;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .cadastro-fornecedor-form {
@@ -117,23 +117,23 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     font-weight: 500;
 }
 
 .cadastro-fornecedor-field label svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .cadastro-fornecedor-field input,
 .cadastro-fornecedor-field textarea {
     width: 100%;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     color: var(--text);
     border-radius: 16px;
     padding: 14px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     outline: none;
     transition: all 0.25s ease;
     box-sizing: border-box;
@@ -150,14 +150,14 @@
 
 .cadastro-fornecedor-field input:hover,
 .cadastro-fornecedor-field textarea:hover {
-    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-fornecedor-field input:focus,
 .cadastro-fornecedor-field textarea:focus {
-    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    border-color: color-mix(in srgb, var(--accent-text) 42%, var(--accent) 58%);
     box-shadow:
-        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent 90%),
         inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -175,12 +175,12 @@
 .cadastro-fornecedor-dropdown-header {
     width: 100%;
     min-height: 50px;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     color: var(--text);
     border-radius: 16px;
     padding: 14px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -191,7 +191,7 @@
 }
 
 .cadastro-fornecedor-dropdown-header:hover {
-    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-fornecedor-dropdown-arrow {
@@ -203,8 +203,8 @@
     top: calc(100% + 8px);
     left: 0;
     right: 0;
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 16px;
     overflow: hidden;
     z-index: 20;
@@ -215,14 +215,14 @@
 
 .cadastro-fornecedor-dropdown-item {
     padding: 12px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: var(--text);
     cursor: pointer;
     transition: background 0.2s ease;
 }
 
 .cadastro-fornecedor-dropdown-item:hover {
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
 }
 
 .cadastro-fornecedor-dropdown-item.empty {
@@ -243,22 +243,22 @@
     gap: 8px;
     padding: 9px 12px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-    color: var(--text-dist);
-    font-size: 10px;
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+    color: var(--accent-text);
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
 }
 
 .cadastro-fornecedor-tag-vehicle {
-    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
     color: var(--text);
 }
 
 .cadastro-fornecedor-tag span {
     cursor: pointer;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     line-height: 1;
     opacity: 0.85;
 }
@@ -292,8 +292,8 @@
     width: 55px;
     height: 25px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--border) 76%, var(--bg) 24%);
-    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent 10%);
+    background: color-mix(in srgb, var(--divider) 76%, var(--bg) 24%);
+    border: 1px solid color-mix(in srgb, var(--divider) 90%, transparent 10%);
     display: flex;
     align-items: center;
     padding: 4px;
@@ -310,8 +310,8 @@
 }
 
 .cadastro-fornecedor-switch.active .cadastro-fornecedor-switch-track {
-    background: color-mix(in srgb, var(--text-dist) 70%, var(--primary) 30%);
-    border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--accent-text) 70%, var(--accent) 30%);
+    border-color: color-mix(in srgb, var(--accent-text) 35%, transparent 65%);
 }
 
 .cadastro-fornecedor-switch.active .cadastro-fornecedor-switch-thumb {
@@ -322,13 +322,13 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
 }
 
 .cadastro-fornecedor-switch-label svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .cadastro-fornecedor-actions {
@@ -344,7 +344,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 600;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -355,8 +355,8 @@
 }
 
 .cadastro-fornecedor-btn-primary {
-    background: var(--btn-main);
-    color: var(--text-btn);
+    background: var(--accent);
+    color: var(--on-accent);
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
@@ -366,13 +366,13 @@
 }
 
 .cadastro-fornecedor-btn-secondary {
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
     color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
 }
 
 .cadastro-fornecedor-btn-secondary:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--primary) 25%, var(--border) 75%);
+    border-color: color-mix(in srgb, var(--accent) 25%, var(--divider) 75%);
 }
 
 .cadastro-fornecedor-btn-secondary.warning {
@@ -396,22 +396,22 @@
 }
 
 .cadastro-fornecedor-preview-item {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     border-radius: 18px;
     padding: 16px;
 }
 
 .cadastro-fornecedor-preview-label {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 65%, transparent 35%);
     margin-bottom: 6px;
 }
 
 .cadastro-fornecedor-preview-value {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
 }
@@ -427,14 +427,14 @@
     gap: 10px;
     min-height: 48px;
     border-radius: 16px;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     padding: 0 14px;
     box-sizing: border-box;
 }
 
 .cadastro-fornecedor-search svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
     opacity: 0.85;
 }
 
@@ -445,7 +445,7 @@
     color: var(--text);
     width: 100%;
     height: 100%;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
 }
 
 .cadastro-fornecedor-search input::placeholder {
@@ -459,8 +459,8 @@
 }
 
 .cadastro-fornecedor-item {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     border-radius: 18px;
     padding: 16px;
 }
@@ -476,12 +476,12 @@
 .cadastro-fornecedor-item-top strong {
     display: block;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     margin-bottom: 4px;
 }
 
 .cadastro-fornecedor-item-top span {
-    font-size: 11px;
+    font-size: calc(11px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
 
@@ -498,7 +498,7 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
 }
 
@@ -515,9 +515,9 @@
 }
 
 .cadastro-fornecedor-mini-badge {
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .cadastro-fornecedor-item-veiculos {
@@ -532,15 +532,15 @@
     align-items: center;
     padding: 8px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
-    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
     color: var(--text);
 }
 
 .cadastro-fornecedor-empty-mini {
-    font-size: 11px;
+    font-size: calc(11px * var(--escala-fonte, 1));
     opacity: 0.75;
 }
 
@@ -551,12 +551,12 @@
 }
 
 .cadastro-fornecedor-empty {
-    border: 1px dashed color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px dashed color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     border-radius: 18px;
     padding: 18px;
     text-align: center;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
 
@@ -613,11 +613,11 @@
     }
 
     .cadastro-fornecedor-title {
-        font-size: 25px;
+        font-size: calc(25px * var(--escala-fonte, 1));
     }
 
     .cadastro-fornecedor-subtitle {
-        font-size: 13px;
+        font-size: calc(13px * var(--escala-fonte, 1));
     }
 
     .cadastro-fornecedor-card {
@@ -626,7 +626,7 @@
     }
 
     .cadastro-fornecedor-card-header h3 {
-        font-size: 19px;
+        font-size: calc(19px * var(--escala-fonte, 1));
     }
 
     .cadastro-fornecedor-actions,
@@ -700,7 +700,7 @@
 
 .cadastro-fornecedor-dropdown-arrow {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     opacity: 0.8;
     transition: transform 0.2s ease;
 }
@@ -718,7 +718,7 @@
     overflow-y: auto;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: var(--input);
+    background: var(--raised);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
     z-index: 9999;
     padding: 8px 0;
@@ -729,7 +729,7 @@
     color: var(--text);
     cursor: pointer;
     transition: background 0.18s ease;
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     line-height: 1.25;
 }
 

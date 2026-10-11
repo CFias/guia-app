@@ -250,7 +250,7 @@ body:is(.dark, .dark-pro) {
 }
 
 .painel-op-forn__rotulo {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -258,7 +258,7 @@ body:is(.dark, .dark-pro) {
 }
 
 .painel-op-forn__nome {
-  font-size: 17px;
+  font-size: calc(17px * var(--escala-fonte, 1));
   font-weight: 700;
   color: var(--text);
 }

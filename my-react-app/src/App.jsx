@@ -71,12 +71,16 @@ function App() {
             />
             <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
             <Route path="conferencia" element={<RoboConferenteVoos />} />
-            <Route path="configuracoes" element={<Configuracoes />} />
             <Route path="faqadmin" element={<FaqAdmin />} />
             <Route path="usuarios" element={<Cadastros aba="usuarios" />} />
             {/* rotas futuras */}
             <Route path="guias" element={<ListaGuias />} />
             <Route path="passeios" element={<ListaPasseios />} />
+          </Route>
+
+          {/* ---- Configurações (comercial vê só a aba Tema) ---- */}
+          <Route element={<RequireRole roles={ACESSO.configuracoes} />}>
+            <Route path="configuracoes" element={<Configuracoes />} />
           </Route>
 
           {/* ---- Sobre a FiaSystem (todos que usam o menu lateral) ---- */}

@@ -81,7 +81,7 @@
 }
 
 .sidebar-brand strong {
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;

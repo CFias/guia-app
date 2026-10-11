@@ -89,7 +89,7 @@ canvas {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: calc(16px * var(--escala-fonte, 1)) !important;
   }
 
   /* barras de filtros/ações quebram linha em vez de estourar */

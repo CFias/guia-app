@@ -32,6 +32,7 @@ import {
   ehConfigAssistente,
   textoPrevia,
   obterFichaEmbarcacao,
+  obterFichaEquipamento,
   obterFichaLocal,
   normalizarConfigAssistente,
   ASSISTENTE_DOC_ID,
@@ -61,6 +62,7 @@ const PaidRounded = iconeMui("coins");
 const AccessTimeRounded = iconeMui("clock");
 const HotelRounded = iconeMui("building");
 const ChildCareRounded = iconeMui("baby");
+const CadeirinhaRounded = iconeMui("cadeirinha");
 const GavelRounded = iconeMui("scale");
 const HelpRounded = iconeMui("help");
 const ShipRounded = iconeMui("ship");
@@ -222,6 +224,12 @@ const obterIconeCategoria = (categoria = "") => {
     return AccessTimeRounded;
   if (texto.includes("hotel") || texto.includes("hospedagem"))
     return HotelRounded;
+  if (
+    texto.includes("equipament") ||
+    texto.includes("cadeir") ||
+    texto.includes("acessori")
+  )
+    return CadeirinhaRounded;
   if (texto.includes("crianc") || texto.includes("infant"))
     return ChildCareRounded;
   if (
@@ -240,6 +248,7 @@ const ROTULO_FORMATO = {
   [FORMATOS.TABELA]: "Valores",
   [FORMATOS.EMBARCACAO]: "Embarcação",
   [FORMATOS.LOCAL]: "Local",
+  [FORMATOS.EQUIPAMENTO]: "Equipamento",
 };
 
 const ICONE_FORMATO = {
@@ -248,6 +257,7 @@ const ICONE_FORMATO = {
   [FORMATOS.TABELA]: "tag",
   [FORMATOS.EMBARCACAO]: "ship",
   [FORMATOS.LOCAL]: "mapPin",
+  [FORMATOS.EQUIPAMENTO]: "cadeirinha",
 };
 
 const tituloDoItem = (item) =>
@@ -294,6 +304,19 @@ const resumoDoItem = (item, config) => {
     ]
       .filter(Boolean)
       .join(" · ");
+  }
+  if (formato === FORMATOS.EQUIPAMENTO) {
+    const f = obterFichaEquipamento(item);
+    const fotos = obterImagensVeiculo(item).length;
+    return [
+      f.tipoEquipamento,
+      f.faixaUso,
+      f.valor,
+      f.quantidade && `${f.quantidade} disponíve${f.quantidade === 1 ? "l" : "is"}`,
+      fotos && `${fotos} foto${fotos === 1 ? "" : "s"}`,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Equipamento sem detalhes";
   }
   if (formato === FORMATOS.TABELA) {
     const linhas = obterTabelaPrecos(item);
@@ -406,6 +429,7 @@ const FaqAdmin = () => {
       [FORMATOS.TABELA]: 0,
       [FORMATOS.EMBARCACAO]: 0,
       [FORMATOS.LOCAL]: 0,
+      [FORMATOS.EQUIPAMENTO]: 0,
       ativos: 0,
       inativos: 0,
       destaque: 0,
@@ -456,6 +480,8 @@ const FaqAdmin = () => {
           obterFichaEmbarcacao(item).tipoEmbarcacao,
           obterFichaLocal(item).tipoLocal,
           obterFichaLocal(item).bairro,
+          obterFichaEquipamento(item).tipoEquipamento,
+          obterFichaEquipamento(item).faixaUso,
           ...(Array.isArray(item.palavrasChave) ? item.palavrasChave : []),
         ]
           .filter(Boolean)
@@ -772,6 +798,13 @@ const FaqAdmin = () => {
           linkMapa: formulario.linkMapa.trim(),
           site: formulario.site.trim(),
         },
+        fichaEquipamento: {
+          tipoEquipamento: formulario.tipoEquipamento.trim(),
+          faixaUso: formulario.faixaUso.trim(),
+          quantidade: numeroDoCampo(formulario.quantidadeEquipamento),
+          valor: formulario.valorEquipamento.trim(),
+          antecedencia: formulario.antecedencia.trim(),
+        },
         atualizadoEm: Timestamp.now(),
       };
 
@@ -961,6 +994,7 @@ const FaqAdmin = () => {
                 { value: FORMATOS.VEICULO, label: "Veículos", icon: "car", count: contagem[FORMATOS.VEICULO] },
                 { value: FORMATOS.EMBARCACAO, label: "Embarcações", icon: "ship", count: contagem[FORMATOS.EMBARCACAO] },
                 { value: FORMATOS.LOCAL, label: "Locais", icon: "mapPin", count: contagem[FORMATOS.LOCAL] },
+                { value: FORMATOS.EQUIPAMENTO, label: "Equipamentos", icon: "cadeirinha", count: contagem[FORMATOS.EQUIPAMENTO] },
                 { value: FORMATOS.TABELA, label: "Valores", icon: "tag", count: contagem[FORMATOS.TABELA] },
               ]}
               value={filtroFormato}
@@ -1018,6 +1052,9 @@ const FaqAdmin = () => {
                 <Button icon="mapPin" onClick={() => novoItem(FORMATOS.LOCAL)}>
                   Local
                 </Button>
+                <Button icon="cadeirinha" onClick={() => novoItem(FORMATOS.EQUIPAMENTO)}>
+                  Equipamento
+                </Button>
               </div>
             </div>
           ) : itensFiltrados.length === 0 ? (
@@ -1073,6 +1110,7 @@ const FaqAdmin = () => {
             { chave: "veiculo", rotulo: "Veículos", icone: "car" },
             { chave: "embarcacao", rotulo: "Embarcações", icone: "ship" },
             { chave: "local", rotulo: "Locais", icone: "mapPin" },
+            { chave: "equipamento", rotulo: "Equipamentos e acessórios", icone: "cadeirinha" },
             { chave: "tabela", rotulo: "Tabelas de valores", icone: "tag" },
             { chave: "resposta", rotulo: "Respostas prontas", icone: "message" },
           ].map((s) => (
@@ -1138,7 +1176,8 @@ const LinhaItem = ({ item, config, removendo, onEditar, onDuplicar, onRemover, o
   const capa =
     (formato === FORMATOS.VEICULO && !item.veiculoForaCatalogo) ||
     formato === FORMATOS.EMBARCACAO ||
-    formato === FORMATOS.LOCAL
+    formato === FORMATOS.LOCAL ||
+    formato === FORMATOS.EQUIPAMENTO
       ? obterImagensVeiculo(item)[0]
       : null;
   const vencida = itemEstaVencido(item);

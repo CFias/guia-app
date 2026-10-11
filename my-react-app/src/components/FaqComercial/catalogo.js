@@ -8,6 +8,7 @@
 //   tabelaPrecos     [{ servico, valor, detalhe }]
 //   fichaEmbarcacao  { tipoEmbarcacao, capacidade, recursos[], roteiros }
 //   fichaLocal       { tipoLocal, endereco, bairro, telefone, horario, linkMapa, site }
+//   fichaEquipamento { tipoEquipamento, faixaUso, quantidade, valor, antecedencia }
 //   imagensVeiculo   fotos (o nome do campo é histórico; vale para todo item com foto)
 
 export const FORMATOS = {
@@ -16,6 +17,33 @@ export const FORMATOS = {
   TABELA: "tabela",
   EMBARCACAO: "embarcacao",
   LOCAL: "local",
+  EQUIPAMENTO: "equipamento",
+};
+
+/* ---------- equipamentos e acessórios (cadeirinha, carrinho...) ---------- */
+
+export const TIPOS_EQUIPAMENTO = [
+  "Cadeirinha infantil",
+  "Bebê conforto",
+  "Assento de elevação",
+  "Carrinho de bebê",
+  "Cadeira de rodas",
+  "Outro",
+];
+
+export const obterFichaEquipamento = (item) => {
+  const f = item?.fichaEquipamento || {};
+  const quantidade = Number(f.quantidade);
+  return {
+    tipoEquipamento: String(f.tipoEquipamento || "").trim(),
+    faixaUso: String(f.faixaUso || "").trim(),
+    quantidade:
+      Number.isFinite(quantidade) && quantidade > 0
+        ? Math.floor(quantidade)
+        : null,
+    valor: String(f.valor || "").trim(),
+    antecedencia: String(f.antecedencia || "").trim(),
+  };
 };
 
 /* ---------- embarcações e locais ---------- */
@@ -292,6 +320,23 @@ export const montarTextoCopia = (item, vencida = false, config = null) => {
       .trim();
   }
 
+  if (formato === FORMATOS.EQUIPAMENTO) {
+    const f = obterFichaEquipamento(item);
+    return [
+      `*${item.pergunta}*`,
+      f.tipoEquipamento &&
+        f.tipoEquipamento !== item.pergunta &&
+        f.tipoEquipamento,
+      f.faixaUso && `Indicado para: ${f.faixaUso}`,
+      f.valor && `Valor: ${f.valor}`,
+      f.antecedencia && `Solicitar: ${f.antecedencia}`,
+      resposta && `\n${resposta}`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+
   if (formato === FORMATOS.LOCAL) {
     const f = obterFichaLocal(item);
     return [
@@ -402,6 +447,7 @@ export const NOMES_SECOES_PADRAO = {
   veiculo: "Veículos cadastrados",
   embarcacao: "Embarcações",
   local: "Locais e pontos de apoio",
+  equipamento: "Equipamentos e acessórios",
   tabela: "Valores",
   resposta: "Respostas prontas",
 };

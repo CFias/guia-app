@@ -1,6 +1,6 @@
 .resumo-operacional-card {
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 14px;
     padding: 16px;
     display: flex;
@@ -25,13 +25,13 @@
 
 .resumo-operacional-title h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: calc(16px * var(--escala-fonte, 1));
     font-weight: 700;
 }
 
 .resumo-operacional-copy-btn {
-    border: 1px solid var(--border);
-    background: var(--card);
+    border: 1px solid var(--divider);
+    background: var(--surface);
     color: var(--text);
     border-radius: 10px;
     padding: 9px 14px;
@@ -56,12 +56,12 @@
     width: 100%;
     min-height: 420px;
     resize: vertical;
-    border: 1px solid var(--border);
+    border: 1px solid var(--divider);
     border-radius: 12px;
     padding: 14px;
-    background: var(--background);
+    background: var(--bg);
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     line-height: 1.6;
     font-family: inherit;
     box-sizing: border-box;
@@ -69,8 +69,8 @@
 
 .painel-outs-item-subtitle {
     margin-top: 4px;
-    font-size: 12px;
-    color: var(--text-soft, var(--text));
+    font-size: calc(12px * var(--escala-fonte, 1));
+    color: var(--text-3, var(--text));
     opacity: 0.85;
 }
 
@@ -90,7 +90,7 @@
 }
 
 .resumo-guia-title {
-    font-size: 18px;
+    font-size: calc(18px * var(--escala-fonte, 1));
     font-weight: 700;
     letter-spacing: -0.03em;
     line-height: 1.15;
@@ -98,7 +98,7 @@
 
 .resumo-guia-subtitle {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     line-height: 1.5;
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
     font-weight: 500;
@@ -114,17 +114,17 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: calc(11px * var(--escala-fonte, 1));
     font-weight: 500;
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     color: var(--text);
 }
 
 .resumo-chip-guide {
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border-color: color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border-color: color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .resumo-chip-pax {
@@ -135,18 +135,18 @@
 
 .resumo-chip-provider {
     color: var(--text);
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
-    border-color: color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
+    border-color: color-mix(in srgb, var(--accent) 18%, transparent 82%);
 }
 
 .resumo-chip-vehicle {
     color: var(--text);
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
 }
 
 .resumo-chip-muted {
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
 }
 
 .resumo-guia-expanded {
@@ -168,7 +168,7 @@
 }
 
 .resumo-guia-servico-header strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     letter-spacing: -0.01em;
@@ -186,7 +186,7 @@
 }
 
 .resumo-guia-reserva-card {
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
     border-radius: 16px;
     padding: 14px;
 }
@@ -201,7 +201,7 @@
 }
 
 .resumo-guia-pax-nome {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
@@ -214,11 +214,11 @@
     min-height: 26px;
     padding: 0 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .resumo-guia-reserva-grid {
@@ -231,8 +231,8 @@
 }
 
 .resumo-guia-obs p {
-    background: color-mix(in srgb, var(--bg) 14%, var(--card) 86%);
-    border: 1px solid color-mix(in srgb, var(--border) 74%, transparent 26%);
+    background: color-mix(in srgb, var(--bg) 14%, var(--surface) 86%);
+    border: 1px solid color-mix(in srgb, var(--divider) 74%, transparent 26%);
     border-radius: 12px;
     padding: 10px 12px;
 }
@@ -259,11 +259,11 @@
 
 @media (max-width: 768px) {
     .resumo-guia-title {
-        font-size: 16px;
+        font-size: calc(16px * var(--escala-fonte, 1));
     }
 
     .resumo-guia-subtitle {
-        font-size: 11px;
+        font-size: calc(11px * var(--escala-fonte, 1));
     }
 
     .resumo-guia-reserva-grid {
@@ -291,8 +291,8 @@
 }
 
 .resumo-copy-btn {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
     color: var(--text);
     border-radius: 999px;
     min-height: 34px;
@@ -300,7 +300,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 600;
     cursor: pointer;
     transition: 0.2s ease;
@@ -333,7 +333,7 @@
 }
 
 .resumo-guia-title {
-    font-size: 18px;
+    font-size: calc(18px * var(--escala-fonte, 1));
     font-weight: 700;
     letter-spacing: -0.03em;
     line-height: 1.15;
@@ -341,7 +341,7 @@
 
 .resumo-guia-subtitle {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     line-height: 1.5;
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
     font-weight: 500;
@@ -357,17 +357,17 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: calc(11px * var(--escala-fonte, 1));
     font-weight: 500;
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     color: var(--text);
 }
 
 .resumo-chip-guide {
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border-color: color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border-color: color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .resumo-chip-pax {
@@ -378,18 +378,18 @@
 
 .resumo-chip-provider {
     color: var(--text);
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
-    border-color: color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
+    border-color: color-mix(in srgb, var(--accent) 18%, transparent 82%);
 }
 
 .resumo-chip-vehicle {
     color: var(--text);
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
 }
 
 .resumo-chip-muted {
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
 }
 
 .resumo-guia-expanded {
@@ -411,7 +411,7 @@
 }
 
 .resumo-guia-servico-header strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     letter-spacing: -0.01em;
@@ -429,7 +429,7 @@
 }
 
 .resumo-guia-reserva-card {
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
     border-radius: 16px;
     padding: 14px;
 }
@@ -444,7 +444,7 @@
 }
 
 .resumo-guia-pax-nome {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
@@ -457,11 +457,11 @@
     min-height: 26px;
     padding: 0 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .resumo-guia-reserva-grid {
@@ -474,8 +474,8 @@
 }
 
 .resumo-guia-obs p {
-    background: color-mix(in srgb, var(--bg) 14%, var(--card) 86%);
-    border: 1px solid color-mix(in srgb, var(--border) 74%, transparent 26%);
+    background: color-mix(in srgb, var(--bg) 14%, var(--surface) 86%);
+    border: 1px solid color-mix(in srgb, var(--divider) 74%, transparent 26%);
     border-radius: 12px;
     padding: 10px 12px;
 }
@@ -502,11 +502,11 @@
 
 @media (max-width: 768px) {
     .resumo-guia-title {
-        font-size: 16px;
+        font-size: calc(16px * var(--escala-fonte, 1));
     }
 
     .resumo-guia-subtitle {
-        font-size: 11px;
+        font-size: calc(11px * var(--escala-fonte, 1));
     }
 
     .resumo-guia-reserva-grid {

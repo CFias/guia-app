@@ -15,7 +15,7 @@
   align-items: center;
   gap: 10px;
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: calc(20px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
   letter-spacing: -0.03em;
@@ -23,7 +23,7 @@
 
 .disponibilidade-guia-subtitle {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -37,8 +37,8 @@
 }
 
 .disponibilidade-guia-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--divider);
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
@@ -66,7 +66,7 @@
 
 .disponibilidade-guia-card-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -74,7 +74,7 @@
 
 .disponibilidade-guia-card-header p {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -85,12 +85,12 @@
   justify-content: center;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 /* form */
@@ -111,12 +111,12 @@
   align-items: center;
   gap: 8px;
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .disponibilidade-guia-field label svg {
-  color: var(--text-dist);
+  color: var(--accent-text);
 }
 
 .disponibilidade-guia-select {
@@ -124,23 +124,23 @@
   max-width: 420px;
   height: 50px;
   border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   padding: 0 14px;
   outline: none;
   transition: all 0.25s ease;
 }
 
 .disponibilidade-guia-select:hover {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .disponibilidade-guia-select:focus {
-  border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+  border-color: color-mix(in srgb, var(--accent-text) 42%, var(--accent) 58%);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+    0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent 90%),
     inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -161,12 +161,12 @@
 .disponibilidade-guia-dropdown-header {
   width: 100%;
   min-height: 50px;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   color: var(--text);
   border-radius: 16px;
   padding: 14px 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -176,7 +176,7 @@
 }
 
 .disponibilidade-guia-dropdown-header:hover {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .disponibilidade-guia-dropdown-arrow {
@@ -188,8 +188,8 @@
   top: calc(100% + 1px);
   left: 0;
   right: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--divider);
   border-radius: 16px;
   z-index: 20;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
@@ -197,14 +197,14 @@
 
 .disponibilidade-guia-dropdown-item {
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   color: var(--text);
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 .disponibilidade-guia-dropdown-item:hover {
-  background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
 }
 
 /* tags */
@@ -221,19 +221,19 @@
   gap: 8px;
   padding: 9px 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .disponibilidade-guia-tag-day {
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-  color: var(--text-dist);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+  color: var(--accent-text);
 }
 
 .disponibilidade-guia-tag span {
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   line-height: 1;
   opacity: 0.85;
 }
@@ -255,7 +255,7 @@
   cursor: pointer;
   transition: all 0.25s ease;
   font-weight: 500;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -266,8 +266,8 @@
   min-height: 38px;
   padding: 0 18px;
   border-radius: 16px;
-  background: var(--btn-main);
-  color: var(--text-btn);
+  background: var(--accent);
+  color: var(--on-accent);
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
@@ -285,14 +285,14 @@
   min-height: 28px;
   padding: 0 18px;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface) 88%);
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--divider) 80%);
 }
 
 .disponibilidade-guia-btn-soft:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface) 82%);
 }
 
 /* week box */
@@ -303,7 +303,7 @@
 }
 
 .disponibilidade-guia-week-range {
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -331,14 +331,14 @@
   max-width: 360px;
   min-height: 38px;
   padding: 0 14px;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+  border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
 .disponibilidade-guia-search svg {
-  color: var(--text-dist);
+  color: var(--accent-text);
   flex-shrink: 0;
 }
 
@@ -348,7 +348,7 @@
   background: transparent;
   outline: none;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
 }
 
 .disponibilidade-guia-search-input::placeholder {
@@ -365,13 +365,13 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
 }
 
 .disponibilidade-guia-filter-title svg {
-  color: var(--text-dist);
+  color: var(--accent-text);
 }
 
 .disponibilidade-guia-filter-days {
@@ -389,29 +389,29 @@
   min-width: 72px;
   padding: 10px 12px;
   border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   cursor: pointer;
   transition: all 0.25s ease;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .disponibilidade-guia-filter-tag span {
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 400;
   opacity: 0.75;
 }
 
 .disponibilidade-guia-filter-tag:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .disponibilidade-guia-filter-tag.active {
-  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
-  border-color: color-mix(in srgb, var(--text-dist) 24%, transparent 76%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface) 88%);
+  border-color: color-mix(in srgb, var(--accent-text) 24%, transparent 76%);
   color: var(--text);
 }
 
@@ -447,16 +447,16 @@
 }
 
 .disponibilidade-guia-row-header .disponibilidade-guia-col {
-  background: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
-  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border) 88%);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--divider) 88%);
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .disponibilidade-guia-row .disponibilidade-guia-col {
-  background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
+  border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
 }
 
 .disponibilidade-guia-col-guide {
@@ -468,7 +468,7 @@
   align-items: center;
   gap: 10px;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
@@ -480,23 +480,23 @@
   height: 20px;
   border-radius: 999px;
   padding: 0 8px;
-  font-size: 8px;
+  font-size: calc(8px * var(--escala-fonte, 1));
   font-weight: 400;
 }
 
 .disponibilidade-guia-priority.p-1 {
-  background: color-mix(in srgb, var(--p1) 16%, transparent 84%);
-  color: var(--p1);
+  background: color-mix(in srgb, var(--alert) 16%, transparent 84%);
+  color: var(--alert);
 }
 
 .disponibilidade-guia-priority.p-2 {
-  background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
+  background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
   color: var(--text);
 }
 
 .disponibilidade-guia-priority.p-3 {
-  background: color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-  color: var(--text-dist);
+  background: color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+  color: var(--accent-text);
 }
 
 .disponibilidade-guia-cell-day {
@@ -505,10 +505,10 @@
   gap: 8px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-  color: var(--text-dist);
-  font-size: 10px;
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+  color: var(--accent-text);
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
@@ -517,9 +517,9 @@
   height: 15px;
   border: none;
   background: transparent;
-  color: var(--text-dist);
+  color: var(--accent-text);
   cursor: pointer;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1;
   padding: 0;
 }
@@ -547,11 +547,11 @@
   }
 
   .disponibilidade-guia-title {
-    font-size: 25px;
+    font-size: calc(25px * var(--escala-fonte, 1));
   }
 
   .disponibilidade-guia-subtitle {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
   }
 
   .disponibilidade-guia-card {
@@ -560,7 +560,7 @@
   }
 
   .disponibilidade-guia-card-header h3 {
-    font-size: 19px;
+    font-size: calc(19px * var(--escala-fonte, 1));
   }
 
   .disponibilidade-guia-days-actions {
@@ -603,7 +603,7 @@
   padding: 18px;
   border-radius: 14px;
   background: rgba(148, 163, 184, 0.08);
-  color: var(--text-soft, #64748b);
+  color: var(--text-3, #64748b);
   font-weight: 500;
 }
 

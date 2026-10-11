@@ -15,19 +15,19 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 8px;
-    font-size: 20px;
+    font-size: calc(20px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
     letter-spacing: -0.03em;
 }
 
 .painel-outs-title svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .painel-outs-subtitle {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -41,8 +41,8 @@
 }
 
 .painel-outs-card {
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 24px;
     padding: 24px;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
@@ -72,7 +72,7 @@
 
 .painel-outs-card-header h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: calc(16px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     letter-spacing: -0.02em;
@@ -80,7 +80,7 @@
 
 .painel-outs-card-header p {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -91,18 +91,18 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 500;
     letter-spacing: 0.02em;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .painel-outs-badge.alerta {
-    color: var(--p2);
-    background: color-mix(in srgb, var(--p2) 12%, transparent 88%);
-    border: 1px solid color-mix(in srgb, var(--p2) 18%, transparent 82%);
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent 88%);
+    border: 1px solid color-mix(in srgb, var(--warning) 18%, transparent 82%);
 }
 
 .painel-outs-toolbar {
@@ -124,22 +124,22 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     font-weight: 500;
 }
 
 .painel-outs-field label svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .painel-outs-input {
     width: 100%;
     height: 50px;
     border-radius: 16px;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     color: var(--text);
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     padding: 0 14px;
     outline: none;
     transition: all 0.25s ease;
@@ -147,13 +147,13 @@
 }
 
 .painel-outs-input:hover {
-    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .painel-outs-input:focus {
-    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    border-color: color-mix(in srgb, var(--accent-text) 42%, var(--accent) 58%);
     box-shadow:
-        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent 90%),
         inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -171,13 +171,13 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 500;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: var(--btn-main);
-    color: var(--text-btn);
+    background: var(--accent);
+    color: var(--on-accent);
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
@@ -197,8 +197,8 @@
     gap: 12px;
     padding: 12px 14px;
     border-radius: 16px;
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
 }
 
 .painel-outs-stat-icon,
@@ -208,28 +208,28 @@
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-    color: var(--text-dist);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+    color: var(--accent-text);
     flex-shrink: 0;
 }
 
 .painel-outs-kpi-icon.alerta {
-    background: color-mix(in srgb, var(--p2) 16%, transparent 84%);
-    border-color: color-mix(in srgb, var(--p2) 22%, transparent 78%);
-    color: var(--p2);
+    background: color-mix(in srgb, var(--warning) 16%, transparent 84%);
+    border-color: color-mix(in srgb, var(--warning) 22%, transparent 78%);
+    color: var(--warning);
 }
 
 .painel-outs-stat span,
 .painel-outs-kpi span {
     display: block;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
 .painel-outs-stat strong,
 .painel-outs-kpi strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: var(--text);
     font-weight: 500;
 }
@@ -246,15 +246,15 @@
     gap: 12px;
     padding: 14px;
     border-radius: 18px;
-    background: color-mix(in srgb, var(--bg) 22%, var(--card) 78%);
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 22%, var(--surface) 78%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
 }
 
 .painel-outs-empty {
     padding: 18px;
     border-radius: 14px;
     background: rgba(148, 163, 184, 0.08);
-    color: var(--text-soft, #64748b);
+    color: var(--text-3, #64748b);
     font-weight: 500;
 }
 
@@ -265,10 +265,10 @@
 }
 
 .painel-outs-item {
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
     border-radius: 20px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 100%, var(--input) 82%);
+    background: color-mix(in srgb, var(--bg) 100%, var(--raised) 82%);
 }
 
 .painel-outs-item-top {
@@ -276,10 +276,10 @@
     border: none;
     text-align: left;
     padding: 16px 18px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border-bottom: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
     background: linear-gradient(135deg,
-            color-mix(in srgb, var(--primary) 8%, var(--card) 92%),
-            color-mix(in srgb, var(--bg) 14%, var(--card) 86%));
+            color-mix(in srgb, var(--accent) 8%, var(--surface) 92%),
+            color-mix(in srgb, var(--bg) 14%, var(--surface) 86%));
     cursor: pointer;
     position: relative;
 }
@@ -302,7 +302,7 @@
 }
 
 .painel-outs-item-title {
-    font-size: 16px;
+    font-size: calc(16px * var(--escala-fonte, 1));
     font-weight: 700;
     color: var(--text);
     letter-spacing: -0.03em;
@@ -314,12 +314,12 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .painel-outs-item-meta {
@@ -334,10 +334,10 @@
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     color: var(--text);
-    font-size: 11px;
+    font-size: calc(11px * var(--escala-fonte, 1));
     font-weight: 500;
 }
 
@@ -356,10 +356,10 @@
 }
 
 .painel-outs-hotel-block {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     border-radius: 18px;
     overflow: hidden;
-    background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+    background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
 }
 
 .painel-outs-hotel-header {
@@ -368,8 +368,8 @@
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+    border-bottom: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface) 94%);
     flex-wrap: wrap;
 }
 
@@ -381,7 +381,7 @@
 }
 
 .painel-outs-hotel-title svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .painel-outs-hotel-time {
@@ -390,12 +390,12 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 .painel-outs-reservas {
@@ -406,9 +406,9 @@
 }
 
 .painel-outs-reserva-card {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     border-radius: 18px;
-    background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+    background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     padding: 14px;
 }
 
@@ -425,12 +425,12 @@
 }
 
 .painel-outs-info-label {
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
 .painel-outs-info strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: var(--text);
     font-weight: 500;
     line-height: 1.5;
@@ -440,11 +440,11 @@
 .painel-outs-observacao {
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    border-top: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
 }
 
 .painel-outs-observacao-title {
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
     color: var(--text);
     margin-bottom: 6px;
@@ -452,7 +452,7 @@
 
 .painel-outs-observacao p {
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 82%, transparent 18%);
     white-space: pre-wrap;
@@ -504,11 +504,11 @@
     }
 
     .painel-outs-title {
-        font-size: 25px;
+        font-size: calc(25px * var(--escala-fonte, 1));
     }
 
     .painel-outs-subtitle {
-        font-size: 13px;
+        font-size: calc(13px * var(--escala-fonte, 1));
     }
 
     .painel-outs-card {
@@ -517,7 +517,7 @@
     }
 
     .painel-outs-card-header h3 {
-        font-size: 19px;
+        font-size: calc(19px * var(--escala-fonte, 1));
     }
 
     .painel-outs-toolbar {

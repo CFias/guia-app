@@ -21,6 +21,7 @@ import { usePhoenixStatus } from "../Shell/shellContext";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./previa.css";
+import "./styles.css";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";

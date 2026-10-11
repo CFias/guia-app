@@ -853,7 +853,7 @@
   }
 
   .ui-kpi__value {
-    font-size: 24px;
+    font-size: calc(24px * var(--escala-fonte, 1));
   }
 }
 

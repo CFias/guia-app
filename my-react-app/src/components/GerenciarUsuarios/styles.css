@@ -5,7 +5,7 @@
 .usuarios-page {
   --u-radius-lg: 16px;
   --u-radius-md: 12px;
-  --u-border: color-mix(in srgb, var(--border) 70%, transparent 30%);
+  --u-border: color-mix(in srgb, var(--divider) 70%, transparent 30%);
   --u-muted: color-mix(in srgb, var(--text) 62%, transparent 38%);
 
   display: flex;
@@ -20,12 +20,12 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 4px;
-  font-size: 20px;
+  font-size: calc(20px * var(--escala-fonte, 1));
 }
 
 .usuarios-header p {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   color: var(--u-muted);
   max-width: 640px;
 }
@@ -43,7 +43,7 @@
   gap: 14px;
   padding: 20px;
   border-radius: var(--u-radius-lg);
-  background: var(--card);
+  background: var(--surface);
   border: 1px solid var(--u-border);
 }
 
@@ -52,7 +52,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
 }
 
 .usuarios-field {
@@ -62,7 +62,7 @@
 }
 
 .usuarios-field>span {
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
 }
 
@@ -75,10 +75,10 @@
   padding: 10px 12px;
   border-radius: var(--u-radius-md);
   border: 1px solid var(--u-border);
-  background: var(--input);
+  background: var(--raised);
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   outline: none;
 }
 
@@ -88,11 +88,11 @@
 
 .usuarios-field input:focus,
 .usuarios-field select:focus {
-  border-color: var(--text-dist);
+  border-color: var(--accent-text);
 }
 
 .usuarios-hint {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   line-height: 1.4;
   color: var(--u-muted);
 }
@@ -122,22 +122,22 @@
 .usuarios-role-option input {
   grid-row: span 2;
   align-self: center;
-  accent-color: var(--btn-main);
+  accent-color: var(--accent);
 }
 
 .usuarios-role-option strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
 }
 
 .usuarios-role-option small {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: var(--u-muted);
   line-height: 1.35;
 }
 
 .usuarios-role-option.ativo {
-  border-color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+  border-color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 8%, transparent 92%);
 }
 
 /* ---------- botões ---------- */
@@ -150,18 +150,18 @@
   padding: 10px 16px;
   border-radius: var(--u-radius-md);
   border: 1px solid var(--u-border);
-  background: var(--input);
+  background: var(--raised);
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 600;
   cursor: pointer;
 }
 
 .usuarios-btn.primary {
   border-color: transparent;
-  background: var(--btn-main);
-  color: var(--text-btn);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .usuarios-btn.ghost {
@@ -182,7 +182,7 @@
   flex-shrink: 0;
   border-radius: 10px;
   border: 1px solid var(--u-border);
-  background: var(--input);
+  background: var(--raised);
   color: var(--text);
   cursor: pointer;
 }
@@ -192,19 +192,19 @@
 .usuarios-alert {
   padding: 10px 14px;
   border-radius: var(--u-radius-md);
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
 }
 
 .usuarios-alert.ok {
-  color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 30%, transparent 70%);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 30%, transparent 70%);
 }
 
 .usuarios-alert.erro {
-  color: var(--status-red);
-  background: color-mix(in srgb, var(--status-red) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--status-red) 30%, transparent 70%);
+  color: var(--alert);
+  background: color-mix(in srgb, var(--alert) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--alert) 30%, transparent 70%);
 }
 
 .usuarios-credenciais {
@@ -213,13 +213,13 @@
   gap: 8px;
   padding: 16px;
   border-radius: var(--u-radius-lg);
-  background: color-mix(in srgb, var(--text-dist) 8%, var(--card) 92%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--accent-text) 8%, var(--surface) 92%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 35%, transparent 65%);
 }
 
 .usuarios-credenciais p {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--u-muted);
 }
 
@@ -227,8 +227,8 @@
   display: block;
   padding: 10px 12px;
   border-radius: var(--u-radius-md);
-  background: var(--input);
-  font-size: 13px;
+  background: var(--raised);
+  font-size: calc(13px * var(--escala-fonte, 1));
   line-height: 1.6;
   word-break: break-all;
 }
@@ -280,11 +280,11 @@
 }
 
 .usuarios-item-info strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
 }
 
 .usuarios-item-info span {
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--u-muted);
   overflow-wrap: anywhere;
 }
@@ -295,7 +295,7 @@
 }
 
 .usuarios-vinculo {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
 }
 
 .usuarios-item-tags {
@@ -313,30 +313,30 @@
 .usuarios-badge {
   padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   border: 1px solid var(--u-border);
   white-space: nowrap;
 }
 
 .usuarios-badge.role-operacional {
-  color: var(--text-dist);
-  border-color: color-mix(in srgb, var(--text-dist) 40%, transparent 60%);
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent-text) 40%, transparent 60%);
 }
 
 .usuarios-badge.role-comercial {
-  color: var(--p2);
-  border-color: color-mix(in srgb, var(--p2) 40%, transparent 60%);
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent 60%);
 }
 
 .usuarios-badge.desativado {
-  color: var(--status-red);
-  border-color: color-mix(in srgb, var(--status-red) 40%, transparent 60%);
+  color: var(--alert);
+  border-color: color-mix(in srgb, var(--alert) 40%, transparent 60%);
 }
 
 .usuarios-vazio {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   color: var(--u-muted);
 }
 
@@ -361,7 +361,7 @@
   gap: 14px;
   padding: 24px;
   border-radius: var(--u-radius-lg);
-  background: var(--card);
+  background: var(--surface);
   border: 1px solid var(--u-border);
   color: var(--text);
   font-family: var(--font-body);
@@ -369,7 +369,7 @@
 
 .usuarios-modal h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--escala-fonte, 1));
 }
 
 .usuarios-modal .usuarios-hint {
@@ -380,11 +380,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
 }
 
 .usuarios-check input {
-  accent-color: var(--btn-main);
+  accent-color: var(--accent);
 }
 
 .usuarios-modal-acoes {

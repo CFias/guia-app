@@ -8,8 +8,10 @@ import {
 } from "../../Services/Utils/janelaDisponibilidade";
 import { useTheme } from "../../Context/ThemeContext";
 import { useAuth } from "../../Context/AuthContext";
+import { ROLES } from "../../Context/permissions";
 import {
   PALETA_ACCENT,
+  TAMANHOS_FONTE,
   usePreferenciasUI,
 } from "../../Context/preferenciasUIContext";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
@@ -76,8 +78,10 @@ const Interruptor = ({ id, ligado, onClick, disabled }) => (
 
 const Configuracoes = () => {
   const { theme, toggleTheme, togglePro } = useTheme();
-  const { perfil } = useAuth();
-  const { accent, setAccent } = usePreferenciasUI();
+  const { perfil, role } = useAuth();
+  // regras da escala são da equipe operacional; os outros só mexem na aparência
+  const podeVerEscala = role === ROLES.OPERACIONAL;
+  const { accent, setAccent, escalaFonte, setEscalaFonte } = usePreferenciasUI();
 
   const [abaAtiva, setAbaAtiva] = useState("tema");
   const [modoDistribuicaoGuias, setModoDistribuicaoGuias] =
@@ -98,6 +102,11 @@ const Configuracoes = () => {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
+    // o comercial só mexe na aparência (local): não precisa ler a escala
+    if (!podeVerEscala) {
+      setLoadingInicial(false);
+      return;
+    }
     const carregar = async () => {
       try {
         setLoadingInicial(true);
@@ -149,7 +158,7 @@ const Configuracoes = () => {
     };
 
     carregar();
-  }, []);
+  }, [podeVerEscala]);
 
   const salvarConfiguracao = async (novosCampos) => {
     try {
@@ -284,21 +293,29 @@ const Configuracoes = () => {
     <div className="ui-page cfg-page">
       <PageHeader
         title="Configurações"
-        description="Aparência da plataforma (sua) e regras da escala automática (da equipe)."
-        actions={<StatusDot tone={estado.tone}>{estado.texto}</StatusDot>}
+        description={
+          podeVerEscala
+            ? "Aparência da plataforma (sua) e regras da escala automática (da equipe)."
+            : "Aparência da plataforma: tema, cor de destaque e tamanho do texto."
+        }
+        actions={
+          podeVerEscala ? <StatusDot tone={estado.tone}>{estado.texto}</StatusDot> : null
+        }
       />
 
-      <Segmented
-        ariaLabel="Grupo de configurações"
-        value={abaAtiva}
-        onChange={setAbaAtiva}
-        options={[
-          { value: "tema", label: "Tema", icon: "palette", disabled: loadingInicial || salvando },
-          { value: "escala", label: "Escala", icon: "sparkles", disabled: loadingInicial || salvando },
-        ]}
-      />
+      {podeVerEscala && (
+        <Segmented
+          ariaLabel="Grupo de configurações"
+          value={abaAtiva}
+          onChange={setAbaAtiva}
+          options={[
+            { value: "tema", label: "Tema", icon: "palette", disabled: loadingInicial || salvando },
+            { value: "escala", label: "Escala", icon: "sparkles", disabled: loadingInicial || salvando },
+          ]}
+        />
+      )}
 
-      {abaAtiva === "tema" && (
+      {(abaAtiva === "tema" || !podeVerEscala) && (
         <Card className="cfg-card">
           <Secao
             carregando={loadingInicial}
@@ -349,10 +366,35 @@ const Configuracoes = () => {
               ))}
             </div>
           </Secao>
+
+          {/* Tamanho do texto: vale para o sistema inteiro (menu, telas, tabelas) */}
+          <Secao
+            titulo="Tamanho do texto"
+            descricao="Aumenta ou diminui as letras de todo o sistema — menu lateral, telas e tabelas. Só para você, neste navegador."
+          >
+            <div className="cfg-fonte" role="radiogroup" aria-label="Tamanho do texto">
+              {TAMANHOS_FONTE.map((t) => (
+                <button
+                  key={t.valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={escalaFonte === t.valor}
+                  className={`cfg-fonte__opcao ${escalaFonte === t.valor ? "is-active" : ""}`}
+                  onClick={() => setEscalaFonte(t.valor)}
+                >
+                  <span className="cfg-fonte__amostra" style={{ fontSize: `${15 * t.valor}px` }}>
+                    Aa
+                  </span>
+                  <span className="cfg-fonte__nome">{t.nome}</span>
+                  <span className="cfg-fonte__pct tabular">{Math.round(t.valor * 100)}%</span>
+                </button>
+              ))}
+            </div>
+          </Secao>
         </Card>
       )}
 
-      {abaAtiva === "escala" && (
+      {podeVerEscala && abaAtiva === "escala" && (
         <Card className="cfg-card">
           <Secao
             carregando={loadingInicial}

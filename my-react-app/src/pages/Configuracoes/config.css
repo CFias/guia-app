@@ -34,7 +34,7 @@
 }
 
 .cfg-secao__texto code {
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   padding: 1px 5px;
   border-radius: 5px;
   background: var(--raised);
@@ -445,4 +445,60 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ---------- tamanho do texto ---------- */
+.cfg-fonte {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.cfg-fonte__opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cfg-fonte__opcao:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--divider));
+}
+
+.cfg-fonte__opcao.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  color: var(--text);
+}
+
+.cfg-fonte__amostra {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cfg-fonte__nome {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.cfg-fonte__pct {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 720px) {
+  .cfg-fonte {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

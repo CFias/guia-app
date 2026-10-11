@@ -15,7 +15,7 @@
   align-items: center;
   gap: 10px;
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: calc(20px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
   letter-spacing: -0.03em;
@@ -23,7 +23,7 @@
 
 .cadastro-passeio-subtitle {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -40,8 +40,8 @@
 }
 
 .cadastro-passeio-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--divider);
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
@@ -69,7 +69,7 @@
 
 .cadastro-passeio-card-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -77,7 +77,7 @@
 
 .cadastro-passeio-card-header p {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -88,12 +88,12 @@
   justify-content: center;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 /* form */
@@ -120,23 +120,23 @@
   align-items: center;
   gap: 8px;
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .cadastro-passeio-field label svg {
-  color: var(--text-dist);
+  color: var(--accent-text);
 }
 
 .cadastro-passeio-field input,
 .cadastro-passeio-field textarea {
   width: 100%;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   color: var(--text);
   border-radius: 16px;
   padding: 14px 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   outline: none;
   transition: all 0.25s ease;
   box-sizing: border-box;
@@ -159,14 +159,14 @@
 
 .cadastro-passeio-field input:hover,
 .cadastro-passeio-field textarea:hover {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-passeio-field input:focus,
 .cadastro-passeio-field textarea:focus {
-  border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+  border-color: color-mix(in srgb, var(--accent-text) 42%, var(--accent) 58%);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+    0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent 90%),
     inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -178,12 +178,12 @@
 .cadastro-passeio-dropdown-header {
   width: 100%;
   min-height: 50px;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
   color: var(--text);
   border-radius: 16px;
   padding: 14px 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -194,7 +194,7 @@
 }
 
 .cadastro-passeio-dropdown-header:hover {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-passeio-dropdown-arrow {
@@ -206,8 +206,8 @@
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--divider);
   border-radius: 16px;
   overflow: hidden;
   z-index: 20;
@@ -216,14 +216,14 @@
 
 .cadastro-passeio-dropdown-item {
   padding: 12px 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text);
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 .cadastro-passeio-dropdown-item:hover {
-  background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
 }
 
 /* tags */
@@ -240,18 +240,18 @@
   gap: 8px;
   padding: 9px 12px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-  color: var(--text-dist);
-  font-size: 10px;
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+  color: var(--accent-text);
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 500;
 }
 
 .cadastro-passeio-tag span {
   cursor: pointer;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1;
-  color: var(--text-dist);
+  color: var(--accent-text);
   opacity: 0.85;
 }
 
@@ -276,7 +276,7 @@
   cursor: pointer;
   transition: all 0.25s ease;
   font-weight: 500;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -287,8 +287,8 @@
   min-height: 38px;
   padding: 0 18px;
   border-radius: 16px;
-  background: var(--btn-main);
-  color: var(--text-btn);
+  background: var(--accent);
+  color: var(--on-accent);
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
@@ -308,25 +308,25 @@
   border-radius: 16px;
   background: transparent;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--divider);
 }
 
 .cadastro-passeio-btn-secondary:hover {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface) 94%);
 }
 
 .cadastro-passeio-btn-soft {
   min-height: 38px;
   padding: 0 18px;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface) 88%);
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border) 80%);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--divider) 80%);
 }
 
 .cadastro-passeio-btn-soft:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface) 82%);
 }
 
 .cadastro-passeio-btn-soft:disabled {
@@ -342,8 +342,8 @@
   gap: 16px;
   padding: 18px;
   border-radius: 20px;
-  background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+  background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
+  border: 1px solid color-mix(in srgb, var(--divider) 80%, transparent 20%);
 }
 
 .cadastro-passeio-import-icon {
@@ -354,19 +354,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
-  color: var(--text-dist);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
+  color: var(--accent-text);
 }
 
 /* list */
 .cadastro-passeio-empty {
-  border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border: 1px dashed color-mix(in srgb, var(--divider) 70%, transparent 30%);
   border-radius: 18px;
   padding: 18px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   color: color-mix(in srgb, var(--text) 72%, transparent 28%);
-  background: color-mix(in srgb, var(--bg) 18%, var(--card) 82%);
+  background: color-mix(in srgb, var(--bg) 18%, var(--surface) 82%);
 }
 
 .cadastro-passeio-list {
@@ -385,8 +385,8 @@
   gap: 18px;
   padding: 18px;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent 18%);
-  background: color-mix(in srgb, var(--bg) 20%, var(--card) 80%);
+  border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
 }
 
 .cadastro-passeio-item-info {
@@ -397,7 +397,7 @@
 .cadastro-passeio-item-name {
   display: block;
   margin-bottom: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;
@@ -405,7 +405,7 @@
 
 .cadastro-passeio-item-desc {
   margin: 0 0 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: color-mix(in srgb, var(--text) 74%, transparent 26%);
 }
@@ -420,7 +420,7 @@
   flex-wrap: wrap;
   gap: 14px;
   margin-bottom: 12px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   color: color-mix(in srgb, var(--text) 74%, transparent 26%);
 }
 
@@ -440,11 +440,11 @@
   justify-content: center;
   padding: 7px 10px;
   border-radius: 999px;
-  font-size: 8px;
+  font-size: calc(8px * var(--escala-fonte, 1));
   font-weight: 600;
-  color: var(--text-dist);
-  background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
 }
 
 .cadastro-passeio-item-actions {
@@ -457,31 +457,31 @@
 .cadastro-passeio-btn-edit {
   min-height: 38px;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--primary) 12%, var(--card) 88%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface) 88%);
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border) 82%);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--divider) 82%);
 }
 
 .cadastro-passeio-btn-edit:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--primary) 18%, var(--card) 82%);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface) 82%);
 }
 
 .cadastro-passeio-btn-delete {
   min-height: 38px;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--p1) 12%, transparent 88%);
-  color: var(--p1);
-  border: 1px solid color-mix(in srgb, var(--p1) 24%, transparent 76%);
+  background: color-mix(in srgb, var(--alert) 12%, transparent 88%);
+  color: var(--alert);
+  border: 1px solid color-mix(in srgb, var(--alert) 24%, transparent 76%);
 }
 
 .cadastro-passeio-btn-delete:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--p1) 18%, transparent 82%);
+  background: color-mix(in srgb, var(--alert) 18%, transparent 82%);
 }
 
 /* responsive */
@@ -526,11 +526,11 @@
   }
 
   .cadastro-passeio-title {
-    font-size: 25px;
+    font-size: calc(25px * var(--escala-fonte, 1));
   }
 
   .cadastro-passeio-subtitle {
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
   }
 
   .cadastro-passeio-card {
@@ -539,7 +539,7 @@
   }
 
   .cadastro-passeio-card-header h3 {
-    font-size: 19px;
+    font-size: calc(19px * var(--escala-fonte, 1));
   }
 
   .cadastro-passeio-actions {

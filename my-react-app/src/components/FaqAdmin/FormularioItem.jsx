@@ -10,6 +10,7 @@ import {
   resumoCapacidade,
   ACESSORIOS,
   TIPOS_EMBARCACAO,
+  TIPOS_EQUIPAMENTO,
   RECURSOS_EMBARCACAO,
   TIPOS_LOCAL,
   linkMapaDoEndereco,
@@ -68,6 +69,13 @@ const TIPOS = [
     descricao: "Endereço, contato, horário e fotos.",
     exemplo: "Ex.: hotel, restaurante, ponto de apoio",
     icone: "mapPin",
+  },
+  {
+    value: FORMATOS.EQUIPAMENTO,
+    titulo: "Equipamento",
+    descricao: "Acessório com fotos, para quem serve, valor e como pedir.",
+    exemplo: "Ex.: cadeirinha, bebê conforto",
+    icone: "cadeirinha",
   },
 ];
 
@@ -150,6 +158,7 @@ const FormularioItem = ({
   const ehTabela = formato === FORMATOS.TABELA;
   const ehEmbarcacao = formato === FORMATOS.EMBARCACAO;
   const ehLocal = formato === FORMATOS.LOCAL;
+  const ehEquip = formato === FORMATOS.EQUIPAMENTO;
 
   const erro = (campo) => (mostrarErros ? validacao.erros[campo] : undefined);
   const aviso = (campo) => validacao.avisos[campo];
@@ -330,6 +339,13 @@ const FormularioItem = ({
       linkMapa: f.linkMapa,
       site: f.site,
     },
+    fichaEquipamento: {
+      tipoEquipamento: f.tipoEquipamento,
+      faixaUso: f.faixaUso,
+      quantidade: f.quantidadeEquipamento,
+      valor: f.valorEquipamento,
+      antecedencia: f.antecedencia,
+    },
   };
   const configPrevia = {
     opcoes: f.configsVeiculo.filter(configPreenchida).map((c, i) => ({
@@ -433,7 +449,9 @@ const FormularioItem = ({
                           ? "Nome da embarcação"
                           : ehLocal
                             ? "Nome do local"
-                            : "Pergunta"
+                            : ehEquip
+                              ? "Nome do equipamento"
+                              : "Pergunta"
                       : ROTULO_ERRO[c]}
                   </button>
                 </span>
@@ -1272,7 +1290,122 @@ const FormularioItem = ({
         </>
       )}
 
-      {(ehVeiculo || ehTabela || ehEmbarcacao || ehLocal) && (
+      {ehEquip && (
+        <>
+          <Secao numero={proximo()} titulo="Identificação do equipamento">
+            <div className="fi-grade">
+              <Campo
+                id="fi-pergunta"
+                rotulo="Nome"
+                obrigatorio
+                erro={erro("pergunta")}
+                className="fi-col-2"
+                dica="Como o comercial procura. Ex.: Cadeirinha infantil (9 a 18 kg)."
+              >
+                <input
+                  id="fi-pergunta"
+                  type="text"
+                  className="fi-input"
+                  placeholder="Ex.: Cadeirinha infantil"
+                  value={f.pergunta}
+                  onChange={(e) => atualizar("pergunta", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+              <Campo id="fi-tipoEquipamento" rotulo="Tipo" obrigatorio erro={erro("tipoEquipamento")}>
+                <select
+                  id="fi-tipoEquipamento"
+                  className="fi-input"
+                  value={f.tipoEquipamento}
+                  onChange={(e) => atualizar("tipoEquipamento", e.target.value)}
+                  disabled={salvando}
+                >
+                  <option value="">Escolha…</option>
+                  {TIPOS_EQUIPAMENTO.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+            {campoCategoria}
+          </Secao>
+
+          <Secao
+            numero={proximo()}
+            titulo="Para quem serve e como pedir"
+            descricao="O comercial vê no card e no texto copiado (a quantidade fica só na ficha)."
+          >
+            <div className="fi-grade">
+              <Campo
+                id="fi-faixaUso"
+                rotulo="Indicado para"
+                dica="Idade e/ou peso."
+                className="fi-col-2"
+              >
+                <input
+                  id="fi-faixaUso"
+                  type="text"
+                  className="fi-input"
+                  placeholder="Ex.: crianças de 1 a 4 anos (9 a 18 kg)"
+                  value={f.faixaUso}
+                  onChange={(e) => atualizar("faixaUso", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+              <Campo id="fi-quantidadeEquipamento" rotulo="Quantidade disponível">
+                <input
+                  id="fi-quantidadeEquipamento"
+                  type="number"
+                  min={0}
+                  className="fi-input"
+                  placeholder="Ex.: 4"
+                  value={f.quantidadeEquipamento}
+                  onChange={(e) => atualizar("quantidadeEquipamento", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+              <Campo id="fi-valorEquipamento" rotulo="Valor" dica="Vazio = não aparece.">
+                <input
+                  id="fi-valorEquipamento"
+                  type="text"
+                  className="fi-input"
+                  placeholder="Ex.: Gratuito · ou R$ 30 por trecho"
+                  value={f.valorEquipamento}
+                  onChange={(e) => atualizar("valorEquipamento", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+              <Campo id="fi-antecedencia" rotulo="Como solicitar" className="fi-col-2">
+                <input
+                  id="fi-antecedencia"
+                  type="text"
+                  className="fi-input"
+                  placeholder="Ex.: informar na reserva, com 48h de antecedência"
+                  value={f.antecedencia}
+                  onChange={(e) => atualizar("antecedencia", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+            </div>
+          </Secao>
+
+          <Secao numero={proximo()} titulo="Fotos" descricao="A primeira foto é a capa do card.">
+            <FotosVeiculo
+              valor={f.imagensVeiculoTexto
+                .split("\n")
+                .map((u) => u.trim())
+                .filter(Boolean)}
+              onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
+              disabled={salvando}
+              nome={f.pergunta || "Foto"}
+            />
+          </Secao>
+        </>
+      )}
+
+      {(ehVeiculo || ehTabela || ehEmbarcacao || ehLocal || ehEquip) && (
         <Secao numero={proximo()} titulo="Observações">
           <Campo
             id="fi-resposta"
@@ -1286,7 +1419,9 @@ const FormularioItem = ({
               placeholder={
                 ehTabela
                   ? "Ex.: Valores por veículo, até 6 passageiros. Pedágios inclusos."
-                  : ehLocal
+                  : ehEquip
+                    ? "Ex.: Instalada pelo motorista. Obrigatória para crianças até 7 anos e meio."
+                    : ehLocal
                     ? "Ex.: Ponto de encontro na recepção. Estacionamento no subsolo."
                     : ehEmbarcacao
                       ? "Ex.: Embarque no Terminal Náutico, chegar 30 min antes."

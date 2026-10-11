@@ -33,7 +33,7 @@
   align-items: center;
   gap: 10px;
   margin: 0 0 4px;
-  font-size: 26px;
+  font-size: calc(26px * var(--escala-fonte, 1));
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
@@ -128,7 +128,7 @@
     .cadastro-passeio-title,
     .previa-operacional-title),
   .app-content .faq-comercial-header h2 {
-    font-size: 22px;
+    font-size: calc(22px * var(--escala-fonte, 1));
   }
 }
 

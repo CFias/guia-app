@@ -15,7 +15,7 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 8px;
-    font-size: 20px;
+    font-size: calc(20px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
     letter-spacing: -0.03em;
@@ -23,7 +23,7 @@
 
 .cadastro-guia-subtitle {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -40,8 +40,8 @@
 }
 
 .cadastro-guia-card {
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 24px;
     padding: 24px;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
@@ -65,7 +65,7 @@
 
 .cadastro-guia-card-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
     letter-spacing: -0.02em;
@@ -73,7 +73,7 @@
 
 .cadastro-guia-card-header p {
     margin: 0;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -84,12 +84,12 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 500;
     letter-spacing: 0.02em;
-    color: var(--text-dist);
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
 }
 
 /* form */
@@ -116,23 +116,23 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14px * var(--escala-fonte, 1));
     font-weight: 500;
 }
 
 .cadastro-guia-field label svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 .cadastro-guia-field input,
 .cadastro-guia-field textarea {
     width: 100%;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     color: var(--text);
     border-radius: 16px;
     padding: 14px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     outline: none;
     transition: all 0.25s ease;
     box-sizing: border-box;
@@ -155,14 +155,14 @@
 
 .cadastro-guia-field input:hover,
 .cadastro-guia-field textarea:hover {
-    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-guia-field input:focus,
 .cadastro-guia-field textarea:focus {
-    border-color: color-mix(in srgb, var(--text-dist) 42%, var(--primary) 58%);
+    border-color: color-mix(in srgb, var(--accent-text) 42%, var(--accent) 58%);
     box-shadow:
-        0 0 0 4px color-mix(in srgb, var(--text-dist) 10%, transparent 90%),
+        0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent 90%),
         inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -174,12 +174,12 @@
 .cadastro-guia-dropdown-header {
     width: 100%;
     min-height: 50px;
-    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     color: var(--text);
     border-radius: 16px;
     padding: 14px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -190,7 +190,7 @@
 }
 
 .cadastro-guia-dropdown-header:hover {
-    border-color: color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--divider) 78%);
 }
 
 .cadastro-guia-dropdown-arrow {
@@ -202,8 +202,8 @@
     top: calc(100% + 8px);
     left: 0;
     right: 0;
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid var(--divider);
     border-radius: 16px;
     overflow: hidden;
     z-index: 20;
@@ -214,14 +214,14 @@
 
 .cadastro-guia-dropdown-item {
     padding: 12px 16px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: var(--text);
     cursor: pointer;
     transition: background 0.2s ease;
 }
 
 .cadastro-guia-dropdown-item:hover {
-    background: color-mix(in srgb, var(--primary) 8%, var(--card) 92%);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
 }
 
 /* tags */
@@ -238,22 +238,22 @@
     gap: 8px;
     padding: 9px 12px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 16%, transparent 84%);
-    color: var(--text-dist);
-    font-size: 10px;
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
+    color: var(--accent-text);
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
 }
 
 .cadastro-guia-tag-service {
-    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
     color: var(--text);
 }
 
 .cadastro-guia-tag span {
     cursor: pointer;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     line-height: 1;
     opacity: 0.85;
 }
@@ -282,8 +282,8 @@
     width: 55px;
     height: 25px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--border) 76%, var(--bg) 24%);
-    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent 10%);
+    background: color-mix(in srgb, var(--divider) 76%, var(--bg) 24%);
+    border: 1px solid color-mix(in srgb, var(--divider) 90%, transparent 10%);
     display: flex;
     align-items: center;
     padding: 4px;
@@ -300,8 +300,8 @@
 }
 
 .cadastro-guia-switch.active .cadastro-guia-switch-track {
-    background: color-mix(in srgb, var(--text-dist) 70%, var(--primary) 30%);
-    border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
+    background: color-mix(in srgb, var(--accent-text) 70%, var(--accent) 30%);
+    border-color: color-mix(in srgb, var(--accent-text) 35%, transparent 65%);
 }
 
 .cadastro-guia-switch.active .cadastro-guia-switch-thumb {
@@ -312,13 +312,13 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
 }
 
 .cadastro-guia-switch-label svg {
-    color: var(--text-dist);
+    color: var(--accent-text);
 }
 
 /* actions */
@@ -334,7 +334,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 600;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -342,8 +342,8 @@
     min-height: 38px;
     padding: 0 18px;
     border-radius: 16px;
-    background: var(--btn-main);
-    color: var(--text-btn);
+    background: var(--accent);
+    color: var(--on-accent);
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
 }
 
@@ -365,22 +365,22 @@
 }
 
 .cadastro-guia-preview-item {
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
-    background: color-mix(in srgb, var(--bg) 24%, var(--card) 76%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 24%, var(--surface) 76%);
     border-radius: 18px;
     padding: 16px;
 }
 
 .cadastro-guia-preview-label {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     color: color-mix(in srgb, var(--text) 65%, transparent 35%);
     margin-bottom: 6px;
 }
 
 .cadastro-guia-preview-value {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 500;
     color: var(--text);
 }
@@ -408,11 +408,11 @@
     }
 
     .cadastro-guia-title {
-        font-size: 25px;
+        font-size: calc(25px * var(--escala-fonte, 1));
     }
 
     .cadastro-guia-subtitle {
-        font-size: 13px;
+        font-size: calc(13px * var(--escala-fonte, 1));
     }
 
     .cadastro-guia-card {
@@ -421,7 +421,7 @@
     }
 
     .cadastro-guia-card-header h3 {
-        font-size: 19px;
+        font-size: calc(19px * var(--escala-fonte, 1));
     }
 
     .cadastro-guia-actions {

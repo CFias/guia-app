@@ -81,7 +81,7 @@
 }
 
 .loading-text {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 600;
   letter-spacing: 0.2px;
   color: #1f2937;

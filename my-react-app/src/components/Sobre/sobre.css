@@ -56,7 +56,7 @@
 }
 
 .sobre-hero-marca span {
-  font-size: 26px;
+  font-size: calc(26px * var(--escala-fonte, 1));
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -69,7 +69,7 @@
 .sobre-hero h1 {
   max-width: 680px;
   margin: 6px 0 0;
-  font-size: 36px;
+  font-size: calc(36px * var(--escala-fonte, 1));
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -165,7 +165,7 @@
   font-size: var(--fs-base);
 }
 
-.sobre-card > span:last-child {
+.sobre-card>span:last-child {
   color: var(--text-3);
   font-size: var(--fs-md);
   line-height: 1.5;
@@ -224,7 +224,7 @@
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 
-.sobre-cta > svg {
+.sobre-cta>svg {
   flex-shrink: 0;
   margin-top: 2px;
   color: var(--accent-text);
@@ -265,7 +265,7 @@
   }
 
   .sobre-hero h1 {
-    font-size: 27px;
+    font-size: calc(27px * var(--escala-fonte, 1));
   }
 
   .sobre-hero p {

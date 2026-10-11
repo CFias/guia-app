@@ -8,6 +8,7 @@ import {
   obterTabelaPrecos,
   obterFichaEmbarcacao,
   obterFichaLocal,
+  obterFichaEquipamento,
   RECURSOS_VEICULO,
   RECURSOS_EMBARCACAO,
 } from "../FaqComercial/catalogo";
@@ -23,6 +24,7 @@ export const CATEGORIA_PADRAO = {
   [FORMATOS.TABELA]: "Valores",
   [FORMATOS.EMBARCACAO]: "Embarcações",
   [FORMATOS.LOCAL]: "Locais",
+  [FORMATOS.EQUIPAMENTO]: "Equipamentos",
 };
 
 export const FORMULARIO_VAZIO = {
@@ -62,6 +64,12 @@ export const FORMULARIO_VAZIO = {
   horario: "",
   linkMapa: "",
   site: "",
+  // equipamento (cadeirinha, bebê conforto...)
+  tipoEquipamento: "",
+  faixaUso: "",
+  quantidadeEquipamento: "",
+  valorEquipamento: "",
+  antecedencia: "",
 };
 
 export const CONFIG_VEICULO_VAZIA = () => ({
@@ -160,6 +168,18 @@ const camposEmbarcacaoELocal = (item) => {
     // só o link digitado (o automático é gerado na hora a partir do endereço)
     linkMapa: String(fl.linkMapa || "").trim(),
     site: flNorm.site,
+    ...camposEquipamento(item),
+  };
+};
+
+const camposEquipamento = (item) => {
+  const fq = obterFichaEquipamento(item);
+  return {
+    tipoEquipamento: fq.tipoEquipamento,
+    faixaUso: fq.faixaUso,
+    quantidadeEquipamento: fq.quantidade ?? "",
+    valorEquipamento: fq.valor,
+    antecedencia: fq.antecedencia,
   };
 };
 
@@ -271,6 +291,11 @@ export const validarFormulario = (f) => {
     if (!f.pergunta.trim()) erros.pergunta = "Informe o nome da embarcação.";
   }
 
+  if (formato === FORMATOS.EQUIPAMENTO) {
+    if (!f.pergunta.trim()) erros.pergunta = "Informe o nome do equipamento.";
+    if (!f.tipoEquipamento) erros.tipoEquipamento = "Escolha o tipo.";
+  }
+
   if (formato === FORMATOS.LOCAL) {
     if (!f.pergunta.trim()) erros.pergunta = "Informe o nome do local.";
     if (!f.endereco.trim() && !f.bairro.trim()) {
@@ -295,6 +320,7 @@ export const validarFormulario = (f) => {
 export const ORDEM_CAMPOS = [
   "nomeVeiculo",
   "capacidade",
+  "tipoEquipamento",
   "pergunta",
   "resposta",
   "categoria",
@@ -305,6 +331,7 @@ export const ORDEM_CAMPOS = [
 
 export const ROTULO_ERRO = {
   nomeVeiculo: "Nome do veículo",
+  tipoEquipamento: "Tipo do equipamento",
   pergunta: "Pergunta / título",
   resposta: "Resposta",
   categoria: "Categoria",

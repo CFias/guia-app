@@ -80,7 +80,7 @@
 .painel-operacional-subtitle,
 .painel-chegadas-subtitle {
   margin: 7px 0 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: var(--pc-text-muted);
 }
@@ -93,7 +93,7 @@
   gap: var(--pc-space-2);
   margin-bottom: var(--pc-space-3);
   color: var(--pc-text-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
 }
 
@@ -148,7 +148,7 @@
 
 .painel-chegadas-card-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -156,7 +156,7 @@
 
 .painel-chegadas-card-header p {
   margin: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   line-height: 1.6;
   color: var(--pc-text-muted);
 }
@@ -168,7 +168,7 @@
   min-height: 24px;
   padding: 0 var(--pc-space-3);
   border-radius: var(--pc-radius-pill);
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--accent-text);
@@ -201,7 +201,7 @@
   border: 1px solid var(--pc-border);
   background: var(--pc-surface-soft);
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -270,7 +270,7 @@
   align-items: center;
   gap: var(--pc-space-2);
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
 }
 
@@ -285,7 +285,7 @@
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--bg) 62%, var(--surface) 38%);
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   padding: 0 var(--pc-space-4);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -319,7 +319,7 @@
   min-height: 38px;
   padding: 0 var(--pc-space-4);
   border-radius: var(--pc-radius-md);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -467,7 +467,7 @@
 .painel-chegadas-stat span,
 .painel-chegadas-kpi span {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--pc-text-faint);
@@ -478,7 +478,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 700;
   color: var(--text);
 }
@@ -505,7 +505,7 @@
   justify-content: center;
   gap: var(--pc-space-2);
   color: var(--pc-text-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 500;
   text-align: center;
   border-radius: var(--pc-radius-md);
@@ -591,7 +591,7 @@
   min-height: 30px;
   padding: 0 var(--pc-space-2);
   border-radius: var(--pc-radius-pill);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--pc-text-muted);
   cursor: pointer;
@@ -648,7 +648,7 @@
 }
 
 .painel-chegadas-flight-code {
-  font-size: 17px;
+  font-size: calc(17px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -666,7 +666,7 @@
   min-height: 24px;
   padding: 0 var(--pc-space-3);
   border-radius: var(--pc-radius-pill);
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -726,7 +726,7 @@
   border: 1px solid var(--pc-border-soft);
   background: var(--pc-surface);
   color: var(--text);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 500;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -789,7 +789,7 @@
 }
 
 .painel-chegadas-driver-title strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 700;
 }
 
@@ -838,7 +838,7 @@
 .painel-chegadas-table thead th {
   text-align: left;
   padding: var(--pc-space-3) var(--pc-space-4);
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--pc-text-muted);
@@ -847,7 +847,7 @@
 
 .painel-chegadas-table tbody td {
   padding: var(--pc-space-3) var(--pc-space-4);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text);
   border-bottom: 1px solid var(--pc-border-soft);
   vertical-align: middle;
@@ -908,7 +908,7 @@
   width: fit-content;
   padding: 4px 8px;
   border-radius: var(--pc-radius-pill);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 700;
   border: 1px solid transparent;
 }
@@ -945,7 +945,7 @@
   background: var(--raised);
   color: var(--text);
   outline: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
 }
 
@@ -984,7 +984,7 @@
 
 .painel-chegadas-modal-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -1013,7 +1013,7 @@
 
 .painel-chegadas-modal-hint {
   margin: -8px 0 var(--pc-space-4);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--pc-text-muted);
 }
 
@@ -1024,7 +1024,7 @@
 .painel-chegadas-modal-label {
   display: block;
   margin-bottom: var(--pc-space-2);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--pc-text-muted);
 }
@@ -1163,7 +1163,7 @@
   }
 
   .painel-chegadas-flight-code {
-    font-size: 15px;
+    font-size: calc(15px * var(--escala-fonte, 1));
   }
 
   .painel-chegadas-expand-icon {

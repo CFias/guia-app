@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
   ACCENT_PADRAO,
+  FONTE_PADRAO,
   PALETA_ACCENT,
+  TAMANHOS_FONTE,
   PreferenciasUIContext,
   corSobreAccent,
 } from "./preferenciasUIContext";
@@ -27,6 +29,9 @@ const salvarPrefs = (uid, prefs) => {
   }
 };
 
+const fonteValida = (v) =>
+  TAMANHOS_FONTE.some((t) => t.valor === Number(v)) ? Number(v) : FONTE_PADRAO;
+
 const accentValido = (hex) =>
   PALETA_ACCENT.some((c) => c.hex === hex) ? hex : ACCENT_PADRAO;
 
@@ -41,6 +46,7 @@ export const PreferenciasUIProvider = ({ children }) => {
 
   const accent = accentValido(prefs.accent);
   const sidebarRecolhida = prefs.sidebarRecolhida === true;
+  const escalaFonte = fonteValida(prefs.escalaFonte);
 
   // aplica a cor no <html>; os derivados (--accent-300/400/600…) recalculam no CSS
   useEffect(() => {
@@ -48,6 +54,11 @@ export const PreferenciasUIProvider = ({ children }) => {
     raiz.setProperty("--accent", accent);
     raiz.setProperty("--on-accent", corSobreAccent(accent));
   }, [accent]);
+
+  // tamanho do texto: todos os font-size do CSS multiplicam por --escala-fonte
+  useEffect(() => {
+    document.documentElement.style.setProperty("--escala-fonte", String(escalaFonte));
+  }, [escalaFonte]);
 
   const atualizar = useCallback(
     (patch) =>
@@ -69,8 +80,10 @@ export const PreferenciasUIProvider = ({ children }) => {
         atualizar({
           sidebarRecolhida: typeof v === "function" ? v(sidebarRecolhida) : !!v,
         }),
+      escalaFonte,
+      setEscalaFonte: (v) => atualizar({ escalaFonte: fonteValida(v) }),
     }),
-    [accent, sidebarRecolhida, atualizar],
+    [accent, sidebarRecolhida, escalaFonte, atualizar],
   );
 
   return (

@@ -36,6 +36,8 @@ export const ACESSO = {
   painel: [ROLES.OPERACIONAL], // todas as telas operacionais
   faqComercial: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   minhaDisponibilidade: [ROLES.GUIA],
+  // Configurações: o comercial só vê a aba Tema (tema, cor e tamanho do texto)
+  configuracoes: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   // página "Sobre a FiaSystem": todos os perfis
   sobre: [ROLES.OPERACIONAL, ROLES.COMERCIAL, ROLES.GUIA],
 };

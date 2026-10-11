@@ -44,7 +44,7 @@
 
 .painel-chegadas-flight-code {
     margin: 0;
-    font-size: 24px;
+    font-size: calc(24px * var(--escala-fonte, 1));
     line-height: 1;
     font-weight: 800;
     color: var(--text);
@@ -54,7 +54,7 @@
 .painel-chegadas-scale-summary {
     margin-top: 10px;
     margin-bottom: 14px;
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
     line-height: 1.45;
     color: color-mix(in srgb, var(--text) 88%, transparent 12%);
@@ -74,18 +74,18 @@
     min-height: 30px;
     padding: 6px 12px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
     letter-spacing: 0.01em;
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
-    background: color-mix(in srgb, var(--bg) 30%, var(--card) 70%);
+    border: 1px solid color-mix(in srgb, var(--divider) 80%, transparent 20%);
+    background: color-mix(in srgb, var(--bg) 30%, var(--surface) 70%);
     color: var(--text);
 }
 
 .status-semaforo-verde {
-    background: color-mix(in srgb, var(--p3) 18%, transparent 82%);
-    border-color: color-mix(in srgb, var(--p3) 26%, transparent 74%);
-    color: var(--p3);
+    background: color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
+    border-color: color-mix(in srgb, var(--accent-text) 26%, transparent 74%);
+    color: var(--accent-text);
 }
 
 .status-semaforo-amarelo {
@@ -112,16 +112,16 @@
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--text-dist) 10%, transparent 90%);
-    border: 1px solid color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
-    color: var(--text-dist);
+    background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
+    color: var(--accent-text);
     flex-shrink: 0;
 }
 
 .painel-chegadas-flight-expanded {
     margin-top: 18px;
     padding-top: 18px;
-    border-top: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    border-top: 1px solid color-mix(in srgb, var(--divider) 84%, transparent 16%);
 }
 
 .painel-chegadas-driver-block {
@@ -141,7 +141,7 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13px * var(--escala-fonte, 1));
     font-weight: 600;
 }
 
@@ -160,9 +160,9 @@
     min-height: 30px;
     padding: 7px 12px;
     border-radius: 14px;
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 600;
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+    border: 1px solid color-mix(in srgb, var(--divider) 80%, transparent 20%);
 }
 
 .robo-chip-critico {
@@ -178,8 +178,8 @@
 }
 
 .robo-chip-ok {
-    background: color-mix(in srgb, var(--text-dist) 12%, transparent 88%);
-    border-color: color-mix(in srgb, var(--text-dist) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--accent-text) 12%, transparent 88%);
+    border-color: color-mix(in srgb, var(--accent-text) 18%, transparent 82%);
     color: color-mix(in srgb, var(--text) 92%, transparent 8%);
 }
 
@@ -196,19 +196,19 @@
     align-items: center;
     padding: 12px 14px;
     border-radius: 16px;
-    background: color-mix(in srgb, var(--bg) 26%, var(--card) 74%);
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent 22%);
+    background: color-mix(in srgb, var(--bg) 26%, var(--surface) 74%);
+    border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
 }
 
 .painel-chegadas-reservation-item strong {
     color: var(--text);
-    font-size: 12px;
+    font-size: calc(12px * var(--escala-fonte, 1));
     font-weight: 600;
 }
 
 .painel-chegadas-reservation-item span {
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
-    font-size: 10px;
+    font-size: calc(10px * var(--escala-fonte, 1));
     font-weight: 500;
 }
 
@@ -228,6 +228,6 @@
     }
 
     .painel-chegadas-flight-code {
-        font-size: 18px;
+        font-size: calc(18px * var(--escala-fonte, 1));
     }
 }

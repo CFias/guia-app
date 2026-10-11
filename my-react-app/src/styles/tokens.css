@@ -36,14 +36,14 @@
 
   /* ---- tipografia ---- */
   --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --fs-xs: 11px;
-  --fs-sm: 12px;
-  --fs-md: 13px;
-  --fs-base: 14px;
-  --fs-lg: 16px;
-  --fs-xl: 20px;
-  --fs-title: 26px;
-  --fs-kpi: 28px;
+  --fs-xs: calc(11px * var(--escala-fonte, 1));
+  --fs-sm: calc(12px * var(--escala-fonte, 1));
+  --fs-md: calc(13px * var(--escala-fonte, 1));
+  --fs-base: calc(14px * var(--escala-fonte, 1));
+  --fs-lg: calc(16px * var(--escala-fonte, 1));
+  --fs-xl: calc(20px * var(--escala-fonte, 1));
+  --fs-title: calc(26px * var(--escala-fonte, 1));
+  --fs-kpi: calc(28px * var(--escala-fonte, 1));
 
   /* ---- espaço ---- */
   --space-1: 4px;
@@ -55,7 +55,8 @@
   --space-8: 32px;
 
   /* ---- medidas do shell ---- */
-  --sidebar-w: 256px;
+  /* acompanha o tamanho do texto só para cima, para os rótulos não cortarem */
+  --sidebar-w: calc(256px * max(1, var(--escala-fonte, 1)));
   --sidebar-w-collapsed: 72px;
   --topbar-h: 64px;
 
@@ -170,6 +171,7 @@ td,
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

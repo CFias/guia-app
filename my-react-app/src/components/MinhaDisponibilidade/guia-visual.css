@@ -45,7 +45,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--text-3);
 }
@@ -64,14 +64,14 @@
 
 .guia-hero__pessoa h1 {
   margin: 0 0 2px;
-  font-size: 24px;
+  font-size: calc(24px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: -0.015em;
 }
 
 .guia-hero__pessoa p {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   color: var(--text-2);
 }
 
@@ -84,7 +84,7 @@
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 18px;
+  font-size: calc(18px * var(--escala-fonte, 1));
   font-weight: 700;
   box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent);
 }
@@ -92,7 +92,7 @@
 .guia-hero__avatar--grande {
   width: 60px;
   height: 60px;
-  font-size: 20px;
+  font-size: calc(20px * var(--escala-fonte, 1));
 }
 
 .guia-hero__resumo {
@@ -125,12 +125,12 @@
 }
 
 .guia-resumo small {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 
 .guia-resumo strong {
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -181,13 +181,13 @@
   border-radius: 999px;
   border: 1px solid var(--divider);
   background: var(--raised);
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 
 .guia-contador strong {
-  font-size: 18px;
+  font-size: calc(18px * var(--escala-fonte, 1));
   color: var(--accent-text);
 }
 
@@ -235,7 +235,7 @@
 
 .guia-dia__estado {
   margin-top: auto;
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 
@@ -271,7 +271,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--accent-text);
 }
@@ -297,13 +297,13 @@
 }
 
 .guia-calendario__dia small {
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .guia-calendario__dia strong {
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -355,12 +355,12 @@
 }
 
 .guia-perfil__numeros strong {
-  font-size: 18px;
+  font-size: calc(18px * var(--escala-fonte, 1));
   font-variant-numeric: tabular-nums;
 }
 
 .guia-perfil__numeros small {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: var(--text-3);
   text-align: center;
 }
@@ -417,7 +417,7 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 700;
   color: var(--warning);
 }
@@ -433,7 +433,7 @@
   background: color-mix(in oklch, var(--accent) 6%, transparent);
   color: var(--accent-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -441,7 +441,7 @@
 
 .guia-repetir span {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 500;
   color: var(--text-3);
 }
@@ -478,11 +478,11 @@
 }
 
 .guia-enviado strong {
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
 }
 
 .guia-enviado small {
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 

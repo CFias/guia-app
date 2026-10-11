@@ -34,6 +34,7 @@ import {
   recomendarVeiculo,
   descreverCombinacoes,
   obterFichaEmbarcacao,
+  obterFichaEquipamento,
   obterFichaLocal,
   iconeTipoLocal,
   linkWhatsappTelefone,
@@ -47,6 +48,7 @@ const PaidRounded = iconeMui("coins");
 const AccessTimeRounded = iconeMui("clock");
 const HotelRounded = iconeMui("building");
 const ChildCareRounded = iconeMui("baby");
+const CadeirinhaRounded = iconeMui("cadeirinha");
 const GavelRounded = iconeMui("scale");
 const HelpRounded = iconeMui("help");
 const ShipRounded = iconeMui("ship");
@@ -208,6 +210,12 @@ const obterIconeCategoria = (categoria = "") => {
     return AccessTimeRounded;
   if (texto.includes("hotel") || texto.includes("hospedagem"))
     return HotelRounded;
+  if (
+    texto.includes("equipament") ||
+    texto.includes("cadeir") ||
+    texto.includes("acessori")
+  )
+    return CadeirinhaRounded;
   if (texto.includes("crianc") || texto.includes("infant"))
     return ChildCareRounded;
   if (
@@ -304,6 +312,7 @@ const textoBuscavel = (item) => {
       ...obterTabelaPrecos(item).flatMap((l) => [l.servico, l.detalhe]),
       ...Object.values(obterFichaEmbarcacao(item)).flat().filter((v) => typeof v === "string"),
       ...Object.values(obterFichaLocal(item)).filter((v) => !String(v).startsWith("http")),
+      ...Object.values(obterFichaEquipamento(item)).filter((v) => typeof v === "string"),
       ...(Array.isArray(item.palavrasChave) ? item.palavrasChave : []),
     ]
       .filter(Boolean)
@@ -324,6 +333,7 @@ const segmentos = (nomes) => [
   { value: FORMATOS.VEICULO, label: nomes.veiculo, icon: "car" },
   { value: FORMATOS.EMBARCACAO, label: nomes.embarcacao, icon: "ship" },
   { value: FORMATOS.LOCAL, label: nomes.local, icon: "mapPin" },
+  { value: FORMATOS.EQUIPAMENTO, label: nomes.equipamento, icon: "cadeirinha" },
   { value: FORMATOS.TABELA, label: nomes.tabela, icon: "tag" },
   { value: FORMATOS.RESPOSTA, label: nomes.resposta, icon: "message" },
 ];
@@ -493,6 +503,20 @@ const FaqComercial = () => {
     [itensFiltrados],
   );
 
+  const equipamentos = useMemo(
+    () =>
+      itensFiltrados
+        .filter((item) => obterFormato(item) === FORMATOS.EQUIPAMENTO)
+        .sort(
+          (a, b) =>
+            obterFichaEquipamento(a).tipoEquipamento.localeCompare(
+              obterFichaEquipamento(b).tipoEquipamento,
+              "pt-BR",
+            ) || ordenarPorPergunta(a, b),
+        ),
+    [itensFiltrados],
+  );
+
   // Respostas prontas numa grade só, ordenadas por categoria (a categoria
   // aparece em cada card; os chips do topo filtram por ela).
   const respostas = useMemo(
@@ -601,6 +625,9 @@ const FaqComercial = () => {
     (formatoAtivo === "todos" || formatoAtivo === FORMATOS.EMBARCACAO);
   const mostrarLocais =
     locais.length > 0 && (formatoAtivo === "todos" || formatoAtivo === FORMATOS.LOCAL);
+  const mostrarEquipamentos =
+    equipamentos.length > 0 &&
+    (formatoAtivo === "todos" || formatoAtivo === FORMATOS.EQUIPAMENTO);
   const mostrarTabelas =
     tabelas.length > 0 &&
     (formatoAtivo === "todos" || formatoAtivo === FORMATOS.TABELA);
@@ -849,6 +876,31 @@ const FaqComercial = () => {
               </header>
               <div className="faq-cat-grade faq-cat-grade--frota">
                 {locais.map((item) => (
+                  <CardVisual
+                    key={item.id}
+                    item={item}
+                    {...acoesCard}
+                    copiado={perguntaCopiadaId === item.id}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {mostrarEquipamentos && (
+            <section className="faq-cat-secao">
+              <header className="faq-cat-secao-topo">
+                <div className="faq-cat-secao-titulos">
+                  <h2>
+                    <Icon name="cadeirinha" size={18} />
+                    {configAssistente.nomesSecoes.equipamento}
+                    <span className="faq-cat-contador">{equipamentos.length}</span>
+                  </h2>
+                  <p>Cadeirinhas, bebê conforto e outros itens — fotos, para quem serve e como pedir.</p>
+                </div>
+              </header>
+              <div className="faq-cat-grade faq-cat-grade--frota">
+                {equipamentos.map((item) => (
                   <CardVisual
                     key={item.id}
                     item={item}
@@ -1141,15 +1193,17 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, c
   );
 };
 
-/* Card com foto para embarcações e locais (mesma estrutura do veículo). */
+/* Card com foto para embarcações, locais e equipamentos (mesma estrutura do veículo). */
 const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
   const formato = obterFormato(item);
   const ehLocal = formato === FORMATOS.LOCAL;
+  const ehEquip = formato === FORMATOS.EQUIPAMENTO;
   const fe = obterFichaEmbarcacao(item);
   const fl = obterFichaLocal(item);
+  const fq = obterFichaEquipamento(item);
   const imagens = obterImagensVeiculo(item);
-  const tipo = ehLocal ? fl.tipoLocal : fe.tipoEmbarcacao;
-  const iconeVazio = ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship";
+  const tipo = ehEquip ? fq.tipoEquipamento : ehLocal ? fl.tipoLocal : fe.tipoEmbarcacao;
+  const iconeVazio = ehEquip ? "cadeirinha" : ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship";
 
   return (
     <article className="faq-cat-card faq-cat-veiculo" {...propsCardClicavel(item, onAbrir)}>
@@ -1180,7 +1234,31 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
 
       <div className="faq-cat-card-corpo">
         <h3 className="faq-cat-card-titulo">{item.pergunta}</h3>
-        {ehLocal ? (
+        {ehEquip ? (
+          <div className="faq-cat-local-info">
+            {fq.faixaUso && (
+              <span>
+                <Icon name="users" size={14} />
+                {fq.faixaUso}
+              </span>
+            )}
+            {fq.valor && (
+              <span>
+                <Icon name="tag" size={14} />
+                {fq.valor}
+              </span>
+            )}
+            {fq.antecedencia && (
+              <span>
+                <Icon name="clock" size={14} />
+                {fq.antecedencia}
+              </span>
+            )}
+            {!fq.faixaUso && !fq.valor && !fq.antecedencia && item.resposta && (
+              <p className="faq-cat-card-previa">{textoPrevia(item.resposta)}</p>
+            )}
+          </div>
+        ) : ehLocal ? (
           <div className="faq-cat-local-info">
             {(fl.bairro || fl.endereco) && (
               <span>
@@ -1225,7 +1303,7 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
             )}
           </>
         )}
-        {!ehLocal && !fe.capacidade && !fe.roteiros && item.resposta && (
+        {!ehLocal && !ehEquip && !fe.capacidade && !fe.roteiros && item.resposta && (
           <p className="faq-cat-card-previa">{textoPrevia(item.resposta)}</p>
         )}
       </div>
@@ -1481,9 +1559,11 @@ const FaqDetalhe = ({
   const ehTabela = formato === FORMATOS.TABELA;
   const ehEmbarcacao = formato === FORMATOS.EMBARCACAO;
   const ehLocal = formato === FORMATOS.LOCAL;
-  const ehVisual = ehEmbarcacao || ehLocal;
+  const ehEquip = formato === FORMATOS.EQUIPAMENTO;
+  const ehVisual = ehEmbarcacao || ehLocal || ehEquip;
   const fe = obterFichaEmbarcacao(item);
   const fl = obterFichaLocal(item);
+  const fq = obterFichaEquipamento(item);
   const fotos = ehVisual ? obterImagensVeiculo(item) : imagens;
   const whatsLocal = linkWhatsappTelefone(fl.telefone);
 
@@ -1501,7 +1581,9 @@ const FaqDetalhe = ({
             ? [fe.tipoEmbarcacao, item.categoria].filter(Boolean).join(" · ")
             : ehLocal
               ? [fl.tipoLocal, item.categoria].filter(Boolean).join(" · ")
-              : item.categoria
+              : ehEquip
+                ? [fq.tipoEquipamento, item.categoria].filter(Boolean).join(" · ")
+                : item.categoria
       }
       onClose={onFechar}
       footer={
@@ -1642,8 +1724,52 @@ const FaqDetalhe = ({
             <Galeria
               imagens={fotos}
               nome={item.pergunta}
-              icone={ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship"}
+              icone={ehEquip ? "cadeirinha" : ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship"}
             />
+
+            {ehEquip && (fq.faixaUso || fq.valor || fq.antecedencia || fq.quantidade) && (
+              <div className="faq-cat-bloco">
+                <h4>Informações</h4>
+                <ul className="faq-cat-contato">
+                  {fq.faixaUso && (
+                    <li>
+                      <Icon name="users" size={16} />
+                      <span>
+                        {fq.faixaUso}
+                        <small>Para quem serve</small>
+                      </span>
+                    </li>
+                  )}
+                  {fq.valor && (
+                    <li>
+                      <Icon name="tag" size={16} />
+                      <span>
+                        {fq.valor}
+                        <small>Valor</small>
+                      </span>
+                    </li>
+                  )}
+                  {fq.antecedencia && (
+                    <li>
+                      <Icon name="clock" size={16} />
+                      <span>
+                        {fq.antecedencia}
+                        <small>Como solicitar</small>
+                      </span>
+                    </li>
+                  )}
+                  {fq.quantidade && (
+                    <li>
+                      <Icon name="check" size={16} />
+                      <span>
+                        {fq.quantidade} disponíve{fq.quantidade === 1 ? "l" : "is"}
+                        <small>Quantidade (confirme com o operacional)</small>
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {ehEmbarcacao && fe.capacidade && (
               <div className="faq-cat-bloco">

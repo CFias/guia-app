@@ -11,15 +11,15 @@
   height: 38px;
   flex-shrink: 0;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border: 1px solid color-mix(in srgb, var(--divider) 70%, transparent 30%);
   background: transparent;
   color: var(--text);
   cursor: pointer;
 }
 
 .notif-sino.com-novas {
-  color: var(--text-dist);
-  border-color: color-mix(in srgb, var(--text-dist) 45%, transparent 55%);
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent-text) 45%, transparent 55%);
 }
 
 .notif-badge {
@@ -31,9 +31,9 @@
   padding: 0 5px;
   box-sizing: border-box;
   border-radius: 999px;
-  background: var(--status-red);
+  background: var(--alert);
   color: #fff;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -56,9 +56,9 @@
   display: flex;
   flex-direction: column;
   border-radius: 16px;
-  background: var(--card);
+  background: var(--surface);
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border: 1px solid color-mix(in srgb, var(--divider) 70%, transparent 30%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
   font-family: var(--font-body);
   overflow: hidden;
@@ -70,8 +70,8 @@
   justify-content: space-between;
   gap: 8px;
   padding: 14px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
-  font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--divider) 70%, transparent 30%);
+  font-size: calc(13px * var(--escala-fonte, 1));
 }
 
 .notif-painel-acoes {
@@ -101,9 +101,9 @@
   gap: 4px;
   border: 0;
   background: transparent;
-  color: var(--text-dist);
+  color: var(--accent-text);
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   cursor: pointer;
 }
@@ -116,7 +116,7 @@
 .notif-vazio {
   margin: 0;
   padding: 24px 18px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   line-height: 1.5;
   color: color-mix(in srgb, var(--text) 62%, transparent 38%);
 }
@@ -136,11 +136,11 @@
   width: 100%;
   padding: 10px;
   border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border-top: 1px solid color-mix(in srgb, var(--divider) 70%, transparent 30%);
   background: transparent;
-  color: var(--text-dist);
+  color: var(--accent-text);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   cursor: pointer;
 }
@@ -153,7 +153,7 @@
   box-sizing: border-box;
   padding: 12px 16px;
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent 50%);
+  border-bottom: 1px solid color-mix(in srgb, var(--divider) 50%, transparent 50%);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -162,7 +162,7 @@
 }
 
 .notif-item.nao-lida {
-  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+  background: color-mix(in srgb, var(--accent-text) 8%, transparent 92%);
 }
 
 .notif-apagar {
@@ -181,8 +181,8 @@
 }
 
 .notif-apagar:hover {
-  color: var(--status-red);
-  background: color-mix(in srgb, var(--status-red) 12%, transparent 88%);
+  color: var(--alert);
+  background: color-mix(in srgb, var(--alert) 12%, transparent 88%);
 }
 
 .notif-ponto {
@@ -195,7 +195,7 @@
 }
 
 .notif-item.nao-lida .notif-ponto {
-  background: var(--text-dist);
+  background: var(--accent-text);
 }
 
 .notif-corpo {
@@ -207,13 +207,13 @@
 }
 
 .notif-titulo {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   line-height: 1.35;
 }
 
 .notif-sub,
 .notif-hora {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: color-mix(in srgb, var(--text) 60%, transparent 40%);
 }
 
@@ -226,21 +226,21 @@
 .notif-chip {
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 600;
   border: 1px solid transparent;
 }
 
 .notif-chip.add {
-  color: var(--text-dist);
-  border-color: color-mix(in srgb, var(--text-dist) 35%, transparent 65%);
-  background: color-mix(in srgb, var(--text-dist) 8%, transparent 92%);
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent-text) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--accent-text) 8%, transparent 92%);
 }
 
 .notif-chip.rem {
-  color: var(--status-red);
-  border-color: color-mix(in srgb, var(--status-red) 35%, transparent 65%);
-  background: color-mix(in srgb, var(--status-red) 8%, transparent 92%);
+  color: var(--alert);
+  border-color: color-mix(in srgb, var(--alert) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--alert) 8%, transparent 92%);
 }
 
 /* ---------- avisos na tela ---------- */
@@ -263,12 +263,12 @@
   gap: 8px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--card);
+  background: var(--surface);
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--text-dist) 50%, transparent 50%);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 50%, transparent 50%);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   line-height: 1.35;
   animation: notif-entrada 0.25s ease;
 }
@@ -282,7 +282,7 @@
 }
 
 .notif-toast-corpo>span:not(.notif-chip) {
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   color: color-mix(in srgb, var(--text) 60%, transparent 40%);
 }
 

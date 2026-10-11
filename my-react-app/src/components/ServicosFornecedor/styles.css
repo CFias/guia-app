@@ -149,7 +149,7 @@
   overflow: hidden;
 }
 
-.sf-progresso-barra > div {
+.sf-progresso-barra>div {
   height: 100%;
   background: var(--accent);
   transition: width 0.2s ease;
@@ -168,7 +168,7 @@
   color: var(--text-2);
 }
 
-.sf-alerta > svg {
+.sf-alerta>svg {
   flex: none;
   color: var(--warning);
 }
@@ -211,7 +211,7 @@
   font-weight: 700;
 }
 
-.sf-head-toggle > svg:first-child {
+.sf-head-toggle>svg:first-child {
   color: var(--text-3);
 }
 
@@ -288,7 +288,7 @@
   cursor: pointer;
 }
 
-.sf-pend-veic > span:nth-of-type(1) {
+.sf-pend-veic>span:nth-of-type(1) {
   flex: 1;
   min-width: 0;
 }
@@ -326,12 +326,12 @@
   background: color-mix(in oklch, var(--accent) 20%, var(--surface));
 }
 
-.sf-sugestao > svg {
+.sf-sugestao>svg {
   color: var(--accent-text);
 }
 
 .sf-sugestao small {
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   text-transform: uppercase;
   color: var(--text-3);
@@ -468,7 +468,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sf-veic-info span + span::before {
+.sf-veic-info span+span::before {
   content: "·";
   margin-right: 6px;
 }
@@ -663,7 +663,7 @@
   margin-left: 8px;
   padding: 1px 6px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: calc(10px * var(--escala-fonte, 1));
   font-weight: 700;
   text-transform: uppercase;
   color: var(--warning);
@@ -689,7 +689,7 @@
   overflow: hidden;
 }
 
-.sf-share > div {
+.sf-share>div {
   height: 100%;
   border-radius: 999px;
   background: var(--accent);
@@ -707,7 +707,7 @@
   padding: 1px 6px;
   border-radius: 5px;
   border: 1px solid var(--divider);
-  font-size: 11px;
+  font-size: calc(11px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: center;
@@ -730,7 +730,7 @@
 
 .sf-detalhe-head h3 {
   margin: 0 0 2px;
-  font-size: 20px;
+  font-size: calc(20px * var(--escala-fonte, 1));
   font-weight: 700;
 }
 

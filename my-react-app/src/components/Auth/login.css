@@ -70,12 +70,12 @@
 }
 
 .login-marca strong {
-  font-size: 16px;
+  font-size: calc(16px * var(--escala-fonte, 1));
   font-weight: 700;
 }
 
 .login-marca small {
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 
@@ -93,7 +93,7 @@
   border: 1px solid color-mix(in oklch, var(--accent) 40%, var(--divider));
   background: color-mix(in oklch, var(--accent) 12%, transparent);
   color: var(--accent-text);
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -119,7 +119,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   color: var(--text-2);
 }
 
@@ -176,14 +176,14 @@
 
 .login-form__titulo h2 {
   margin: 0 0 6px;
-  font-size: 28px;
+  font-size: calc(28px * var(--escala-fonte, 1));
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .login-form__titulo p {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--escala-fonte, 1));
   line-height: 1.5;
   color: var(--text-3);
 }
@@ -202,7 +202,7 @@
 }
 
 .login-campo label {
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--text-2);
 }
@@ -230,7 +230,7 @@
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -272,7 +272,7 @@
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   font-weight: 600;
   color: var(--accent-text);
   cursor: pointer;
@@ -293,7 +293,7 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: calc(13px * var(--escala-fonte, 1));
   line-height: 1.45;
 }
 
@@ -326,7 +326,7 @@
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--escala-fonte, 1));
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.05s ease;
@@ -351,14 +351,14 @@
   justify-content: center;
   gap: 6px;
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 
 .login-rodape {
   display: flex;
   gap: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--escala-fonte, 1));
   color: var(--text-3);
 }
 
@@ -429,7 +429,7 @@
 
 .login-marca-dagua__nome {
   margin-top: -8px;
-  font-size: 58px;
+  font-size: calc(58px * var(--escala-fonte, 1));
   font-weight: 800;
   letter-spacing: -0.04em;
   white-space: nowrap;
@@ -475,6 +475,6 @@ body.dark-pro .login-marca-dagua {
 
   .login-marca-dagua__nome {
     margin-top: -4px;
-    font-size: 36px;
+    font-size: calc(36px * var(--escala-fonte, 1));
   }
 }
