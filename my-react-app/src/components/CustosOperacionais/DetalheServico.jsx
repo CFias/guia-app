@@ -2,8 +2,12 @@ import { useMemo, useState } from "react";
 import { Button, Drawer, Field, Icon, Segmented } from "../ui";
 import {
   CATEGORIAS,
+  MODALIDADES_GUIA,
   NOME_CATEGORIA,
+  NOME_MODALIDADE,
   NOME_TIPO,
+  REGRAS_PADRAO,
+  acharTarifaGuia,
   formatarReais,
   lerValorDigitado,
 } from "../../Services/Services/custosCalculo";
@@ -27,7 +31,8 @@ const Linha = ({ icone, rotulo, children }) => (
   </div>
 );
 
-const DetalheServico = ({ linha, manual = {}, fornecedores = [], onFechar, onSalvar, onCriarTarifa, salvando }) => {
+const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFechar, onSalvar, onCriarTarifa, salvando }) => {
+  const regras = config?.regras || REGRAS_PADRAO;
   const listaFornecedores = useMemo(() => {
     const l = [...fornecedores];
     if (linha.fornecedor && !l.includes(linha.fornecedor)) l.unshift(linha.fornecedor);
@@ -49,6 +54,15 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], onFechar, onSal
   const [semGuia, setSemGuia] = useState(!!manual.semGuia);
   const [guiaValor, setGuiaValor] = useState(valorTexto(manual.guiaValor));
   const [obs, setObs] = useState(manual.obs || "");
+  const [noShow, setNoShow] = useState(!!manual.noShow);
+  const [modalidade, setModalidade] = useState(manual.guiaModalidade || "auto");
+  const podeNoShow = linha.tipo !== "PASSEIO";
+  const pctNoShow = linha.tipo === "IN" ? regras.noShowIn : linha.tipo === "OUT" ? regras.noShowOut : regras.noShowTrf;
+  const modalidadeEfetiva = modalidade === "auto" ? linha.guiaModalidadeAuto : modalidade;
+  const refBase = acharTarifaGuia(linha, linha.categoria, config?.tarifasGuia || [], modalidadeEfetiva === "mi" ? "mi" : "regular");
+  const refGuia = refBase
+    ? Math.round(refBase.valor * (modalidadeEfetiva === "idioma" ? 1 + regras.adicionalIdioma / 100 : 1) * 100) / 100
+    : null;
   const [erro, setErro] = useState("");
 
   const fornecedorFinal = fornecedor === OUTRO ? fornecedorOutro.trim() : fornecedor;
@@ -75,6 +89,8 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], onFechar, onSal
       semGuia: semGuia || null,
       guiaValor: temGuia ? gv : null,
       obs: obs.trim() || null,
+      noShow: podeNoShow && noShow ? true : null,
+      guiaModalidade: modalidade === "auto" ? null : modalidade,
     };
     onSalvar(patch, {
       vinculo: fixarVinculo && fornecedorFinal !== linha.fornecedorAuto ? fornecedorFinal : undefined,
@@ -264,6 +280,28 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], onFechar, onSal
           )}
         </section>
 
+        {podeNoShow && (
+          <section className="cst-ficha__secao">
+            <h3>No-show</h3>
+            <label className="cst-check">
+              <input type="checkbox" checked={noShow} onChange={(e) => setNoShow(e.target.checked)} />
+              <span>
+                O passageiro não se apresentou (no-show)
+                <small>
+                  {linha.tipo === "IN"
+                    ? `Chegada: o fornecedor recebe ${pctNoShow}% do valor do serviço.`
+                    : `${linha.tipo === "OUT" ? "Saída" : "Transfer"}: o fornecedor recebe ${pctNoShow}% (valor integral${pctNoShow === 100 ? "" : " pela regra"}).`}
+                </small>
+              </span>
+            </label>
+            {noShow && linha.valorServico !== null && (
+              <p className="cst-ajuda">
+                Valor do serviço {formatarReais(linha.valorServico)} → pago {formatarReais((linha.valorServico * pctNoShow) / 100)}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="cst-ficha__secao">
           <h3>Guia</h3>
           <label className="cst-check">
@@ -279,21 +317,46 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], onFechar, onSal
                   onChange={(e) => setGuiaNome(e.target.value)}
                 />
               </Field>
+              <Field label="Modalidade">
+                <select value={modalidade} onChange={(e) => setModalidade(e.target.value)}>
+                  <option value="auto">Automático ({NOME_MODALIDADE[linha.guiaModalidadeAuto]})</option>
+                  {MODALIDADES_GUIA.map((m) => (
+                    <option key={m.valor} value={m.valor}>
+                      {m.nome}
+                      {m.valor === "idioma" ? ` (+${regras.adicionalIdioma}%)` : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p className="cst-ajuda">
+                {linha.idiomasTexto ? `Passageiros de outro idioma: ${linha.idiomasTexto}. ` : "Nenhum passageiro de outro idioma no Phoenix. "}
+                Tabela MI = guiamento todo em outro idioma para um grupo; Regular + idioma = passeio regular com passageiro estrangeiro (+
+                {regras.adicionalIdioma}% sobre o valor do guia).
+              </p>
               <Field
                 label="Valor pago ao guia (R$)"
                 hint={
-                  linha.guiaReferencia !== null
-                    ? `Referência da tabela: ${formatarReais(linha.guiaReferencia)}. Confirme o valor negociado.`
-                    : "Valor negociado com o guia."
+                  refGuia !== null
+                    ? `Referência: ${formatarReais(refBase.valor)}${modalidadeEfetiva === "idioma" ? ` + ${regras.adicionalIdioma}% = ${formatarReais(refGuia)}` : ""}${modalidadeEfetiva === "mi" ? " (tabela MI)" : ""}. Digite o total pago.`
+                    : modalidadeEfetiva === "mi"
+                      ? "Sem referência na tabela MI — digite o valor negociado."
+                      : "Valor negociado com o guia."
                 }
               >
-                <input
-                  inputMode="decimal"
-                  value={guiaValor}
-                  placeholder={linha.guiaReferencia !== null ? valorTexto(linha.guiaReferencia) : "0,00"}
-                  onChange={(e) => setGuiaValor(e.target.value)}
-                  disabled={!temGuia}
-                />
+                <div className="cst-guia-valor">
+                  <input
+                    inputMode="decimal"
+                    value={guiaValor}
+                    placeholder={refGuia !== null ? valorTexto(refGuia) : "0,00"}
+                    onChange={(e) => setGuiaValor(e.target.value)}
+                    disabled={!temGuia}
+                  />
+                  {refGuia !== null && temGuia && (
+                    <Button size="sm" onClick={() => setGuiaValor(valorTexto(refGuia))}>
+                      Usar referência
+                    </Button>
+                  )}
+                </div>
               </Field>
             </>
           )}

@@ -10,6 +10,7 @@ import { normalizarConfigCustos } from "../../Services/Services/custosCalculo";
 import CustoDia from "./CustoDia";
 import RelatorioCustos from "./RelatorioCustos";
 import TabelaTarifas from "./TabelaTarifas";
+import Tarifario from "./Tarifario";
 import "./custos.css";
 
 /* =========================================================
@@ -24,6 +25,7 @@ import "./custos.css";
 const ABAS = [
   { value: "dia", label: "Custo do dia", icon: "calendar" },
   { value: "relatorios", label: "Relatórios", icon: "barChart" },
+  { value: "tarifario", label: "Tarifário", icon: "fileText" },
   { value: "tarifas", label: "Tarifas", icon: "tag" },
 ];
 
@@ -81,6 +83,7 @@ const CustosOperacionais = () => {
 
       {aba === "dia" && <CustoDia {...contexto} onCriarTarifa={criarTarifa} />}
       {aba === "relatorios" && <RelatorioCustos {...contexto} />}
+      {aba === "tarifario" && <Tarifario {...contexto} />}
       {aba === "tarifas" && (
         <TabelaTarifas {...contexto} prefill={prefillTarifa} onPrefillUsado={() => setPrefillTarifa(null)} />
       )}

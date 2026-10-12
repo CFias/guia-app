@@ -93,3 +93,11 @@ export const gravarPreferencia = (chave, valor) => {
     /* sem storage: fica só nesta visita */
   }
 };
+
+export const valorParaTexto = (v) =>
+  v === null || v === undefined || v === ""
+    ? ""
+    : Number(v).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });

@@ -98,13 +98,18 @@ const CelulaFornecedor = ({ linha, onSalvar }) => {
           : ""}
         {linha.economia > 0 && <b className="cst-eco"> −{formatarReais(linha.economia, { semCentavos: true })}</b>}
         {linha.acimaDaTabela > 0 && <b className="cst-acima"> +{formatarReais(linha.acimaDaTabela, { semCentavos: true })}</b>}
+        {linha.noShow && (
+          <b className="cst-noshow-txt">
+            {" "}· no-show {linha.noShowPct}%{linha.noShowPct < 100 ? ` = ${formatarReais(linha.valorFornecedor, { semCentavos: true })}` : ""}
+          </b>
+        )}
       </span>
     </div>
   );
 };
 
 /* ---------------- célula do guia ---------------- */
-const CelulaGuia = ({ linha, onSalvar, onAbrir }) => {
+const CelulaGuia = ({ linha, onSalvar, onAbrir, adicionalIdioma }) => {
   if (linha.guiaStatus === "verificar") {
     return (
       <button type="button" className="cst-link-alerta" onClick={onAbrir}>
@@ -119,7 +124,14 @@ const CelulaGuia = ({ linha, onSalvar, onAbrir }) => {
       <span className="cst-guia-nome" title={linha.guiaNome}>
         <Icon name="user" size={13} />
         {linha.guiaNome}
+        {linha.guiaModalidade === "mi" && <span className="cst-mod">MI</span>}
+        {linha.guiaModalidade === "idioma" && (
+          <span className="cst-mod" title={linha.idiomasTexto ? `Passageiros: ${linha.idiomasTexto}` : "Adicional de idioma"}>
+            +{adicionalIdioma}%{linha.idiomasTexto ? ` ${linha.idiomasTexto.split(" ")[0]}` : ""}
+          </span>
+        )}
       </span>
+      <span className="cst-guia-linha">
       <CampoValor
         key={`${linha.chave}-g-${linha.guiaValor ?? "x"}`}
         valor={linha.guiaValor}
@@ -132,6 +144,17 @@ const CelulaGuia = ({ linha, onSalvar, onAbrir }) => {
         ariaLabel={`Valor pago ao guia ${linha.guiaNome}`}
         onSalvar={onSalvar}
       />
+      {linha.guiaStatus === "a-confirmar" && linha.guiaReferencia !== null && (
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon="check"
+          title={`Confirmar ${formatarReais(linha.guiaReferencia)} (referência)`}
+          onClick={() => onSalvar(linha.guiaReferencia)}
+        />
+      )}
+      </span>
     </div>
   );
 };
@@ -328,13 +351,17 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
 
   /* ---------- números ---------- */
   const totais = useMemo(() => {
-    const t = { fornecedores: 0, guias: 0, economia: 0, pax: 0, casados: 0, pendentes: 0, guiaAConfirmar: 0, guiaRef: 0, comGuia: 0 };
+    const t = { fornecedores: 0, guias: 0, economia: 0, pax: 0, casados: 0, pendentes: 0, guiaAConfirmar: 0, guiaRef: 0, comGuia: 0, noShow: 0, economiaNoShow: 0 };
     linhas.forEach((l) => {
       t.fornecedores += l.valorFornecedor || 0;
       t.guias += l.guiaValor || 0;
       t.economia += l.economia || 0;
       t.pax += l.pax || 0;
       if (l.casado) t.casados += 1;
+      if (l.noShow) {
+        t.noShow += 1;
+        t.economiaNoShow += l.economiaNoShow || 0;
+      }
       if (l.pendencias.length) t.pendentes += 1;
       if (l.guiaStatus === "a-confirmar") {
         t.guiaAConfirmar += 1;
@@ -382,6 +409,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
       if (filtro === "casados" && !l.casado) return false;
       if (filtro === "guia" && !(l.guiaNome || l.guiaStatus === "verificar")) return false;
       if (filtro === "recomendacao" && !recPorServico.has(l.chave)) return false;
+      if (filtro === "noshow" && !l.noShow) return false;
       if (fornecedorSel && (l.fornecedor || "__sem__") !== fornecedorSel) return false;
       if (termo && !textoBusca(l).includes(termo)) return false;
       return true;
@@ -458,18 +486,20 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
             key: "servicos",
             label: "Serviços",
             value: linhas.length,
-            hint: `${totais.pax} pax · ${totais.casados} casado(s)`,
+            hint: `${totais.pax} pax · ${totais.casados} casado(s)${totais.noShow ? ` · ${totais.noShow} no-show` : ""}`,
             icon: "truck",
             loading: carregando,
           },
           {
             key: "economia",
             label: "Economia",
-            value: formatarReais(totais.economia, { semCentavos: true }),
+            value: formatarReais(totais.economia + totais.economiaNoShow, { semCentavos: true }),
             hint:
               economiaPossivel > 0
                 ? `+ ${formatarReais(economiaPossivel, { semCentavos: true })} possível com ${recomendacoes.length} troca(s)`
-                : "casados e valores abaixo da tabela",
+                : totais.economiaNoShow
+                  ? `+ no-show: ${formatarReais(totais.economiaNoShow, { semCentavos: true })} a menos`
+                  : "casados e valores abaixo da tabela",
             icon: "trendingDown",
             loading: carregando,
           },
@@ -512,6 +542,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                 { value: "casados", label: "Casados", count: totais.casados },
                 { value: "guia", label: "Com guia", count: totais.comGuia },
                 ...(recomendacoes.length ? [{ value: "recomendacao", label: "Com recomendação", count: recomendacoes.length }] : []),
+                ...(totais.noShow ? [{ value: "noshow", label: "No-show", count: totais.noShow }] : []),
               ]}
             />
             <Field className="cst-filtros__forn">
@@ -594,6 +625,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                         </span>
                       )}
                       {l.apoio && <span className="cst-chip-apoio">Apoio · {l.trechos} trecho(s)</span>}
+                      {l.noShow && <span className="cst-chip-noshow">No-show · paga {l.noShowPct}%</span>}
                       {recPorServico.has(l.chave) && (
                         <button
                           type="button"
@@ -628,7 +660,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                     </span>
                   </span>
                   <CelulaFornecedor linha={l} onSalvar={(v) => lancar(l.chave, { valor: v })} />
-                  <CelulaGuia linha={l} onSalvar={(v) => lancar(l.chave, { guiaValor: v })} onAbrir={() => setAberta(l.chave)} />
+                  <CelulaGuia
+                    linha={l}
+                    adicionalIdioma={config.regras.adicionalIdioma}
+                    onSalvar={(v) => lancar(l.chave, { guiaValor: v })}
+                    onAbrir={() => setAberta(l.chave)}
+                  />
                   <span className="ui-cell-num cst-total">
                     {l.valorFornecedor === null && !l.guiaValor ? <span className="cst-vazio">—</span> : formatarReais(l.total)}
                   </span>
@@ -684,6 +721,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           linha={linhaAberta}
           manual={salvas[linhaAberta.chave]?.manual || {}}
           fornecedores={nomesFornecedores}
+          config={config}
           onFechar={() => setAberta(null)}
           onSalvar={salvarDetalhe}
           onCriarTarifa={(p) => {

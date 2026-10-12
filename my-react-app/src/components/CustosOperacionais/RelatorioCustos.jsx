@@ -328,8 +328,10 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
               {
                 key: "economia",
                 label: "Economia",
-                value: t ? formatarReais(t.economia, { semCentavos: true }) : "",
-                hint: t ? `casados ${formatarReais(t.economiaCasado, { semCentavos: true })} · negociado ${formatarReais(t.economiaNegociada, { semCentavos: true })}` : "",
+                value: t ? formatarReais(t.economia + t.noShowEconomia, { semCentavos: true }) : "",
+                hint: t
+                  ? `casados ${formatarReais(t.economiaCasado, { semCentavos: true })} · negociado ${formatarReais(t.economiaNegociada, { semCentavos: true })}${t.noShowEconomia ? ` · no-show ${formatarReais(t.noShowEconomia, { semCentavos: true })}` : ""}`
+                  : "",
                 icon: "trendingDown",
                 loading: carregando,
               },
@@ -388,6 +390,47 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
               <Card className="cst-card">
                 <CardHeader icon="user" title="Guias" subtitle="Valores pagos lançados; “a confirmar” ainda sem valor." />
                 {resumo ? <Ranking itens={resumo.porGuia} vazio="Nenhum guia em serviço de transfer/passeio no período." /> : <div className="ui-sk ui-sk--barra" />}
+              </Card>
+
+              <Card className="cst-card">
+                <CardHeader icon="alert" title="No-show e adicionais" subtitle="O que mudou o valor pago por condição especial." />
+                {resumo ? (
+                  <dl className="cst-cond">
+                    <div>
+                      <dt>No-show</dt>
+                      <dd>
+                        <span>
+                          <b className="tabular">{t.noShowQtd}</b> serviço(s){t.noShowInQtd ? ` · ${t.noShowInQtd} chegada(s)` : ""}
+                        </span>
+                        <small>
+                          Pago {formatarReais(t.noShowPago)} · deixou de pagar <b className="cst-eco">{formatarReais(t.noShowEconomia)}</b>
+                        </small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Guia — tabela MI</dt>
+                      <dd>
+                        <span>
+                          <b className="tabular">{t.guiaMiQtd}</b> serviço(s)
+                        </span>
+                        <small>Pago {formatarReais(t.guiaMiValor)}</small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Guia — adicional de idioma</dt>
+                      <dd>
+                        <span>
+                          <b className="tabular">{t.guiaIdiomaQtd}</b> serviço(s)
+                        </span>
+                        <small>
+                          Pago {formatarReais(t.guiaIdiomaValor)} · adicional {formatarReais(t.guiaAdicional)}
+                        </small>
+                      </dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <div className="ui-sk ui-sk--barra" />
+                )}
               </Card>
 
               {acima.length > 0 && (

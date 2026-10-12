@@ -18,11 +18,11 @@ const LinhaServico = ({ linha, par, onAbrir }) => (
   >
     <span className="cst-vc__hora">
       <b className="tabular">{linha.hora || "--:--"}</b>
-      <span className={`ui-tag cst-tipo cst-tipo--${linha.tipo}`}>{NOME_TIPO[linha.tipo]}</span> 
+      <span className={`ui-tag cst-tipo cst-tipo--${linha.tipo}`}>{NOME_TIPO[linha.tipo]}</span>
     </span>
     <span className="cst-vc__desc">
       <span className="cst-vc__nome">{linha.descricao}</span>
-      <small>
+      <small>a
         {[linha.regiaoTexto, `${linha.pax} pax`].filter(Boolean).join(" · ")}
         {linha.casado && (
           <span className="cst-chip-casado">
@@ -31,10 +31,12 @@ const LinhaServico = ({ linha, par, onAbrir }) => (
           </span>
         )}
         {linha.apoio && <span className="cst-chip-apoio">Apoio · {linha.trechos} trecho(s)</span>}
+        {linha.noShow && <span className="cst-chip-noshow">No-show · {linha.noShowPct}%</span>}
         {linha.guiaNome && (
           <span className={`cst-chip-guia ${linha.guiaStatus === "a-confirmar" ? "is-pendente" : ""}`}>
             <Icon name="user" size={11} />
             {linha.guiaNome}
+            {linha.guiaModalidade === "mi" ? " · MI" : linha.guiaModalidade === "idioma" ? " · +idioma" : ""}
             {linha.guiaValor !== null ? ` · ${formatarReais(linha.guiaValor, { semCentavos: true })}` : " · a confirmar"}
           </span>
         )}

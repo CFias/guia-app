@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   CardHeader,
-  Drawer,
   EmptyState,
   Field,
   Icon,
@@ -19,17 +18,17 @@ import {
   CATEGORIAS,
   NOME_CATEGORIA,
   NOME_TIPO,
-  TIPOS_CUSTO,
   chaveTexto,
   formatarReais,
   lerValorDigitado,
   listaDeFornecedores,
   normalizarRegrasCasado,
-  normalizarTarifa,
-  normalizarTarifaGuia,
+  normalizarRegras,
+  ondeDaTarifa,
   regiaoCanonica,
 } from "../../Services/Services/custosCalculo";
 import { salvarConfigCustos } from "../../Services/Services/custosRepository";
+import { FormGuia, FormTarifa } from "./FormulariosTarifa";
 
 /* Tabela de tarifas (settings/custos):
    - por fornecedor: tipo de serviço + região/passeio + categoria → valor
@@ -40,253 +39,61 @@ import { salvarConfigCustos } from "../../Services/Services/custosRepository";
 
 const GERAL = "__geral__";
 
-const valorTexto = (v) =>
-  v === null || v === undefined ? "" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const ondeDaTarifa = (t) => {
-  if (t.tipo === "PASSEIO") return t.servico || "Qualquer passeio";
-  if (t.tipo === "APOIO") return `Por trecho · ${t.regiao || "qualquer região"}${t.servico ? ` · ${t.servico}` : ""}`;
-  if (t.tipo === "TRF") return `${t.regiao || "Qualquer região"} → ${t.regiaoDestino || "qualquer região"}`;
-  if (t.tipo === "IN") return `Aeroporto → ${t.regiao || "qualquer região"}`;
-  return `${t.regiao || "Qualquer região"} → Aeroporto`;
-};
-
-/* ---------------- formulário de tarifa (fornecedor) ---------------- */
-const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar, onSalvar, salvando }) => {
-  const [f, setF] = useState(() => ({
-    fornecedor: inicial.fornecedor || "",
-    tipo: inicial.tipo || "IN",
-    regiao: inicial.regiao || "",
-    regiaoDestino: inicial.regiaoDestino || "",
-    servico: inicial.servico || "",
-    categoria: inicial.categoria || "",
-    valor: valorTexto(inicial.valor),
-    valorCasado: valorTexto(inicial.valorCasado),
-    obs: inicial.obs || "",
+/* ---------------- no-show e adicional de idioma ---------------- */
+const RegrasCobranca = ({ regras, onSalvar, salvando }) => {
+  const [r, setR] = useState(() => ({
+    noShowIn: String(regras.noShowIn),
+    noShowOut: String(regras.noShowOut),
+    noShowTrf: String(regras.noShowTrf),
+    adicionalIdioma: String(regras.adicionalIdioma),
   }));
   const [erro, setErro] = useState("");
-  const set = (campo) => (e) => setF((p) => ({ ...p, [campo]: e.target.value }));
+  const campo = (k) => (e) => setR((p) => ({ ...p, [k]: e.target.value }));
 
   const salvar = () => {
-    const valor = lerValorDigitado(f.valor);
-    const valorCasado = f.valorCasado.trim() && f.tipo !== "APOIO" && f.tipo !== "PASSEIO" ? lerValorDigitado(f.valorCasado) : null;
-    if (valor === null) return setErro("Informe o valor da tarifa.");
-    if (f.valorCasado.trim() && valorCasado === null) return setErro("Valor casado inválido.");
-    if (valorCasado !== null && valorCasado > valor) return setErro("O valor casado deveria ser menor que o valor cheio.");
+    const vals = Object.fromEntries(Object.entries(r).map(([k, v]) => [k, lerValorDigitado(v)]));
+    if (Object.values(vals).some((v) => v === null || v > 300)) return setErro("Use números em %, de 0 a 300.");
     setErro("");
-    onSalvar(
-      normalizarTarifa({
-        ...inicial,
-        ...f,
-        servico: f.tipo === "PASSEIO" || f.tipo === "APOIO" ? f.servico : "",
-        regiao: f.tipo === "PASSEIO" ? "" : f.regiao,
-        regiaoDestino: f.tipo === "TRF" ? f.regiaoDestino : "",
-        valor,
-        valorCasado,
-        id: inicial._nova ? undefined : inicial.id,
-      }),
-    );
+    onSalvar(normalizarRegras(vals));
   };
 
-  const ehPasseio = f.tipo === "PASSEIO";
-  const ehTrf = f.tipo === "TRF";
-  const ehApoio = f.tipo === "APOIO";
-
   return (
-    <Drawer
-      open
-      title={inicial._nova ? "Nova tarifa" : "Editar tarifa"}
-      subtitle="Quanto o fornecedor cobra por este tipo de serviço."
-      onClose={onFechar}
-      onSave={salvar}
-      saveLabel="Salvar tarifa"
-      saving={salvando}
-    >
-      <div className="cst-form">
-        <Field label="Fornecedor" hint="“Todos os fornecedores” vale quando o fornecedor não tem tarifa própria.">
-          <input list="cst-lista-fornecedores" value={f.fornecedor} onChange={set("fornecedor")} placeholder="Todos os fornecedores" />
-          <datalist id="cst-lista-fornecedores">
-            {fornecedores.map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
-        </Field>
-
-        <Field label="Tipo de serviço">
-          <select value={f.tipo} onChange={set("tipo")}>
-            {TIPOS_CUSTO.map((t) => (
-              <option key={t.valor} value={t.valor}>
-                {t.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        {ehPasseio ? (
-          <Field label="Passeio" hint="Vazio = qualquer passeio.">
-            <input list="cst-lista-passeios" value={f.servico} onChange={set("servico")} placeholder="Qualquer passeio" />
-            <datalist id="cst-lista-passeios">
-              {passeios.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
+    <Card className="cst-card cst-casado">
+      <CardHeader
+        icon="sliders"
+        title="No-show e adicional de guia"
+        subtitle="No-show: o passageiro não se apresentou. O fornecedor recebe esta porcentagem do valor do serviço."
+      />
+      <div className="cst-casado__corpo">
+        <div className="cst-form__tripla">
+          <Field label="No-show na chegada (IN) — %" hint="Aeroporto → hotel. Padrão: 50%.">
+            <input inputMode="decimal" value={r.noShowIn} onChange={campo("noShowIn")} />
           </Field>
-        ) : (
-          <>
-            <Field
-              label={
-                f.tipo === "IN"
-                  ? "Região do hotel (destino)"
-                  : f.tipo === "OUT"
-                    ? "Região do hotel (origem)"
-                    : ehApoio
-                      ? "Região do hotel (onde o apoio busca)"
-                      : "Região de origem"
-              }
-              hint="Como o Phoenix chama a região (ex.: SALVADOR, LITORAL NORTE). Vazio = qualquer região."
-            >
-              <input list="cst-lista-regioes" value={f.regiao} onChange={set("regiao")} placeholder="Qualquer região" />
-            </Field>
-            {ehApoio && (
-              <Field label="Passeio (opcional)" hint="Vazio = vale para qualquer passeio.">
-                <input list="cst-lista-passeios" value={f.servico} onChange={set("servico")} placeholder="Qualquer passeio" />
-                <datalist id="cst-lista-passeios">
-                  {passeios.map((n) => (
-                    <option key={n} value={n} />
-                  ))}
-                </datalist>
-              </Field>
-            )}
-            {ehTrf && (
-              <Field label="Região de destino">
-                <input list="cst-lista-regioes" value={f.regiaoDestino} onChange={set("regiaoDestino")} placeholder="Qualquer região" />
-              </Field>
-            )}
-            <datalist id="cst-lista-regioes">
-              {regioes.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-          </>
-        )}
-
-        <Field label="Categoria do veículo">
-          <div className="cst-opcoes">
-            <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
-              Qualquer
-            </button>
-            {CATEGORIAS.map((c) => (
-              <button
-                key={c.valor}
-                type="button"
-                className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
-                aria-pressed={f.categoria === c.valor}
-                onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
-              >
-                {c.nome}
-              </button>
-            ))}
-          </div>
-        </Field>
-
-        <div className="cst-form__dupla">
-          <Field label={ehApoio ? "Valor por trecho (R$)" : "Valor (R$)"} hint={ehApoio ? "Ida e volta = 2 trechos." : undefined}>
-            <input inputMode="decimal" value={f.valor} onChange={set("valor")} placeholder="0,00" />
+          <Field label="No-show na saída (OUT) — %" hint="Hotel → aeroporto. Padrão: 100% (integral).">
+            <input inputMode="decimal" value={r.noShowOut} onChange={campo("noShowOut")} />
           </Field>
-          {!ehApoio && !ehPasseio && (
-            <Field label="Valor casado (R$)" hint="Cada perna do casado. Vazio = sem desconto.">
-              <input inputMode="decimal" value={f.valorCasado} onChange={set("valorCasado")} placeholder="—" />
-            </Field>
-          )}
+          <Field label="No-show em transfer — %" hint="Hotel → hotel. Padrão: 100%.">
+            <input inputMode="decimal" value={r.noShowTrf} onChange={campo("noShowTrf")} />
+          </Field>
         </div>
-
-        <Field label="Observação">
-          <input value={f.obs} onChange={set("obs")} placeholder="Ex.: inclui pedágio" />
-        </Field>
-
-        {erro && (
-          <p className="cst-erro" role="alert">
-            {erro}
-          </p>
-        )}
-      </div>
-    </Drawer>
-  );
-};
-
-/* ---------------- formulário de referência de guia ---------------- */
-const FormGuia = ({ inicial, passeios, onFechar, onSalvar, salvando }) => {
-  const [f, setF] = useState(() => ({
-    tipo: inicial.tipo || "",
-    servico: inicial.servico || "",
-    categoria: inicial.categoria || "",
-    valor: valorTexto(inicial.valor),
-    obs: inicial.obs || "",
-  }));
-  const [erro, setErro] = useState("");
-  const set = (campo) => (e) => setF((p) => ({ ...p, [campo]: e.target.value }));
-
-  const salvar = () => {
-    const valor = lerValorDigitado(f.valor);
-    if (valor === null) return setErro("Informe o valor de referência.");
-    setErro("");
-    onSalvar(normalizarTarifaGuia({ ...inicial, ...f, servico: f.tipo === "PASSEIO" || !f.tipo ? f.servico : "", valor, id: inicial._nova ? undefined : inicial.id }));
-  };
-
-  return (
-    <Drawer
-      open
-      title={inicial._nova ? "Nova referência de guia" : "Editar referência de guia"}
-      subtitle="Valor sugerido. O valor pago de verdade é confirmado no dia."
-      onClose={onFechar}
-      onSave={salvar}
-      saveLabel="Salvar"
-      saving={salvando}
-    >
-      <div className="cst-form">
-        <Field label="Tipo de serviço">
-          <select value={f.tipo} onChange={set("tipo")}>
-            <option value="">Qualquer serviço</option>
-            {TIPOS_CUSTO.map((t) => (
-              <option key={t.valor} value={t.valor}>
-                {t.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-        {(f.tipo === "PASSEIO" || !f.tipo) && (
-          <Field label="Passeio" hint="Vazio = qualquer passeio.">
-            <input list="cst-lista-passeios-g" value={f.servico} onChange={set("servico")} placeholder="Qualquer passeio" />
-            <datalist id="cst-lista-passeios-g">
-              {passeios.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-          </Field>
-        )}
-        <Field label="Categoria do veículo">
-          <select value={f.categoria} onChange={set("categoria")}>
-            <option value="">Qualquer</option>
-            {CATEGORIAS.map((c) => (
-              <option key={c.valor} value={c.valor}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Valor de referência (R$)">
-          <input inputMode="decimal" value={f.valor} onChange={set("valor")} placeholder="0,00" />
-        </Field>
-        <Field label="Observação">
-          <input value={f.obs} onChange={set("obs")} placeholder="Ex.: diária de passeio inteiro" />
+        <Field
+          label="Adicional de idioma do guia — %"
+          hint="Passeio regular com passageiro de outro idioma (ex.: espanhol): o guia recebe a referência + esta porcentagem. A tabela MI (guiamento todo em outro idioma) tem valores próprios em Guias."
+        >
+          <input inputMode="decimal" value={r.adicionalIdioma} onChange={campo("adicionalIdioma")} />
         </Field>
         {erro && (
           <p className="cst-erro" role="alert">
             {erro}
           </p>
         )}
+        <div>
+          <Button variant="primary" icon="save" onClick={salvar} loading={salvando}>
+            Salvar regras
+          </Button>
+        </div>
       </div>
-    </Drawer>
+    </Card>
   );
 };
 
@@ -501,7 +308,7 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
         options={[
           { value: "fornecedores", label: "Fornecedores", icon: "truck", count: config.tarifas.length },
           { value: "guias", label: "Guias", icon: "user", count: config.tarifasGuia.length },
-          { value: "casado", label: "Serviço casado", icon: "refresh" },
+          { value: "casado", label: "Regras", icon: "sliders" },
         ]}
       />
 
@@ -599,8 +406,9 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
               Ex.: Passeio Praia do Forte · R$ 250; transfer com micro-ônibus · R$ 120.
             </EmptyState>
           ) : (
-            <Table columns="110px minmax(200px, 1.6fr) 130px 130px 84px" minWidth={640}>
+            <Table columns="100px 110px minmax(200px, 1.6fr) 130px 130px 84px" minWidth={740}>
               <TableHead>
+                <span>Tabela</span>
                 <span>Tipo</span>
                 <span>Passeio</span>
                 <span>Categoria</span>
@@ -609,6 +417,7 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
               </TableHead>
               {config.tarifasGuia.map((t) => (
                 <TableRow key={t.id}>
+                  <span>{t.tabela === "mi" ? <span className="cst-mod">MI</span> : "Regular"}</span>
                   <span>{t.tipo ? <span className={`ui-tag cst-tipo cst-tipo--${t.tipo}`}>{NOME_TIPO[t.tipo]}</span> : <span className="cst-vazio">Qualquer</span>}</span>
                   <span>
                     {t.servico || <span className="cst-vazio">Qualquer</span>}
@@ -628,13 +437,21 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
       )}
 
       {secao === "casado" && (
-        <RegrasCasado
-          key={JSON.stringify(config.casado)}
-          regras={config.casado}
-          regioes={regioes.length ? regioes : CASADO_PADRAO.regioes}
-          salvando={salvando}
-          onSalvar={(regras) => gravar({ casado: regras }, "Regra do casado salva")}
-        />
+        <>
+          <RegrasCobranca
+            key={JSON.stringify(config.regras)}
+            regras={config.regras}
+            salvando={salvando}
+            onSalvar={(regras) => gravar({ regras }, "Regras salvas")}
+          />
+          <RegrasCasado
+            key={JSON.stringify(config.casado)}
+            regras={config.casado}
+            regioes={regioes.length ? regioes : CASADO_PADRAO.regioes}
+            salvando={salvando}
+            onSalvar={(regras) => gravar({ casado: regras }, "Regra do casado salva")}
+          />
+        </>
       )}
 
       {editando && (

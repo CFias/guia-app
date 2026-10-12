@@ -14,6 +14,12 @@
 // > sem tarifa (pendência). O guia nunca entra pela tabela sozinho: a tabela
 // só sugere a referência e o valor fica "a confirmar" até alguém lançar.
 
+import {
+  acumularIdiomas,
+  extrairIdiomasDoItem,
+  siglaDoIdioma,
+} from "../Utils/idiomas";
+
 /* ---------------- constantes ---------------- */
 
 export const CATEGORIAS = [
@@ -62,6 +68,26 @@ const TIPOS_VALIDOS = ["IN", "OUT", "TRF", "PASSEIO", "APOIO"];
 //           sem risco de atraso) — também vale para o recomendador de troca
 // maxHoras: até quanto tempo depois do IN o OUT ainda conta como casado
 // duracaoPasseioHoras: quanto tempo um passeio ocupa o veículo
+// no-show: % do valor do serviço pago ao fornecedor quando o passageiro não
+// se apresenta. Chegada (IN) paga metade; saída (OUT) paga inteiro.
+// adicionalIdioma: % a mais para o guia num passeio regular que tem
+// passageiro de outro idioma.
+export const REGRAS_PADRAO = {
+  noShowIn: 50,
+  noShowOut: 100,
+  noShowTrf: 100,
+  adicionalIdioma: 20,
+};
+
+export const MODALIDADES_GUIA = [
+  { valor: "regular", nome: "Regular" },
+  { valor: "mi", nome: "Tabela MI" },
+  { valor: "idioma", nome: "Regular + idioma" },
+];
+export const NOME_MODALIDADE = Object.fromEntries(
+  MODALIDADES_GUIA.map((m) => [m.valor, m.nome]),
+);
+
 export const CASADO_PADRAO = {
   ativo: true,
   regioes: ["LITORAL NORTE"],
@@ -356,11 +382,18 @@ export const consolidarServicos = (itens = [], dataAlvo = "") => {
         hoteisSet: new Set(),
         reservas: 0,
         pax: 0,
+        idiomas: {},
       });
     }
     const s = mapa.get(chave);
     s.reservas += 1;
     s.pax += paxDo(item);
+    // idioma dos passageiros (só os estrangeiros: português não entra)
+    acumularIdiomas(
+      s.idiomas,
+      extrairIdiomasDoItem(item, { nomeServico: nomeServico(item) }).ids,
+      paxDo(item),
+    );
     if (!s.guiaPhoenix) s.guiaPhoenix = extrairGuia(item);
     if (!s.motorista) s.motorista = extrairMotorista(item);
     if (`${data} ${hora || "99:99"}` < `${s.data} ${s.hora || "99:99"}`) {
@@ -485,6 +518,7 @@ export const normalizarTarifa = (t = {}) => ({
 
 export const normalizarTarifaGuia = (t = {}) => ({
   id: t.id || novoIdTarifa(),
+  tabela: t.tabela === "mi" ? "mi" : "regular",
   tipo: TIPOS_VALIDOS.includes(t.tipo) ? t.tipo : "",
   servico: String(t.servico || "").trim(),
   categoria: NOME_CATEGORIA[t.categoria] ? t.categoria : "",
@@ -507,7 +541,20 @@ export const normalizarRegrasCasado = (r = {}) => {
   };
 };
 
+const pct = (v, padrao) => {
+  const n = numeroOuNulo(v);
+  return n === null || n < 0 || n > 300 ? padrao : n;
+};
+
+export const normalizarRegras = (r = {}) => ({
+  noShowIn: pct(r.noShowIn, REGRAS_PADRAO.noShowIn),
+  noShowOut: pct(r.noShowOut, REGRAS_PADRAO.noShowOut),
+  noShowTrf: pct(r.noShowTrf, REGRAS_PADRAO.noShowTrf),
+  adicionalIdioma: pct(r.adicionalIdioma, REGRAS_PADRAO.adicionalIdioma),
+});
+
 export const normalizarConfigCustos = (d = {}) => ({
+  regras: normalizarRegras(d.regras || {}),
   tarifas: (Array.isArray(d.tarifas) ? d.tarifas : []).map(normalizarTarifa),
   tarifasGuia: (Array.isArray(d.tarifasGuia) ? d.tarifasGuia : []).map(
     normalizarTarifaGuia,
@@ -531,6 +578,17 @@ export const descreverTarifa = (t) => {
         ? `${t.regiao || "qualquer região"} → ${t.regiaoDestino || "qualquer região"}`
         : t.regiao || "qualquer região";
   return `${NOME_TIPO[t.tipo]} · ${onde} · ${t.categoria ? NOME_CATEGORIA[t.categoria] : "qualquer veículo"}`;
+};
+
+// Onde vale a tarifa, em texto (listas, tarifário)
+export const ondeDaTarifa = (t) => {
+  if (t.tipo === "PASSEIO") return t.servico || "Qualquer passeio";
+  if (t.tipo === "APOIO")
+    return `Por trecho · ${t.regiao || "qualquer região"}${t.servico ? ` · ${t.servico}` : ""}`;
+  if (t.tipo === "TRF")
+    return `${t.regiao || "Qualquer região"} → ${t.regiaoDestino || "qualquer região"}`;
+  if (t.tipo === "IN") return `Aeroporto → ${t.regiao || "qualquer região"}`;
+  return `${t.regiao || "Qualquer região"} → Aeroporto`;
 };
 
 // Melhor tarifa para um serviço numa região: fornecedor específico vale
@@ -610,11 +668,17 @@ export const acharTarifa = (
   return melhor;
 };
 
-export const acharTarifaGuia = (servico, categoria, tarifasGuia = []) => {
+export const acharTarifaGuia = (
+  servico,
+  categoria,
+  tarifasGuia = [],
+  tabela = "regular",
+) => {
   let escolhida = null;
   let pontos = -1;
   tarifasGuia.forEach((t) => {
     if (t.valor === null) return;
+    if ((t.tabela || "regular") !== tabela) return;
     let p = 0;
     if (t.tipo) {
       if (t.tipo !== servico.tipo) return;
@@ -732,29 +796,44 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
     : null;
 
   const valorLancado = numeroOuNulo(m.valor);
-  let valorFornecedor = null;
+  let valorServico = null;
   let origemValor = "sem-tarifa";
   if (valorLancado !== null) {
-    valorFornecedor = valorLancado;
+    valorServico = valorLancado;
     origemValor = "lancado";
   } else if (tarifaAplicada !== null) {
-    valorFornecedor = tarifaAplicada;
+    valorServico = tarifaAplicada;
     origemValor = casado && tarifaCasada !== null ? "tarifa-casada" : "tarifa";
   }
 
+  // no-show: o passageiro não se apresentou. IN paga a % de no-show
+  // (padrão 50%); OUT e transfer pagam inteiro (ou o que estiver na regra).
+  const regras = config.regras || REGRAS_PADRAO;
+  const noShow = !!m.noShow && servico.tipo !== "PASSEIO";
+  const noShowPct = noShow
+    ? servico.tipo === "IN"
+      ? regras.noShowIn
+      : servico.tipo === "OUT"
+        ? regras.noShowOut
+        : regras.noShowTrf
+    : 100;
+  const valorFornecedor =
+    valorServico === null ? null : Math.round(valorServico * noShowPct) / 100;
+  const economiaNoShow =
+    valorServico === null
+      ? 0
+      : Math.round((valorServico - valorFornecedor) * 100) / 100;
+
   // economia em relação à tabela cheia: casado ou valor negociado abaixo
+  // (o desconto do no-show fica à parte, em economiaNoShow)
   const economia =
-    tarifaCheia !== null &&
-    valorFornecedor !== null &&
-    valorFornecedor < tarifaCheia
-      ? Math.round((tarifaCheia - valorFornecedor) * 100) / 100
+    tarifaCheia !== null && valorServico !== null && valorServico < tarifaCheia
+      ? Math.round((tarifaCheia - valorServico) * 100) / 100
       : 0;
   const motivoEconomia = economia > 0 ? (casado ? "casado" : "negociado") : "";
   const acimaDaTabela =
-    tarifaCheia !== null &&
-    valorFornecedor !== null &&
-    valorFornecedor > tarifaCheia
-      ? Math.round((valorFornecedor - tarifaCheia) * 100) / 100
+    tarifaCheia !== null && valorServico !== null && valorServico > tarifaCheia
+      ? Math.round((valorServico - tarifaCheia) * 100) / 100
       : 0;
 
   // guia
@@ -762,11 +841,45 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
     ? ""
     : String(m.guiaNome || servico.guiaPhoenix || "").trim();
   const grupoGrande = CATEGORIAS_COM_GUIA.includes(categoria);
-  const refGuia =
-    guiaNome || grupoGrande
-      ? acharTarifaGuia(servico, categoria, config.tarifasGuia)
-      : null;
+  // modalidade: regular, tabela MI (guiamento todo em outro idioma para um
+  // grupo) ou regular + adicional de idioma (passeio regular com passageiro
+  // estrangeiro). Automático: passeio com passageiro estrangeiro → idioma.
+  const idiomasEstrangeiros = Object.keys(servico.idiomas || {}).filter(
+    (k) => k !== "pt" && servico.idiomas[k] > 0,
+  );
+  const guiaModalidadeAuto =
+    servico.tipo === "PASSEIO" && idiomasEstrangeiros.length
+      ? "idioma"
+      : "regular";
+  const guiaModalidade = NOME_MODALIDADE[m.guiaModalidade]
+    ? m.guiaModalidade
+    : guiaModalidadeAuto;
+  const temGuiaOuGrande = !!guiaNome || grupoGrande;
+  const refBase = temGuiaOuGrande
+    ? acharTarifaGuia(
+        servico,
+        categoria,
+        config.tarifasGuia,
+        guiaModalidade === "mi" ? "mi" : "regular",
+      )
+    : null;
+  const fatorIdioma =
+    guiaModalidade === "idioma" ? 1 + regras.adicionalIdioma / 100 : 1;
+  const refGuia = refBase
+    ? {
+        valor: Math.round(refBase.valor * fatorIdioma * 100) / 100,
+        base: refBase.valor,
+      }
+    : null;
   const guiaValor = guiaNome ? numeroOuNulo(m.guiaValor) : null;
+  // parte do valor do guia que é o adicional de idioma (para o relatório)
+  const valorGuiaParaAdicional = guiaValor ?? (refGuia ? refGuia.valor : null);
+  const guiaAdicional =
+    guiaNome && guiaModalidade === "idioma" && valorGuiaParaAdicional !== null
+      ? Math.round(
+          (valorGuiaParaAdicional - valorGuiaParaAdicional / fatorIdioma) * 100,
+        ) / 100
+      : 0;
   let guiaStatus = "sem-guia";
   if (guiaNome) guiaStatus = guiaValor !== null ? "lancado" : "a-confirmar";
   else if (grupoGrande && !m.semGuia) guiaStatus = "verificar";
@@ -798,8 +911,12 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
     tarifaCheia,
     tarifaCasada,
     tarifaAplicada,
+    valorServico,
     valorFornecedor,
     origemValor,
+    noShow,
+    noShowPct,
+    economiaNoShow,
     economia,
     motivoEconomia,
     acimaDaTabela,
@@ -807,6 +924,14 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
     guiaManual: !!m.guiaNome,
     semGuia: !!m.semGuia,
     guiaReferencia: refGuia ? refGuia.valor : null,
+    guiaReferenciaBase: refGuia ? refGuia.base : null,
+    guiaModalidade,
+    guiaModalidadeAuto,
+    guiaAdicional,
+    idiomasEstrangeiros,
+    idiomasTexto: idiomasEstrangeiros
+      .map((k) => `${siglaDoIdioma(k)} ${servico.idiomas[k]}`)
+      .join(" · "),
     guiaValor,
     guiaStatus,
     total: (valorFornecedor || 0) + (guiaValor || 0),
@@ -1121,6 +1246,7 @@ export const CAMPOS_RETRATO = [
   "hoteis",
   "reservas",
   "pax",
+  "idiomas",
 ];
 
 export const CAMPOS_CALCULO = [
@@ -1130,6 +1256,12 @@ export const CAMPOS_CALCULO = [
   "parCasado",
   "apoio",
   "trechos",
+  "valorServico",
+  "noShow",
+  "noShowPct",
+  "economiaNoShow",
+  "guiaModalidade",
+  "guiaAdicional",
   "tarifaCheia",
   "tarifaCasada",
   "valorFornecedor",
@@ -1167,6 +1299,8 @@ export const servicoDoRetrato = (salvo = {}) => {
   });
   s.reservas = Number(salvo.reservas || 0);
   s.pax = Number(salvo.pax || 0);
+  s.idiomas =
+    salvo.idiomas && typeof salvo.idiomas === "object" ? salvo.idiomas : {};
   return s;
 };
 
@@ -1250,6 +1384,15 @@ export const resumirPeriodo = (docs = [], datas = []) => {
     semValor: 0,
     semFornecedor: 0,
     total: 0,
+    noShowQtd: 0,
+    noShowInQtd: 0,
+    noShowPago: 0,
+    noShowEconomia: 0,
+    guiaMiQtd: 0,
+    guiaMiValor: 0,
+    guiaIdiomaQtd: 0,
+    guiaIdiomaValor: 0,
+    guiaAdicional: 0,
   };
   const porFornecedor = {};
   const porTipo = {};
@@ -1304,6 +1447,23 @@ export const resumirPeriodo = (docs = [], datas = []) => {
         total.acimaQtd += 1;
       }
       if (c.casado) total.casados += 1;
+      if (c.noShow) {
+        total.noShowQtd += 1;
+        if (l.tipo === "IN") total.noShowInQtd += 1;
+        total.noShowPago += vf;
+        total.noShowEconomia += Number(c.economiaNoShow || 0);
+      }
+      if (c.guiaNome && c.guiaModalidade === "mi") {
+        total.guiaMiQtd += 1;
+        total.guiaMiValor += vg;
+      }
+      if (c.guiaNome && c.guiaModalidade === "idioma") {
+        total.guiaIdiomaQtd += 1;
+        total.guiaIdiomaValor += vg;
+        // adicional só do que já foi lançado (os "a confirmar" ainda não têm valor pago)
+        if (c.guiaValor !== null && c.guiaValor !== undefined)
+          total.guiaAdicional += Number(c.guiaAdicional || 0);
+      }
       if (c.valorFornecedor === null || c.valorFornecedor === undefined)
         total.semValor += 1;
       if (!c.fornecedor) total.semFornecedor += 1;
@@ -1396,13 +1556,16 @@ export const linhasParaCsv = (linhas = []) => {
     "Pax",
     "Casado",
     "Apoio (trechos)",
+    "No-show",
     "Tarifa cheia",
+    "Valor do serviço",
     "Valor fornecedor",
     "Origem do valor",
     "Economia",
     "Guia",
     "Valor guia",
     "Situação guia",
+    "Modalidade guia",
     "Total",
   ];
   const ORIGEM = {
@@ -1432,13 +1595,16 @@ export const linhasParaCsv = (linhas = []) => {
       l.pax,
       c.casado ? "Sim" : "",
       c.apoio ? c.trechos || 2 : "",
+      c.noShow ? `Sim (${c.noShowPct}%)` : "",
       csvNumero(c.tarifaCheia),
+      csvNumero(c.valorServico ?? c.valorFornecedor),
       csvNumero(c.valorFornecedor),
       ORIGEM[c.origemValor] || "",
       csvNumero(c.economia),
       c.guiaNome,
       csvNumero(c.guiaValor),
       GUIA[c.guiaStatus] || "",
+      c.guiaNome ? NOME_MODALIDADE[c.guiaModalidade] || "" : "",
       csvNumero(c.total),
     ]
       .map(csvCelula)
