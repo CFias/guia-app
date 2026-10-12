@@ -70,8 +70,14 @@ export const GRUPOS_MENU = [
   },
   {
     chave: "relatorios",
-    titulo: "Relatórios",
+    titulo: "Custos e relatórios",
     itens: [
+      {
+        to: "/custos",
+        label: "Custos operacionais",
+        icon: "coins",
+        area: "painel",
+      },
       {
         to: "/servicos-fornecedor",
         label: "Serviços por Fornecedor",
