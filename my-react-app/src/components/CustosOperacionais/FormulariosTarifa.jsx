@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Drawer, Field } from "../ui";
 import {
   CATEGORIAS,
+  COBRANCAS,
   TIPOS_CUSTO,
   lerValorDigitado,
   normalizarTarifa,
@@ -13,16 +14,18 @@ import { valorParaTexto as valorTexto } from "./custosDatas";
    aba Tarifas e no Tarifário. */
 
 /* ---------------- formulário de tarifa (fornecedor) ---------------- */
-export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar, onSalvar, salvando }) => {
+export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosConhecidos = [], onFechar, onSalvar, salvando }) => {
   const [f, setF] = useState(() => ({
     fornecedor: inicial.fornecedor || "",
     tipo: inicial.tipo || "IN",
     regiao: inicial.regiao || "",
     regiaoDestino: inicial.regiaoDestino || "",
-    servico: inicial.servico || "", 
+    servico: inicial.servico || "",
     categoria: inicial.categoria || "",
     valor: valorTexto(inicial.valor),
     valorCasado: valorTexto(inicial.valorCasado),
+    cobranca: inicial.cobranca || (inicial.tipo === "SERVICO" ? "pax" : "servico"),
+    aplicaA: inicial.aplicaA || "",
     obs: inicial.obs || "",
   }));
   const [erro, setErro] = useState("");
@@ -30,8 +33,11 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar,
 
   const salvar = () => {
     const valor = lerValorDigitado(f.valor);
-    const valorCasado = f.valorCasado.trim() && f.tipo !== "APOIO" && f.tipo !== "PASSEIO" ? lerValorDigitado(f.valorCasado) : null;
+    const semCasado = f.tipo === "APOIO" || f.tipo === "PASSEIO" || f.tipo === "SERVICO" || f.cobranca !== "servico";
+    const valorCasado = f.valorCasado.trim() && !semCasado ? lerValorDigitado(f.valorCasado) : null;
     if (valor === null) return setErro("Informe o valor da tarifa.");
+    if (f.tipo === "SERVICO" && !f.servico.trim()) return setErro("Diga como o serviço se chama no Phoenix (ou um pedaço do nome).");
+    if (f.tipo === "SERVICO" && !f.fornecedor.trim()) return setErro("Informe o fornecedor (parceiro) que cobra este serviço.");
     if (f.valorCasado.trim() && valorCasado === null) return setErro("Valor casado inválido.");
     if (valorCasado !== null && valorCasado > valor) return setErro("O valor casado deveria ser menor que o valor cheio.");
     setErro("");
@@ -39,8 +45,11 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar,
       normalizarTarifa({
         ...inicial,
         ...f,
-        servico: f.tipo === "PASSEIO" || f.tipo === "APOIO" ? f.servico : "",
-        regiao: f.tipo === "PASSEIO" ? "" : f.regiao,
+        servico: f.tipo === "PASSEIO" || f.tipo === "APOIO" || f.tipo === "SERVICO" ? f.servico : "",
+        regiao: f.tipo === "PASSEIO" || f.tipo === "SERVICO" ? "" : f.regiao,
+        categoria: f.tipo === "SERVICO" ? "" : f.categoria,
+        cobranca: f.tipo === "APOIO" ? "servico" : f.cobranca,
+        aplicaA: f.tipo === "SERVICO" ? f.aplicaA : "",
         regiaoDestino: f.tipo === "TRF" ? f.regiaoDestino : "",
         valor,
         valorCasado,
@@ -52,6 +61,8 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar,
   const ehPasseio = f.tipo === "PASSEIO";
   const ehTrf = f.tipo === "TRF";
   const ehApoio = f.tipo === "APOIO";
+  const ehParceiro = f.tipo === "SERVICO";
+  const porQtd = f.cobranca === "pax" || f.cobranca === "reserva";
 
   return (
     <Drawer
@@ -83,7 +94,30 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar,
           </select>
         </Field>
 
-        {ehPasseio ? (
+        {ehParceiro ? (
+          <>
+            <Field
+              label="Nome do serviço no Phoenix contém"
+              hint="Ex.: MORRO DE SAO PAULO. Todo serviço com esse texto no nome (sem diferenciar acento) entra com esta tarifa, mesmo sem veículo escalado."
+            >
+              <input list="cst-lista-servicos" value={f.servico} onChange={set("servico")} placeholder="Ex.: MORRO DE SAO PAULO" autoFocus />
+              <datalist id="cst-lista-servicos">
+                {servicosConhecidos.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Só quando o serviço for" hint="Use para não pegar, por exemplo, o passeio de mesmo nome.">
+              <select value={f.aplicaA} onChange={set("aplicaA")}>
+                <option value="">Qualquer tipo</option>
+                <option value="TRF">Transfer</option>
+                <option value="IN">IN (chegada)</option>
+                <option value="OUT">OUT (saída)</option>
+                <option value="PASSEIO">Passeio</option>
+              </select>
+            </Field>
+          </>
+        ) : ehPasseio ? (
           <Field label="Passeio" hint="Vazio = qualquer passeio.">
             <input list="cst-lista-passeios" value={f.servico} onChange={set("servico")} placeholder="Qualquer passeio" />
             <datalist id="cst-lista-passeios">
@@ -131,30 +165,61 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, onFechar,
           </>
         )}
 
-        <Field label="Categoria do veículo">
-          <div className="cst-opcoes">
-            <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
-              Qualquer
-            </button>
-            {CATEGORIAS.map((c) => (
-              <button
-                key={c.valor}
-                type="button"
-                className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
-                aria-pressed={f.categoria === c.valor}
-                onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
-              >
-                {c.nome}
+        {!ehApoio && (
+          <Field label="Cobrança" hint={porQtd ? "O valor é multiplicado pela quantidade do serviço no Phoenix (dá para ajustar no dia)." : "Um valor por serviço (veículo)."}>
+            <div className="cst-opcoes">
+              {COBRANCAS.map((c) => (
+                <button
+                  key={c.valor}
+                  type="button"
+                  className={`cst-opcao ${f.cobranca === c.valor ? "is-ativa" : ""}`}
+                  aria-pressed={f.cobranca === c.valor}
+                  onClick={() => setF((p) => ({ ...p, cobranca: c.valor }))}
+                >
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
+
+        {!ehParceiro && (
+          <Field label="Categoria do veículo">
+            <div className="cst-opcoes">
+              <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
+                Qualquer
               </button>
-            ))}
-          </div>
-        </Field>
+              {CATEGORIAS.map((c) => (
+                <button
+                  key={c.valor}
+                  type="button"
+                  className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
+                  aria-pressed={f.categoria === c.valor}
+                  onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
+                >
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
 
         <div className="cst-form__dupla">
-          <Field label={ehApoio ? "Valor por trecho (R$)" : "Valor (R$)"} hint={ehApoio ? "Ida e volta = 2 trechos." : undefined}>
+          <Field
+            label={
+              ehApoio
+                ? "Valor por trecho (R$)"
+                : f.cobranca === "pax"
+                  ? "Valor por passageiro (R$)"
+                  : f.cobranca === "reserva"
+                    ? "Valor por reserva (R$)"
+                    : "Valor (R$)"
+            }
+            hint={ehApoio ? "Ida e volta = 2 trechos." : undefined}
+          >
             <input inputMode="decimal" value={f.valor} onChange={set("valor")} placeholder="0,00" />
           </Field>
-          {!ehApoio && !ehPasseio && (
+          {!ehApoio && !ehPasseio && !ehParceiro && !porQtd && (
             <Field label="Valor casado (R$)" hint="Cada perna do casado. Vazio = sem desconto.">
               <input inputMode="decimal" value={f.valorCasado} onChange={set("valorCasado")} placeholder="—" />
             </Field>

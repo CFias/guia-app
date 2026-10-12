@@ -1707,3 +1707,174 @@
     overflow: visible;
   }
 }
+
+.cst-tf__suf {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.cst-qtd {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.cst-tipo--SERVICO {
+  color: var(--text);
+  border-color: var(--divider);
+  background: var(--raised);
+}
+
+/* ---------- filtros em chips (veículo / serviço) ---------- */
+.cst-filtros--chips {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.cst-fv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cst-fv__rotulo {
+  min-width: 58px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.cst-fv__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cst-fv__chip:hover:not(:disabled) {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+
+.cst-fv__chip.is-ativo {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.cst-fv__chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cst-fv__n {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  font-size: var(--fs-xs);
+  text-align: center;
+  color: var(--text-3);
+}
+
+.cst-fv__chip.is-ativo .cst-fv__n {
+  background: var(--card);
+  color: var(--accent-text);
+}
+
+/* ---------- lista de tarifas agrupada ---------- */
+.cst-tl {
+  display: flex;
+  flex-direction: column;
+}
+
+.cst-tl__grupo+.cst-tl__grupo {
+  border-top: 6px solid var(--raised);
+}
+
+.cst-tl__cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 14px 16px 6px;
+}
+
+.cst-tl__cab h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cst-tl__cab small {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.cst-tl__onde {
+  min-width: 0;
+}
+
+.cst-tl__onde .ui-cell-main {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cst-tl__forn {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cst-tl__valor {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cst-tl__valor small,
+.cst-tl small {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.cst-tl small.cst-eco {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.cst-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.cst-cat-chip--van-alongada,
+.cst-cat-chip--micro,
+.cst-cat-chip--onibus {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}

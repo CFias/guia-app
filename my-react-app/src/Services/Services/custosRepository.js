@@ -36,8 +36,7 @@ import {
   retratoDaLinha,
 } from "./custosCalculo";
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
+const API_BASE = "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
 
@@ -57,8 +56,7 @@ const urlPhoenix = (data, tipos) => {
 
 const lista = (json) => {
   if (Array.isArray(json)) return json;
-  for (const c of [json?.data, json?.results, json?.rows, json?.items])
-    if (Array.isArray(c)) return c;
+  for (const c of [json?.data, json?.results, json?.rows, json?.items]) if (Array.isArray(c)) return c;
   return [];
 };
 
@@ -69,28 +67,34 @@ const buscarJson = async (url) => {
 };
 
 // Transfers (IN/OUT/transfer) e passeios do dia, já um por escala
-export const buscarServicosDoDia = async (data) => {
+// Reservas do dia como vêm do Phoenix (a tela consolida com as tarifas)
+export const buscarItensDoDia = async (data) => {
   const [base, passeios] = await Promise.all([
     buscarJson(urlPhoenix(data, ["1", "2", "4"])),
     buscarJson(urlPhoenix(data, ["3"])),
   ]);
-  const itens = [
+  return [
     ...base.map((i) => ({ ...i, __dataMapa: data })),
     ...passeios.map((i) => ({ ...i, __dataMapa: data, __passeio: true })),
   ];
-  return consolidarServicos(itens, data);
 };
+
+// Transfers e passeios do dia, já um por escala (e os serviços de parceiro
+// reconhecidos pelas tarifas)
+export const buscarServicosDoDia = async (data, tarifas = []) => consolidarServicos(await buscarItensDoDia(data), data, tarifas);
+
+// nomes de serviço vistos no Phoenix (sugestão no cadastro de tarifa de parceiro)
+export const registrarServicosConhecidos = (nomes = []) =>
+  nomes.length
+    ? setDoc(REF_CONFIG(), { servicosConhecidos: arrayUnion(...nomes) }, { merge: true })
+    : Promise.resolve();
 
 /* ---------------- configuração ---------------- */
 
 export const ouvirConfigCustos = (aoMudar, aoErro) =>
   onSnapshot(
     REF_CONFIG(),
-    (snap) =>
-      aoMudar(
-        normalizarConfigCustos(snap.exists() ? snap.data() : {}),
-        snap.exists(),
-      ),
+    (snap) => aoMudar(normalizarConfigCustos(snap.exists() ? snap.data() : {}), snap.exists()),
     (e) => {
       console.error("Erro ao ler settings/custos:", e);
       aoErro?.(e);
@@ -99,29 +103,18 @@ export const ouvirConfigCustos = (aoMudar, aoErro) =>
   );
 
 export const salvarConfigCustos = (patch) =>
-  setDoc(
-    REF_CONFIG(),
-    { ...patch, atualizadoEm: Timestamp.now() },
-    { merge: true },
-  );
+  setDoc(REF_CONFIG(), { ...patch, atualizadoEm: Timestamp.now() }, { merge: true });
 
 export const fixarCategoriaVeiculo = (veiculoKey, categoria) =>
   setDoc(
     REF_CONFIG(),
-    {
-      categoriasVeiculo: { [veiculoKey]: categoria || deleteField() },
-      atualizadoEm: Timestamp.now(),
-    },
+    { categoriasVeiculo: { [veiculoKey]: categoria || deleteField() }, atualizadoEm: Timestamp.now() },
     { merge: true },
   );
 
 export const registrarRegioes = (regioes = []) =>
   regioes.length
-    ? setDoc(
-        REF_CONFIG(),
-        { regioesConhecidas: arrayUnion(...regioes) },
-        { merge: true },
-      )
+    ? setDoc(REF_CONFIG(), { regioesConhecidas: arrayUnion(...regioes) }, { merge: true })
     : Promise.resolve();
 
 /* ---------------- fornecedores e vínculos ---------------- */
@@ -136,18 +129,11 @@ export const ouvirVinculos = (aoMudar) =>
     },
   );
 
-export const salvarVinculoVeiculo = (
-  veiculoKey,
-  { fornecedor, veiculoNome = "", placa = "" },
-) =>
+export const salvarVinculoVeiculo = (veiculoKey, { fornecedor, veiculoNome = "", placa = "" }) =>
   setDoc(
     REF_VINCULOS(),
     {
-      vinculos: {
-        [veiculoKey]: fornecedor
-          ? { fornecedor, veiculoNome, placa }
-          : deleteField(),
-      },
+      vinculos: { [veiculoKey]: fornecedor ? { fornecedor, veiculoNome, placa } : deleteField() },
       updatedAt: Timestamp.now(),
     },
     { merge: true },
@@ -196,11 +182,7 @@ export const gravarRetratos = (data, retratos = {}, removidas = []) => {
     linhas[chave] = { removido: true };
   });
   if (!Object.keys(linhas).length) return Promise.resolve();
-  return setDoc(
-    REF_DIA(data),
-    { data, linhas, sincronizadoEm: Timestamp.now() },
-    { merge: true },
-  );
+  return setDoc(REF_DIA(data), { data, linhas, sincronizadoEm: Timestamp.now() }, { merge: true });
 };
 
 // patch: campos de `manual`; null/"" apaga o campo (volta ao automático)
@@ -224,11 +206,7 @@ export const gravarLancamento = (data, chave, patch, usuario, retrato) => {
 };
 
 export const excluirLinha = (data, chave) =>
-  setDoc(
-    REF_DIA(data),
-    { linhas: { [chave]: deleteField() } },
-    { merge: true },
-  );
+  setDoc(REF_DIA(data), { linhas: { [chave]: deleteField() } }, { merge: true });
 
 export const marcarStatusDia = (data, status, usuario) =>
   setDoc(
@@ -254,9 +232,7 @@ const emLotes = async (itens, tamanho, fn) => {
       res[atual] = await fn(itens[atual], atual);
     }
   };
-  await Promise.all(
-    Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador),
-  );
+  await Promise.all(Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador));
   return res;
 };
 
@@ -271,34 +247,22 @@ export const carregarCustosPeriodo = async (datas = []) =>
 // Dias sem lançamento: busca no Phoenix e grava o retrato pela tabela
 // (rascunho), para o relatório não ficar com buraco. Não sobrescreve nada
 // lançado à mão (só cria o que não existe).
-export const calcularDiasPelaTabela = async (
-  datas,
-  { config, vinculos, fornecedores },
-  aoProgredir,
-) => {
+export const calcularDiasPelaTabela = async (datas, { config, vinculos, fornecedores }, aoProgredir) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
   let feitos = 0;
   const falhas = [];
   await emLotes(datas, 3, async (data) => {
     try {
-      const { servicos } = await buscarServicosDoDia(data);
+      const { servicos } = await buscarServicosDoDia(data, config.tarifas);
       const pares = detectarCasados(servicos, config.casado);
       const apoios = detectarApoios(servicos);
       const retratos = {};
       servicos.forEach((s) => {
-        retratos[s.chave] = retratoDaLinha(
-          calcularLinha(s, {}, { fornecedorPorVeiculo, config, pares, apoios }),
-        );
+        retratos[s.chave] = retratoDaLinha(calcularLinha(s, {}, { fornecedorPorVeiculo, config, pares, apoios }));
       });
       await setDoc(
         REF_DIA(data),
-        {
-          data,
-          status: "rascunho",
-          linhas: retratos,
-          sincronizadoEm: Timestamp.now(),
-          calculadoPelaTabela: true,
-        },
+        { data, status: "rascunho", linhas: retratos, sincronizadoEm: Timestamp.now(), calculadoPelaTabela: true },
         { merge: true },
       );
     } catch (e) {

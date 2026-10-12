@@ -25,10 +25,22 @@ import {
   normalizarRegrasCasado,
   normalizarRegras,
   ondeDaTarifa,
+  SUFIXO_COBRANCA,
   regiaoCanonica,
 } from "../../Services/Services/custosCalculo";
 import { salvarConfigCustos } from "../../Services/Services/custosRepository";
 import { FormGuia, FormTarifa } from "./FormulariosTarifa";
+import FiltroVeiculo from "./FiltroVeiculo";
+
+const ORDEM_TIPOS = ["IN", "OUT", "TRF", "PASSEIO", "APOIO", "SERVICO"];
+const TITULO_TIPO = {
+  IN: "Chegada (IN) — aeroporto → hotel",
+  OUT: "Saída (OUT) — hotel → aeroporto",
+  TRF: "Transfer — hotel → hotel",
+  PASSEIO: "Passeios",
+  APOIO: "Apoio de passeio (por trecho)",
+  SERVICO: "Serviços de parceiros",
+};
 
 /* Tabela de tarifas (settings/custos):
    - por fornecedor: tipo de serviço + região/passeio + categoria → valor
@@ -221,6 +233,8 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
   const [secao, setSecao] = useState("fornecedores");
   const [fornecedorSel, setFornecedorSel] = useState("");
   const [busca, setBusca] = useState("");
+  const [veiculoSel, setVeiculoSel] = useState("");
+  const [tipoSel, setTipoSel] = useState("");
   const [editando, setEditando] = useState(null); // tarifa (ou {} nova)
   const [editandoGuia, setEditandoGuia] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -280,23 +294,70 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
     gravar({ tarifasGuia: config.tarifasGuia.filter((x) => x.id !== t.id) }, "Referência excluída");
   };
 
-  const tarifasVisiveis = useMemo(() => {
+  // filtros de fornecedor e busca (base das contagens dos chips)
+  const tarifasBase = useMemo(() => {
     const termo = chaveTexto(busca);
-    return config.tarifas
+    return config.tarifas.filter((t) => {
+      if (fornecedorSel === GERAL && t.fornecedor) return false;
+      if (fornecedorSel && fornecedorSel !== GERAL && chaveTexto(t.fornecedor) !== chaveTexto(fornecedorSel)) return false;
+      if (termo && !chaveTexto([t.fornecedor, ondeDaTarifa(t), NOME_CATEGORIA[t.categoria], NOME_TIPO[t.tipo], t.obs].join(" ")).includes(termo)) return false;
+      return true;
+    });
+  }, [config.tarifas, fornecedorSel, busca]);
+
+  const contagemVeiculo = useMemo(() => {
+    const c = { __total: 0 };
+    tarifasBase.forEach((t) => {
+      if (tipoSel && t.tipo !== tipoSel) return;
+      c.__total += 1;
+      c[t.categoria || ""] = (c[t.categoria || ""] || 0) + 1;
+    });
+    return c;
+  }, [tarifasBase, tipoSel]);
+
+  const contagemTipo = useMemo(() => {
+    const c = {};
+    tarifasBase.forEach((t) => {
+      if (veiculoSel && (veiculoSel === "qualquer" ? t.categoria : t.categoria !== veiculoSel)) return;
+      c[t.tipo] = (c[t.tipo] || 0) + 1;
+    });
+    return c;
+  }, [tarifasBase, veiculoSel]);
+
+  const tarifasVisiveis = useMemo(() => {
+    return tarifasBase
       .filter((t) => {
-        if (fornecedorSel === GERAL && t.fornecedor) return false;
-        if (fornecedorSel && fornecedorSel !== GERAL && chaveTexto(t.fornecedor) !== chaveTexto(fornecedorSel)) return false;
-        if (termo && !chaveTexto([t.fornecedor, ondeDaTarifa(t), NOME_CATEGORIA[t.categoria], t.obs].join(" ")).includes(termo)) return false;
+        if (tipoSel && t.tipo !== tipoSel) return false;
+        if (veiculoSel === "qualquer" && t.categoria) return false;
+        if (veiculoSel && veiculoSel !== "qualquer" && t.categoria !== veiculoSel) return false;
         return true;
       })
       .sort(
         (a, b) =>
-          (a.fornecedor || "").localeCompare(b.fornecedor || "", "pt-BR") ||
-          ["IN", "OUT", "TRF", "PASSEIO", "APOIO"].indexOf(a.tipo) - ["IN", "OUT", "TRF", "PASSEIO", "APOIO"].indexOf(b.tipo) ||
+          ORDEM_TIPOS.indexOf(a.tipo) - ORDEM_TIPOS.indexOf(b.tipo) ||
           ondeDaTarifa(a).localeCompare(ondeDaTarifa(b), "pt-BR") ||
-          CATEGORIAS.findIndex((c) => c.valor === a.categoria) - CATEGORIAS.findIndex((c) => c.valor === b.categoria),
+          CATEGORIAS.findIndex((c) => c.valor === a.categoria) - CATEGORIAS.findIndex((c) => c.valor === b.categoria) ||
+          (a.fornecedor || "").localeCompare(b.fornecedor || "", "pt-BR"),
       );
-  }, [config.tarifas, fornecedorSel, busca]);
+  }, [tarifasBase, tipoSel, veiculoSel]);
+
+  // agrupado por tipo de serviço, na ordem IN, OUT, transfer…
+  const gruposTarifas = useMemo(() => {
+    const m = new Map();
+    tarifasVisiveis.forEach((t) => {
+      if (!m.has(t.tipo)) m.set(t.tipo, []);
+      m.get(t.tipo).push(t);
+    });
+    return ORDEM_TIPOS.filter((k) => m.has(k)).map((k) => ({ tipo: k, tarifas: m.get(k) }));
+  }, [tarifasVisiveis]);
+
+  const limparFiltros = () => {
+    setVeiculoSel("");
+    setTipoSel("");
+    setBusca("");
+    setFornecedorSel("");
+  };
+  const temFiltro = !!(veiculoSel || tipoSel || busca || fornecedorSel);
 
   return (
     <div className="cst-tarifas">
@@ -338,6 +399,30 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
             </Field>
             <SearchInput value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Região, passeio, categoria…" />
           </div>
+          <div className="cst-filtros cst-filtros--chips">
+            <FiltroVeiculo valor={veiculoSel} onChange={setVeiculoSel} contagem={contagemVeiculo} />
+            <div className="cst-fv" role="group" aria-label="Filtrar por tipo de serviço">
+              <span className="cst-fv__rotulo">Serviço</span>
+              {[{ v: "", n: "Todos" }, ...ORDEM_TIPOS.map((k) => ({ v: k, n: NOME_TIPO[k] }))].map((o) => (
+                <button
+                  key={o.v || "todos"}
+                  type="button"
+                  className={`cst-fv__chip ${tipoSel === o.v ? "is-ativo" : ""}`}
+                  aria-pressed={tipoSel === o.v}
+                  disabled={o.v && !contagemTipo[o.v]}
+                  onClick={() => setTipoSel(tipoSel === o.v ? "" : o.v)}
+                >
+                  {o.n}
+                  <span className="cst-fv__n tabular">{o.v ? contagemTipo[o.v] || 0 : Object.values(contagemTipo).reduce((a, b) => a + b, 0)}</span>
+                </button>
+              ))}
+            </div>
+            {temFiltro && (
+              <Button variant="ghost" size="sm" icon="x" onClick={limparFiltros}>
+                Limpar filtros
+              </Button>
+            )}
+          </div>
 
           {config.tarifas.length === 0 ? (
             <EmptyState
@@ -354,37 +439,77 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
           ) : tarifasVisiveis.length === 0 ? (
             <EmptyState icon="filter" title="Nenhuma tarifa com esse filtro" />
           ) : (
-            <Table columns="minmax(150px, 1fr) 90px minmax(220px, 1.6fr) 120px 120px 120px 116px" minWidth={940}>
-              <TableHead>
-                <span>Fornecedor</span>
-                <span>Tipo</span>
-                <span>Trajeto / passeio</span>
-                <span>Categoria</span>
-                <span className="ui-cell-end">Valor</span>
-                <span className="ui-cell-end">Casado</span>
-                <span />
-              </TableHead>
-              {tarifasVisiveis.map((t) => (
-                <TableRow key={t.id}>
-                  <span className={t.fornecedor ? "ui-cell-main" : "cst-geral"}>{t.fornecedor || "Todos os fornecedores"}</span>
-                  <span>
-                    <span className={`ui-tag cst-tipo cst-tipo--${t.tipo}`}>{NOME_TIPO[t.tipo]}</span>
-                  </span>
-                  <span>
-                    {ondeDaTarifa(t)}
-                    {t.obs && <span className="ui-cell-sub">{t.obs}</span>}
-                  </span>
-                  <span>{t.categoria ? NOME_CATEGORIA[t.categoria] : <span className="cst-vazio">Qualquer</span>}</span>
-                  <span className="ui-cell-num">{formatarReais(t.valor)}</span>
-                  <span className="ui-cell-num">{t.valorCasado !== null ? formatarReais(t.valorCasado) : <span className="cst-vazio">—</span>}</span>
-                  <span className="ui-cell-end cst-acoes">
-                    <Button variant="ghost" size="sm" iconOnly icon="pencil" title="Editar" onClick={() => setEditando(t)} />
-                    <Button variant="ghost" size="sm" iconOnly icon="copy" title="Duplicar" onClick={() => duplicarTarifa(t)} />
-                    <Button variant="ghost" size="sm" iconOnly icon="trash" title="Excluir" onClick={() => excluirTarifa(t)} />
-                  </span>
-                </TableRow>
+            <div className="cst-tl">
+              {gruposTarifas.map((g) => (
+                <section key={g.tipo} className="cst-tl__grupo">
+                  <header className="cst-tl__cab">
+                    <span className={`ui-tag cst-tipo cst-tipo--${g.tipo}`}>{NOME_TIPO[g.tipo]}</span>
+                    <h3>{TITULO_TIPO[g.tipo]}</h3>
+                    <small>{g.tarifas.length} tarifa(s)</small>
+                    <button
+                      type="button"
+                      className="cst-tf__nova"
+                      onClick={() =>
+                        setEditando({
+                          fornecedor: fornecedorSel && fornecedorSel !== GERAL ? fornecedorSel : "",
+                          tipo: g.tipo,
+                          categoria: veiculoSel && veiculoSel !== "qualquer" ? veiculoSel : "",
+                        })
+                      }
+                    >
+                      <Icon name="plus" size={13} /> nova
+                    </button>
+                  </header>
+                  <Table columns="minmax(220px, 1.8fr) minmax(130px, 0.9fr) 130px 150px 170px 104px" minWidth={900} compact>
+                    <TableHead>
+                      <span>{g.tipo === "PASSEIO" ? "Passeio" : g.tipo === "SERVICO" ? "Serviço" : "Trajeto"}</span>
+                      <span>Fornecedor</span>
+                      <span>Veículo</span>
+                      <span className="ui-cell-end">Valor</span>
+                      <span className="ui-cell-end">Casado</span>
+                      <span />
+                    </TableHead>
+                    {g.tarifas.map((t) => (
+                      <TableRow key={t.id} onClick={() => setEditando(t)} title="Clique para editar">
+                        <span className="cst-tl__onde">
+                          <span className="ui-cell-main">{ondeDaTarifa(t)}</span>
+                          {t.obs && <span className="ui-cell-sub">{t.obs}</span>}
+                        </span>
+                        <span className={t.fornecedor ? "cst-tl__forn" : "cst-geral"}>{t.fornecedor || "Todos"}</span>
+                        <span>
+                          {t.categoria ? (
+                            <span className={`cst-cat-chip cst-cat-chip--${t.categoria}`}>{NOME_CATEGORIA[t.categoria]}</span>
+                          ) : (
+                            <span className="cst-vazio">Qualquer</span>
+                          )}
+                        </span>
+                        <span className="ui-cell-num cst-tl__valor">
+                          {formatarReais(t.valor)}
+                          {SUFIXO_COBRANCA[t.cobranca] && <small> {SUFIXO_COBRANCA[t.cobranca]}</small>}
+                        </span>
+                        <span className="ui-cell-num">
+                          {t.valorCasado !== null ? (
+                            <>
+                              {formatarReais(t.valorCasado)}
+                              {t.valor ? (
+                                <small className="cst-eco"> −{Math.round((1 - t.valorCasado / t.valor) * 100)}%</small>
+                              ) : null}
+                            </>
+                          ) : (
+                            <span className="cst-vazio">—</span>
+                          )}
+                        </span>
+                        <span className="ui-cell-end cst-acoes" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" iconOnly icon="pencil" title="Editar" onClick={() => setEditando(t)} />
+                          <Button variant="ghost" size="sm" iconOnly icon="copy" title="Duplicar" onClick={() => duplicarTarifa(t)} />
+                          <Button variant="ghost" size="sm" iconOnly icon="trash" title="Excluir" onClick={() => excluirTarifa(t)} />
+                        </span>
+                      </TableRow>
+                    ))}
+                  </Table>
+                </section>
               ))}
-            </Table>
+            </div>
           )}
         </Card>
       )}
@@ -461,6 +586,7 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
           fornecedores={nomesFornecedores}
           regioes={regioes}
           passeios={passeios}
+          servicosConhecidos={config.servicosConhecidos}
           salvando={salvando}
           onFechar={() => setEditando(null)}
           onSalvar={salvarTarifa}

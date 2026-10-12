@@ -156,6 +156,7 @@ const Ranking = ({ itens, nome = (k) => k, mostrarCasados = false, vazio = "Nada
           </div>
           <small>
             {g.servicos} serviço(s)
+            {g.porPax ? ` · ${g.reservas} reserva(s)` : ""}
             {g.pax ? ` · ${g.pax} pax` : ""}
             {mostrarCasados && g.casados ? ` · ${g.casados} casado(s)` : ""}
             {g.economia ? ` · economia ${formatarReais(g.economia, { semCentavos: true })}` : ""}
@@ -393,7 +394,7 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
               </Card>
 
               <Card className="cst-card">
-                <CardHeader icon="alert" title="No-show e adicionais" subtitle="O que mudou o valor pago por condição especial." />
+                <CardHeader icon="alert" title="Condições especiais" subtitle="No-show, parceiros por passageiro e adicionais de guia." />
                 {resumo ? (
                   <dl className="cst-cond">
                     <div>
@@ -407,6 +408,20 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
                         </small>
                       </dd>
                     </div>
+                    {resumo.porParceiro.map((p) => (
+                      <div key={p.chave}>
+                        <dt>Parceiro — {p.chave}</dt>
+                        <dd>
+                          <span>
+                            <b className="tabular">{p.reservas}</b> reserva(s) · <b className="tabular">{p.pax}</b> pax
+                          </span>
+                          <small>
+                            {p.servicos} saída(s) · pago {formatarReais(p.valor)}
+                            {p.pax ? ` · ${formatarReais(p.valor / p.pax)} por pax` : ""}
+                          </small>
+                        </dd>
+                      </div>
+                    ))}
                     <div>
                       <dt>Guia — tabela MI</dt>
                       <dd>

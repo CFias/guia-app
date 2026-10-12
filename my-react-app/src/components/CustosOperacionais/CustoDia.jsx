@@ -21,6 +21,7 @@ import {
   NOME_TIPO,
   calcularLinha,
   chaveTexto,
+  consolidarServicos,
   detectarApoios,
   detectarCasados,
   formatarReais,
@@ -33,7 +34,7 @@ import {
   servicoDoRetrato,
 } from "../../Services/Services/custosCalculo";
 import {
-  buscarServicosDoDia,
+  buscarItensDoDia,
   excluirLinha,
   fixarCategoriaVeiculo,
   gravarLancamento,
@@ -41,6 +42,7 @@ import {
   marcarStatusDia,
   ouvirCustosDia,
   registrarRegioes,
+  registrarServicosConhecidos,
   salvarVinculoVeiculo,
 } from "../../Services/Services/custosRepository";
 import CampoValor from "./CampoValor";
@@ -98,6 +100,11 @@ const CelulaFornecedor = ({ linha, onSalvar }) => {
           : ""}
         {linha.economia > 0 && <b className="cst-eco"> −{formatarReais(linha.economia, { semCentavos: true })}</b>}
         {linha.acimaDaTabela > 0 && <b className="cst-acima"> +{formatarReais(linha.acimaDaTabela, { semCentavos: true })}</b>}
+        {linha.cobranca !== "servico" && linha.tarifaUnitaria !== null && (
+          <b className="cst-qtd">
+            {" "}· {linha.quantidade} {linha.cobranca === "pax" ? "pax" : "reserva(s)"} × {formatarReais(linha.tarifaUnitaria)}
+          </b>
+        )}
         {linha.noShow && (
           <b className="cst-noshow-txt">
             {" "}· no-show {linha.noShowPct}%{linha.noShowPct < 100 ? ` = ${formatarReais(linha.valorFornecedor, { semCentavos: true })}` : ""}
@@ -132,28 +139,28 @@ const CelulaGuia = ({ linha, onSalvar, onAbrir, adicionalIdioma }) => {
         )}
       </span>
       <span className="cst-guia-linha">
-      <CampoValor
-        key={`${linha.chave}-g-${linha.guiaValor ?? "x"}`}
-        valor={linha.guiaValor}
-        placeholder={
-          linha.guiaReferencia !== null
-            ? `ref. ${linha.guiaReferencia.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-            : "Valor pago"
-        }
-        destaque={linha.guiaStatus === "a-confirmar"}
-        ariaLabel={`Valor pago ao guia ${linha.guiaNome}`}
-        onSalvar={onSalvar}
-      />
-      {linha.guiaStatus === "a-confirmar" && linha.guiaReferencia !== null && (
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          icon="check"
-          title={`Confirmar ${formatarReais(linha.guiaReferencia)} (referência)`}
-          onClick={() => onSalvar(linha.guiaReferencia)}
+        <CampoValor
+          key={`${linha.chave}-g-${linha.guiaValor ?? "x"}`}
+          valor={linha.guiaValor}
+          placeholder={
+            linha.guiaReferencia !== null
+              ? `ref. ${linha.guiaReferencia.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+              : "Valor pago"
+          }
+          destaque={linha.guiaStatus === "a-confirmar"}
+          ariaLabel={`Valor pago ao guia ${linha.guiaNome}`}
+          onSalvar={onSalvar}
         />
-      )}
+        {linha.guiaStatus === "a-confirmar" && linha.guiaReferencia !== null && (
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon="check"
+            title={`Confirmar ${formatarReais(linha.guiaReferencia)} (referência)`}
+            onClick={() => onSalvar(linha.guiaReferencia)}
+          />
+        )}
       </span>
     </div>
   );
@@ -207,7 +214,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
 
   const [data, setData] = useState(hojeIso);
   const [recarga, setRecarga] = useState(0);
-  const [phoenix, setPhoenix] = useState({ data: null, estado: "carregando", servicos: [], semEscala: 0, erro: "" });
+  const [phoenix, setPhoenix] = useState({ data: null, estado: "carregando", itens: [], erro: "" });
   const [dia, setDia] = useState({ data: null, doc: null });
   const [filtro, setFiltro] = useState("todos");
   const [fornecedorSel, setFornecedorSel] = useState("");
@@ -222,9 +229,9 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   useEffect(() => {
     let vivo = true;
     setPhoenix((p) => ({ ...p, data, estado: "carregando", erro: "" }));
-    buscarServicosDoDia(data)
-      .then(({ servicos, semEscala }) => vivo && setPhoenix({ data, estado: "ok", servicos, semEscala, erro: "" }))
-      .catch((e) => vivo && setPhoenix({ data, estado: "erro", servicos: [], semEscala: 0, erro: e?.message || "Falha" }));
+    buscarItensDoDia(data)
+      .then((itens) => vivo && setPhoenix({ data, estado: "ok", itens, erro: "" }))
+      .catch((e) => vivo && setPhoenix({ data, estado: "erro", itens: [], erro: e?.message || "Falha" }));
     return () => {
       vivo = false;
     };
@@ -234,6 +241,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   useEffect(() => ouvirCustosDia(data, (doc) => setDia({ data, doc })), [data]);
 
   const docDia = dia.data === data ? dia.doc : undefined;
+
+  // reservas → serviços (um por escala; parceiros pelas tarifas de serviço)
+  const consolidado = useMemo(
+    () => consolidarServicos(phoenix.itens, data, config.tarifas),
+    [phoenix.itens, data, config.tarifas],
+  );
   const salvas = useMemo(() => docDia?.linhas || {}, [docDia]);
   const phoenixOk = phoenix.data === data && phoenix.estado === "ok";
   const carregando = (phoenix.data !== data || phoenix.estado === "carregando") || docDia === undefined;
@@ -247,12 +260,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
 
   // sem Phoenix, mostra o que foi salvo
   const servicos = useMemo(() => {
-    if (phoenixOk) return phoenix.servicos;
+    if (phoenixOk) return consolidado.servicos;
     return Object.values(salvas)
       .filter((l) => l && !l.removido && l.chave)
       .map(servicoDoRetrato)
       .sort((a, b) => `${a.hora}${a.chave}`.localeCompare(`${b.hora}${b.chave}`));
-  }, [phoenixOk, phoenix.servicos, salvas]);
+  }, [phoenixOk, consolidado.servicos, salvas]);
 
   const pares = useMemo(() => detectarCasados(servicos, config.casado), [servicos, config.casado]);
   const apoios = useMemo(() => detectarApoios(servicos), [servicos]);
@@ -267,9 +280,9 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   // linhas salvas que não estão mais no Phoenix (cancelados / mudaram de escala)
   const foraDoPhoenix = useMemo(() => {
     if (!phoenixOk) return [];
-    const atuais = new Set(phoenix.servicos.map((s) => s.chave));
+    const atuais = new Set(consolidado.servicos.map((s) => s.chave));
     return Object.values(salvas).filter((l) => l?.chave && !atuais.has(l.chave));
-  }, [phoenixOk, phoenix.servicos, salvas]);
+  }, [phoenixOk, consolidado.servicos, salvas]);
 
   /* ---------- sincronização (grava o retrato calculado) ---------- */
   useEffect(() => {
@@ -288,15 +301,30 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
     if (!pronto || !phoenixOk) return;
     const conhecidas = new Set(config.regioesConhecidas);
     const novas = new Set();
-    phoenix.servicos.forEach((s) =>
+    consolidado.servicos.forEach((s) =>
       [...s.regioes, ...s.regioesDestino].forEach((r) => {
         if (r && !conhecidas.has(r) && !regioesEnviadas.current.has(r)) novas.add(r);
       }),
     );
     if (!novas.size) return;
     novas.forEach((r) => regioesEnviadas.current.add(r));
-    registrarRegioes(Array.from(novas)).catch(() => {});
-  }, [pronto, phoenixOk, phoenix.servicos, config.regioesConhecidas]);
+    registrarRegioes(Array.from(novas)).catch(() => { });
+  }, [pronto, phoenixOk, consolidado.servicos, config.regioesConhecidas]);
+
+  // nomes de serviço do Phoenix viram sugestão na tarifa de parceiro
+  const nomesEnviados = useRef(new Set());
+  useEffect(() => {
+    if (!pronto || !phoenixOk) return;
+    const conhecidos = new Set(config.servicosConhecidos);
+    const novos = new Set();
+    phoenix.itens.forEach((i) => {
+      const n = String(i?.service?.name || i?.schedule?.service?.name || "").trim();
+      if (n && !conhecidos.has(n) && !nomesEnviados.current.has(n)) novos.add(n);
+    });
+    if (!novos.size) return;
+    novos.forEach((n) => nomesEnviados.current.add(n));
+    registrarServicosConhecidos(Array.from(novos).slice(0, 200)).catch(() => { });
+  }, [pronto, phoenixOk, phoenix.itens, config.servicosConhecidos]);
 
   /* ---------- lançamentos ---------- */
   const lancar = async (chave, patch, extras = {}) => {
@@ -463,11 +491,11 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           </span>
         </div>
       )}
-      {phoenixOk && phoenix.semEscala > 0 && (
+      {phoenixOk && consolidado.semEscala > 0 && (
         <div className="cst-faixa" role="status">
           <Icon name="info" size={16} />
           <span>
-            {phoenix.semEscala} reserva(s) deste dia ainda sem veículo no Phoenix — entram no custo quando forem escaladas.
+            {consolidado.semEscala} reserva(s) deste dia ainda sem veículo no Phoenix — entram no custo quando forem escaladas.
           </span>
         </div>
       )}
@@ -617,7 +645,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                       {l.descricao}
                     </span>
                     <span className="ui-cell-sub">
-                      {[l.regiaoTexto, `${l.pax} pax`].filter(Boolean).join(" · ")}
+                      {[l.regiaoTexto, l.tipo === "SERVICO" ? `${l.reservas} reserva(s)` : "", `${l.pax} pax`].filter(Boolean).join(" · ")}
                       {l.casado && (
                         <span className="cst-chip-casado" title={l.parCasado ? `Par: ${porChave.get(l.parCasado)?.descricao || ""}` : "Marcado como casado"}>
                           <Icon name="refresh" size={11} />
@@ -650,7 +678,9 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                           Definir fornecedor
                         </button>
                       )}
-                      {l.categoria ? (
+                      {l.tipo === "SERVICO" ? (
+                        <span className="ui-chip cst-cat">{l.cobranca === "reserva" ? "Por reserva" : "Por passageiro"}</span>
+                      ) : l.categoria ? (
                         <span className="ui-chip cst-cat">{NOME_CATEGORIA[l.categoria]}</span>
                       ) : (
                         <button type="button" className="cst-link-alerta" onClick={() => setAberta(l.chave)}>

@@ -55,6 +55,9 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
   const [guiaValor, setGuiaValor] = useState(valorTexto(manual.guiaValor));
   const [obs, setObs] = useState(manual.obs || "");
   const [noShow, setNoShow] = useState(!!manual.noShow);
+  const [quantidade, setQuantidade] = useState(manual.quantidade !== undefined && manual.quantidade !== null ? String(manual.quantidade) : "");
+  const ehParceiro = linha.tipo === "SERVICO";
+  const porQuantidade = linha.cobranca && linha.cobranca !== "servico";
   const [modalidade, setModalidade] = useState(manual.guiaModalidade || "auto");
   const podeNoShow = linha.tipo !== "PASSEIO";
   const pctNoShow = linha.tipo === "IN" ? regras.noShowIn : linha.tipo === "OUT" ? regras.noShowOut : regras.noShowTrf;
@@ -74,6 +77,8 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
     if (valor.trim() && v === null) return setErro("Valor do fornecedor inválido.");
     if (guiaValor.trim() && gv === null) return setErro("Valor do guia inválido.");
     if (fornecedor === OUTRO && !fornecedorFinal) return setErro("Digite o nome do fornecedor.");
+    const qtd = quantidade.trim() ? Number(quantidade.replace(",", ".")) : null;
+    if (quantidade.trim() && (!Number.isFinite(qtd) || qtd < 0)) return setErro("Quantidade inválida.");
     setErro("");
 
     // fornecedor/categoria: se for fixar no veículo, o automático passa a
@@ -90,6 +95,7 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
       guiaValor: temGuia ? gv : null,
       obs: obs.trim() || null,
       noShow: podeNoShow && noShow ? true : null,
+      quantidade: porQuantidade && quantidade.trim() ? Number(quantidade.replace(",", ".")) : null,
       guiaModalidade: modalidade === "auto" ? null : modalidade,
     };
     onSalvar(patch, {
@@ -101,9 +107,11 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
   const tarifaTexto =
     linha.tarifaCheia === null
       ? "Sem tarifa na tabela para este serviço."
-      : linha.apoio
-        ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} por trecho × ${linha.trechos} = ${formatarReais(linha.tarifaCheia)}.`
-        : `Tabela: ${formatarReais(linha.tarifaCheia)}${linha.tarifaCasada !== null ? ` · casado ${formatarReais(linha.tarifaCasada)}` : ""}.`;
+      : linha.cobranca && linha.cobranca !== "servico"
+        ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} × ${linha.quantidade} ${linha.cobranca === "pax" ? "pax" : "reserva(s)"} = ${formatarReais(linha.tarifaCheia)}.`
+        : linha.apoio
+          ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} por trecho × ${linha.trechos} = ${formatarReais(linha.tarifaCheia)}.`
+          : `Tabela: ${formatarReais(linha.tarifaCheia)}${linha.tarifaCasada !== null ? ` · casado ${formatarReais(linha.tarifaCasada)}` : ""}.`;
 
   return (
     <Drawer
@@ -163,30 +171,32 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
           )}
         </section>
 
-        <section className="cst-ficha__secao">
-          <h3>Categoria do veículo</h3>
-          <div className="cst-opcoes">
-            {CATEGORIAS.map((c) => (
-              <button
-                key={c.valor}
-                type="button"
-                className={`cst-opcao ${categoria === c.valor ? "is-ativa" : ""}`}
-                aria-pressed={categoria === c.valor}
-                onClick={() => setCategoria(c.valor)}
-              >
-                {c.nome}
-              </button>
-            ))}
-          </div>
-          {categoria !== linha.categoriaAuto && categoria && (
-            <label className="cst-check">
-              <input type="checkbox" checked={fixarCategoria} onChange={(e) => setFixarCategoria(e.target.checked)} />
-              <span>
-                Fixar <b>{NOME_CATEGORIA[categoria]}</b> para o veículo {linha.veiculo}
-              </span>
-            </label>
-          )}
-        </section>
+        {!ehParceiro && (
+          <section className="cst-ficha__secao">
+            <h3>Categoria do veículo</h3>
+            <div className="cst-opcoes">
+              {CATEGORIAS.map((c) => (
+                <button
+                  key={c.valor}
+                  type="button"
+                  className={`cst-opcao ${categoria === c.valor ? "is-ativa" : ""}`}
+                  aria-pressed={categoria === c.valor}
+                  onClick={() => setCategoria(c.valor)}
+                >
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+            {categoria !== linha.categoriaAuto && categoria && (
+              <label className="cst-check">
+                <input type="checkbox" checked={fixarCategoria} onChange={(e) => setFixarCategoria(e.target.checked)} />
+                <span>
+                  Fixar <b>{NOME_CATEGORIA[categoria]}</b> para o veículo {linha.veiculo}
+                </span>
+              </label>
+            )}
+          </section>
+        )}
 
         {ehPasseio && (
           <section className="cst-ficha__secao">
@@ -224,30 +234,38 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
           </section>
         )}
 
-        {!ehPasseio && (
-        <section className="cst-ficha__secao">
-          <h3>Serviço casado</h3>
-          <Segmented
-            size="sm"
-            ariaLabel="Serviço casado"
-            value={casado}
-            onChange={setCasado}
-            options={[
-              { value: "auto", label: `Automático (${linha.parCasado ? "sim" : "não"})` },
-              { value: "sim", label: "Casado" },
-              { value: "nao", label: "Não casado" },
-            ]}
-          />
-          <p className="cst-ajuda">
-            {linha.parCasado
-              ? "O sistema achou o par no mesmo veículo dentro do intervalo do casado."
-              : "Automático: IN e OUT da região do casado no mesmo veículo, dentro do intervalo configurado em Tarifas."}
-          </p>
-        </section>
+        {!ehPasseio && !ehParceiro && (
+          <section className="cst-ficha__secao">
+            <h3>Serviço casado</h3>
+            <Segmented
+              size="sm"
+              ariaLabel="Serviço casado"
+              value={casado}
+              onChange={setCasado}
+              options={[
+                { value: "auto", label: `Automático (${linha.parCasado ? "sim" : "não"})` },
+                { value: "sim", label: "Casado" },
+                { value: "nao", label: "Não casado" },
+              ]}
+            />
+            <p className="cst-ajuda">
+              {linha.parCasado
+                ? "O sistema achou o par no mesmo veículo dentro do intervalo do casado."
+                : "Automático: IN e OUT da região do casado no mesmo veículo, dentro do intervalo configurado em Tarifas."}
+            </p>
+          </section>
         )}
 
         <section className="cst-ficha__secao">
           <h3>Valor cobrado pelo fornecedor</h3>
+          {porQuantidade && (
+            <Field
+              label={linha.cobranca === "pax" ? "Passageiros cobrados" : "Reservas cobradas"}
+              hint={`No Phoenix: ${linha.reservas} reserva(s) · ${linha.pax} pax. Tarifa ${formatarReais(linha.tarifaUnitaria)} ${linha.cobranca === "pax" ? "por passageiro" : "por reserva"}. Vazio = o do Phoenix.`}
+            >
+              <input inputMode="numeric" value={quantidade} placeholder={String(linha.quantidadeAuto)} onChange={(e) => setQuantidade(e.target.value)} />
+            </Field>
+          )}
           <Field label="Valor (R$)" hint={`${tarifaTexto} Vazio = usa a tabela.`}>
             <input
               inputMode="decimal"

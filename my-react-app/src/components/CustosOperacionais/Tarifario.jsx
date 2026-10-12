@@ -8,9 +8,11 @@ import {
   formatarReais,
   listaDeFornecedores,
   ondeDaTarifa,
+  SUFIXO_COBRANCA,
 } from "../../Services/Services/custosCalculo";
 import { salvarConfigCustos } from "../../Services/Services/custosRepository";
 import { FormGuia, FormTarifa } from "./FormulariosTarifa";
+import FiltroVeiculo from "./FiltroVeiculo";
 import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
 
 /* =========================================================
@@ -20,7 +22,7 @@ import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
    Clique numa célula para editar ou criar; "Imprimir" gera a folha.
    Com um fornecedor escolhido, mostra os valores dele e, onde ele não
    tem tarifa própria, o da tabela geral (marcado "geral").
-   ========================================================= */ 
+   ========================================================= */
 
 const SECOES = [
   { tipo: "IN", titulo: "Chegada (IN) — aeroporto → hotel", nota: "Valor por serviço (veículo)." },
@@ -28,6 +30,7 @@ const SECOES = [
   { tipo: "TRF", titulo: "Transfer — hotel → hotel", nota: "Valor por serviço (veículo)." },
   { tipo: "PASSEIO", titulo: "Passeios", nota: "Valor do veículo no passeio." },
   { tipo: "APOIO", titulo: "Apoio de passeio", nota: "Valor por trecho (ida e volta = 2 trechos)." },
+  { tipo: "SERVICO", titulo: "Serviços de parceiros", nota: "Reconhecidos pelo nome do serviço no Phoenix; cobrança por passageiro ou reserva." },
 ];
 
 const COLUNAS = [{ valor: "", nome: "Qualquer" }, ...CATEGORIAS];
@@ -53,7 +56,10 @@ const Celula = ({ celula, mostrarCasado, onClick }) => {
       onClick={onClick}
       title={origem === "geral" ? "Valor da tabela geral — clique para criar um valor próprio deste fornecedor" : "Editar"}
     >
-      <b className="tabular">{formatarReais(tarifa.valor)}</b>
+      <b className="tabular">
+        {formatarReais(tarifa.valor)}
+        {SUFIXO_COBRANCA[tarifa.cobranca] && <span className="cst-tf__suf"> {SUFIXO_COBRANCA[tarifa.cobranca]}</span>}
+      </b>
       {mostrarCasado && tarifa.valorCasado !== null && (
         <small className="tabular">casado {formatarReais(tarifa.valorCasado)}</small>
       )}
@@ -66,6 +72,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
   const { mostrarToast } = useToast();
   const [fornecedorSel, setFornecedorSel] = useState("");
   const [mostrarCasado, setMostrarCasado] = useState(true);
+  const [veiculoSel, setVeiculoSel] = useState("");
   const [editando, setEditando] = useState(null);
   const [editandoGuia, setEditandoGuia] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -83,17 +90,43 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
       const linhas = new Map();
       const colocar = (t, origem) => {
         if (t.tipo !== sec.tipo || t.valor === null) return;
-        const k = chaveDaLinha(t);
-        if (!linhas.has(k)) linhas.set(k, { chave: k, rotulo: ondeDaTarifa(t), modelo: t, celulas: {} });
+        const k = sec.tipo === "SERVICO" ? `${chaveDaLinha(t)}|${chaveTexto(t.fornecedor)}` : chaveDaLinha(t);
+        const rotulo = sec.tipo === "SERVICO" ? `${ondeDaTarifa(t)} — ${t.fornecedor || "sem fornecedor"}` : ondeDaTarifa(t);
+        if (!linhas.has(k)) linhas.set(k, { chave: k, rotulo, modelo: t, celulas: {} });
         linhas.get(k).celulas[t.categoria || ""] = { tarifa: t, origem };
       };
-      geral.forEach((t) => colocar(t, fornecedorSel ? "geral" : "propria"));
-      proprias.forEach((t) => colocar(t, "propria"));
-      const lista = Array.from(linhas.values()).sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
-      const usadas = new Set(lista.flatMap((l) => Object.keys(l.celulas)));
+      if (sec.tipo === "SERVICO") {
+        // parceiros sempre têm fornecedor: mostra todos (ou só o escolhido)
+        config.tarifas
+          .filter((t) => t.tipo === "SERVICO" && (!fornecedorSel || chaveTexto(t.fornecedor) === chaveTexto(fornecedorSel)))
+          .forEach((t) => colocar(t, "propria"));
+      } else {
+        geral.forEach((t) => colocar(t, fornecedorSel ? "geral" : "propria"));
+        proprias.forEach((t) => colocar(t, "propria"));
+      }
+      let lista = Array.from(linhas.values()).sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
+      // filtro de veículo: só a coluna dele (e "Qualquer", que também vale para ele)
+      const visivel = (cat) =>
+        !veiculoSel || (veiculoSel === "qualquer" ? cat === "" : cat === veiculoSel || cat === "");
+      lista = lista.filter((l) => Object.keys(l.celulas).some(visivel));
+      const usadas = new Set(lista.flatMap((l) => Object.keys(l.celulas)).filter(visivel));
       const colunas = COLUNAS.filter((c) => usadas.has(c.valor));
+      // parceiro não tem veículo: some quando um veículo está escolhido
+      if (sec.tipo === "SERVICO" && veiculoSel) lista = [];
       return { ...sec, linhas: lista, colunas: colunas.length ? colunas : COLUNAS.slice(1) };
     });
+  }, [config.tarifas, fornecedorSel, veiculoSel]);
+
+  const contagemVeiculo = useMemo(() => {
+    const c = { __total: 0 };
+    config.tarifas.forEach((t) => {
+      if (t.tipo === "SERVICO") return;
+      if (fornecedorSel && t.fornecedor && chaveTexto(t.fornecedor) !== chaveTexto(fornecedorSel)) return;
+      if (!fornecedorSel && t.fornecedor) return;
+      c.__total += 1;
+      c[t.categoria || ""] = (c[t.categoria || ""] || 0) + 1;
+    });
+    return c;
   }, [config.tarifas, fornecedorSel]);
 
   // guias: linhas por tipo/passeio/categoria; colunas regular, MI, + idioma
@@ -153,6 +186,9 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
     });
   };
 
+  const guiasVisiveis = veiculoSel
+    ? guias.filter((g) => !g.modelo.categoria || g.modelo.categoria === veiculoSel)
+    : guias;
   const r = config.regras;
   const c = config.casado;
   const temValores = secoes.some((s) => s.linhas.length) || guias.length;
@@ -186,12 +222,20 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
         </div>
       </div>
 
+      <FiltroVeiculo valor={veiculoSel} onChange={setVeiculoSel} contagem={contagemVeiculo} />
+      {veiculoSel && veiculoSel !== "qualquer" && (
+        <p className="cst-ajuda">
+          Mostrando os valores de <b>{NOME_CATEGORIA[veiculoSel]}</b> e os que valem para qualquer veículo.
+        </p>
+      )}
+
       <Card className="cst-card cst-imprimir">
         <header className="cst-tf__cab">
           <div>
             <h2>Tarifário operacional</h2>
             <p>
               {fornecedorSel ? `Fornecedor: ${fornecedorSel} (onde não há valor próprio, vale a tabela geral)` : "Tabela geral — vale para todos os fornecedores sem tarifa própria"}
+              {veiculoSel && ` · Veículo: ${veiculoSel === "qualquer" ? "qualquer" : NOME_CATEGORIA[veiculoSel]}`}
             </p>
           </div>
           <span className="cst-tf__data">Luck Receptivo SSA · {dataBr(hojeIso())}</span>
@@ -223,7 +267,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                 <table className="cst-tf__tabela">
                   <thead>
                     <tr>
-                      <th scope="col">{s.tipo === "PASSEIO" ? "Passeio" : "Trajeto"}</th>
+                      <th scope="col">{s.tipo === "PASSEIO" ? "Passeio" : s.tipo === "SERVICO" ? "Serviço — parceiro" : "Trajeto"}</th>
                       {s.colunas.map((col) => (
                         <th key={col.valor || "qq"} scope="col" className="is-num">
                           {col.nome}
@@ -266,7 +310,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
               <Icon name="plus" size={13} /> linha
             </button>
           </div>
-          {guias.length === 0 ? (
+          {guiasVisiveis.length === 0 ? (
             <p className="cst-nada">Nenhuma referência de guia.</p>
           ) : (
             <div className="cst-tf__rolagem">
@@ -286,7 +330,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {guias.map((g) => (
+                  {guiasVisiveis.map((g) => (
                     <tr key={g.chave}>
                       <th scope="row">
                         {g.rotulo}
@@ -348,6 +392,9 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
               </li>
             )}
             <li>
+              <b>Serviço de parceiro:</b> reconhecido pelo nome no Phoenix; valor × passageiros (ou reservas) do serviço, mesmo sem veículo escalado.
+            </li>
+            <li>
               <b>Apoio de passeio:</b> cobra por trecho (busca no hotel e leva ao veículo principal; volta = outro trecho).
             </li>
           </ul>
@@ -361,6 +408,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           fornecedores={nomesFornecedores}
           regioes={config.regioesConhecidas}
           passeios={passeios}
+          servicosConhecidos={config.servicosConhecidos}
           salvando={salvando}
           onFechar={() => setEditando(null)}
           onSalvar={salvarTarifa}

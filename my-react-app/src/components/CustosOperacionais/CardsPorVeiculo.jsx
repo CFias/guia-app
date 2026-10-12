@@ -22,7 +22,7 @@ const LinhaServico = ({ linha, par, onAbrir }) => (
     </span>
     <span className="cst-vc__desc">
       <span className="cst-vc__nome">{linha.descricao}</span>
-      <small>a
+      <small>
         {[linha.regiaoTexto, `${linha.pax} pax`].filter(Boolean).join(" · ")}
         {linha.casado && (
           <span className="cst-chip-casado">
@@ -90,7 +90,7 @@ const CardsPorVeiculo = ({ linhas, porChave, recPorServico, destaque, onAbrir, o
               <h3 title={g.veiculo}>{g.veiculo}</h3>
               <span>
                 {g.fornecedor || <span className="cst-alerta-texto">Sem fornecedor</span>}
-                {g.categoria ? ` · ${NOME_CATEGORIA[g.categoria]}` : " · categoria?"}
+                {g.linhas[0].tipo === "SERVICO" ? " · parceiro" : g.categoria ? ` · ${NOME_CATEGORIA[g.categoria]}` : " · categoria?"}
                 {g.motorista ? ` · ${g.motorista}` : ""}
               </span>
             </div>
