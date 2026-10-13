@@ -1648,8 +1648,8 @@
 /* impressão: só a folha do tarifário, em preto no branco */
 @media print {
   @page {
-    size: A4;
-    margin: 12mm;
+    size: A4 landscape;
+    margin: 10mm;
   }
 
   body * {
@@ -1959,5 +1959,99 @@
 @media print {
   .cst-tf__excluir {
     display: none !important;
+  }
+}
+
+/* ---------- grade do tarifário: preço em destaque + zebra discreta ---------- */
+.cst-tf__tabela {
+  --tf-linha: rgba(127, 127, 127, 0.07);
+  --tf-coluna: rgba(127, 127, 127, 0.045);
+  table-layout: fixed;
+  min-width: 760px;
+}
+
+/* mesma largura de colunas em todas as seções */
+.cst-tf__tabela tr> :first-child {
+  width: 30%;
+}
+
+.cst-tf__tabela tbody th {
+  min-width: 0;
+}
+
+.cst-tf__rotulo {
+  align-items: center;
+}
+
+.cst-tf__tabela tbody tr:nth-child(even)>* {
+  background-color: var(--tf-linha);
+}
+
+/* colunas alternadas (a 1ª é o trajeto; valores a partir da 2ª) */
+.cst-tf__tabela tr> :nth-child(odd):not(:first-child) {
+  background-image: linear-gradient(var(--tf-coluna), var(--tf-coluna));
+}
+
+.cst-tf__tabela thead th.is-num {
+  text-align: right;
+  color: var(--text-2);
+}
+
+.cst-tf__cel b {
+  font-size: var(--fs-md);
+  letter-spacing: -0.01em;
+}
+
+@media print {
+  .cst-imprimir .cst-tf__tabela {
+    table-layout: fixed;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .cst-imprimir .cst-tf__tabela tr> :first-child {
+    width: 24%;
+    min-width: 0;
+  }
+
+  .cst-imprimir .cst-tf__tabela tbody tr:nth-child(even)>* {
+    background-color: #f4f4f4 !important;
+  }
+
+  .cst-imprimir .cst-tf__tabela tr> :nth-child(odd):not(:first-child) {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.035), rgba(0, 0, 0, 0.035)) !important;
+  }
+
+  .cst-imprimir .cst-tf__tabela thead th {
+    border-bottom: 1.5px solid #000 !important;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cst-imprimir .cst-tf__cel {
+    min-width: 0;
+    padding: 5px 8px;
+  }
+
+  .cst-imprimir .cst-tf__cel b {
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .cst-imprimir .cst-tf__cel small,
+  .cst-imprimir .cst-tf__suf,
+  .cst-imprimir .cst-tf__traco {
+    color: #666 !important;
+    font-size: 9px;
+  }
+
+  .cst-imprimir .cst-tf__secao {
+    break-inside: avoid;
   }
 }

@@ -87,6 +87,10 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
   const secoes = useMemo(() => {
     const geral = config.tarifas.filter((t) => !t.fornecedor);
     const proprias = fornecedorSel ? config.tarifas.filter((t) => chaveTexto(t.fornecedor) === chaveTexto(fornecedorSel)) : [];
+    // "Qualquer veículo": se alguma seção usa, entra em todas (grade igual)
+    const algumQualquer = config.tarifas.some(
+      (t) => t.tipo !== "SERVICO" && t.valor !== null && !t.categoria && (!t.fornecedor || proprias.includes(t)),
+    );
     return SECOES.map((sec) => {
       const linhas = new Map();
       const colocar = (t, origem) => {
@@ -111,7 +115,15 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
         !veiculoSel || (veiculoSel === "qualquer" ? cat === "" : cat === veiculoSel || cat === "");
       lista = lista.filter((l) => Object.keys(l.celulas).some(visivel));
       const usadas = new Set(lista.flatMap((l) => Object.keys(l.celulas)).filter(visivel));
-      const colunas = COLUNAS.filter((c) => usadas.has(c.valor));
+      // todas as categorias de veículo aparecem sempre (mesma grade em todas
+      // as seções, com "—" onde não há valor); "Qualquer" só quando é usada.
+      // Parceiro não tem veículo: só as colunas usadas.
+      const colunas =
+        sec.tipo === "SERVICO"
+          ? COLUNAS.filter((c) => usadas.has(c.valor))
+          : COLUNAS.filter((c) =>
+            c.valor === "" ? algumQualquer || usadas.has("") : visivel(c.valor) && veiculoSel !== "qualquer",
+          );
       // parceiro não tem veículo: some quando um veículo está escolhido
       if (sec.tipo === "SERVICO" && veiculoSel) lista = [];
       return { ...sec, linhas: lista, colunas: colunas.length ? colunas : COLUNAS.slice(1) };
