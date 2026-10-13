@@ -93,8 +93,10 @@ service cloud.firestore {
     // ---------- Todo mundo logado e ativo lê a configuração da escala ----------
     // É preciso pra tela do guia mostrar quando a janela abre/fecha. Só o
     // operacional grava (regra geral, lá embaixo).
+    // Exceção: settings/custos (tarifas dos fornecedores e referência de
+    // valor dos guias) é só do operacional — cai na regra geral.
     match /settings/{settingId} {
-      allow read: if ativo();
+      allow read: if ativo() && settingId != 'custos';
     }
 
     // ---------- Guia: lê (sem alterar) o próprio perfil e o catálogo ----------
@@ -156,7 +158,7 @@ service cloud.firestore {
     // ---------- Operacional: acesso total (inclui coleções futuras) ----------
     // Todo o resto — services, weekly_services, guides, providers,
     // settings, guide_tour_levels, weekly_scale_meta,
-    // painel_out_monitoramento... — cai aqui: só operacional.
+    // painel_out_monitoramento, custos_dia... — cai aqui: só operacional.
     match /{document=**} {
       allow read, write: if isOperacional();
     }

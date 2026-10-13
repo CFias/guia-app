@@ -14,7 +14,11 @@
 // > sem tarifa (pendência). O guia nunca entra pela tabela sozinho: a tabela
 // só sugere a referência e o valor fica "a confirmar" até alguém lançar.
 
-import { acumularIdiomas, extrairIdiomasDoItem, siglaDoIdioma } from "../Utils/idiomas";
+import {
+  acumularIdiomas,
+  extrairIdiomasDoItem,
+  siglaDoIdioma,
+} from "../Utils/idiomas";
 
 /* ---------------- constantes ---------------- */
 
@@ -26,14 +30,22 @@ export const CATEGORIAS = [
   { valor: "onibus", nome: "Ônibus", curto: "Ônibus" },
 ];
 
-export const NOME_CATEGORIA = Object.fromEntries(CATEGORIAS.map((c) => [c.valor, c.nome]));
+export const NOME_CATEGORIA = Object.fromEntries(
+  CATEGORIAS.map((c) => [c.valor, c.nome]),
+);
 
 // grupos grandes: o guia acompanha o grupo mesmo em transfer
 export const CATEGORIAS_COM_GUIA = ["micro", "onibus"];
 
 // lotação por categoria (passageiros) — o recomendador só sugere colocar um
 // serviço num veículo que comporte o grupo
-export const CAPACIDADE_CATEGORIA = { carro: 4, van: 15, "van-alongada": 20, micro: 28, onibus: 50 };
+export const CAPACIDADE_CATEGORIA = {
+  carro: 4,
+  van: 15,
+  "van-alongada": 20,
+  micro: 28,
+  onibus: 50,
+};
 
 export const TIPOS_CUSTO = [
   { valor: "IN", nome: "IN (chegada)" },
@@ -50,9 +62,18 @@ export const COBRANCAS = [
   { valor: "pax", nome: "Por passageiro", sufixo: "/ pax" },
   { valor: "reserva", nome: "Por reserva", sufixo: "/ reserva" },
 ];
-export const SUFIXO_COBRANCA = Object.fromEntries(COBRANCAS.map((c) => [c.valor, c.sufixo]));
+export const SUFIXO_COBRANCA = Object.fromEntries(
+  COBRANCAS.map((c) => [c.valor, c.sufixo]),
+);
 
-export const NOME_TIPO = { IN: "IN", OUT: "OUT", TRF: "Transfer", PASSEIO: "Passeio", APOIO: "Apoio", SERVICO: "Parceiro" };
+export const NOME_TIPO = {
+  IN: "IN",
+  OUT: "OUT",
+  TRF: "Transfer",
+  PASSEIO: "Passeio",
+  APOIO: "Apoio",
+  SERVICO: "Parceiro",
+};
 const TIPOS_VALIDOS = ["IN", "OUT", "TRF", "PASSEIO", "APOIO", "SERVICO"];
 
 // minHoras: margem mínima entre dois serviços do mesmo veículo (deslocamento
@@ -63,14 +84,21 @@ const TIPOS_VALIDOS = ["IN", "OUT", "TRF", "PASSEIO", "APOIO", "SERVICO"];
 // se apresenta. Chegada (IN) paga metade; saída (OUT) paga inteiro.
 // adicionalIdioma: % a mais para o guia num passeio regular que tem
 // passageiro de outro idioma.
-export const REGRAS_PADRAO = { noShowIn: 50, noShowOut: 100, noShowTrf: 100, adicionalIdioma: 20 };
+export const REGRAS_PADRAO = {
+  noShowIn: 50,
+  noShowOut: 100,
+  noShowTrf: 100,
+  adicionalIdioma: 20,
+};
 
 export const MODALIDADES_GUIA = [
   { valor: "regular", nome: "Regular" },
   { valor: "mi", nome: "Tabela MI" },
   { valor: "idioma", nome: "Regular + idioma" },
 ];
-export const NOME_MODALIDADE = Object.fromEntries(MODALIDADES_GUIA.map((m) => [m.valor, m.nome]));
+export const NOME_MODALIDADE = Object.fromEntries(
+  MODALIDADES_GUIA.map((m) => [m.valor, m.nome]),
+);
 
 export const CASADO_PADRAO = {
   ativo: true,
@@ -90,9 +118,16 @@ export const normalizarTexto = (texto = "") =>
     .trim()
     .toLowerCase();
 
-export const chaveTexto = (texto = "") => normalizarTexto(texto).replace(/[^a-z0-9]+/g, " ").trim();
+export const chaveTexto = (texto = "") =>
+  normalizarTexto(texto)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
-export const regiaoCanonica = (texto = "") => String(texto ?? "").replace(/\s+/g, " ").trim().toUpperCase();
+export const regiaoCanonica = (texto = "") =>
+  String(texto ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
 
 export const numeroOuNulo = (v) => {
   if (v === null || v === undefined || v === "") return null;
@@ -103,7 +138,9 @@ export const numeroOuNulo = (v) => {
 // "1.234,5" / "1234.5" / 1234.5 → 1234.5 (aceita o que a pessoa digitar)
 export const lerValorDigitado = (texto) => {
   if (texto === null || texto === undefined) return null;
-  const s = String(texto).replace(/[R$\s]/g, "").trim();
+  const s = String(texto)
+    .replace(/[R$\s]/g, "")
+    .trim();
   if (!s) return null;
   const temVirgula = s.includes(",");
   const limpo = temVirgula ? s.replace(/\./g, "").replace(",", ".") : s;
@@ -129,12 +166,77 @@ const horaEmMinutos = (hora = "") => {
 /* ---------------- categoria do veículo ---------------- */
 
 const PALAVRAS_CATEGORIA = [
-  ["onibus", ["onibus", "ônibus", "bus ", "double deck", "rodoviario", "executivo 4", "46l", "44l", "50l"]],
-  ["micro", ["micro", "volare", "w9", "w8", "28l", "24l", "(24)", "(28)", "(25)"]],
+  [
+    "onibus",
+    [
+      "onibus",
+      "ônibus",
+      "bus ",
+      "double deck",
+      "rodoviario",
+      "executivo 4",
+      "46l",
+      "44l",
+      "50l",
+    ],
+  ],
+  [
+    "micro",
+    ["micro", "volare", "w9", "w8", "28l", "24l", "(24)", "(28)", "(25)"],
+  ],
   // van alongada: 18 a 20 lugares (mesma tarifa para as duas)
-  ["van-alongada", ["alongada", "longa", "(18)", "(19)", "(20)", "18l", "19l", "20l", "18 lug", "20 lug"]],
-  ["van", ["van", "sprinter", "master", "ducato", "boxer", "jumper", "daily", "(14)", "(15)", "(16)", "15l", "16l"]],
-  ["carro", ["spin", "doblo", "doblò", "carro", "sedan", "suv", "4x4", "onix", "cobalt", "corolla", "byd", "logan", "voyage", "prisma", "taxi"]],
+  [
+    "van-alongada",
+    [
+      "alongada",
+      "longa",
+      "(18)",
+      "(19)",
+      "(20)",
+      "18l",
+      "19l",
+      "20l",
+      "18 lug",
+      "20 lug",
+    ],
+  ],
+  [
+    "van",
+    [
+      "van",
+      "sprinter",
+      "master",
+      "ducato",
+      "boxer",
+      "jumper",
+      "daily",
+      "(14)",
+      "(15)",
+      "(16)",
+      "15l",
+      "16l",
+    ],
+  ],
+  [
+    "carro",
+    [
+      "spin",
+      "doblo",
+      "doblò",
+      "carro",
+      "sedan",
+      "suv",
+      "4x4",
+      "onix",
+      "cobalt",
+      "corolla",
+      "byd",
+      "logan",
+      "voyage",
+      "prisma",
+      "taxi",
+    ],
+  ],
 ];
 
 // Pelo nome do veículo no Phoenix ("JOALDO - SPIN", "VAN FERNANDO (15)").
@@ -158,9 +260,9 @@ const veiculoObj = (item) =>
 const extrairVeiculoNome = (item) =>
   String(
     veiculoObj(item)?.name ||
-    item?.roadmapService?.roadmap?.serviceOrder?.vehicle_name ||
-    item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle_name ||
-    "",
+      item?.roadmapService?.roadmap?.serviceOrder?.vehicle_name ||
+      item?.auxRoadmapService?.roadmap?.serviceOrder?.vehicle_name ||
+      "",
   ).trim();
 
 const extrairVeiculoId = (item) => {
@@ -176,7 +278,11 @@ const extrairVeiculoId = (item) => {
 export const chaveDoVeiculo = (id, nome) =>
   id || `nome-${normalizarTexto(nome).replace(/[^a-z0-9]+/g, "-")}`;
 
-const roadmapDo = (item) => item?.roadmapService?.roadmap || item?.auxRoadmapService?.roadmap || item?.roadmap || null;
+const roadmapDo = (item) =>
+  item?.roadmapService?.roadmap ||
+  item?.auxRoadmapService?.roadmap ||
+  item?.roadmap ||
+  null;
 
 const extrairGuia = (item) =>
   String(roadmapDo(item)?.guide?.nickname || roadmapDo(item)?.guide?.name || "")
@@ -184,15 +290,25 @@ const extrairGuia = (item) =>
     .trim();
 
 const extrairMotorista = (item) =>
-  String(roadmapDo(item)?.driver?.nickname || roadmapDo(item)?.driver?.name || "").trim();
+  String(
+    roadmapDo(item)?.driver?.nickname || roadmapDo(item)?.driver?.name || "",
+  ).trim();
 
 const nomeOrigem = (item) => item?.establishmentOrigin?.name || "";
 const nomeDestino = (item) => item?.establishmentDestination?.name || "";
-const regiaoOrigem = (item) => regiaoCanonica(item?.establishmentOrigin?.region?.name || item?.regionOrigin?.name || "");
+const regiaoOrigem = (item) =>
+  regiaoCanonica(
+    item?.establishmentOrigin?.region?.name || item?.regionOrigin?.name || "",
+  );
 const regiaoDestino = (item) =>
-  regiaoCanonica(item?.establishmentDestination?.region?.name || item?.regionDestination?.name || "");
+  regiaoCanonica(
+    item?.establishmentDestination?.region?.name ||
+      item?.regionDestination?.name ||
+      "",
+  );
 
-const nomeServico = (item) => item?.service?.name || item?.schedule?.service?.name || "";
+const nomeServico = (item) =>
+  item?.service?.name || item?.schedule?.service?.name || "";
 
 const ehAeroporto = (texto = "") => {
   const t = normalizarTexto(texto);
@@ -200,10 +316,18 @@ const ehAeroporto = (texto = "") => {
 };
 
 const valorHorario = (item) =>
-  String(item?.presentation_hour || item?.presentation_hour_end || item?.schedule?.presentation_hour || item?.date || "");
+  String(
+    item?.presentation_hour ||
+      item?.presentation_hour_end ||
+      item?.schedule?.presentation_hour ||
+      item?.date ||
+      "",
+  );
 
-const extrairData = (item) => (valorHorario(item).match(/^(\d{4}-\d{2}-\d{2})/) || [])[1] || "";
-const extrairHora = (item) => (valorHorario(item).match(/(\d{2}:\d{2})/) || [])[1] || "";
+const extrairData = (item) =>
+  (valorHorario(item).match(/^(\d{4}-\d{2}-\d{2})/) || [])[1] || "";
+const extrairHora = (item) =>
+  (valorHorario(item).match(/(\d{2}:\d{2})/) || [])[1] || "";
 
 const n0 = (...vals) => {
   for (const v of vals) {
@@ -240,14 +364,20 @@ const tarifaDeParceiroDoItem = (item, tarifasParceiro) => {
   if (!nome) return null;
   const tipo = tipoDoItem(item);
   return (
-    tarifasParceiro.find((t) => nome.includes(chaveTexto(t.servico)) && (!t.aplicaA || t.aplicaA === tipo)) || null
+    tarifasParceiro.find(
+      (t) =>
+        nome.includes(chaveTexto(t.servico)) &&
+        (!t.aplicaA || t.aplicaA === tipo),
+    ) || null
   );
 };
 
 export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
   const mapa = new Map();
   let semEscala = 0;
-  const tarifasParceiro = tarifas.filter((t) => t.tipo === "SERVICO" && t.servico && t.valor !== null);
+  const tarifasParceiro = tarifas.filter(
+    (t) => t.tipo === "SERVICO" && t.servico && t.valor !== null,
+  );
 
   itens.forEach((item) => {
     const escalaId = roadmapDo(item)?.id;
@@ -259,7 +389,10 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
     if (parceiro) {
       const data = extrairData(item) || item.__dataMapa || dataAlvo;
       const hora = extrairHora(item);
-      const chave = `SRV_${parceiro.id}_${data}_${hora || "0000"}`.replace(/[^A-Za-z0-9_-]/g, "");
+      const chave = `SRV_${parceiro.id}_${data}_${hora || "0000"}`.replace(
+        /[^A-Za-z0-9_-]/g,
+        "",
+      );
       if (!mapa.has(chave)) {
         const veiculoId = extrairVeiculoId(item);
         mapa.set(chave, {
@@ -272,8 +405,12 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
           hora,
           veiculo: veiculo || `${parceiro.fornecedor || "Parceiro"} · parceiro`,
           veiculoId,
-          veiculoKey: veiculo ? chaveDoVeiculo(veiculoId, veiculo) : `parceiro-${chaveTexto(parceiro.fornecedor || parceiro.id).replace(/ /g, "-")}`,
-          placa: String(veiculoObj(item)?.plate || "").trim().toUpperCase(),
+          veiculoKey: veiculo
+            ? chaveDoVeiculo(veiculoId, veiculo)
+            : `parceiro-${chaveTexto(parceiro.fornecedor || parceiro.id).replace(/ /g, "-")}`,
+          placa: String(veiculoObj(item)?.plate || "")
+            .trim()
+            .toUpperCase(),
           motorista: extrairMotorista(item),
           guiaPhoenix: extrairGuia(item),
           passeio: nomeServico(item),
@@ -290,7 +427,9 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
       s.pax += paxDo(item);
       if (regiaoOrigem(item)) s.regioesSet.add(regiaoOrigem(item));
       if (regiaoDestino(item)) s.regioesDestinoSet.add(regiaoDestino(item));
-      const hotel = ehAeroporto(nomeOrigem(item)) ? nomeDestino(item) : nomeOrigem(item);
+      const hotel = ehAeroporto(nomeOrigem(item))
+        ? nomeDestino(item)
+        : nomeOrigem(item);
       if (hotel) s.hoteisSet.add(hotel);
       return;
     }
@@ -315,7 +454,9 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
         veiculo,
         veiculoId,
         veiculoKey: chaveDoVeiculo(veiculoId, veiculo),
-        placa: String(veiculoObj(item)?.plate || "").trim().toUpperCase(),
+        placa: String(veiculoObj(item)?.plate || "")
+          .trim()
+          .toUpperCase(),
         motorista: extrairMotorista(item),
         guiaPhoenix: extrairGuia(item),
         passeio: tipo === "PASSEIO" ? nomeServico(item) : "",
@@ -331,7 +472,11 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
     s.reservas += 1;
     s.pax += paxDo(item);
     // idioma dos passageiros (só os estrangeiros: português não entra)
-    acumularIdiomas(s.idiomas, extrairIdiomasDoItem(item, { nomeServico: nomeServico(item) }).ids, paxDo(item));
+    acumularIdiomas(
+      s.idiomas,
+      extrairIdiomasDoItem(item, { nomeServico: nomeServico(item) }).ids,
+      paxDo(item),
+    );
     if (!s.guiaPhoenix) s.guiaPhoenix = extrairGuia(item);
     if (!s.motorista) s.motorista = extrairMotorista(item);
     if (`${data} ${hora || "99:99"}` < `${s.data} ${s.hora || "99:99"}`) {
@@ -372,7 +517,8 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
 };
 
 export const descreverServico = (s) => {
-  if (s.tipo === "PASSEIO" || s.tipo === "SERVICO") return s.passeio || "Passeio";
+  if (s.tipo === "PASSEIO" || s.tipo === "SERVICO")
+    return s.passeio || "Passeio";
   const hotel = s.hoteis?.[0] || "";
   const mais = (s.hoteis?.length || 0) > 1 ? ` +${s.hoteis.length - 1}` : "";
   if (s.tipo === "IN") return `Aeroporto → ${hotel || "hotel"}${mais}`;
@@ -417,7 +563,11 @@ export const mapaFornecedorPorVeiculo = (vinculos = {}, fornecedores = []) => {
   return mapa;
 };
 
-export const listaDeFornecedores = (vinculos = {}, fornecedores = [], tarifas = []) => {
+export const listaDeFornecedores = (
+  vinculos = {},
+  fornecedores = [],
+  tarifas = [],
+) => {
   const porChave = new Map();
   const add = (nome) => {
     const n = String(nome || "").trim();
@@ -426,13 +576,16 @@ export const listaDeFornecedores = (vinculos = {}, fornecedores = [], tarifas = 
   fornecedores.forEach((f) => f?.ativo !== false && add(f?.nome));
   Object.values(vinculos || {}).forEach((v) => add(v?.fornecedor));
   tarifas.forEach((t) => add(t?.fornecedor));
-  return Array.from(porChave.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  return Array.from(porChave.values()).sort((a, b) =>
+    a.localeCompare(b, "pt-BR"),
+  );
 };
 
 /* ---------------- tarifas ---------------- */
 
 let contadorId = 0;
-export const novoIdTarifa = () => `t${Date.now().toString(36)}${(contadorId++).toString(36)}`;
+export const novoIdTarifa = () =>
+  `t${Date.now().toString(36)}${(contadorId++).toString(36)}`;
 
 export const normalizarTarifa = (t = {}) => ({
   id: t.id || novoIdTarifa(),
@@ -444,7 +597,11 @@ export const normalizarTarifa = (t = {}) => ({
   categoria: NOME_CATEGORIA[t.categoria] ? t.categoria : "",
   valor: numeroOuNulo(t.valor),
   valorCasado: numeroOuNulo(t.valorCasado),
-  cobranca: ["pax", "reserva"].includes(t.cobranca) ? t.cobranca : t.tipo === "SERVICO" ? "pax" : "servico",
+  cobranca: ["pax", "reserva"].includes(t.cobranca)
+    ? t.cobranca
+    : t.tipo === "SERVICO"
+      ? "pax"
+      : "servico",
   aplicaA: ["IN", "OUT", "TRF", "PASSEIO"].includes(t.aplicaA) ? t.aplicaA : "",
   obs: String(t.obs || "").trim(),
 });
@@ -465,7 +622,9 @@ export const normalizarRegrasCasado = (r = {}) => {
   const passeio = numeroOuNulo(r.duracaoPasseioHoras);
   return {
     ativo: r.ativo !== false,
-    regioes: Array.isArray(r.regioes) ? r.regioes.map(regiaoCanonica).filter(Boolean) : [...CASADO_PADRAO.regioes],
+    regioes: Array.isArray(r.regioes)
+      ? r.regioes.map(regiaoCanonica).filter(Boolean)
+      : [...CASADO_PADRAO.regioes],
     minHoras: min ?? CASADO_PADRAO.minHoras,
     maxHoras: max ?? CASADO_PADRAO.maxHoras,
     duracaoPasseioHoras: passeio ?? CASADO_PADRAO.duracaoPasseioHoras,
@@ -487,12 +646,25 @@ export const normalizarRegras = (r = {}) => ({
 export const normalizarConfigCustos = (d = {}) => ({
   regras: normalizarRegras(d.regras || {}),
   tarifas: (Array.isArray(d.tarifas) ? d.tarifas : []).map(normalizarTarifa),
-  tarifasGuia: (Array.isArray(d.tarifasGuia) ? d.tarifasGuia : []).map(normalizarTarifaGuia),
+  tarifasGuia: (Array.isArray(d.tarifasGuia) ? d.tarifasGuia : []).map(
+    normalizarTarifaGuia,
+  ),
   casado: normalizarRegrasCasado(d.casado || CASADO_PADRAO),
-  categoriasVeiculo: d.categoriasVeiculo && typeof d.categoriasVeiculo === "object" ? d.categoriasVeiculo : {},
-  regioesConhecidas: Array.isArray(d.regioesConhecidas) ? d.regioesConhecidas.map(regiaoCanonica).filter(Boolean) : [],
+  categoriasVeiculo:
+    d.categoriasVeiculo && typeof d.categoriasVeiculo === "object"
+      ? d.categoriasVeiculo
+      : {},
+  regioesConhecidas: Array.isArray(d.regioesConhecidas)
+    ? d.regioesConhecidas.map(regiaoCanonica).filter(Boolean)
+    : [],
   servicosConhecidos: Array.isArray(d.servicosConhecidos)
-    ? Array.from(new Set(d.servicosConhecidos.map((n) => String(n || "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y, "pt-BR"))
+    ? Array.from(
+        new Set(
+          d.servicosConhecidos
+            .map((n) => String(n || "").trim())
+            .filter(Boolean),
+        ),
+      ).sort((x, y) => x.localeCompare(y, "pt-BR"))
     : [],
 });
 
@@ -509,10 +681,13 @@ export const descreverTarifa = (t) => {
 
 // Onde vale a tarifa, em texto (listas, tarifário)
 export const ondeDaTarifa = (t) => {
-  if (t.tipo === "SERVICO") return `Serviço com “${t.servico || "?"}”${t.aplicaA ? ` (${NOME_TIPO[t.aplicaA]})` : ""}`;
+  if (t.tipo === "SERVICO")
+    return `Serviço com “${t.servico || "?"}”${t.aplicaA ? ` (${NOME_TIPO[t.aplicaA]})` : ""}`;
   if (t.tipo === "PASSEIO") return t.servico || "Qualquer passeio";
-  if (t.tipo === "APOIO") return `Por trecho · ${t.regiao || "qualquer região"}${t.servico ? ` · ${t.servico}` : ""}`;
-  if (t.tipo === "TRF") return `${t.regiao || "Qualquer região"} → ${t.regiaoDestino || "qualquer região"}`;
+  if (t.tipo === "APOIO")
+    return `Por trecho · ${t.regiao || "qualquer região"}${t.servico ? ` · ${t.servico}` : ""}`;
+  if (t.tipo === "TRF")
+    return `${t.regiao || "Qualquer região"} → ${t.regiaoDestino || "qualquer região"}`;
   if (t.tipo === "IN") return `Aeroporto → ${t.regiao || "qualquer região"}`;
   return `${t.regiao || "Qualquer região"} → Aeroporto`;
 };
@@ -520,7 +695,10 @@ export const ondeDaTarifa = (t) => {
 // Melhor tarifa para um serviço numa região: fornecedor específico vale
 // mais que "todos os fornecedores"; depois a categoria certa; depois a
 // região/passeio exatos. Empate: a primeira da lista.
-const pontuarTarifa = (t, { tipo, fornecedor, categoria, regiao, regiaoDestino, passeio }) => {
+const pontuarTarifa = (
+  t,
+  { tipo, fornecedor, categoria, regiao, regiaoDestino, passeio },
+) => {
   if (t.tipo !== tipo || t.tipo === "SERVICO") return -1;
   if (t.valor === null) return -1;
   let p = 0;
@@ -554,9 +732,15 @@ const pontuarTarifa = (t, { tipo, fornecedor, categoria, regiao, regiaoDestino, 
   return p;
 };
 
-export const acharTarifa = (servico, { fornecedor, categoria }, tarifas = []) => {
+export const acharTarifa = (
+  servico,
+  { fornecedor, categoria },
+  tarifas = [],
+) => {
   const regioes = servico.regioes?.length ? servico.regioes : [""];
-  const destinos = servico.regioesDestino?.length ? servico.regioesDestino : [""];
+  const destinos = servico.regioesDestino?.length
+    ? servico.regioesDestino
+    : [""];
   let melhor = null;
   regioes.forEach((regiao) => {
     destinos.forEach((regiaoDestino) => {
@@ -578,13 +762,19 @@ export const acharTarifa = (servico, { fornecedor, categoria }, tarifas = []) =>
       });
       // mais de uma região na mesma escala: vale a mais cara (o veículo
       // vai até a mais distante)
-      if (escolhida && (!melhor || escolhida.valor > melhor.valor)) melhor = escolhida;
+      if (escolhida && (!melhor || escolhida.valor > melhor.valor))
+        melhor = escolhida;
     });
   });
   return melhor;
 };
 
-export const acharTarifaGuia = (servico, categoria, tarifasGuia = [], tabela = "regular") => {
+export const acharTarifaGuia = (
+  servico,
+  categoria,
+  tarifasGuia = [],
+  tabela = "regular",
+) => {
   let escolhida = null;
   let pontos = -1;
   tarifasGuia.forEach((t) => {
@@ -613,7 +803,8 @@ export const acharTarifaGuia = (servico, categoria, tarifasGuia = [], tabela = "
 
 /* ---------------- serviço casado ---------------- */
 
-const regiaoNaLista = (s, regras) => s.regioes?.some((r) => regras.regioes.includes(r));
+const regiaoNaLista = (s, regras) =>
+  s.regioes?.some((r) => regras.regioes.includes(r));
 
 // IN que deixa numa região do casado + OUT que busca na mesma região (pode
 // ser outro hotel), no MESMO veículo, com o OUT entre min e max horas depois
@@ -622,8 +813,14 @@ export const detectarCasados = (servicos = [], regras = CASADO_PADRAO) => {
   const r = normalizarRegrasCasado(regras);
   const pares = {};
   if (!r.ativo || !r.regioes.length) return pares;
-  const ins = servicos.filter((s) => s.tipo === "IN" && regiaoNaLista(s, r) && horaEmMinutos(s.hora) !== null);
-  const outs = servicos.filter((s) => s.tipo === "OUT" && regiaoNaLista(s, r) && horaEmMinutos(s.hora) !== null);
+  const ins = servicos.filter(
+    (s) =>
+      s.tipo === "IN" && regiaoNaLista(s, r) && horaEmMinutos(s.hora) !== null,
+  );
+  const outs = servicos.filter(
+    (s) =>
+      s.tipo === "OUT" && regiaoNaLista(s, r) && horaEmMinutos(s.hora) !== null,
+  );
   const candidatos = [];
   ins.forEach((a) => {
     outs.forEach((b) => {
@@ -650,42 +847,75 @@ export const detectarCasados = (servicos = [], regras = CASADO_PADRAO) => {
 //          guiaNome, guiaValor, semGuia, obs}
 // ctx:     {fornecedorPorVeiculo, config, pares}
 export const calcularLinha = (servico, manual = {}, ctx = {}) => {
-  const { fornecedorPorVeiculo = {}, config = normalizarConfigCustos({}), pares = {}, apoios = {} } = ctx;
+  const {
+    fornecedorPorVeiculo = {},
+    config = normalizarConfigCustos({}),
+    pares = {},
+    apoios = {},
+  } = ctx;
   const m = manual || {};
 
-  const tarifaFixa = servico.tarifaFixaId ? config.tarifas.find((t) => t.id === servico.tarifaFixaId) || null : null;
+  const tarifaFixa = servico.tarifaFixaId
+    ? config.tarifas.find((t) => t.id === servico.tarifaFixaId) || null
+    : null;
   const fornecedorAuto =
     (tarifaFixa && tarifaFixa.fornecedor) ||
     fornecedorPorVeiculo[servico.veiculoKey] ||
     fornecedorPorVeiculo[chaveDoVeiculo("", servico.veiculo)] ||
     "";
   const fornecedor = String(m.fornecedor || fornecedorAuto || "").trim();
-  const categoriaAuto = config.categoriasVeiculo?.[servico.veiculoKey] || categoriaPeloNome(servico.veiculo);
+  const categoriaAuto =
+    config.categoriasVeiculo?.[servico.veiculoKey] ||
+    categoriaPeloNome(servico.veiculo);
   const categoria = NOME_CATEGORIA[m.categoria] ? m.categoria : categoriaAuto;
 
   // veículo de apoio do passeio: só leva do hotel ao veículo principal e
   // traz de volta — cobra por trecho (tarifa "Apoio"), não o passeio cheio
   const ehPasseio = servico.tipo === "PASSEIO";
   const apoioAuto = ehPasseio && !!apoios[servico.chave];
-  const apoio = ehPasseio && (typeof m.apoio === "boolean" ? m.apoio : apoioAuto);
+  const apoio =
+    ehPasseio && (typeof m.apoio === "boolean" ? m.apoio : apoioAuto);
   const trechos = apoio ? (Number(m.trechos) === 1 ? 1 : 2) : 1;
 
   const parAuto = apoio ? null : pares[servico.chave] || null;
-  const casado = apoio ? false : typeof m.casado === "boolean" ? m.casado : !!parAuto;
+  const casado = apoio
+    ? false
+    : typeof m.casado === "boolean"
+      ? m.casado
+      : !!parAuto;
 
   const tarifa =
     servico.tipo === "SERVICO"
       ? tarifaFixa
-      : acharTarifa(apoio ? { ...servico, tipo: "APOIO" } : servico, { fornecedor, categoria }, config.tarifas);
+      : acharTarifa(
+          apoio ? { ...servico, tipo: "APOIO" } : servico,
+          { fornecedor, categoria },
+          config.tarifas,
+        );
   // cobrança por passageiro / reserva: valor × quantidade (editável na ficha)
   const cobranca = tarifa?.cobranca || "servico";
-  const quantidadeAuto = cobranca === "pax" ? servico.pax : cobranca === "reserva" ? servico.reservas : 1;
+  const quantidadeAuto =
+    cobranca === "pax"
+      ? servico.pax
+      : cobranca === "reserva"
+        ? servico.reservas
+        : 1;
   const quantidadeManual = numeroOuNulo(m.quantidade);
-  const quantidade = cobranca === "servico" ? 1 : quantidadeManual ?? quantidadeAuto;
+  const quantidade =
+    cobranca === "servico" ? 1 : (quantidadeManual ?? quantidadeAuto);
   const tarifaUnitaria = tarifa ? tarifa.valor : null;
-  const tarifaCheia = tarifa ? Math.round(tarifa.valor * trechos * quantidade * 100) / 100 : null;
-  const tarifaCasada = tarifa && !apoio && cobranca === "servico" ? (tarifa.valorCasado ?? null) : null;
-  const tarifaAplicada = tarifa ? (casado && tarifaCasada !== null ? tarifaCasada : tarifaCheia) : null;
+  const tarifaCheia = tarifa
+    ? Math.round(tarifa.valor * trechos * quantidade * 100) / 100
+    : null;
+  const tarifaCasada =
+    tarifa && !apoio && cobranca === "servico"
+      ? (tarifa.valorCasado ?? null)
+      : null;
+  const tarifaAplicada = tarifa
+    ? casado && tarifaCasada !== null
+      ? tarifaCasada
+      : tarifaCheia
+    : null;
 
   const valorLancado = numeroOuNulo(m.valor);
   let valorServico = null;
@@ -709,8 +939,12 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
         ? regras.noShowOut
         : regras.noShowTrf
     : 100;
-  const valorFornecedor = valorServico === null ? null : Math.round(valorServico * noShowPct) / 100;
-  const economiaNoShow = valorServico === null ? 0 : Math.round((valorServico - valorFornecedor) * 100) / 100;
+  const valorFornecedor =
+    valorServico === null ? null : Math.round(valorServico * noShowPct) / 100;
+  const economiaNoShow =
+    valorServico === null
+      ? 0
+      : Math.round((valorServico - valorFornecedor) * 100) / 100;
 
   // economia em relação à tabela cheia: casado ou valor negociado abaixo
   // (o desconto do no-show fica à parte, em economiaNoShow)
@@ -725,26 +959,48 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
       : 0;
 
   // guia
-  const guiaNome = m.semGuia ? "" : String(m.guiaNome || servico.guiaPhoenix || "").trim();
+  const guiaNome = m.semGuia
+    ? ""
+    : String(m.guiaNome || servico.guiaPhoenix || "").trim();
   const grupoGrande = CATEGORIAS_COM_GUIA.includes(categoria);
   // modalidade: regular, tabela MI (guiamento todo em outro idioma para um
   // grupo) ou regular + adicional de idioma (passeio regular com passageiro
   // estrangeiro). Automático: passeio com passageiro estrangeiro → idioma.
-  const idiomasEstrangeiros = Object.keys(servico.idiomas || {}).filter((k) => k !== "pt" && servico.idiomas[k] > 0);
-  const guiaModalidadeAuto = servico.tipo === "PASSEIO" && idiomasEstrangeiros.length ? "idioma" : "regular";
-  const guiaModalidade = NOME_MODALIDADE[m.guiaModalidade] ? m.guiaModalidade : guiaModalidadeAuto;
+  const idiomasEstrangeiros = Object.keys(servico.idiomas || {}).filter(
+    (k) => k !== "pt" && servico.idiomas[k] > 0,
+  );
+  const guiaModalidadeAuto =
+    servico.tipo === "PASSEIO" && idiomasEstrangeiros.length
+      ? "idioma"
+      : "regular";
+  const guiaModalidade = NOME_MODALIDADE[m.guiaModalidade]
+    ? m.guiaModalidade
+    : guiaModalidadeAuto;
   const temGuiaOuGrande = !!guiaNome || grupoGrande;
   const refBase = temGuiaOuGrande
-    ? acharTarifaGuia(servico, categoria, config.tarifasGuia, guiaModalidade === "mi" ? "mi" : "regular")
+    ? acharTarifaGuia(
+        servico,
+        categoria,
+        config.tarifasGuia,
+        guiaModalidade === "mi" ? "mi" : "regular",
+      )
     : null;
-  const fatorIdioma = guiaModalidade === "idioma" ? 1 + regras.adicionalIdioma / 100 : 1;
-  const refGuia = refBase ? { valor: Math.round(refBase.valor * fatorIdioma * 100) / 100, base: refBase.valor } : null;
+  const fatorIdioma =
+    guiaModalidade === "idioma" ? 1 + regras.adicionalIdioma / 100 : 1;
+  const refGuia = refBase
+    ? {
+        valor: Math.round(refBase.valor * fatorIdioma * 100) / 100,
+        base: refBase.valor,
+      }
+    : null;
   const guiaValor = guiaNome ? numeroOuNulo(m.guiaValor) : null;
   // parte do valor do guia que é o adicional de idioma (para o relatório)
   const valorGuiaParaAdicional = guiaValor ?? (refGuia ? refGuia.valor : null);
   const guiaAdicional =
     guiaNome && guiaModalidade === "idioma" && valorGuiaParaAdicional !== null
-      ? Math.round((valorGuiaParaAdicional - valorGuiaParaAdicional / fatorIdioma) * 100) / 100
+      ? Math.round(
+          (valorGuiaParaAdicional - valorGuiaParaAdicional / fatorIdioma) * 100,
+        ) / 100
       : 0;
   let guiaStatus = "sem-guia";
   if (guiaNome) guiaStatus = guiaValor !== null ? "lancado" : "a-confirmar";
@@ -799,7 +1055,9 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
     guiaModalidadeAuto,
     guiaAdicional,
     idiomasEstrangeiros,
-    idiomasTexto: idiomasEstrangeiros.map((k) => `${siglaDoIdioma(k)} ${servico.idiomas[k]}`).join(" · "),
+    idiomasTexto: idiomasEstrangeiros
+      .map((k) => `${siglaDoIdioma(k)} ${servico.idiomas[k]}`)
+      .join(" · "),
     guiaValor,
     guiaStatus,
     total: (valorFornecedor || 0) + (guiaValor || 0),
@@ -810,15 +1068,23 @@ export const calcularLinha = (servico, manual = {}, ctx = {}) => {
 
 /* ---------------- veículo de apoio ---------------- */
 
-// Apoio automático: nome do veículo com "APOIO", ou o mesmo passeio com mais
-// de uma escala no dia em que só algumas têm guia — as sem guia são apoio
-// (buscam no hotel, entregam ao veículo principal e trazem de volta).
+// Apoio automático: "APOIO" no nome do veículo ou do motorista escalado,
+// carro sem guia no passeio, ou o mesmo passeio com mais de uma escala no dia
+// em que só algumas têm guia — as sem guia são apoio (buscam no hotel,
+// entregam ao veículo principal e trazem de volta).
 export const detectarApoios = (servicos = []) => {
   const apoios = {};
   const porPasseio = new Map();
   servicos.forEach((s) => {
     if (s.tipo !== "PASSEIO") return;
-    if (/\bapoio\b/.test(normalizarTexto(s.veiculo))) apoios[s.chave] = true;
+    if (
+      /\bapoio\b/.test(normalizarTexto(s.veiculo)) ||
+      /\bapoio\b/.test(normalizarTexto(s.motorista))
+    )
+      apoios[s.chave] = true;
+    // carro (Spin, Doblò…) em passeio sem guia quase sempre é apoio
+    else if (!s.guiaPhoenix && categoriaPeloNome(s.veiculo) === "carro")
+      apoios[s.chave] = true;
     const k = chaveTexto(s.passeio);
     if (!porPasseio.has(k)) porPasseio.set(k, []);
     porPasseio.get(k).push(s);
@@ -827,9 +1093,11 @@ export const detectarApoios = (servicos = []) => {
     if (grupo.length < 2) return;
     const comGuia = grupo.filter((s) => s.guiaPhoenix);
     if (!comGuia.length || comGuia.length === grupo.length) return;
-    grupo.filter((s) => !s.guiaPhoenix).forEach((s) => {
-      apoios[s.chave] = true;
-    });
+    grupo
+      .filter((s) => !s.guiaPhoenix)
+      .forEach((s) => {
+        apoios[s.chave] = true;
+      });
   });
   return apoios;
 };
@@ -841,7 +1109,8 @@ export const detectarApoios = (servicos = []) => {
 const janelaDoServico = (s, regras) => {
   const ini = horaEmMinutos(s.hora);
   if (ini === null) return null;
-  const fim = s.tipo === "PASSEIO" ? ini + regras.duracaoPasseioHoras * 60 : ini;
+  const fim =
+    s.tipo === "PASSEIO" ? ini + regras.duracaoPasseioHoras * 60 : ini;
   return [ini, fim];
 };
 
@@ -849,7 +1118,9 @@ const janelaDoServico = (s, regras) => {
 // algum dos dois é na região do casado (viagem longa); senão 1h (cidade).
 const MARGEM_CIDADE_MIN = 60;
 const folgaExigida = (a, b, regras) =>
-  regiaoNaLista(a, regras) || regiaoNaLista(b, regras) ? regras.minHoras * 60 : MARGEM_CIDADE_MIN;
+  regiaoNaLista(a, regras) || regiaoNaLista(b, regras)
+    ? regras.minHoras * 60
+    : MARGEM_CIDADE_MIN;
 
 const conflitoDeHorario = (novo, agenda, regras) => {
   const jn = janelaDoServico(novo, regras);
@@ -857,8 +1128,10 @@ const conflitoDeHorario = (novo, agenda, regras) => {
   for (const o of agenda) {
     const jo = janelaDoServico(o, regras);
     if (!jo) continue;
-    const intervalo = jn[0] >= jo[1] ? jn[0] - jo[1] : jo[0] >= jn[1] ? jo[0] - jn[1] : -1;
-    if (intervalo < folgaExigida(novo, o, regras)) return { conflito: true, com: o, intervalo };
+    const intervalo =
+      jn[0] >= jo[1] ? jn[0] - jo[1] : jo[0] >= jn[1] ? jo[0] - jn[1] : -1;
+    if (intervalo < folgaExigida(novo, o, regras))
+      return { conflito: true, com: o, intervalo };
   }
   return { conflito: false };
 };
@@ -895,9 +1168,15 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
   const config = ctx.config || normalizarConfigCustos({});
   const regras = config.casado;
   if (!regras.ativo || !regras.regioes.length) return [];
-  const contexto = { ...ctx, config, apoios: ctx.apoios || detectarApoios(servicos) };
+  const contexto = {
+    ...ctx,
+    config,
+    apoios: ctx.apoios || detectarApoios(servicos),
+  };
   const paresBase = detectarCasados(servicos, regras);
-  const linhas = servicos.map((s) => calcularLinha(s, {}, { ...contexto, pares: paresBase }));
+  const linhas = servicos.map((s) =>
+    calcularLinha(s, {}, { ...contexto, pares: paresBase }),
+  );
   const porChave = new Map(linhas.map((l) => [l.chave, l]));
 
   const veiculos = new Map();
@@ -914,7 +1193,9 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
         servicos: [],
       });
     }
-    veiculos.get(l.veiculoKey).servicos.push(servicos.find((s) => s.chave === l.chave));
+    veiculos
+      .get(l.veiculoKey)
+      .servicos.push(servicos.find((s) => s.chave === l.chave));
   });
 
   const dentroDoCasado = (inS, outS) => {
@@ -922,8 +1203,13 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
     return d >= regras.minHoras * 60 && d <= regras.maxHoras * 60 ? d : null;
   };
   const transferSolto = (l) =>
-    (l.tipo === "IN" || l.tipo === "OUT") && !l.casado && !l.apoio && horaEmMinutos(l.hora) !== null && regiaoNaLista(l, regras);
-  const cabe = (pax, categoria) => !!categoria && pax <= (CAPACIDADE_CATEGORIA[categoria] || 0);
+    (l.tipo === "IN" || l.tipo === "OUT") &&
+    !l.casado &&
+    !l.apoio &&
+    horaEmMinutos(l.hora) !== null &&
+    regiaoNaLista(l, regras);
+  const cabe = (pax, categoria) =>
+    !!categoria && pax <= (CAPACIDADE_CATEGORIA[categoria] || 0);
 
   const sugestoes = [];
 
@@ -937,7 +1223,11 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
       const parceiros = B.servicos
         .map((s) => porChave.get(s.chave))
         .filter((p) => transferSolto(p) && p.tipo !== x.tipo)
-        .map((p) => ({ p, intervalo: x.tipo === "OUT" ? dentroDoCasado(p, x) : dentroDoCasado(x, p) }))
+        .map((p) => ({
+          p,
+          intervalo:
+            x.tipo === "OUT" ? dentroDoCasado(p, x) : dentroDoCasado(x, p),
+        }))
         .filter((c) => c.intervalo !== null)
         .sort((a, b) => a.intervalo - b.intervalo);
       if (!parceiros.length) return;
@@ -950,27 +1240,69 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
       // trocar: X vai para B e um serviço Y de B vem para A
       B.servicos.forEach((sy) => {
         const y = porChave.get(sy.chave);
-        if (!y || y.chave === par.chave || y.casado || y.apoio || y.tipo === "PASSEIO") return;
+        if (
+          !y ||
+          y.chave === par.chave ||
+          y.casado ||
+          y.apoio ||
+          y.tipo === "PASSEIO"
+        )
+          return;
         if (!cabe(y.pax, A.categoria)) return;
         const bSemY = B.servicos.filter((s) => s.chave !== y.chave);
         if (conflitoDeHorario(sx, bSemY, regras).conflito) return;
         if (conflitoDeHorario(sy, semX, regras).conflito) return;
-        const depois = custoDosVeiculos([...semX, noVeiculo(sy, A), ...bSemY, noVeiculo(sx, B)], contexto);
+        const depois = custoDosVeiculos(
+          [...semX, noVeiculo(sy, A), ...bSemY, noVeiculo(sx, B)],
+          contexto,
+        );
         if (depois === null) return;
         const economia = Math.round((antes - depois) * 100) / 100;
         if (economia <= 0) return;
-        if (!melhor || economia > melhor.economia || (economia === melhor.economia && melhor.tipo === "mover")) {
-          melhor = { tipo: "troca", x, y, par, de: A, para: B, antes, depois, economia, intervalo };
+        if (
+          !melhor ||
+          economia > melhor.economia ||
+          (economia === melhor.economia && melhor.tipo === "mover")
+        ) {
+          melhor = {
+            tipo: "troca",
+            x,
+            y,
+            par,
+            de: A,
+            para: B,
+            antes,
+            depois,
+            economia,
+            intervalo,
+          };
         }
       });
 
       // mover: X vai para B (A fica com um serviço a menos)
       if (!conflitoDeHorario(sx, B.servicos, regras).conflito) {
-        const depois = custoDosVeiculos([...semX, ...B.servicos, noVeiculo(sx, B)], contexto);
+        const depois = custoDosVeiculos(
+          [...semX, ...B.servicos, noVeiculo(sx, B)],
+          contexto,
+        );
         if (depois !== null) {
           const economia = Math.round((antes - depois) * 100) / 100;
-          if (economia > 0 && (!melhor || (melhor.tipo === "mover" && economia > melhor.economia))) {
-            melhor = { tipo: "mover", x, y: null, par, de: A, para: B, antes, depois, economia, intervalo };
+          if (
+            economia > 0 &&
+            (!melhor || (melhor.tipo === "mover" && economia > melhor.economia))
+          ) {
+            melhor = {
+              tipo: "mover",
+              x,
+              y: null,
+              par,
+              de: A,
+              para: B,
+              antes,
+              depois,
+              economia,
+              intervalo,
+            };
           }
         }
       }
@@ -982,7 +1314,11 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
   // cada serviço entra numa sugestão só (a de maior economia ganha)
   const usados = new Set();
   return sugestoes
-    .sort((a, b) => Number(a.tipo === "mover") - Number(b.tipo === "mover") || b.economia - a.economia)
+    .sort(
+      (a, b) =>
+        Number(a.tipo === "mover") - Number(b.tipo === "mover") ||
+        b.economia - a.economia,
+    )
     .filter((r) => {
       const chaves = [r.x.chave, r.par.chave, r.y?.chave].filter(Boolean);
       if (chaves.some((c) => usados.has(c))) return false;
@@ -993,8 +1329,18 @@ export const recomendarTrocas = (servicos = [], ctx = {}) => {
       ...r,
       chave: `${r.tipo}|${r.x.chave}|${r.para.veiculoKey}`,
       pct: r.antes ? Math.round((r.economia / r.antes) * 1000) / 10 : 0,
-      de: { veiculoKey: r.de.veiculoKey, veiculo: r.de.veiculo, fornecedor: r.de.fornecedor, categoria: r.de.categoria },
-      para: { veiculoKey: r.para.veiculoKey, veiculo: r.para.veiculo, fornecedor: r.para.fornecedor, categoria: r.para.categoria },
+      de: {
+        veiculoKey: r.de.veiculoKey,
+        veiculo: r.de.veiculo,
+        fornecedor: r.de.fornecedor,
+        categoria: r.de.categoria,
+      },
+      para: {
+        veiculoKey: r.para.veiculoKey,
+        veiculo: r.para.veiculo,
+        fornecedor: r.para.fornecedor,
+        categoria: r.para.categoria,
+      },
     }))
     .sort((a, b) => b.economia - a.economia);
 };
@@ -1017,16 +1363,56 @@ export const textoDaRecomendacao = (r) => {
 // O que fica gravado em custos_dia/{data}.linhas[chave] (além de `manual`):
 // os dados do serviço e o resultado do cálculo — os relatórios leem só isso.
 export const CAMPOS_RETRATO = [
-  "chave", "escalaId", "tipo", "data", "hora", "veiculo", "veiculoId", "veiculoKey", "placa",
-  "motorista", "guiaPhoenix", "passeio", "regioes", "regioesDestino", "hoteis", "reservas", "pax", "idiomas",
-  "tarifaFixaId", "tipoPhoenix",
+  "chave",
+  "escalaId",
+  "tipo",
+  "data",
+  "hora",
+  "veiculo",
+  "veiculoId",
+  "veiculoKey",
+  "placa",
+  "motorista",
+  "guiaPhoenix",
+  "passeio",
+  "regioes",
+  "regioesDestino",
+  "hoteis",
+  "reservas",
+  "pax",
+  "idiomas",
+  "tarifaFixaId",
+  "tipoPhoenix",
 ];
 
 export const CAMPOS_CALCULO = [
-  "fornecedor", "categoria", "casado", "parCasado", "apoio", "trechos", "valorServico", "noShow", "noShowPct",
-  "economiaNoShow", "guiaModalidade", "guiaAdicional", "cobranca", "quantidade", "tarifaUnitaria", "tarifaCheia", "tarifaCasada", "valorFornecedor",
-  "origemValor", "economia", "motivoEconomia", "acimaDaTabela", "guiaNome", "guiaReferencia",
-  "guiaValor", "guiaStatus", "total",
+  "fornecedor",
+  "categoria",
+  "casado",
+  "parCasado",
+  "apoio",
+  "trechos",
+  "valorServico",
+  "noShow",
+  "noShowPct",
+  "economiaNoShow",
+  "guiaModalidade",
+  "guiaAdicional",
+  "cobranca",
+  "quantidade",
+  "tarifaUnitaria",
+  "tarifaCheia",
+  "tarifaCasada",
+  "valorFornecedor",
+  "origemValor",
+  "economia",
+  "motivoEconomia",
+  "acimaDaTabela",
+  "guiaNome",
+  "guiaReferencia",
+  "guiaValor",
+  "guiaStatus",
+  "total",
 ];
 
 export const retratoDaLinha = (linha) => {
@@ -1046,11 +1432,14 @@ export const retratoDaLinha = (linha) => {
 export const servicoDoRetrato = (salvo = {}) => {
   const s = {};
   CAMPOS_RETRATO.forEach((c) => {
-    s[c] = salvo[c] ?? (["regioes", "regioesDestino", "hoteis"].includes(c) ? [] : "");
+    s[c] =
+      salvo[c] ??
+      (["regioes", "regioesDestino", "hoteis"].includes(c) ? [] : "");
   });
   s.reservas = Number(salvo.reservas || 0);
   s.pax = Number(salvo.pax || 0);
-  s.idiomas = salvo.idiomas && typeof salvo.idiomas === "object" ? salvo.idiomas : {};
+  s.idiomas =
+    salvo.idiomas && typeof salvo.idiomas === "object" ? salvo.idiomas : {};
   return s;
 };
 
@@ -1067,7 +1456,8 @@ const estavel = (v) => {
   }
   return v === undefined ? null : v;
 };
-const iguais = (a, b) => JSON.stringify(estavel(a)) === JSON.stringify(estavel(b));
+const iguais = (a, b) =>
+  JSON.stringify(estavel(a)) === JSON.stringify(estavel(b));
 
 // Linhas cujo retrato mudou desde a última gravação (só essas são escritas)
 export const linhasParaGravar = (linhas = [], salvas = {}) => {
@@ -1076,7 +1466,8 @@ export const linhasParaGravar = (linhas = [], salvas = {}) => {
     if (l.removido) return;
     const novo = retratoDaLinha(l);
     const antigo = salvas[l.chave] || {};
-    if (!iguais(novo, pick(antigo, Object.keys(novo)))) mudou[l.chave] = { ...novo, removido: false };
+    if (!iguais(novo, pick(antigo, Object.keys(novo))))
+      mudou[l.chave] = { ...novo, removido: false };
     else if (antigo.removido) mudou[l.chave] = { ...novo, removido: false };
   });
   return mudou;
@@ -1091,25 +1482,56 @@ function pick(obj, chaves) {
 }
 
 const somar = (mapa, chave, campos) => {
-  if (!mapa[chave]) mapa[chave] = { chave, servicos: 0, valor: 0, economia: 0, casados: 0, pax: 0, pendentes: 0 };
+  if (!mapa[chave])
+    mapa[chave] = {
+      chave,
+      servicos: 0,
+      valor: 0,
+      economia: 0,
+      casados: 0,
+      pax: 0,
+      pendentes: 0,
+    };
   const g = mapa[chave];
   Object.entries(campos).forEach(([k, v]) => {
     g[k] = (g[k] || 0) + (v || 0);
   });
 };
 
-const ordenarPorValor = (mapa) => Object.values(mapa).sort((a, b) => b.valor - a.valor || b.servicos - a.servicos);
+const ordenarPorValor = (mapa) =>
+  Object.values(mapa).sort(
+    (a, b) => b.valor - a.valor || b.servicos - a.servicos,
+  );
 
 // Resumo de um período a partir dos documentos custos_dia (relatórios)
 // docs: [{data, status, linhas}] — dias sem documento entram em `diasSemLancamento`
 export const resumirPeriodo = (docs = [], datas = []) => {
   const porData = new Map(docs.filter(Boolean).map((d) => [d.data, d]));
   const total = {
-    servicos: 0, pax: 0, fornecedores: 0, guias: 0, guiasAConfirmar: 0, guiasAConfirmarRef: 0,
-    economia: 0, economiaCasado: 0, economiaNegociada: 0, acimaDaTabela: 0, acimaQtd: 0,
-    casados: 0, semValor: 0, semFornecedor: 0, total: 0,
-    noShowQtd: 0, noShowInQtd: 0, noShowPago: 0, noShowEconomia: 0,
-    guiaMiQtd: 0, guiaMiValor: 0, guiaIdiomaQtd: 0, guiaIdiomaValor: 0, guiaAdicional: 0,
+    servicos: 0,
+    pax: 0,
+    fornecedores: 0,
+    guias: 0,
+    guiasAConfirmar: 0,
+    guiasAConfirmarRef: 0,
+    economia: 0,
+    economiaCasado: 0,
+    economiaNegociada: 0,
+    acimaDaTabela: 0,
+    acimaQtd: 0,
+    casados: 0,
+    semValor: 0,
+    semFornecedor: 0,
+    total: 0,
+    noShowQtd: 0,
+    noShowInQtd: 0,
+    noShowPago: 0,
+    noShowEconomia: 0,
+    guiaMiQtd: 0,
+    guiaMiValor: 0,
+    guiaIdiomaQtd: 0,
+    guiaIdiomaValor: 0,
+    guiaAdicional: 0,
   };
   const porFornecedor = {};
   const porTipo = {};
@@ -1125,10 +1547,26 @@ export const resumirPeriodo = (docs = [], datas = []) => {
     const d = porData.get(data);
     if (!d) {
       diasSemLancamento.push(data);
-      porDia.push({ data, total: 0, fornecedores: 0, guias: 0, servicos: 0, status: "sem-lancamento", pendencias: 0 });
+      porDia.push({
+        data,
+        total: 0,
+        fornecedores: 0,
+        guias: 0,
+        servicos: 0,
+        status: "sem-lancamento",
+        pendencias: 0,
+      });
       return;
     }
-    const dia = { data, total: 0, fornecedores: 0, guias: 0, servicos: 0, status: d.status || "rascunho", pendencias: 0 };
+    const dia = {
+      data,
+      total: 0,
+      fornecedores: 0,
+      guias: 0,
+      servicos: 0,
+      status: d.status || "rascunho",
+      pendencias: 0,
+    };
     Object.values(d.linhas || {}).forEach((l) => {
       if (!l || l.removido || !l.calc) return;
       const c = l.calc;
@@ -1140,8 +1578,10 @@ export const resumirPeriodo = (docs = [], datas = []) => {
       total.guias += vg;
       total.total += vf + vg;
       total.economia += Number(c.economia || 0);
-      if (c.motivoEconomia === "casado") total.economiaCasado += Number(c.economia || 0);
-      if (c.motivoEconomia === "negociado") total.economiaNegociada += Number(c.economia || 0);
+      if (c.motivoEconomia === "casado")
+        total.economiaCasado += Number(c.economia || 0);
+      if (c.motivoEconomia === "negociado")
+        total.economiaNegociada += Number(c.economia || 0);
       if (c.acimaDaTabela) {
         total.acimaDaTabela += Number(c.acimaDaTabela);
         total.acimaQtd += 1;
@@ -1161,9 +1601,11 @@ export const resumirPeriodo = (docs = [], datas = []) => {
         total.guiaIdiomaQtd += 1;
         total.guiaIdiomaValor += vg;
         // adicional só do que já foi lançado (os "a confirmar" ainda não têm valor pago)
-        if (c.guiaValor !== null && c.guiaValor !== undefined) total.guiaAdicional += Number(c.guiaAdicional || 0);
+        if (c.guiaValor !== null && c.guiaValor !== undefined)
+          total.guiaAdicional += Number(c.guiaAdicional || 0);
       }
-      if (c.valorFornecedor === null || c.valorFornecedor === undefined) total.semValor += 1;
+      if (c.valorFornecedor === null || c.valorFornecedor === undefined)
+        total.semValor += 1;
       if (!c.fornecedor) total.semFornecedor += 1;
       if (c.guiaStatus === "a-confirmar") {
         total.guiasAConfirmar += 1;
@@ -1185,12 +1627,18 @@ export const resumirPeriodo = (docs = [], datas = []) => {
         reservas: Number(l.reservas || 0),
         porPax: c.cobranca === "pax" || c.cobranca === "reserva" ? 1 : 0,
       };
-      somar(porFornecedor, c.fornecedor || "Sem fornecedor", { ...base, pendentes: c.valorFornecedor == null ? 1 : 0 });
+      somar(porFornecedor, c.fornecedor || "Sem fornecedor", {
+        ...base,
+        pendentes: c.valorFornecedor == null ? 1 : 0,
+      });
       somar(porTipo, l.tipo || "?", base);
       somar(porCategoria, c.categoria || "", base);
-      (l.tipo === "PASSEIO" ? [l.passeio || "Passeio"] : (l.regioes?.length ? [l.regioes[0]] : ["Sem região"])).forEach((reg) =>
-        somar(porRegiao, reg, base),
-      );
+      (l.tipo === "PASSEIO"
+        ? [l.passeio || "Passeio"]
+        : l.regioes?.length
+          ? [l.regioes[0]]
+          : ["Sem região"]
+      ).forEach((reg) => somar(porRegiao, reg, base));
       if (l.tipo === "SERVICO") {
         somar(porParceiro, c.fornecedor || "Sem fornecedor", base);
       }
@@ -1235,24 +1683,78 @@ const csvCelula = (v) => {
   const s = v === null || v === undefined ? "" : String(v);
   return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
-const csvNumero = (v) => (v === null || v === undefined || v === "" ? "" : String(Number(v).toFixed(2)).replace(".", ","));
+const csvNumero = (v) =>
+  v === null || v === undefined || v === ""
+    ? ""
+    : String(Number(v).toFixed(2)).replace(".", ",");
 
 export const linhasParaCsv = (linhas = []) => {
   const cab = [
-    "Data", "Hora", "Tipo", "Serviço", "Região", "Veículo", "Placa", "Fornecedor", "Categoria", "Pax",
-    "Casado", "Apoio (trechos)", "No-show", "Tarifa cheia", "Valor do serviço", "Valor fornecedor", "Origem do valor", "Economia", "Guia", "Valor guia",
-    "Situação guia", "Modalidade guia", "Total",
+    "Data",
+    "Hora",
+    "Tipo",
+    "Serviço",
+    "Região",
+    "Veículo",
+    "Placa",
+    "Fornecedor",
+    "Categoria",
+    "Pax",
+    "Casado",
+    "Apoio (trechos)",
+    "No-show",
+    "Tarifa cheia",
+    "Valor do serviço",
+    "Valor fornecedor",
+    "Origem do valor",
+    "Economia",
+    "Guia",
+    "Valor guia",
+    "Situação guia",
+    "Modalidade guia",
+    "Total",
   ];
-  const ORIGEM = { lancado: "Lançado", tarifa: "Tabela", "tarifa-casada": "Tabela (casado)", "sem-tarifa": "Sem tarifa" };
-  const GUIA = { lancado: "Lançado", "a-confirmar": "A confirmar", verificar: "Verificar", "sem-guia": "" };
+  const ORIGEM = {
+    lancado: "Lançado",
+    tarifa: "Tabela",
+    "tarifa-casada": "Tabela (casado)",
+    "sem-tarifa": "Sem tarifa",
+  };
+  const GUIA = {
+    lancado: "Lançado",
+    "a-confirmar": "A confirmar",
+    verificar: "Verificar",
+    "sem-guia": "",
+  };
   const corpo = linhas.map((l) => {
     const c = l.calc || l;
     return [
-      l.data, l.hora, NOME_TIPO[l.tipo] || l.tipo, descreverServico(l), descreverRegiao(l), l.veiculo, l.placa,
-      c.fornecedor, NOME_CATEGORIA[c.categoria] || "", l.pax, c.casado ? "Sim" : "", c.apoio ? c.trechos || 2 : "",
-      c.noShow ? `Sim (${c.noShowPct}%)` : "", csvNumero(c.tarifaCheia), csvNumero(c.valorServico ?? c.valorFornecedor), csvNumero(c.valorFornecedor), ORIGEM[c.origemValor] || "", csvNumero(c.economia),
-      c.guiaNome, csvNumero(c.guiaValor), GUIA[c.guiaStatus] || "", c.guiaNome ? NOME_MODALIDADE[c.guiaModalidade] || "" : "", csvNumero(c.total),
-    ].map(csvCelula).join(";");
+      l.data,
+      l.hora,
+      NOME_TIPO[l.tipo] || l.tipo,
+      descreverServico(l),
+      descreverRegiao(l),
+      l.veiculo,
+      l.placa,
+      c.fornecedor,
+      NOME_CATEGORIA[c.categoria] || "",
+      l.pax,
+      c.casado ? "Sim" : "",
+      c.apoio ? c.trechos || 2 : "",
+      c.noShow ? `Sim (${c.noShowPct}%)` : "",
+      csvNumero(c.tarifaCheia),
+      csvNumero(c.valorServico ?? c.valorFornecedor),
+      csvNumero(c.valorFornecedor),
+      ORIGEM[c.origemValor] || "",
+      csvNumero(c.economia),
+      c.guiaNome,
+      csvNumero(c.guiaValor),
+      GUIA[c.guiaStatus] || "",
+      c.guiaNome ? NOME_MODALIDADE[c.guiaModalidade] || "" : "",
+      csvNumero(c.total),
+    ]
+      .map(csvCelula)
+      .join(";");
   });
   return `﻿${[cab.join(";"), ...corpo].join("\n")}`;
 };

@@ -1,0 +1,362 @@
+/* =========================================================
+   Prontidão do dia (D-1)
+   ========================================================= */
+
+.pdt-page {
+  --pdt-critico: var(--alert);
+  --pdt-atencao: var(--warning);
+  --pdt-info: var(--text-3);
+  --pdt-ok: var(--accent);
+}
+
+.pdt-dias {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.pdt-data {
+  width: auto;
+  min-height: 36px;
+}
+
+/* ---------- placar ---------- */
+.pdt-placar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--divider);
+  border-left: 4px solid var(--pdt-info);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.pdt-placar.tom-critico {
+  border-left-color: var(--pdt-critico);
+}
+
+.pdt-placar.tom-atencao {
+  border-left-color: var(--pdt-atencao);
+}
+
+.pdt-placar.tom-ok {
+  border-left-color: var(--pdt-ok);
+}
+
+.pdt-anel {
+  width: 84px;
+  height: 84px;
+}
+
+.pdt-anel circle {
+  fill: none;
+  stroke-width: 8;
+}
+
+.pdt-anel .trilho {
+  stroke: var(--divider);
+}
+
+.pdt-anel .valor {
+  stroke: var(--pdt-info);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+
+.pdt-anel.tom-critico .valor {
+  stroke: var(--pdt-critico);
+}
+
+.pdt-anel.tom-atencao .valor {
+  stroke: var(--pdt-atencao);
+}
+
+.pdt-anel.tom-ok .valor {
+  stroke: var(--pdt-ok);
+}
+
+.pdt-anel text {
+  fill: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.pdt-placar-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pdt-placar-dia {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pdt-placar-texto strong {
+  color: var(--text);
+  font-size: var(--fs-lg);
+}
+
+.pdt-contadores {
+  display: flex;
+  gap: 8px;
+}
+
+.pdt-contador {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 82px;
+  padding: 8px 12px;
+  border: 1px solid var(--divider);
+  border-top: 3px solid var(--pdt-info);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pdt-contador strong {
+  font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.pdt-contador span {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.pdt-contador.nivel-critico {
+  border-top-color: var(--pdt-critico);
+}
+
+.pdt-contador.nivel-atencao {
+  border-top-color: var(--pdt-atencao);
+}
+
+.pdt-contador.verificados {
+  position: relative;
+  border-top-color: var(--pdt-ok);
+}
+
+.pdt-contador.verificados input {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.pdt-contador.ativo {
+  border-color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--text-2);
+}
+
+/* ---------- grupos ---------- */
+.pdt-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pdt-grupo {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.pdt-grupo > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-2);
+}
+
+.pdt-grupo > header h3 {
+  flex: 1;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.pdt-grupo-qtd {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--raised, rgba(127, 127, 127, 0.1));
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pdt-grupo > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pdt-item {
+  border-left: 3px solid var(--pdt-info);
+}
+
+.pdt-item + .pdt-item {
+  border-top: 1px solid var(--divider);
+}
+
+.pdt-item.nivel-critico {
+  border-left-color: var(--pdt-critico);
+}
+
+.pdt-item.nivel-atencao {
+  border-left-color: var(--pdt-atencao);
+}
+
+.pdt-item.verificado {
+  border-left-color: var(--pdt-ok);
+  opacity: 0.72;
+}
+
+.pdt-item-corpo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 14px 11px 13px;
+}
+
+.pdt-item-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.pdt-item-texto > strong {
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.pdt-item.verificado .pdt-item-texto > strong {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+
+.pdt-item-detalhe {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.pdt-linhas {
+  margin: 2px 0 0;
+  padding: 0 0 0 16px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+}
+
+.pdt-dica {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-style: italic;
+}
+
+.pdt-verificado-por {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.pdt-item-acoes {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdt-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pdt-ok:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.pdt-ok:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- celular ---------- */
+@media (max-width: 860px) {
+  .pdt-placar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pdt-contadores {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pdt-contador {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .pdt-placar {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .pdt-anel {
+    width: 68px;
+    height: 68px;
+  }
+
+  .pdt-contadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pdt-item-corpo {
+    flex-direction: column;
+  }
+
+  .pdt-item-acoes {
+    align-self: flex-end;
+  }
+}

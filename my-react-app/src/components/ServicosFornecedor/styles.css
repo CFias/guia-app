@@ -847,3 +847,292 @@
     flex: 1 1 100%;
   }
 }
+
+/* ---------- plotado e seleção rápida ---------- */
+.sf-plotado {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sf-plotado:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.sf-plotado.ativo {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.sf-rapida {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.sf-rapida-rotulo {
+  margin-right: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.sf-rapida-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sf-rapida-chip:hover {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+
+.sf-rapida-chip.ativo {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.sf-rapida-chip small {
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.sf-rapida-p {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: calc(9px * var(--escala-fonte, 1));
+}
+
+.sf-rapida-somar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.sf-rapida-somar input {
+  accent-color: var(--accent);
+}
+
+.sf-rapida-atual {
+  flex-basis: 100%;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.sf-tipo.tipo-apoio {
+  color: var(--warning);
+  border-color: color-mix(in oklch, var(--warning) 45%, transparent);
+}
+
+/* ---------- painel "Veículos plotados" (drawer) ---------- */
+.sf-plot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sf-plot-filtros {
+  position: sticky;
+  top: -1px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 0 8px;
+  background: var(--surface);
+}
+
+.sf-plot-filtros select,
+.sf-plot-filtros input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.sf-plot-filtros select:focus,
+.sf-plot-filtros input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.sf-plot-grupo {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.sf-plot-grupo header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-2, var(--bg));
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-sm);
+}
+
+.sf-plot-grupo header strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sf-plot-grupo ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sf-plot-grupo li+li {
+  border-top: 1px solid var(--divider);
+}
+
+.sf-plot-grupo li.mudou {
+  background: var(--accent-soft);
+}
+
+.sf-plot-grupo label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.sf-plot-grupo label:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.06));
+}
+
+/* checkbox real fica invisível (mas acessível); o switch é só visual */
+.sf-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.sf-switch {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--divider);
+  transition: background 0.15s;
+}
+
+.sf-switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.sf-switch.on {
+  background: var(--accent);
+}
+
+.sf-switch.on i {
+  transform: translateX(14px);
+}
+
+.sf-plot-grupo label:has(.sf-switch-input:focus-visible) .sf-switch {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sf-plot-nome {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sf-plot-nome small {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.sf-plot-auto {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2, var(--bg));
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.sf-plot-auto.mudou {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
