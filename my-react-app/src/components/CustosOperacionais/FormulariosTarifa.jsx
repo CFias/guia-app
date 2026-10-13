@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Drawer, Field } from "../ui";
+import { Drawer, Field, Icon } from "../ui";
 import {
   CATEGORIAS,
   COBRANCAS,
@@ -14,7 +14,31 @@ import { valorParaTexto as valorTexto } from "./custosDatas";
    aba Tarifas e no Tarifário. */
 
 /* ---------------- formulário de tarifa (fornecedor) ---------------- */
-export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosConhecidos = [], onFechar, onSalvar, salvando }) => {
+// "Excluir" no rodapé do formulário, com confirmação no próprio lugar
+const ExcluirNoFormulario = ({ rotulo, onExcluir, salvando }) => {
+  const [confirmar, setConfirmar] = useState(false);
+  return (
+    <div className="cst-form-excluir">
+      {confirmar ? (
+        <>
+          <span>Excluir de vez?</span>
+          <button type="button" className="cst-link cst-link--perigo" onClick={onExcluir} disabled={salvando}>
+            Sim, excluir
+          </button>
+          <button type="button" className="cst-link" onClick={() => setConfirmar(false)}>
+            Cancelar
+          </button>
+        </>
+      ) : (
+        <button type="button" className="cst-link cst-link--perigo" onClick={() => setConfirmar(true)}>
+          <Icon name="trash" size={13} /> {rotulo}
+        </button>
+      )}
+    </div>
+  );
+};
+
+export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosConhecidos = [], onFechar, onSalvar, onExcluir, salvando }) => {
   const [f, setF] = useState(() => ({
     fornecedor: inicial.fornecedor || "",
     tipo: inicial.tipo || "IN",
@@ -184,24 +208,24 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosC
         )}
 
         {!ehParceiro && (
-          <Field label="Categoria do veículo">
-            <div className="cst-opcoes">
-              <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
-                Qualquer
+        <Field label="Categoria do veículo">
+          <div className="cst-opcoes">
+            <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
+              Qualquer
+            </button>
+            {CATEGORIAS.map((c) => (
+              <button
+                key={c.valor}
+                type="button"
+                className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
+                aria-pressed={f.categoria === c.valor}
+                onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
+              >
+                {c.nome}
               </button>
-              {CATEGORIAS.map((c) => (
-                <button
-                  key={c.valor}
-                  type="button"
-                  className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
-                  aria-pressed={f.categoria === c.valor}
-                  onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
-                >
-                  {c.nome}
-                </button>
-              ))}
-            </div>
-          </Field>
+            ))}
+          </div>
+        </Field>
         )}
 
         <div className="cst-form__dupla">
@@ -235,13 +259,17 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosC
             {erro}
           </p>
         )}
+
+        {onExcluir && inicial?.id && !inicial._nova && (
+          <ExcluirNoFormulario rotulo="Excluir esta tarifa" onExcluir={() => onExcluir(inicial)} salvando={salvando} />
+        )}
       </div>
     </Drawer>
   );
 };
 
 /* ---------------- formulário de referência de guia ---------------- */
-export const FormGuia = ({ inicial, passeios, onFechar, onSalvar, salvando }) => {
+export const FormGuia = ({ inicial, passeios, onFechar, onSalvar, onExcluir, salvando }) => {
   const [f, setF] = useState(() => ({
     tabela: inicial.tabela === "mi" ? "mi" : "regular",
     tipo: inicial.tipo || "",
@@ -329,6 +357,9 @@ export const FormGuia = ({ inicial, passeios, onFechar, onSalvar, salvando }) =>
           <p className="cst-erro" role="alert">
             {erro}
           </p>
+        )}
+        {onExcluir && inicial?.id && !inicial._nova && (
+          <ExcluirNoFormulario rotulo="Excluir esta referência" onExcluir={() => onExcluir(inicial)} salvando={salvando} />
         )}
       </div>
     </Drawer>

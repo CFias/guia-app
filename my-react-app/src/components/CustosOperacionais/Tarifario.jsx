@@ -19,7 +19,8 @@ import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
    TARIFÁRIO — todos os valores numa tabela só, por tipo de serviço
    (linhas = trajeto/passeio, colunas = categoria do veículo), mais os
    guias (regular / MI / + idioma) e as regras (no-show, casado).
-   Clique numa célula para editar ou criar; "Imprimir" gera a folha.
+   Clique numa célula para editar, criar ou excluir o valor; a lixeira da
+   linha remove a linha inteira. "Imprimir" gera a folha.
    Com um fornecedor escolhido, mostra os valores dele e, onde ele não
    tem tarifa própria, o da tabela geral (marcado "geral").
    ========================================================= */
@@ -172,6 +173,33 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
     if (await gravar({ tarifasGuia: lista }, "Referência salva")) setEditandoGuia(null);
   };
 
+  const excluirTarifa = async (t) => {
+    if (await gravar({ tarifas: config.tarifas.filter((x) => x.id !== t.id) }, "Tarifa excluída")) setEditando(null);
+  };
+
+  const excluirGuia = async (t) => {
+    if (await gravar({ tarifasGuia: config.tarifasGuia.filter((x) => x.id !== t.id) }, "Referência excluída")) setEditandoGuia(null);
+  };
+
+  // remove a linha inteira: só os valores próprios dela (os da tabela geral,
+  // que aparecem quando um fornecedor está escolhido, ficam)
+  const excluirLinha = (linha) => {
+    const ids = Object.values(linha.celulas)
+      .filter((c) => c.origem === "propria")
+      .map((c) => c.tarifa.id);
+    if (!ids.length) return;
+    const dono = fornecedorSel || linha.modelo.fornecedor || "tabela geral";
+    const msg = `Remover "${linha.rotulo}" (${ids.length} valor${ids.length > 1 ? "es" : ""}) de ${dono}?`;
+    if (!window.confirm(msg)) return;
+    gravar({ tarifas: config.tarifas.filter((x) => !ids.includes(x.id)) }, "Linha removida");
+  };
+
+  const excluirLinhaGuia = (g) => {
+    const ids = [g.regular?.id, g.mi?.id].filter(Boolean);
+    if (!ids.length || !window.confirm(`Remover a referência de guia "${g.rotulo}"?`)) return;
+    gravar({ tarifasGuia: config.tarifasGuia.filter((x) => !ids.includes(x.id)) }, "Referência removida");
+  };
+
   const abrirCelula = (linha, categoria, celula) => {
     if (celula && celula.origem === "propria") return setEditando(celula.tarifa);
     if (celula) return setEditando({ ...celula.tarifa, id: undefined, fornecedor: fornecedorSel });
@@ -279,8 +307,24 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                     {s.linhas.map((l) => (
                       <tr key={l.chave}>
                         <th scope="row">
-                          {l.rotulo}
-                          {l.modelo.obs && <small>{l.modelo.obs}</small>}
+                          <span className="cst-tf__rotulo">
+                            <span>
+                              {l.rotulo}
+                              {l.modelo.obs && <small>{l.modelo.obs}</small>}
+                            </span>
+                            {Object.values(l.celulas).some((c) => c.origem === "propria") && (
+                              <button
+                                type="button"
+                                className="cst-tf__excluir"
+                                onClick={() => excluirLinha(l)}
+                                title={fornecedorSel ? `Remover os valores de ${fornecedorSel} nesta linha` : "Remover esta linha"}
+                                aria-label={`Remover ${l.rotulo}`}
+                                disabled={salvando}
+                              >
+                                <Icon name="trash" size={13} />
+                              </button>
+                            )}
+                          </span>
                         </th>
                         {s.colunas.map((col) => (
                           <td key={col.valor || "qq"}>
@@ -333,8 +377,22 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                   {guiasVisiveis.map((g) => (
                     <tr key={g.chave}>
                       <th scope="row">
-                        {g.rotulo}
-                        {g.modelo.obs && <small>{g.modelo.obs}</small>}
+                        <span className="cst-tf__rotulo">
+                          <span>
+                            {g.rotulo}
+                            {g.modelo.obs && <small>{g.modelo.obs}</small>}
+                          </span>
+                          <button
+                            type="button"
+                            className="cst-tf__excluir"
+                            onClick={() => excluirLinhaGuia(g)}
+                            title="Remover esta referência de guia"
+                            aria-label={`Remover ${g.rotulo}`}
+                            disabled={salvando}
+                          >
+                            <Icon name="trash" size={13} />
+                          </button>
+                        </span>
                       </th>
                       <td>
                         <Celula
@@ -412,6 +470,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           salvando={salvando}
           onFechar={() => setEditando(null)}
           onSalvar={salvarTarifa}
+          onExcluir={excluirTarifa}
         />
       )}
       {editandoGuia && (
@@ -422,6 +481,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           salvando={salvando}
           onFechar={() => setEditandoGuia(null)}
           onSalvar={salvarGuia}
+          onExcluir={excluirGuia}
         />
       )}
     </div>

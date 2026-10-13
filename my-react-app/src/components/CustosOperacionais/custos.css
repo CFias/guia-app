@@ -1878,3 +1878,86 @@
   background: var(--accent-soft);
   color: var(--accent-text);
 }
+
+/* ---------- excluir (Tarifário e formulários de tarifa) ---------- */
+.cst-tf__rotulo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cst-tf__excluir {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: -3px -4px -3px 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.cst-tf__tabela tbody tr:hover .cst-tf__excluir,
+.cst-tf__excluir:focus-visible {
+  opacity: 1;
+}
+
+.cst-tf__excluir:hover {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+/* toque (sem hover): a lixeira fica sempre visível, mais discreta */
+@media (hover: none) {
+  .cst-tf__excluir {
+    opacity: 0.6;
+  }
+}
+
+.cst-form-excluir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.cst-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cst-link:hover {
+  text-decoration: underline;
+}
+
+.cst-link--perigo {
+  color: var(--alert);
+}
+
+@media print {
+  .cst-tf__excluir {
+    display: none !important;
+  }
+}

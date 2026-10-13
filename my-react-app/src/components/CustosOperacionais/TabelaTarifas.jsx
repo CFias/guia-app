@@ -590,6 +590,9 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
           salvando={salvando}
           onFechar={() => setEditando(null)}
           onSalvar={salvarTarifa}
+          onExcluir={async (t) => {
+            if (await gravar({ tarifas: config.tarifas.filter((x) => x.id !== t.id) }, "Tarifa excluída")) setEditando(null);
+          }}
         />
       )}
       {editandoGuia && (
@@ -600,6 +603,9 @@ const TabelaTarifas = ({ config, vinculos, fornecedores, passeios, prefill, onPr
           salvando={salvando}
           onFechar={() => setEditandoGuia(null)}
           onSalvar={salvarGuia}
+          onExcluir={async (t) => {
+            if (await gravar({ tarifasGuia: config.tarifasGuia.filter((x) => x.id !== t.id) }, "Referência excluída")) setEditandoGuia(null);
+          }}
         />
       )}
     </div>
