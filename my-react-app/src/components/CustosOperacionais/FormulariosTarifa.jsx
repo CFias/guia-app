@@ -38,7 +38,7 @@ const ExcluirNoFormulario = ({ rotulo, onExcluir, salvando }) => {
   );
 };
 
-export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosConhecidos = [], onFechar, onSalvar, onExcluir, salvando }) => {
+export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosConhecidos = [], onFechar, onSalvar, onExcluir, salvando, extra = null }) => {
   const [f, setF] = useState(() => ({
     fornecedor: inicial.fornecedor || "",
     tipo: inicial.tipo || "IN",
@@ -208,24 +208,24 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosC
         )}
 
         {!ehParceiro && (
-        <Field label="Categoria do veículo">
-          <div className="cst-opcoes">
-            <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
-              Qualquer
-            </button>
-            {CATEGORIAS.map((c) => (
-              <button
-                key={c.valor}
-                type="button"
-                className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
-                aria-pressed={f.categoria === c.valor}
-                onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
-              >
-                {c.nome}
+          <Field label="Categoria do veículo">
+            <div className="cst-opcoes">
+              <button type="button" className={`cst-opcao ${!f.categoria ? "is-ativa" : ""}`} onClick={() => setF((p) => ({ ...p, categoria: "" }))}>
+                Qualquer
               </button>
-            ))}
-          </div>
-        </Field>
+              {CATEGORIAS.map((c) => (
+                <button
+                  key={c.valor}
+                  type="button"
+                  className={`cst-opcao ${f.categoria === c.valor ? "is-ativa" : ""}`}
+                  aria-pressed={f.categoria === c.valor}
+                  onClick={() => setF((p) => ({ ...p, categoria: c.valor }))}
+                >
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          </Field>
         )}
 
         <div className="cst-form__dupla">
@@ -259,6 +259,8 @@ export const FormTarifa = ({ inicial, fornecedores, regioes, passeios, servicosC
             {erro}
           </p>
         )}
+
+        {extra}
 
         {onExcluir && inicial?.id && !inicial._nova && (
           <ExcluirNoFormulario rotulo="Excluir esta tarifa" onExcluir={() => onExcluir(inicial)} salvando={salvando} />

@@ -16,6 +16,8 @@ import Button from "../ui/Button";
 import Segmented from "../ui/Segmented";
 import PageHeader from "../ui/PageHeader";
 import AssistenteVeiculo from "./AssistenteVeiculo";
+import BoasVindasComercial from "../BoasVindas/BoasVindasComercial";
+import { useAuth } from "../../Context/AuthContext";
 import VisualizadorFoto from "./VisualizadorFoto";
 import {
   FORMATOS,
@@ -343,6 +345,8 @@ const FaqComercial = () => {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [categoriaAtiva, setCategoriaAtiva] = useState("todas");
+  const { role } = useAuth();
+  const [previaBoasVindas, setPreviaBoasVindas] = useState(false);
   const [formatoAtivo, setFormatoAtivo] = useState("todos");
   const [perguntaCopiadaId, setPerguntaCopiadaId] = useState(null);
   const [itemDetalhado, setItemDetalhado] = useState(null);
@@ -486,7 +490,7 @@ const FaqComercial = () => {
         .sort(
           (a, b) =>
             (obterFichaEmbarcacao(a).capacidade ?? 9999) -
-              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+            (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
         ),
     [itensFiltrados],
   );
@@ -641,17 +645,25 @@ const FaqComercial = () => {
         title="Central de Informações"
         description="Tudo o que o atendimento precisa: veículos, valores e respostas prontas para enviar ao cliente."
         actions={
-          <a
-            className="ui-btn ui-btn--secondary"
-            href={linkPerguntarOperacional(busca)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="message" size={15} />
-            Perguntar ao operacional
-          </a>
+          <>
+            {role !== "comercial" && (
+              <Button icon="sparkles" onClick={() => setPreviaBoasVindas(true)} title="Ver o que o comercial vê nas primeiras entradas">
+                Prévia das boas-vindas
+              </Button>
+            )}
+            <a
+              className="ui-btn ui-btn--secondary"
+              href={linkPerguntarOperacional(busca)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name="message" size={15} />
+              Perguntar ao operacional
+            </a>
+          </>
         }
       />
+      {previaBoasVindas && <BoasVindasComercial previa onFechar={() => setPreviaBoasVindas(false)} />}
 
       <div className="faq-cat-busca">
         <Icon name="search" size={18} />
@@ -1112,13 +1124,12 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, c
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${
-        selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-      }`}
+        }`}
       {...propsCardClicavel(item, onAbrir)}
     >
       <div className="faq-cat-veiculo-foto">
@@ -1625,15 +1636,15 @@ const FaqDetalhe = ({
             {(ficha.passageiros !== null ||
               ficha.malasGrandes !== null ||
               ficha.malasBordo !== null) && (
-              <div className="faq-cat-bloco">
-                <h4>
-                  {configuracoes.length > 1
-                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
-                    : "Capacidade"}
-                </h4>
-                <Especificacoes ficha={ficha} />
-              </div>
-            )}
+                <div className="faq-cat-bloco">
+                  <h4>
+                    {configuracoes.length > 1
+                      ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                      : "Capacidade"}
+                  </h4>
+                  <Especificacoes ficha={ficha} />
+                </div>
+              )}
 
             {configuracoes.length > 0 && (
               <div className="faq-cat-bloco">

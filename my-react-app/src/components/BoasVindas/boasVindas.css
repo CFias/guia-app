@@ -1,0 +1,401 @@
+/* =========================================================
+   Boas-vindas do Comercial (modal animado)
+   ========================================================= */
+
+.bv-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 22, 21, 0.55);
+  backdrop-filter: blur(3px);
+  animation: bv-fundo-entra 0.3s ease both;
+}
+
+.bv-fundo.saindo {
+  animation: bv-fundo-sai 0.22s ease both;
+}
+
+.bv-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border-radius: 20px;
+  background: var(--card, #fff);
+  color: var(--text);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  animation: bv-modal-entra 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+
+.bv-fundo.saindo .bv-modal {
+  animation: bv-modal-sai 0.22s ease both;
+}
+
+/* ---------- topo com ícones flutuando ---------- */
+.bv-topo {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 120%, rgba(255, 255, 255, 0.22), transparent 55%),
+    radial-gradient(circle at 85% -20%, rgba(255, 255, 255, 0.18), transparent 50%),
+    linear-gradient(135deg, #0f6b63 0%, #138a7f 55%, #1fa597 100%);
+}
+
+.bv-topo::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 34px;
+  background: var(--card, #fff);
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+.bv-flutua {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  opacity: 0;
+  animation:
+    bv-aparece 0.6s ease forwards,
+    bv-flutuar 5.5s ease-in-out infinite;
+}
+
+.bv-flutua.f0 { left: 7%; top: 28px; animation-delay: 0.15s, 0.15s; }
+.bv-flutua.f1 { left: 20%; top: 66px; animation-delay: 0.25s, 0.9s; transform: scale(0.85); }
+.bv-flutua.f2 { left: 33%; top: 18px; animation-delay: 0.35s, 1.6s; }
+.bv-flutua.f3 { left: 63%; top: 20px; animation-delay: 0.3s, 0.5s; }
+.bv-flutua.f4 { left: 68%; top: 72px; animation-delay: 0.4s, 1.2s; }
+.bv-flutua.f5 { left: 87%; top: 62px; animation-delay: 0.5s, 2s; }
+.bv-flutua.f6 { left: 48%; top: 74px; animation-delay: 0.45s, 2.4s; opacity: 0; }
+.bv-flutua.f7 { left: 4%; top: 84px; animation-delay: 0.55s, 1.8s; }
+
+.bv-selo {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin-left: -34px;
+  border: 4px solid var(--card, #fff);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0f6b63, #1fa597);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(15, 107, 99, 0.4);
+  animation: bv-selo 0.7s 0.25s cubic-bezier(0.2, 0.9, 0.25, 1.4) both;
+}
+
+.bv-selo::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 2px solid rgba(31, 165, 151, 0.55);
+  animation: bv-pulso 2.4s 1s ease-out infinite;
+}
+
+.bv-fechar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.bv-fechar:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ---------- conteúdo ---------- */
+.bv-corpo {
+  padding: 14px 28px 24px;
+  text-align: center;
+}
+
+.bv-marca {
+  margin: 0;
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: bv-sobe 0.5s 0.35s ease both;
+}
+
+.bv-corpo h2 {
+  margin: 6px 0 8px;
+  color: var(--text);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+  animation: bv-sobe 0.5s 0.45s ease both;
+}
+
+.bv-aceno {
+  display: inline-block;
+  transform-origin: 70% 80%;
+  animation: bv-aceno 1.6s 1s ease-in-out 2;
+}
+
+.bv-intro {
+  margin: 0 auto 18px;
+  max-width: 440px;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  animation: bv-sobe 0.5s 0.55s ease both;
+}
+
+.bv-intro b {
+  color: var(--text);
+}
+
+.bv-recursos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.bv-recursos li,
+.bv-dica {
+  animation: bv-sobe 0.5s calc(0.7s + var(--i, 0) * 0.12s) ease both;
+}
+
+.bv-recursos li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--surface);
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+
+.bv-recursos li:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.bv-recursos li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bv-recursos strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.bv-recursos strong em {
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 19px;
+  animation: bv-aparece 0.4s ease both;
+}
+
+.bv-recursos small {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.bv-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.bv-ic.ic-respostas { background: #0f6b63; }
+.bv-ic.ic-veiculos { background: #3f6fd1; }
+.bv-ic.ic-valores { background: #b07812; }
+.bv-ic.ic-extras { background: #8a5cc9; }
+
+.bv-dica {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.bv-dica svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent-text);
+}
+
+.bv-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  animation: bv-sobe 0.5s 1.3s ease both;
+}
+
+.bv-vezes {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.bv-vezes i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--divider);
+}
+
+.bv-vezes i.on {
+  background: var(--accent);
+}
+
+.bv-vezes span {
+  margin-left: 4px;
+}
+
+.bv-comecar {
+  gap: 8px;
+}
+
+.bv-comecar svg {
+  transition: transform 0.15s;
+}
+
+.bv-comecar:hover svg {
+  transform: translateX(3px);
+}
+
+/* ---------- animações ---------- */
+@keyframes bv-fundo-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bv-fundo-sai { to { opacity: 0; } }
+
+@keyframes bv-modal-entra {
+  from { opacity: 0; transform: translateY(26px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bv-modal-sai { to { opacity: 0; transform: translateY(12px) scale(0.97); } }
+
+@keyframes bv-sobe {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bv-aparece { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes bv-flutuar {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+
+@keyframes bv-selo {
+  from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bv-pulso {
+  0% { opacity: 0.9; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes bv-aceno {
+  0%, 60%, 100% { transform: rotate(0); }
+  10%, 30% { transform: rotate(16deg); }
+  20%, 40% { transform: rotate(-8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-fundo,
+  .bv-modal,
+  .bv-flutua,
+  .bv-selo,
+  .bv-selo::before,
+  .bv-aceno,
+  .bv-marca,
+  .bv-corpo h2,
+  .bv-intro,
+  .bv-recursos li,
+  .bv-dica,
+  .bv-rodape {
+    animation: none !important;
+  }
+
+  .bv-flutua {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .bv-corpo {
+    padding: 12px 18px 20px;
+  }
+
+  .bv-corpo h2 {
+    font-size: 1.3rem;
+  }
+
+  .bv-rodape {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .bv-vezes {
+    justify-content: center;
+  }
+
+  .bv-comecar {
+    justify-content: center;
+  }
+}

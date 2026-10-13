@@ -4,6 +4,7 @@ import "./styles.css";
 
 import logo from "../../assets/clover.png";
 import { useAuth } from "../../Context/AuthContext";
+import BoasVindasComercial from "../../components/BoasVindas/BoasVindasComercial";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS } from "../../Context/permissions";
 import { usePreferenciasUI } from "../../Context/preferenciasUIContext";
@@ -329,6 +330,7 @@ const Dashboard = ({ loading }) => {
             )}
             <Outlet />
           </main>
+          {role === "comercial" && <BoasVindasComercial />}
         </div>
       </div>
     </ShellContext.Provider>

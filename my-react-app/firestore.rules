@@ -75,6 +75,13 @@ service cloud.firestore {
       // cada um lê o próprio perfil (o app precisa dele pra saber o nível,
       // inclusive pra avisar "conta desativada")
       allow read: if signedIn() && request.auth.uid == uid;
+      // a própria conta só pode atualizar o contador das boas-vindas
+      // (modal das 3 primeiras entradas do comercial) — nenhum outro campo
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['boasVindasVistas', 'boasVindasUltima'])
+        && request.resource.data.boasVindasVistas is int
+        && request.resource.data.boasVindasVistas <= 10;
       // só o operacional cria / edita / lista / remove perfis
       allow read, write: if isOperacional();
     }

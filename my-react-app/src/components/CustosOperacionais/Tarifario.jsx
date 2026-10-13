@@ -1,19 +1,19 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Button, Card, Field, Icon, useToast } from "../ui";
 import {
-  CATEGORIAS,
   NOME_CATEGORIA,
   NOME_TIPO,
   chaveTexto,
   formatarReais,
   listaDeFornecedores,
-  ondeDaTarifa,
+  normalizarTarifa,
   SUFIXO_COBRANCA,
 } from "../../Services/Services/custosCalculo";
 import { salvarConfigCustos } from "../../Services/Services/custosRepository";
 import { FormGuia, FormTarifa } from "./FormulariosTarifa";
 import FiltroVeiculo from "./FiltroVeiculo";
 import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
+import { acharTarifaPar, ladosIguais, modeloDoPar, montarSecoesTarifario, nomeDoPar } from "./tarifarioGrade";
 
 /* =========================================================
    TARIFÁRIO — todos os valores numa tabela só, por tipo de serviço
@@ -24,19 +24,6 @@ import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
    Com um fornecedor escolhido, mostra os valores dele e, onde ele não
    tem tarifa própria, o da tabela geral (marcado "geral").
    ========================================================= */
-
-const SECOES = [
-  { tipo: "IN", titulo: "Chegada (IN) — aeroporto → hotel", nota: "Valor por serviço (veículo)." },
-  { tipo: "OUT", titulo: "Saída (OUT) — hotel → aeroporto", nota: "Valor por serviço (veículo)." },
-  { tipo: "TRF", titulo: "Transfer — hotel → hotel", nota: "Valor por serviço (veículo)." },
-  { tipo: "PASSEIO", titulo: "Passeios", nota: "Valor do veículo no passeio." },
-  { tipo: "APOIO", titulo: "Apoio de passeio", nota: "Valor por trecho (ida e volta = 2 trechos)." },
-  { tipo: "SERVICO", titulo: "Serviços de parceiros", nota: "Reconhecidos pelo nome do serviço no Phoenix; cobrança por passageiro ou reserva." },
-];
-
-const COLUNAS = [{ valor: "", nome: "Qualquer" }, ...CATEGORIAS];
-
-const chaveDaLinha = (t) => `${t.tipo}|${t.regiao}|${t.regiaoDestino}|${chaveTexto(t.servico)}`;
 
 const Celula = ({ celula, mostrarCasado, onClick }) => {
   if (!celula) {
@@ -69,6 +56,84 @@ const Celula = ({ celula, mostrarCasado, onClick }) => {
   );
 };
 
+const Valor = ({ tarifa }) => (
+  <>
+    {formatarReais(tarifa.valor)}
+    {SUFIXO_COBRANCA[tarifa.cobranca] && <span className="cst-tf__suf"> {SUFIXO_COBRANCA[tarifa.cobranca]}</span>}
+  </>
+);
+
+// célula de dois sentidos: um valor só quando são iguais; senão os dois
+const CelulaPar = ({ celula, siglas, umSentido, onAbrir }) => {
+  const { a = null, b = null } = celula || {};
+  if (!a && !b) {
+    return (
+      <button type="button" className="cst-tf__cel is-vazia" onClick={() => onAbrir(umSentido || "a", true)} title="Cadastrar valor">
+        <span className="cst-tf__mais" aria-hidden="true">
+          +
+        </span>
+        <span className="cst-tf__traco">—</span>
+      </button>
+    );
+  }
+  if (umSentido || ladosIguais(a, b)) {
+    const lado = umSentido ? (a ? "a" : "b") : "a";
+    const l = lado === "a" ? a : b;
+    const geral = umSentido ? l.origem === "geral" : a.origem === "geral" && b.origem === "geral";
+    return (
+      <button
+        type="button"
+        className={`cst-tf__cel ${geral ? "is-geral" : ""}`}
+        onClick={() => onAbrir(lado, !umSentido)}
+        title={umSentido ? "Editar" : `Mesmo valor no ${siglas.a} e no ${siglas.b} — clique para editar os dois`}
+      >
+        <b className="tabular">
+          <Valor tarifa={l.tarifa} />
+        </b>
+        {geral && <small className="cst-tf__geral">geral</small>}
+      </button>
+    );
+  }
+  const linha = (lado, l) => (
+    <button
+      type="button"
+      className={`cst-tf__lado ${l ? "" : "is-vazio"} ${l?.origem === "geral" ? "is-geral" : ""}`}
+      onClick={() => onAbrir(lado, false)}
+      title={l ? `Editar ${siglas[lado]}` : `Cadastrar ${siglas[lado]}`}
+    >
+      <em>{siglas[lado]}</em>
+      <b className="tabular">{l ? <Valor tarifa={l.tarifa} /> : "—"}</b>
+    </button>
+  );
+  return (
+    <div className="cst-tf__dupla">
+      {linha("a", a)}
+      {linha("b", b)}
+    </div>
+  );
+};
+
+const CelulaCasado = ({ info, siglas }) => {
+  if (!info) return <span className="cst-tf__traco cst-tf__calc">—</span>;
+  return (
+    <span className="cst-tf__casado">
+      {info.iguais ? (
+        <b className="tabular">
+          {formatarReais(info.trechoA)} <small>/ trecho</small>
+        </b>
+      ) : (
+        <b className="tabular">
+          {siglas.a} {formatarReais(info.trechoA)} · {siglas.b} {formatarReais(info.trechoB)}
+        </b>
+      )}
+      <small className="tabular">
+        par <strong>{formatarReais(info.par)}</strong>
+      </small>
+      <small className="tabular">cheio {formatarReais(info.cheio)}</small>
+    </span>
+  );
+};
+
 const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
   const { mostrarToast } = useToast();
   const [fornecedorSel, setFornecedorSel] = useState("");
@@ -83,52 +148,11 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
     [vinculos, fornecedores, config.tarifas],
   );
 
-  // monta as matrizes de cada tipo
-  const secoes = useMemo(() => {
-    const geral = config.tarifas.filter((t) => !t.fornecedor);
-    const proprias = fornecedorSel ? config.tarifas.filter((t) => chaveTexto(t.fornecedor) === chaveTexto(fornecedorSel)) : [];
-    // "Qualquer veículo": se alguma seção usa, entra em todas (grade igual)
-    const algumQualquer = config.tarifas.some(
-      (t) => t.tipo !== "SERVICO" && t.valor !== null && !t.categoria && (!t.fornecedor || proprias.includes(t)),
-    );
-    return SECOES.map((sec) => {
-      const linhas = new Map();
-      const colocar = (t, origem) => {
-        if (t.tipo !== sec.tipo || t.valor === null) return;
-        const k = sec.tipo === "SERVICO" ? `${chaveDaLinha(t)}|${chaveTexto(t.fornecedor)}` : chaveDaLinha(t);
-        const rotulo = sec.tipo === "SERVICO" ? `${ondeDaTarifa(t)} — ${t.fornecedor || "sem fornecedor"}` : ondeDaTarifa(t);
-        if (!linhas.has(k)) linhas.set(k, { chave: k, rotulo, modelo: t, celulas: {} });
-        linhas.get(k).celulas[t.categoria || ""] = { tarifa: t, origem };
-      };
-      if (sec.tipo === "SERVICO") {
-        // parceiros sempre têm fornecedor: mostra todos (ou só o escolhido)
-        config.tarifas
-          .filter((t) => t.tipo === "SERVICO" && (!fornecedorSel || chaveTexto(t.fornecedor) === chaveTexto(fornecedorSel)))
-          .forEach((t) => colocar(t, "propria"));
-      } else {
-        geral.forEach((t) => colocar(t, fornecedorSel ? "geral" : "propria"));
-        proprias.forEach((t) => colocar(t, "propria"));
-      }
-      let lista = Array.from(linhas.values()).sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
-      // filtro de veículo: só a coluna dele (e "Qualquer", que também vale para ele)
-      const visivel = (cat) =>
-        !veiculoSel || (veiculoSel === "qualquer" ? cat === "" : cat === veiculoSel || cat === "");
-      lista = lista.filter((l) => Object.keys(l.celulas).some(visivel));
-      const usadas = new Set(lista.flatMap((l) => Object.keys(l.celulas)).filter(visivel));
-      // todas as categorias de veículo aparecem sempre (mesma grade em todas
-      // as seções, com "—" onde não há valor); "Qualquer" só quando é usada.
-      // Parceiro não tem veículo: só as colunas usadas.
-      const colunas =
-        sec.tipo === "SERVICO"
-          ? COLUNAS.filter((c) => usadas.has(c.valor))
-          : COLUNAS.filter((c) =>
-            c.valor === "" ? algumQualquer || usadas.has("") : visivel(c.valor) && veiculoSel !== "qualquer",
-          );
-      // parceiro não tem veículo: some quando um veículo está escolhido
-      if (sec.tipo === "SERVICO" && veiculoSel) lista = [];
-      return { ...sec, linhas: lista, colunas: colunas.length ? colunas : COLUNAS.slice(1) };
-    });
-  }, [config.tarifas, fornecedorSel, veiculoSel]);
+  // grade por seção (IN e OUT juntos; transfer ida e volta juntos)
+  const secoes = useMemo(
+    () => montarSecoesTarifario(config.tarifas, { fornecedorSel, veiculoSel }),
+    [config.tarifas, fornecedorSel, veiculoSel],
+  );
 
   const contagemVeiculo = useMemo(() => {
     const c = { __total: 0 };
@@ -171,11 +195,30 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
     }
   };
 
+  // editando = { tarifa, aplicarPar } — aplicarPar grava o mesmo valor no
+  // outro sentido (OUT ↔ IN, volta do transfer)
   const salvarTarifa = async (t) => {
-    const lista = config.tarifas.some((x) => x.id === t.id)
+    let lista = config.tarifas.some((x) => x.id === t.id)
       ? config.tarifas.map((x) => (x.id === t.id ? t : x))
       : [...config.tarifas, t];
-    if (await gravar({ tarifas: lista }, "Tarifa salva")) setEditando(null);
+    let msg = "Tarifa salva";
+    const modelo = modeloDoPar(t);
+    if (editando?.aplicarPar && modelo) {
+      const campos = { valor: t.valor, valorCasado: t.valorCasado, cobranca: t.cobranca, obs: t.obs };
+      const par = acharTarifaPar(t, lista);
+      lista = par
+        ? lista.map((x) => (x.id === par.id ? { ...x, ...campos } : x))
+        : [...lista, normalizarTarifa({ ...modelo, fornecedor: t.fornecedor, categoria: t.categoria, ...campos })];
+      msg = "Tarifa salva nos dois sentidos";
+    }
+    if (await gravar({ tarifas: lista }, msg)) setEditando(null);
+  };
+
+  const excluirTarifa = async (t) => {
+    const par = editando?.aplicarPar ? acharTarifaPar(t, config.tarifas) : null;
+    const ids = [t.id, par?.id].filter(Boolean);
+    if (await gravar({ tarifas: config.tarifas.filter((x) => !ids.includes(x.id)) }, par ? "Excluída nos dois sentidos" : "Tarifa excluída"))
+      setEditando(null);
   };
 
   const salvarGuia = async (t) => {
@@ -185,18 +228,17 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
     if (await gravar({ tarifasGuia: lista }, "Referência salva")) setEditandoGuia(null);
   };
 
-  const excluirTarifa = async (t) => {
-    if (await gravar({ tarifas: config.tarifas.filter((x) => x.id !== t.id) }, "Tarifa excluída")) setEditando(null);
-  };
-
   const excluirGuia = async (t) => {
     if (await gravar({ tarifasGuia: config.tarifasGuia.filter((x) => x.id !== t.id) }, "Referência excluída")) setEditandoGuia(null);
   };
 
   // remove a linha inteira: só os valores próprios dela (os da tabela geral,
   // que aparecem quando um fornecedor está escolhido, ficam)
+  const ladosDaLinha = (linha) =>
+    Object.values(linha.celulas).flatMap((c) => (linha.tipoLinha === "par" ? [c.a, c.b] : [c])).filter(Boolean);
+
   const excluirLinha = (linha) => {
-    const ids = Object.values(linha.celulas)
+    const ids = ladosDaLinha(linha)
       .filter((c) => c.origem === "propria")
       .map((c) => c.tarifa.id);
     if (!ids.length) return;
@@ -213,18 +255,31 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
   };
 
   const abrirCelula = (linha, categoria, celula) => {
-    if (celula && celula.origem === "propria") return setEditando(celula.tarifa);
-    if (celula) return setEditando({ ...celula.tarifa, id: undefined, fornecedor: fornecedorSel });
+    if (celula && celula.origem === "propria") return setEditando({ tarifa: celula.tarifa, aplicarPar: false });
+    if (celula) return setEditando({ tarifa: { ...celula.tarifa, id: undefined, fornecedor: fornecedorSel }, aplicarPar: false });
     const m = linha.modelo;
     return setEditando({
-      fornecedor: fornecedorSel,
-      tipo: m.tipo,
-      regiao: m.regiao,
-      regiaoDestino: m.regiaoDestino,
-      servico: m.servico,
-      categoria,
+      tarifa: { fornecedor: fornecedorSel, tipo: m.tipo, regiao: m.regiao, regiaoDestino: m.regiaoDestino, servico: m.servico, categoria },
+      aplicarPar: false,
     });
   };
+
+  // célula de dois sentidos: lado "a" (IN / ida) ou "b" (OUT / volta)
+  const abrirLado = (linha, categoria, lado, aplicarPar) => {
+    const l = linha.celulas[categoria]?.[lado];
+    if (l && l.origem === "propria") return setEditando({ tarifa: l.tarifa, aplicarPar });
+    if (l) return setEditando({ tarifa: { ...l.tarifa, id: undefined, fornecedor: fornecedorSel }, aplicarPar });
+    let modelo;
+    if (linha.secao === "AEROPORTO") modelo = { tipo: lado === "a" ? "IN" : "OUT", regiao: linha.modelo.regiao };
+    else {
+      const { a: origem, b: destino } = linha.lugares;
+      modelo = lado === "a" ? { tipo: "TRF", regiao: origem, regiaoDestino: destino } : { tipo: "TRF", regiao: destino, regiaoDestino: origem };
+    }
+    return setEditando({ tarifa: { fornecedor: fornecedorSel, ...modelo, categoria }, aplicarPar });
+  };
+
+  const tarifaEditada = editando?.tarifa;
+  const podeAplicarPar = !tarifaEditada?.tipo || ["IN", "OUT", "TRF"].includes(tarifaEditada.tipo);
 
   const guiasVisiveis = veiculoSel
     ? guias.filter((g) => !g.modelo.categoria || g.modelo.categoria === veiculoSel)
@@ -253,7 +308,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           </label>
         </div>
         <div className="cst-barra-dia__acoes">
-          <Button icon="plus" onClick={() => setEditando({ fornecedor: fornecedorSel })}>
+          <Button icon="plus" onClick={() => setEditando({ tarifa: { fornecedor: fornecedorSel }, aplicarPar: true })}>
             Nova tarifa
           </Button>
           <Button variant="primary" icon="printer" onClick={() => window.print()} disabled={!temValores}>
@@ -281,6 +336,21 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           <span className="cst-tf__data">Luck Receptivo SSA · {dataBr(hojeIso())}</span>
         </header>
 
+        {temValores && (
+          <p className="cst-tf__legenda">
+            <span>
+              <b>⇄</b> mesmo valor nos dois sentidos (IN e OUT, ida e volta)
+            </span>
+            <span>
+              <span className="cst-tf__etq is-dif">laranja</span> a célula mostra os dois valores
+            </span>
+            <span>
+              <b className="cst-tf__legenda-casado">↳ Casado</b> valor por trecho, o par e o cheio
+            </span>
+            <span>— sem tarifa</span>
+          </p>
+        )}
+
         {!temValores && (
           <p className="cst-nada">Nenhuma tarifa cadastrada ainda. Use “Nova tarifa” ou a aba Tarifas.</p>
         )}
@@ -288,17 +358,19 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
         {secoes
           .filter((s) => s.linhas.length)
           .map((s) => (
-            <section key={s.tipo} className="cst-tf__secao">
+            <section key={s.chave} className="cst-tf__secao">
               <div className="cst-tf__titulo">
                 <h3>
-                  <span className={`ui-tag cst-tipo cst-tipo--${s.tipo}`}>{NOME_TIPO[s.tipo]}</span>
+                  <span className={`ui-tag cst-tipo cst-tipo--${s.tag}`}>{s.chave === "AEROPORTO" ? "IN · OUT" : NOME_TIPO[s.tag]}</span>
                   {s.titulo}
                 </h3>
                 <small>{s.nota}</small>
                 <button
                   type="button"
                   className="cst-tf__nova"
-                  onClick={() => setEditando({ fornecedor: fornecedorSel, tipo: s.tipo })}
+                  onClick={() =>
+                    setEditando({ tarifa: { fornecedor: fornecedorSel, tipo: s.tipos[0] }, aplicarPar: s.chave === "AEROPORTO" || s.chave === "TRF" })
+                  }
                 >
                   <Icon name="plus" size={13} /> linha
                 </button>
@@ -307,7 +379,7 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                 <table className="cst-tf__tabela">
                   <thead>
                     <tr>
-                      <th scope="col">{s.tipo === "PASSEIO" ? "Passeio" : s.tipo === "SERVICO" ? "Serviço — parceiro" : "Trajeto"}</th>
+                      <th scope="col">{s.rotuloColuna}</th>
                       {s.colunas.map((col) => (
                         <th key={col.valor || "qq"} scope="col" className="is-num">
                           {col.nome}
@@ -317,37 +389,69 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
                   </thead>
                   <tbody>
                     {s.linhas.map((l) => (
-                      <tr key={l.chave}>
-                        <th scope="row">
-                          <span className="cst-tf__rotulo">
-                            <span>
-                              {l.rotulo}
-                              {l.modelo.obs && <small>{l.modelo.obs}</small>}
+                      <Fragment key={l.chave}>
+                        <tr>
+                          <th scope="row">
+                            <span className="cst-tf__rotulo">
+                              <span>
+                                {l.rotulo}
+                                {l.etiqueta && (
+                                  <span className={`cst-tf__etq ${l.estado === "igual" ? "" : "is-dif"}`}>{l.etiqueta}</span>
+                                )}
+                                {l.modelo.obs && <small>{l.modelo.obs}</small>}
+                              </span>
+                              {ladosDaLinha(l).some((c) => c.origem === "propria") && (
+                                <button
+                                  type="button"
+                                  className="cst-tf__excluir"
+                                  onClick={() => excluirLinha(l)}
+                                  title={fornecedorSel ? `Remover os valores de ${fornecedorSel} nesta linha` : "Remover esta linha"}
+                                  aria-label={`Remover ${l.rotulo}`}
+                                  disabled={salvando}
+                                >
+                                  <Icon name="trash" size={13} />
+                                </button>
+                              )}
                             </span>
-                            {Object.values(l.celulas).some((c) => c.origem === "propria") && (
-                              <button
-                                type="button"
-                                className="cst-tf__excluir"
-                                onClick={() => excluirLinha(l)}
-                                title={fornecedorSel ? `Remover os valores de ${fornecedorSel} nesta linha` : "Remover esta linha"}
-                                aria-label={`Remover ${l.rotulo}`}
-                                disabled={salvando}
-                              >
-                                <Icon name="trash" size={13} />
-                              </button>
-                            )}
-                          </span>
-                        </th>
-                        {s.colunas.map((col) => (
-                          <td key={col.valor || "qq"}>
-                            <Celula
-                              celula={l.celulas[col.valor]}
-                              mostrarCasado={mostrarCasado}
-                              onClick={() => abrirCelula(l, col.valor, l.celulas[col.valor])}
-                            />
-                          </td>
-                        ))}
-                      </tr>
+                          </th>
+                          {s.colunas.map((col) => (
+                            <td key={col.valor || "qq"}>
+                              {l.tipoLinha === "par" ? (
+                                <CelulaPar
+                                  celula={l.celulas[col.valor]}
+                                  siglas={l.siglas}
+                                  umSentido={l.umSentido}
+                                  onAbrir={(lado, aplicarPar) => abrirLado(l, col.valor, lado, aplicarPar)}
+                                />
+                              ) : (
+                                <Celula
+                                  celula={l.celulas[col.valor]}
+                                  mostrarCasado={mostrarCasado}
+                                  onClick={() => abrirCelula(l, col.valor, l.celulas[col.valor])}
+                                />
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                        {mostrarCasado && l.casado && (
+                          <tr className="cst-tf__sub">
+                            <th scope="row">
+                              <span className="cst-tf__sub-rotulo">
+                                ↳ Casado
+                                <small>
+                                  IN + OUT no mesmo veículo — valor por trecho, o par (IN + OUT) e o cheio sem desconto
+                                  {c.ativo ? ` (${duracaoTexto(c.minHoras * 60)} a ${duracaoTexto(c.maxHoras * 60)} entre eles)` : ""}
+                                </small>
+                              </span>
+                            </th>
+                            {s.colunas.map((col) => (
+                              <td key={col.valor || "qq"}>
+                                <CelulaCasado info={l.casado[col.valor]} siglas={l.siglas} />
+                              </td>
+                            ))}
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -473,8 +577,8 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
 
       {editando && (
         <FormTarifa
-          key={editando.id || `nova-${JSON.stringify(editando)}`}
-          inicial={editando.id ? editando : { ...editando, _nova: true }}
+          key={tarifaEditada.id || `nova-${JSON.stringify(tarifaEditada)}`}
+          inicial={tarifaEditada.id ? tarifaEditada : { ...tarifaEditada, _nova: true }}
           fornecedores={nomesFornecedores}
           regioes={config.regioesConhecidas}
           passeios={passeios}
@@ -483,6 +587,21 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           onFechar={() => setEditando(null)}
           onSalvar={salvarTarifa}
           onExcluir={excluirTarifa}
+          extra={
+            podeAplicarPar && (
+              <label className="cst-check cst-tf__par">
+                <input
+                  type="checkbox"
+                  checked={!!editando.aplicarPar}
+                  onChange={(e) => setEditando((ed) => ({ ...ed, aplicarPar: e.target.checked }))}
+                />
+                <span>
+                  Mesmo valor também no {tarifaEditada.tipo ? nomeDoPar(tarifaEditada) : "sentido contrário (IN ↔ OUT, volta do transfer)"}
+                  <small>Desmarque para deixar valores diferentes nos dois sentidos.</small>
+                </span>
+              </label>
+            )
+          }
         />
       )}
       {editandoGuia && (
