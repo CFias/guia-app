@@ -58,7 +58,10 @@ import {
   CONFIG_VEICULO_VAZIA,
   configPreenchida,
   nomeAutomaticoConfig,
+  anexosDoItem,
 } from "./regrasFormulario";
+import { removerArquivo } from "../../Services/Services/arquivosRepository";
+import CondicoesGeraisAdmin from "./CondicoesGeraisAdmin";
 
 // ícones usados como componente (ex.: devolvidos por função)
 const LuggageRounded = iconeMui("briefcase");
@@ -319,9 +322,9 @@ const resumoDoItem = (item, config) => {
     const linhas = obterTabelaPrecos(item);
     return linhas.length
       ? `${linhas.length} serviço${linhas.length === 1 ? "" : "s"}: ${linhas
-          .slice(0, 3)
-          .map((l) => l.servico)
-          .join(", ")}${linhas.length > 3 ? "…" : ""}`
+        .slice(0, 3)
+        .map((l) => l.servico)
+        .join(", ")}${linhas.length > 3 ? "…" : ""}`
       : "Tabela sem serviços";
   }
   return textoPrevia(item.resposta);
@@ -836,9 +839,9 @@ const FaqAdmin = () => {
           (formato === FORMATOS.RESPOSTA || formato === FORMATOS.TABELA) && !formulario.usarFotos
             ? []
             : formulario.imagensVeiculoTexto
-                .split("\n")
-                .map((url) => url.trim())
-                .filter(Boolean),
+              .split("\n")
+              .map((url) => url.trim())
+              .filter(Boolean),
         linkOficialVeiculo: formulario.linkOficialVeiculo.trim(),
         veiculoForaCatalogo: !!formulario.veiculoForaCatalogo,
         formato,
@@ -854,6 +857,7 @@ const FaqAdmin = () => {
             ? linhasPrecoPreenchidas(formulario.tabelaPrecos)
             : [],
         ilustracao: formulario.ilustracao || "",
+        anexos: formulario.usarAnexos ? formulario.anexos : [],
         complementos: complementosDoFormulario(formulario),
         fichaEmbarcacao: {
           tipoEmbarcacao: formulario.tipoEmbarcacao.trim(),
@@ -884,6 +888,12 @@ const FaqAdmin = () => {
       let idSalvo = editandoId;
       if (editandoId) {
         await updateDoc(doc(db, "faq_itens", editandoId), payload);
+        // anexos tirados do item: apaga os arquivos
+        const antes = anexosDoItem(itens.find((i) => i.id === editandoId));
+        const ficam = new Set(payload.anexos.map((a) => a.id));
+        antes
+          .filter((a) => !ficam.has(a.id))
+          .forEach((a) => removerArquivo(a.id).catch((e) => console.error("Erro ao apagar anexo:", e)));
       } else {
         const ref = await addDoc(collection(db, "faq_itens"), {
           ...payload,
@@ -919,6 +929,9 @@ const FaqAdmin = () => {
     try {
       setRemovendoId(item.id);
       await deleteDoc(doc(db, "faq_itens", item.id));
+      anexosDoItem(item).forEach((a) =>
+        removerArquivo(a.id).catch((e) => console.error("Erro ao apagar anexo:", e)),
+      );
       mostrarToast("Item removido.");
       if (editandoId === item.id) limparFormulario();
       await carregarItens();
@@ -971,11 +984,14 @@ const FaqAdmin = () => {
           { label: "Nomes das seções", icon: "pencil", onClick: abrirNomes },
         ]}
         actions={
-          abaAdmin === "catalogo" && (
-            <Button variant="primary" icon="plus" onClick={() => novoItem()}>
-              Novo item
-            </Button>
-          )
+          <>
+            <CondicoesGeraisAdmin />
+            {abaAdmin === "catalogo" && (
+              <Button variant="primary" icon="plus" onClick={() => novoItem()}>
+                Novo item
+              </Button>
+            )}
+          </>
         }
       />
 

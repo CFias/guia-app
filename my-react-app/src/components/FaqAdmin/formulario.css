@@ -973,3 +973,42 @@ textarea.fi-input {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* anexos */
+.fi-anexos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fi-anexos__enviar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.fi-anexos__enviar:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.fi-anexos__enviar b {
+  color: var(--text);
+}
+
+.fi-anexos__enviar svg {
+  color: var(--accent-text);
+}
+
+.fi-msg--erro {
+  color: var(--alert, #d9480f);
+}

@@ -24,6 +24,12 @@ import {
   tonsDaLista,
 } from "./ilustracoes";
 import IdiomaTag from "../ui/IdiomaTag";
+import ListaAnexos from "../ui/ListaAnexos";
+import {
+  ID_CONDICOES_GERAIS,
+  abrirArquivo,
+  lerMetaArquivo,
+} from "../../Services/Services/arquivosRepository";
 import GuiaAvatar from "../ui/GuiaAvatar";
 import { rotuloDoIdioma } from "../../Services/Utils/idiomas";
 import BoasVindasComercial from "../BoasVindas/BoasVindasComercial";
@@ -51,6 +57,7 @@ import {
   linkWhatsappTelefone,
   obterComplementos,
   obterFornecedorPlaca,
+  anexosDoItem,
   linkExterno,
   ehMotoguia,
   nomeDoMotoguia,
@@ -295,6 +302,7 @@ const textoBuscavel = (item) => {
       ...(Array.isArray(item.palavrasChave) ? item.palavrasChave : []),
       ...textosDosComplementos(item),
       ...Object.values(obterFornecedorPlaca(item)),
+      ...anexosDoItem(item).map((a) => a.nome),
     ]
       .filter(Boolean)
       .join(" "),
@@ -326,6 +334,27 @@ const FaqComercial = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState("todas");
   const { role } = useAuth();
   const [previaBoasVindas, setPreviaBoasVindas] = useState(false);
+
+  // documento de Condições gerais (enviado pelo operacional no admin da Central)
+  const [condicoes, setCondicoes] = useState(null);
+  const [abrindoCondicoes, setAbrindoCondicoes] = useState(false);
+  useEffect(() => {
+    lerMetaArquivo(ID_CONDICOES_GERAIS)
+      .then(setCondicoes)
+      .catch(() => setCondicoes(null));
+  }, []);
+  const abrirCondicoes = async () => {
+    if (!condicoes) return;
+    setAbrindoCondicoes(true);
+    try {
+      await abrirArquivo(ID_CONDICOES_GERAIS, condicoes);
+    } catch (e) {
+      console.error("Erro ao abrir condições gerais:", e);
+      alert("Não foi possível abrir o documento agora.");
+    } finally {
+      setAbrindoCondicoes(false);
+    }
+  };
   const [formatoAtivo, setFormatoAtivo] = useState("todos");
   const [perguntaCopiadaId, setPerguntaCopiadaId] = useState(null);
   const [itemDetalhado, setItemDetalhado] = useState(null);
@@ -647,6 +676,25 @@ const FaqComercial = () => {
         }
       />
       {previaBoasVindas && <BoasVindasComercial previa onFechar={() => setPreviaBoasVindas(false)} />}
+
+      {condicoes && (
+        <button
+          type="button"
+          className="faq-cat-condicoes"
+          onClick={abrirCondicoes}
+          disabled={abrindoCondicoes}
+          title={`Abrir ${condicoes.nome}`}
+        >
+          <span className="faq-cat-condicoes__icone" aria-hidden="true">
+            <Icon name="fileText" size={18} />
+          </span>
+          <span className="faq-cat-condicoes__texto">
+            <strong>Condições gerais</strong>
+            <small>{abrindoCondicoes ? "Abrindo o documento…" : "Toque para abrir o documento com as condições gerais de venda."}</small>
+          </span>
+          <Icon name={abrindoCondicoes ? "loader" : "external"} size={16} className={abrindoCondicoes ? "ui-spin" : ""} />
+        </button>
+      )}
 
       <div className="faq-cat-busca">
         <Icon name="search" size={18} />
@@ -1089,6 +1137,12 @@ const SemFotoIlustrada = ({ item, formato, tom = 0 }) => {
 // Ação discreta: copiar a informação (a Central é para consulta do comercial)
 const AcoesRapidas = ({ item, onCopiar, copiado }) => (
   <div className="faq-cat-acoes" onClick={(e) => e.stopPropagation()}>
+    {anexosDoItem(item).length > 0 && (
+      <span className="faq-cat-anexos-qtd" title={`${anexosDoItem(item).length} arquivo(s) anexo(s) — abra a ficha`}>
+        <Icon name="fileText" size={13} />
+        {anexosDoItem(item).length}
+      </span>
+    )}
     <button
       type="button"
       className={`faq-cat-acao ${copiado ? "is-ok" : ""}`}
@@ -2011,6 +2065,13 @@ const FaqDetalhe = ({
                 <IdiomaTag key={id} idioma={id} nome />
               ))}
             </div>
+          </div>
+        )}
+
+        {anexosDoItem(item).length > 0 && (
+          <div className="faq-cat-bloco">
+            <h4>Arquivos anexos</h4>
+            <ListaAnexos anexos={anexosDoItem(item)} />
           </div>
         )}
 

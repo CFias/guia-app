@@ -1972,3 +1972,77 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* =========================================================
+   Condições gerais (botão no topo) e anexos
+   ========================================================= */
+.faq-cat-condicoes {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: var(--space-3);
+    padding: 10px 14px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--divider));
+    border-radius: var(--radius-lg);
+    background: var(--accent-soft);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.faq-cat-condicoes:hover:not(:disabled) {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.faq-cat-condicoes:disabled {
+    cursor: progress;
+}
+
+.faq-cat-condicoes__icone {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+}
+
+.faq-cat-condicoes__texto {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.faq-cat-condicoes__texto strong {
+    font-size: var(--fs-md);
+}
+
+.faq-cat-condicoes__texto small {
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+}
+
+.faq-cat-condicoes>svg {
+    flex: none;
+    color: var(--accent-text);
+}
+
+.faq-cat-anexos-qtd {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-right: 4px;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--raised);
+    color: var(--text-2);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+}

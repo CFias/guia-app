@@ -168,6 +168,17 @@ service cloud.firestore {
         );
     }
 
+    // ---------- Arquivos anexados (Central de Informações) ----------
+    // arquivos/{id} (meta) e arquivos/{id}/partes/{n} (o conteúdo em base64).
+    // O comercial só lê (anexos dos itens e as Condições gerais); quem envia,
+    // troca e apaga é o operacional, pela regra geral lá embaixo.
+    match /arquivos/{arquivoId} {
+      allow get: if isComercial();
+      match /partes/{parteId} {
+        allow read: if isComercial();
+      }
+    }
+
     // ---------- Comercial: lê a Central de Dúvidas ----------
     match /faq_itens/{itemId} {
       allow read: if isComercial();

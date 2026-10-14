@@ -1,5 +1,6 @@
 import Icon from "../ui/Icon";
 import FotosVeiculo from "./FotosVeiculo";
+import AnexosEditor from "./AnexosEditor";
 import IlustracaoCategoria from "../FaqComercial/IlustracaoCategoria";
 import IdiomaTag from "../ui/IdiomaTag";
 import { ILUSTRACOES, LISTA_ILUSTRACOES, ilustracaoDoItem } from "../FaqComercial/ilustracoes";
@@ -252,11 +253,11 @@ const FormularioItem = ({
       configsVeiculo: prev.configsVeiculo.map((c, i) =>
         i === indice
           ? {
-              ...c,
-              combinacoes: c.combinacoes.map((x, j) =>
-                j === ci ? { ...x, [campo]: valor } : x,
-              ),
-            }
+            ...c,
+            combinacoes: c.combinacoes.map((x, j) =>
+              j === ci ? { ...x, [campo]: valor } : x,
+            ),
+          }
           : c,
       ),
     }));
@@ -368,115 +369,115 @@ const FormularioItem = ({
 
   // editor da tabela de preços (tipo "Tabela de preços" ou complemento)
   const editorPrecos = (
-          <div className={`fi-campo ${erro("tabela") ? "is-erro" : ""}`} data-campo="tabela">
-            <span className="fi-rotulo">
-              Valores por serviço <span className="fi-obrig">*</span>
-            </span>
-            <div className="fi-precos">
-              <div className="fi-precos-cabecalho" aria-hidden="true">
-                <span>Serviço</span>
-                <span>Valor</span>
-                <span>Detalhe</span>
-                <span />
-              </div>
-              {f.tabelaPrecos.map((linha, i) => {
-                const erroLinha = mostrarErros ? validacao.erros[`linha-${i}`] : null;
-                return (
-                  <div key={i} className={`fi-preco ${erroLinha ? "is-erro" : ""}`}>
-                    <input
-                      type="text"
-                      className="fi-input"
-                      placeholder="Ex.: City Tour"
-                      value={linha.servico}
-                      onChange={(e) => atualizarLinha(i, "servico", e.target.value)}
-                      aria-label={`Serviço da linha ${i + 1}`}
-                      disabled={salvando}
-                    />
-                    <div className="fi-preco-valor">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="fi-input"
-                        placeholder="Ex.: 350"
-                        value={linha.valor}
-                        onChange={(e) => atualizarLinha(i, "valor", e.target.value)}
-                        aria-label={`Valor da linha ${i + 1}`}
-                        disabled={salvando}
-                      />
-                      {linha.valor && (
-                        <small className="fi-preco-formatado">{formatarValor(linha.valor)}</small>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      className="fi-input"
-                      placeholder="Ex.: até 4 horas"
-                      value={linha.detalhe}
-                      onChange={(e) => atualizarLinha(i, "detalhe", e.target.value)}
-                      aria-label={`Detalhe da linha ${i + 1}`}
-                      disabled={salvando}
-                    />
-                    <div className="fi-preco-acoes">
-                      <button
-                        type="button"
-                        onClick={() => moverLinha(i, -1)}
-                        disabled={salvando || i === 0}
-                        title="Subir"
-                        aria-label="Subir linha"
-                      >
-                        <Icon name="chevronUp" size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moverLinha(i, 1)}
-                        disabled={salvando || i === f.tabelaPrecos.length - 1}
-                        title="Descer"
-                        aria-label="Descer linha"
-                      >
-                        <Icon name="chevronDown" size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="is-perigo"
-                        onClick={() => removerLinha(i)}
-                        disabled={salvando}
-                        title="Remover linha"
-                        aria-label="Remover linha"
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
-                    </div>
-                    {erroLinha && (
-                      <span className="fi-msg is-erro fi-preco-erro">
-                        <Icon name="alert" size={13} />
-                        {erroLinha}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                className="fi-adicionar"
-                onClick={adicionarLinha}
+    <div className={`fi-campo ${erro("tabela") ? "is-erro" : ""}`} data-campo="tabela">
+      <span className="fi-rotulo">
+        Valores por serviço <span className="fi-obrig">*</span>
+      </span>
+      <div className="fi-precos">
+        <div className="fi-precos-cabecalho" aria-hidden="true">
+          <span>Serviço</span>
+          <span>Valor</span>
+          <span>Detalhe</span>
+          <span />
+        </div>
+        {f.tabelaPrecos.map((linha, i) => {
+          const erroLinha = mostrarErros ? validacao.erros[`linha-${i}`] : null;
+          return (
+            <div key={i} className={`fi-preco ${erroLinha ? "is-erro" : ""}`}>
+              <input
+                type="text"
+                className="fi-input"
+                placeholder="Ex.: City Tour"
+                value={linha.servico}
+                onChange={(e) => atualizarLinha(i, "servico", e.target.value)}
+                aria-label={`Serviço da linha ${i + 1}`}
                 disabled={salvando}
-              >
-                <Icon name="plus" size={15} />
-                Adicionar serviço
-              </button>
+              />
+              <div className="fi-preco-valor">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="fi-input"
+                  placeholder="Ex.: 350"
+                  value={linha.valor}
+                  onChange={(e) => atualizarLinha(i, "valor", e.target.value)}
+                  aria-label={`Valor da linha ${i + 1}`}
+                  disabled={salvando}
+                />
+                {linha.valor && (
+                  <small className="fi-preco-formatado">{formatarValor(linha.valor)}</small>
+                )}
+              </div>
+              <input
+                type="text"
+                className="fi-input"
+                placeholder="Ex.: até 4 horas"
+                value={linha.detalhe}
+                onChange={(e) => atualizarLinha(i, "detalhe", e.target.value)}
+                aria-label={`Detalhe da linha ${i + 1}`}
+                disabled={salvando}
+              />
+              <div className="fi-preco-acoes">
+                <button
+                  type="button"
+                  onClick={() => moverLinha(i, -1)}
+                  disabled={salvando || i === 0}
+                  title="Subir"
+                  aria-label="Subir linha"
+                >
+                  <Icon name="chevronUp" size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moverLinha(i, 1)}
+                  disabled={salvando || i === f.tabelaPrecos.length - 1}
+                  title="Descer"
+                  aria-label="Descer linha"
+                >
+                  <Icon name="chevronDown" size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="is-perigo"
+                  onClick={() => removerLinha(i)}
+                  disabled={salvando}
+                  title="Remover linha"
+                  aria-label="Remover linha"
+                >
+                  <Icon name="trash" size={15} />
+                </button>
+              </div>
+              {erroLinha && (
+                <span className="fi-msg is-erro fi-preco-erro">
+                  <Icon name="alert" size={13} />
+                  {erroLinha}
+                </span>
+              )}
             </div>
-            {erro("tabela") ? (
-              <span className="fi-msg is-erro" role="alert">
-                <Icon name="alert" size={13} />
-                {erro("tabela")}
-              </span>
-            ) : (
-              <span className="fi-msg">
-                Valor só com números (250 ou 1.250,00) vira R$; texto como “Sob
-                consulta” aparece como foi escrito.
-              </span>
-            )}
-          </div>
+          );
+        })}
+        <button
+          type="button"
+          className="fi-adicionar"
+          onClick={adicionarLinha}
+          disabled={salvando}
+        >
+          <Icon name="plus" size={15} />
+          Adicionar serviço
+        </button>
+      </div>
+      {erro("tabela") ? (
+        <span className="fi-msg is-erro" role="alert">
+          <Icon name="alert" size={13} />
+          {erro("tabela")}
+        </span>
+      ) : (
+        <span className="fi-msg">
+          Valor só com números (250 ou 1.250,00) vira R$; texto como “Sob
+          consulta” aparece como foi escrito.
+        </span>
+      )}
+    </div>
   );
 
   const escolherGuia = (id) => {
@@ -1236,15 +1237,15 @@ const FormularioItem = ({
           </Secao>
 
           <Secao numero={proximo()} titulo="Fotos" descricao="A primeira foto é a capa do card.">
-              <FotosVeiculo
-                valor={f.imagensVeiculoTexto
-                  .split("\n")
-                  .map((u) => u.trim())
-                  .filter(Boolean)}
-                onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
-                disabled={salvando}
-                nome={f.pergunta || "Foto"}
-              />
+            <FotosVeiculo
+              valor={f.imagensVeiculoTexto
+                .split("\n")
+                .map((u) => u.trim())
+                .filter(Boolean)}
+              onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
+              disabled={salvando}
+              nome={f.pergunta || "Foto"}
+            />
           </Secao>
         </>
       )}
@@ -1397,15 +1398,15 @@ const FormularioItem = ({
           </Secao>
 
           <Secao numero={proximo()} titulo="Fotos" descricao="A primeira foto é a capa do card.">
-              <FotosVeiculo
-                valor={f.imagensVeiculoTexto
-                  .split("\n")
-                  .map((u) => u.trim())
-                  .filter(Boolean)}
-                onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
-                disabled={salvando}
-                nome={f.pergunta || "Foto"}
-              />
+            <FotosVeiculo
+              valor={f.imagensVeiculoTexto
+                .split("\n")
+                .map((u) => u.trim())
+                .filter(Boolean)}
+              onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
+              disabled={salvando}
+              nome={f.pergunta || "Foto"}
+            />
           </Secao>
         </>
       )}
@@ -1542,10 +1543,10 @@ const FormularioItem = ({
                   : ehEquip
                     ? "Ex.: Instalada pelo motorista. Obrigatória para crianças até 7 anos e meio."
                     : ehLocal
-                    ? "Ex.: Ponto de encontro na recepção. Estacionamento no subsolo."
-                    : ehEmbarcacao
-                      ? "Ex.: Embarque no Terminal Náutico, chegar 30 min antes."
-                      : "Ex.: Com bagageiro de teto leva até 5 malas grandes."
+                      ? "Ex.: Ponto de encontro na recepção. Estacionamento no subsolo."
+                      : ehEmbarcacao
+                        ? "Ex.: Embarque no Terminal Náutico, chegar 30 min antes."
+                        : "Ex.: Com bagageiro de teto leva até 5 malas grandes."
               }
               value={f.resposta}
               onChange={(e) => atualizar("resposta", e.target.value)}
@@ -1609,6 +1610,16 @@ const FormularioItem = ({
             />
           </Complemento>
         )}
+
+        <Complemento
+          ativo={f.usarAnexos}
+          onAlternar={(v) => atualizar("usarAnexos", v)}
+          titulo="Arquivos anexos"
+          descricao="PDF, imagem, Word, Excel… O comercial abre direto na ficha do item."
+          disabled={salvando}
+        >
+          <AnexosEditor valor={f.anexos} onChange={(lista) => atualizar("anexos", lista)} disabled={salvando} />
+        </Complemento>
 
         <Complemento
           ativo={f.usarGuia}

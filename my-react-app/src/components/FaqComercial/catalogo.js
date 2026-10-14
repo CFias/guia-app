@@ -8,6 +8,7 @@
 //   tabelaPrecos     [{ servico, valor, detalhe }]
 //   fichaEmbarcacao  { tipoEmbarcacao, capacidade, recursos[], roteiros }
 //   fornecedor, placa  fornecedor e placa do veículo (embarcação: só fornecedor)
+//   anexos           [{ id, nome, tipo, tamanho }] — arquivos (arquivos/{id})
 //   fichaLocal       { tipoLocal, endereco, bairro, telefone, horario, linkMapa, site, cardapio }
 //   fichaEquipamento { tipoEquipamento, faixaUso, quantidade, valor, antecedencia }
 //   imagensVeiculo   fotos (o nome do campo é histórico; vale para todo item com foto)
@@ -41,10 +42,7 @@ export const obterFichaEquipamento = (item) => {
   return {
     tipoEquipamento: String(f.tipoEquipamento || "").trim(),
     faixaUso: String(f.faixaUso || "").trim(),
-    quantidade:
-      Number.isFinite(quantidade) && quantidade > 0
-        ? Math.floor(quantidade)
-        : null,
+    quantidade: Number.isFinite(quantidade) && quantidade > 0 ? Math.floor(quantidade) : null,
     valor: String(f.valor || "").trim(),
     antecedencia: String(f.antecedencia || "").trim(),
   };
@@ -97,10 +95,7 @@ export const obterFichaEmbarcacao = (item) => {
   const capacidade = Number(f.capacidade);
   return {
     tipoEmbarcacao: String(f.tipoEmbarcacao || "").trim(),
-    capacidade:
-      Number.isFinite(capacidade) && capacidade > 0
-        ? Math.floor(capacidade)
-        : null,
+    capacidade: Number.isFinite(capacidade) && capacidade > 0 ? Math.floor(capacidade) : null,
     recursos: Array.isArray(f.recursos) ? f.recursos.filter(Boolean) : [],
     roteiros: String(f.roteiros || "").trim(),
   };
@@ -114,10 +109,7 @@ export const linkExterno = (url = "") => {
 };
 
 export const linkMapaDoEndereco = (endereco = "", bairro = "") => {
-  const alvo = [endereco, bairro]
-    .map((x) => String(x || "").trim())
-    .filter(Boolean)
-    .join(", ");
+  const alvo = [endereco, bairro].map((x) => String(x || "").trim()).filter(Boolean).join(", ");
   return alvo
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alvo)}`
     : "";
@@ -135,8 +127,7 @@ export const obterFichaLocal = (item) => {
     horario: String(f.horario || "").trim(),
     site: String(f.site || "").trim(),
     cardapio: String(f.cardapio || "").trim(),
-    linkMapa:
-      String(f.linkMapa || "").trim() || linkMapaDoEndereco(endereco, bairro),
+    linkMapa: String(f.linkMapa || "").trim() || linkMapaDoEndereco(endereco, bairro),
   };
 };
 
@@ -144,13 +135,11 @@ export const obterFichaLocal = (item) => {
 export const linkWhatsappTelefone = (telefone = "") => {
   const digitos = String(telefone).replace(/\D/g, "");
   if (digitos.length < 10) return "";
-  const comPais =
-    digitos.startsWith("55") && digitos.length > 11 ? digitos : `55${digitos}`;
+  const comPais = digitos.startsWith("55") && digitos.length > 11 ? digitos : `55${digitos}`;
   return `https://wa.me/${comPais}`;
 };
 
-export const MENSAGEM_VENCIDA =
-  "Consultar Operacional para valores atualizados.";
+export const MENSAGEM_VENCIDA = "Consultar Operacional para valores atualizados.";
 
 // Itens antigos não têm `formato`: quem tem veículo vira ficha de veículo,
 // o resto continua como resposta pronta.
@@ -183,8 +172,8 @@ export const RECURSOS_VEICULO = [
 ];
 
 export const iconeRecurso = (label = "") =>
-  [...RECURSOS_VEICULO, ...RECURSOS_EMBARCACAO].find((r) => r.label === label)
-    ?.icon || "check";
+  [...RECURSOS_VEICULO, ...RECURSOS_EMBARCACAO].find((r) => r.label === label)?.icon ||
+  "check";
 
 const numeroOuNulo = (valor) => {
   if (valor === "" || valor === null || valor === undefined) return null;
@@ -195,8 +184,7 @@ const numeroOuNulo = (valor) => {
 // Configurações do assistente em que o veículo aparece (na ordem do assistente).
 export const configuracoesDoVeiculo = (config, itemId) =>
   (config?.opcoes || []).filter(
-    (o) =>
-      o.ativo !== false && itemId && (o.veiculosIds || []).includes(itemId),
+    (o) => o.ativo !== false && itemId && (o.veiculosIds || []).includes(itemId),
   );
 
 // Ficha do veículo. A capacidade vem do Assistente de veículo (fonte
@@ -209,9 +197,7 @@ export const obterFichaVeiculo = (item, config) => {
     passageiros: numeroOuNulo(ficha.passageiros),
     malasGrandes: numeroOuNulo(ficha.malasGrandes),
     malasBordo: numeroOuNulo(ficha.malasBordo),
-    recursos: Array.isArray(ficha.recursos)
-      ? ficha.recursos.filter(Boolean)
-      : [],
+    recursos: Array.isArray(ficha.recursos) ? ficha.recursos.filter(Boolean) : [],
     configuracoes: [],
   };
 
@@ -249,32 +235,24 @@ export const obterComplementos = (item) => {
   return {
     guiaId: texto(c.guiaId),
     guiaNome: texto(c.guiaNome),
-    idiomas: (Array.isArray(c.guiaIdiomas) ? c.guiaIdiomas : [])
-      .map(texto)
-      .filter(Boolean),
+    idiomas: (Array.isArray(c.guiaIdiomas) ? c.guiaIdiomas : []).map(texto).filter(Boolean),
     modelo: texto(c.modelo),
     ano: texto(c.ano),
     cor: texto(c.cor),
-    lugares:
-      Number.isFinite(lugares) && lugares > 0 ? Math.floor(lugares) : null,
+    lugares: Number.isFinite(lugares) && lugares > 0 ? Math.floor(lugares) : null,
   };
 };
 
 // Motoguia = guia que faz o passeio no próprio carro. Um veículo é de
 // motoguia quando tem guia vinculado nos Complementos (ou o tipo diz isso).
 const semAcento = (t = "") =>
-  String(t || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export const ehMotoguia = (item) =>
   obterFormato(item) === FORMATOS.VEICULO &&
   (Boolean(obterComplementos(item).guiaId) ||
     semAcento(item?.fichaVeiculo?.tipoVeiculo).includes("motoguia") ||
-    /(^|[^a-z])moto ?guia([^a-z]|$)/.test(
-      semAcento(item?.nomeVeiculo || item?.pergunta),
-    ));
+    /(^|[^a-z])moto ?guia([^a-z]|$)/.test(semAcento(item?.nomeVeiculo || item?.pergunta)));
 
 // "NISSAN VERSA - MOTOGUIA QUEIROZ" → { carro: "NISSAN VERSA", guia: "QUEIROZ" }
 // (o guia vinculado tem preferência sobre o nome escrito no título)
@@ -291,16 +269,15 @@ export const nomeDoMotoguia = (item) => {
 // Regras e políticas (o comercial precisa cumprir): visual próprio na Central.
 export const ehRegra = (item) =>
   obterFormato(item) === FORMATOS.RESPOSTA &&
-  /(^|[^a-z])(politica|regra|norma|obrigatori)/.test(
-    semAcento(item?.categoria),
-  );
+  /(^|[^a-z])(politica|regra|norma|obrigatori)/.test(semAcento(item?.categoria));
+
+// Arquivos anexados ao item (o conteúdo fica em arquivos/{id})
+export const anexosDoItem = (item) =>
+  (Array.isArray(item?.anexos) ? item.anexos : []).filter((a) => a && a.id && a.nome);
 
 // Placa: maiúsculas, sem espaços (ABC1D23 / ABC-1234)
 export const normalizarPlaca = (placa = "") =>
-  String(placa || "")
-    .toUpperCase()
-    .replace(/\s+/g, "")
-    .trim();
+  String(placa || "").toUpperCase().replace(/\s+/g, "").trim();
 
 export const obterFornecedorPlaca = (item) => ({
   fornecedor: String(item?.fornecedor || "").trim(),
@@ -347,26 +324,22 @@ export const linhasFicha = (ficha) =>
     ficha.tipoVeiculo && `Tipo: ${ficha.tipoVeiculo}`,
     ...(ficha.configuracoes?.length
       ? ficha.configuracoes.map(
-          (o) =>
-            `${o.nome}: até ${o.paxMax} passageiros${
-              o.combinacoes.length
-                ? ` · ${descreverCombinacoes(o.combinacoes)}`
-                : ""
-            }`,
-        )
+        (o) =>
+          `${o.nome}: até ${o.paxMax} passageiros${o.combinacoes.length ? ` · ${descreverCombinacoes(o.combinacoes)}` : ""
+          }`,
+      )
       : [
-          ficha.passageiros !== null && `Passageiros: até ${ficha.passageiros}`,
-          ficha.malasGrandes !== null &&
-            `Malas grandes (até 23 kg): ${ficha.malasGrandes}`,
-          ficha.malasBordo !== null &&
-            `Malas de bordo (até 10 kg): ${ficha.malasBordo}`,
-        ]),
+        ficha.passageiros !== null && `Passageiros: até ${ficha.passageiros}`,
+        ficha.malasGrandes !== null &&
+        `Malas grandes (até 23 kg): ${ficha.malasGrandes}`,
+        ficha.malasBordo !== null &&
+        `Malas de bordo (até 10 kg): ${ficha.malasBordo}`,
+      ]),
     ficha.recursos.length > 0 && `Itens: ${ficha.recursos.join(" · ")}`,
   ].filter(Boolean);
 
 export const linhaPreco = (linha) =>
-  `- ${linha.servico || "Serviço"}: ${formatarValor(linha.valor)}${
-    linha.detalhe ? ` (${linha.detalhe})` : ""
+  `- ${linha.servico || "Serviço"}: ${formatarValor(linha.valor)}${linha.detalhe ? ` (${linha.detalhe})` : ""
   }`;
 
 // Texto que vai para a área de transferência / WhatsApp.
@@ -404,9 +377,7 @@ const montarTextoBase = (item, vencida = false, config = null) => {
     const f = obterFichaEquipamento(item);
     return [
       `*${item.pergunta}*`,
-      f.tipoEquipamento &&
-        f.tipoEquipamento !== item.pergunta &&
-        f.tipoEquipamento,
+      f.tipoEquipamento && f.tipoEquipamento !== item.pergunta && f.tipoEquipamento,
       f.faixaUso && `Indicado para: ${f.faixaUso}`,
       f.valor && `Valor: ${f.valor}`,
       f.antecedencia && `Solicitar: ${f.antecedencia}`,
@@ -423,7 +394,7 @@ const montarTextoBase = (item, vencida = false, config = null) => {
       `*${item.pergunta}*`,
       f.tipoLocal && f.tipoLocal,
       (f.endereco || f.bairro) &&
-        `Endereço: ${[f.endereco, f.bairro].filter(Boolean).join(" — ")}`,
+      `Endereço: ${[f.endereco, f.bairro].filter(Boolean).join(" — ")}`,
       f.telefone && `Telefone: ${f.telefone}`,
       f.horario && `Horário: ${f.horario}`,
       f.linkMapa && `Mapa: ${f.linkMapa}`,
@@ -504,19 +475,11 @@ export const contaNaCapacidade = (conta) => conta !== "consultar";
 // Padrão: mochilas entram na conta; o que foge do comum vai para o
 // operacional analisar com calma.
 export const ITENS_ESPECIAIS_PADRAO = [
-  {
-    id: "mochila-pequena",
-    nome: "Mochila pequena (de mão)",
-    conta: "nao_ocupa",
-  },
+  { id: "mochila-pequena", nome: "Mochila pequena (de mão)", conta: "nao_ocupa" },
   { id: "mochila-grande", nome: "Mochila grande (de viagem)", conta: "bordo" },
   { id: "mala-grande", nome: "Mala acima de 23 kg", conta: "consultar" },
   { id: "carrinho", nome: "Carrinho de bebê", conta: "consultar" },
-  {
-    id: "cadeirinha",
-    nome: "Cadeirinha / assento infantil",
-    conta: "consultar",
-  },
+  { id: "cadeirinha", nome: "Cadeirinha / assento infantil", conta: "consultar" },
   { id: "cadeira-rodas", nome: "Cadeira de rodas", conta: "consultar" },
   { id: "golfe", nome: "Bolsa de golfe", conta: "consultar" },
   { id: "prancha", nome: "Prancha de surf", conta: "consultar" },
@@ -561,20 +524,14 @@ export const FAIXAS_PADRAO = [
     id: "f-4",
     de: 4,
     ate: 4,
-    categorias: [
-      cat("Spin", [3, 2], [0, 6]),
-      cat("Spin com bagageiro", [5, 3]),
-    ],
+    categorias: [cat("Spin", [3, 2], [0, 6]), cat("Spin com bagageiro", [5, 3])],
     observacao: "",
   },
   {
     id: "f-5-9",
     de: 5,
     ate: 9,
-    categorias: [
-      cat("Van sem carretinha", [9, 9]),
-      cat("Van com carretinha", [18, 15]),
-    ],
+    categorias: [cat("Van sem carretinha", [9, 9]), cat("Van com carretinha", [18, 15])],
     observacao: "",
   },
   {
@@ -591,29 +548,14 @@ export const FAIXAS_PADRAO = [
     categorias: [cat("Van alongada com carretinha", [22, 19])],
     observacao: "",
   },
-  {
-    id: "f-20-28",
-    de: 20,
-    ate: 28,
-    categorias: [cat("Micro-ônibus", [28, 28])],
-    observacao: "",
-  },
-  {
-    id: "f-29-46",
-    de: 29,
-    ate: 46,
-    categorias: [cat("Ônibus", [46, 46])],
-    observacao: "",
-  },
+  { id: "f-20-28", de: 20, ate: 28, categorias: [cat("Micro-ônibus", [28, 28])], observacao: "" },
+  { id: "f-29-46", de: 29, ate: 46, categorias: [cat("Ônibus", [46, 46])], observacao: "" },
 ];
 
 const clonarFaixas = (lista) =>
   lista.map((f) => ({
     ...f,
-    categorias: f.categorias.map((c) => ({
-      ...c,
-      combinacoes: c.combinacoes.map((x) => ({ ...x })),
-    })),
+    categorias: f.categorias.map((c) => ({ ...c, combinacoes: c.combinacoes.map((x) => ({ ...x })) })),
   }));
 
 // sem o campo salvo = regras padrão; lista vazia = regras desligadas
@@ -630,10 +572,7 @@ export const normalizarFaixas = (bruto) => {
         .map((c) => ({
           nome: String(c?.nome || "").trim(),
           combinacoes: (Array.isArray(c?.combinacoes) ? c.combinacoes : [])
-            .map((x) => ({
-              grandes: inteiro(x?.grandes),
-              bordo: inteiro(x?.bordo),
-            }))
+            .map((x) => ({ grandes: inteiro(x?.grandes), bordo: inteiro(x?.bordo) }))
             .filter((x) => x.grandes > 0 || x.bordo > 0),
         }))
         .filter((c) => c.nome),
@@ -642,44 +581,36 @@ export const normalizarFaixas = (bruto) => {
     .sort((a, b) => a.de - b.de);
 };
 
-export const rotuloFaixa = (f) =>
-  f.de === f.ate ? `${f.de} pax` : `${f.de}–${f.ate} pax`;
+export const rotuloFaixa = (f) => (f.de === f.ate ? `${f.de} pax` : `${f.de}–${f.ate} pax`);
 
 export const normalizarConfigAssistente = (bruto) => {
-  const opcoes = (Array.isArray(bruto?.opcoes) ? bruto.opcoes : []).map(
-    (o, i) => ({
-      id: String(o?.id || `op-${i}`),
-      nome: String(o?.nome || "").trim(),
-      grupo: String(o?.grupo || "").trim(),
-      paxMax: inteiro(o?.paxMax),
-      // até quantos passageiros este veículo é o RECOMENDADO (conforto da
-      // operação); vazio = a própria capacidade. Ex.: BYD leva 4, mas é
-      // recomendado até 3; van sem carretinha leva 14, recomendada até 9.
-      paxIdeal: inteiro(o?.paxIdeal) || 0,
-      acessorio: ACESSORIOS.includes(o?.acessorio) ? o.acessorio : "",
-      combinacoes: (Array.isArray(o?.combinacoes) ? o.combinacoes : [])
-        .map((c) => ({
-          grandes: inteiro(c?.grandes),
-          bordo: inteiro(c?.bordo),
-        }))
-        .filter((c) => c.grandes > 0 || c.bordo > 0),
-      veiculosIds: Array.isArray(o?.veiculosIds)
-        ? o.veiculosIds.filter(Boolean)
-        : [],
-      observacao: String(o?.observacao || "").trim(),
-      ativo: o?.ativo !== false,
-    }),
-  );
+  const opcoes = (Array.isArray(bruto?.opcoes) ? bruto.opcoes : []).map((o, i) => ({
+    id: String(o?.id || `op-${i}`),
+    nome: String(o?.nome || "").trim(),
+    grupo: String(o?.grupo || "").trim(),
+    paxMax: inteiro(o?.paxMax),
+    // até quantos passageiros este veículo é o RECOMENDADO (conforto da
+    // operação); vazio = a própria capacidade. Ex.: BYD leva 4, mas é
+    // recomendado até 3; van sem carretinha leva 14, recomendada até 9.
+    paxIdeal: inteiro(o?.paxIdeal) || 0,
+    acessorio: ACESSORIOS.includes(o?.acessorio) ? o.acessorio : "",
+    combinacoes: (Array.isArray(o?.combinacoes) ? o.combinacoes : [])
+      .map((c) => ({ grandes: inteiro(c?.grandes), bordo: inteiro(c?.bordo) }))
+      .filter((c) => c.grandes > 0 || c.bordo > 0),
+    veiculosIds: Array.isArray(o?.veiculosIds) ? o.veiculosIds.filter(Boolean) : [],
+    observacao: String(o?.observacao || "").trim(),
+    ativo: o?.ativo !== false,
+  }));
 
   const fator = Number(bruto?.fatorBordoPorGrande);
   const itensEspeciais = Array.isArray(bruto?.itensEspeciais)
     ? bruto.itensEspeciais
-        .map((it, i) => ({
-          id: String(it?.id || `esp-${i}`),
-          nome: String(it?.nome || "").trim(),
-          conta: COMO_CONTA[it?.conta] ? it.conta : "consultar",
-        }))
-        .filter((it) => it.nome)
+      .map((it, i) => ({
+        id: String(it?.id || `esp-${i}`),
+        nome: String(it?.nome || "").trim(),
+        conta: COMO_CONTA[it?.conta] ? it.conta : "consultar",
+      }))
+      .filter((it) => it.nome)
     : ITENS_ESPECIAIS_PADRAO;
 
   const nomes = bruto?.nomesSecoes || {};
@@ -689,10 +620,8 @@ export const normalizarConfigAssistente = (bruto) => {
         chave,
         // "Valores" era o nome antigo da seção de preços (soava como valores da empresa)
         // e "Respostas prontas" o da seção de políticas e regras
-        ((chave === "tabela" &&
-          /^valores$/i.test(String(nomes[chave] || "").trim())) ||
-        (chave === "resposta" &&
-          /^respostas prontas$/i.test(String(nomes[chave] || "").trim()))
+        ((chave === "tabela" && /^valores$/i.test(String(nomes[chave] || "").trim())) ||
+          (chave === "resposta" && /^respostas prontas$/i.test(String(nomes[chave] || "").trim()))
           ? ""
           : String(nomes[chave] || "").trim()) || padrao,
       ]),
@@ -714,69 +643,12 @@ export const EXEMPLO_CONFIG_ASSISTENTE = {
   itensEspeciais: ITENS_ESPECIAIS_PADRAO,
   mensagemSemOpcao: MENSAGEM_SEM_OPCAO_PADRAO,
   opcoes: [
-    {
-      id: "ex-1",
-      nome: "Spin sem bagageiro",
-      grupo: "Carro",
-      paxMax: 4,
-      acessorio: "",
-      combinacoes: [
-        { grandes: 3, bordo: 2 },
-        { grandes: 0, bordo: 7 },
-      ],
-      veiculosIds: [],
-      observacao: "",
-    },
-    {
-      id: "ex-2",
-      nome: "Spin com bagageiro",
-      grupo: "Carro",
-      paxMax: 4,
-      acessorio: "Bagageiro",
-      combinacoes: [{ grandes: 5, bordo: 3 }],
-      veiculosIds: [],
-      observacao: "Bagageiro sujeito a disponibilidade.",
-    },
-    {
-      id: "ex-3",
-      nome: "Van sem carretinha",
-      grupo: "Van",
-      paxMax: 15,
-      acessorio: "",
-      combinacoes: [{ grandes: 8, bordo: 8 }],
-      veiculosIds: [],
-      observacao: "",
-    },
-    {
-      id: "ex-4",
-      nome: "Van com carretinha",
-      grupo: "Van",
-      paxMax: 15,
-      acessorio: "Carretinha",
-      combinacoes: [{ grandes: 18, bordo: 15 }],
-      veiculosIds: [],
-      observacao: "",
-    },
-    {
-      id: "ex-5",
-      nome: "Van alongada sem carretinha",
-      grupo: "Van alongada",
-      paxMax: 19,
-      acessorio: "",
-      combinacoes: [{ grandes: 12, bordo: 10 }],
-      veiculosIds: [],
-      observacao: "",
-    },
-    {
-      id: "ex-6",
-      nome: "Van alongada com carretinha",
-      grupo: "Van alongada",
-      paxMax: 19,
-      acessorio: "Carretinha",
-      combinacoes: [{ grandes: 22, bordo: 19 }],
-      veiculosIds: [],
-      observacao: "",
-    },
+    { id: "ex-1", nome: "Spin sem bagageiro", grupo: "Carro", paxMax: 4, acessorio: "", combinacoes: [{ grandes: 3, bordo: 2 }, { grandes: 0, bordo: 7 }], veiculosIds: [], observacao: "" },
+    { id: "ex-2", nome: "Spin com bagageiro", grupo: "Carro", paxMax: 4, acessorio: "Bagageiro", combinacoes: [{ grandes: 5, bordo: 3 }], veiculosIds: [], observacao: "Bagageiro sujeito a disponibilidade." },
+    { id: "ex-3", nome: "Van sem carretinha", grupo: "Van", paxMax: 15, acessorio: "", combinacoes: [{ grandes: 8, bordo: 8 }], veiculosIds: [], observacao: "" },
+    { id: "ex-4", nome: "Van com carretinha", grupo: "Van", paxMax: 15, acessorio: "Carretinha", combinacoes: [{ grandes: 18, bordo: 15 }], veiculosIds: [], observacao: "" },
+    { id: "ex-5", nome: "Van alongada sem carretinha", grupo: "Van alongada", paxMax: 19, acessorio: "", combinacoes: [{ grandes: 12, bordo: 10 }], veiculosIds: [], observacao: "" },
+    { id: "ex-6", nome: "Van alongada com carretinha", grupo: "Van alongada", paxMax: 19, acessorio: "Carretinha", combinacoes: [{ grandes: 22, bordo: 19 }], veiculosIds: [], observacao: "" },
   ],
 };
 
@@ -835,16 +707,13 @@ export const recomendarPorFaixa = (config, grupo = {}) => {
   const fator = config.fatorBordoPorGrande;
   const margem = config.margemFolga;
   const faixas = config.faixas || [];
-  const preenchido =
-    pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
+  const preenchido = pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
   const temMalas = grandes > 0 || bordo > 0;
   const qtd = pax || 1;
 
   // categoria sem capacidade de malas informada: não dá para checar — aceita
   const cabe = (c, g = grandes, b = bordo) =>
-    !temMalas ||
-    !c.combinacoes.length ||
-    bagagemCabe(c.combinacoes, g, b, fator);
+    !temMalas || !c.combinacoes.length || bagagemCabe(c.combinacoes, g, b, fator);
   const cabeComFolga = (c, n) =>
     !temMalas ||
     n === 0 ||
@@ -880,9 +749,7 @@ export const recomendarPorFaixa = (config, grupo = {}) => {
     );
   }
 
-  const comMargem = sequencia.find(
-    (s) => cabe(s.categoria) && cabeComFolga(s.categoria, margem),
-  );
+  const comMargem = sequencia.find((s) => cabe(s.categoria) && cabeComFolga(s.categoria, margem));
   const escolha = comMargem || sequencia.find((s) => cabe(s.categoria)) || null;
   const faixaPax = faixas[indice];
 
@@ -909,8 +776,7 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const fator = config.fatorBordoPorGrande;
   const margem = config.margemFolga;
   const opcoes = config.opcoes.filter((o) => o.ativo && o.nome && o.paxMax > 0);
-  const preenchido =
-    pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
+  const preenchido = pax > 0 || grandes > 0 || bordo > 0 || especiais.length > 0;
   const temMalas = grandes > 0 || bordo > 0;
 
   const cabe = (o, g, b) => bagagemCabe(o.combinacoes, g, b, fator);
@@ -939,16 +805,11 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   const ideal = (o) => Math.min(o.paxIdeal || o.paxMax, o.paxMax);
   const qtdPax = pax || 1;
   const tamanho = (o) =>
-    o.paxMax * 1000 +
-    Math.max(0, ...o.combinacoes.map((c) => c.grandes * 10 + c.bordo));
+    o.paxMax * 1000 + Math.max(0, ...o.combinacoes.map((c) => c.grandes * 10 + c.bordo));
   const porTamanho = (a, b) =>
-    ideal(a) - ideal(b) ||
-    (a.acessorio ? 1 : 0) - (b.acessorio ? 1 : 0) ||
-    tamanho(a) - tamanho(b);
+    ideal(a) - ideal(b) || (a.acessorio ? 1 : 0) - (b.acessorio ? 1 : 0) || tamanho(a) - tamanho(b);
 
-  const degraus = [...new Set(opcoes.map(ideal))]
-    .filter((d) => d >= qtdPax)
-    .sort((a, b) => a - b);
+  const degraus = [...new Set(opcoes.map(ideal))].filter((d) => d >= qtdPax).sort((a, b) => a - b);
 
   const escolherNoDegrau = (exigeFolga) => {
     for (const d of degraus) {
@@ -957,10 +818,7 @@ export const recomendarVeiculo = (config, grupo = {}) => {
         .filter((o) => !exigeFolga || cabeComFolga(o, margem));
       if (!doDegrau.length) continue;
       const semAcessorio = doDegrau.filter((o) => !o.acessorio);
-      return {
-        degrau: d,
-        lista: (semAcessorio.length ? semAcessorio : doDegrau).sort(porTamanho),
-      };
+      return { degrau: d, lista: (semAcessorio.length ? semAcessorio : doDegrau).sort(porTamanho) };
     }
     return null;
   };
@@ -969,23 +827,14 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   // mostra o menor que leva (marcado como apertado)
   const pelaCapacidade = (exigeFolga) => {
     const lista = opcoes
-      .filter(
-        (o) =>
-          cabePax(o) &&
-          cabeMalas(o) &&
-          (!exigeFolga || cabeComFolga(o, margem)),
-      )
+      .filter((o) => cabePax(o) && cabeMalas(o) && (!exigeFolga || cabeComFolga(o, margem)))
       .sort((a, b) => a.paxMax - b.paxMax || porTamanho(a, b));
     return lista.length ? { degrau: null, lista: lista.slice(0, 1) } : null;
   };
 
-  const escolhaComMargem =
-    escolherNoDegrau(true) || (!degraus.length && pelaCapacidade(true));
+  const escolhaComMargem = escolherNoDegrau(true) || (!degraus.length && pelaCapacidade(true));
   const escolha =
-    escolhaComMargem ||
-    escolherNoDegrau(false) ||
-    pelaCapacidade(true) ||
-    pelaCapacidade(false);
+    escolhaComMargem || escolherNoDegrau(false) || pelaCapacidade(true) || pelaCapacidade(false);
   const listaRecomendada = escolha ? escolha.lista : [];
   const recomendada = listaRecomendada[0] || null;
 
@@ -1030,16 +879,13 @@ export const recomendarVeiculo = (config, grupo = {}) => {
   // a mesma família tem uma versão com acessório? (para o selo "Sem …")
   const variacaoSemAcessorio =
     recomendada && !recomendada.acessorio
-      ? opcoes.find(
-          (o) => o.grupo && o.grupo === recomendada.grupo && o.acessorio,
-        ) || null
+      ? opcoes.find((o) => o.grupo && o.grupo === recomendada.grupo && o.acessorio) || null
       : null;
 
   const subiu = !!(
     recomendada &&
     pelaQuantidade &&
-    (ideal(recomendada) !== ideal(pelaQuantidade) ||
-      (!!recomendada.acessorio && !pelaQuantidade.acessorio))
+    (ideal(recomendada) !== ideal(pelaQuantidade) || (!!recomendada.acessorio && !pelaQuantidade.acessorio))
   );
   const comMargem = escolhaComMargem ? recomendada : null;
 
@@ -1055,12 +901,7 @@ export const recomendarVeiculo = (config, grupo = {}) => {
     alternativas,
     subiuPorBagagem: subiu,
     // a menor opção comportava a bagagem, mas sem a margem de segurança
-    subiuPorMargem: !!(
-      subiu &&
-      margem > 0 &&
-      pelaQuantidade &&
-      cabeMalas(pelaQuantidade)
-    ),
+    subiuPorMargem: !!(subiu && margem > 0 && pelaQuantidade && cabeMalas(pelaQuantidade)),
     semMargem: !!(margem > 0 && recomendada && !comMargem),
     noLimite: recomendadaNoLimite,
     maisFolgada,
@@ -1083,11 +924,7 @@ export const descreverGrupo = ({ pax = 0, grandes = 0, bordo = 0 }) =>
 export const descreverEspeciais = (especiais = []) =>
   especiais.map((e) => `${e.qtd}× ${e.nome.toLowerCase()}`).join(", ");
 
-export const montarTextoRecomendacao = (
-  resultado,
-  grupo,
-  nomesDaOpcao = () => [],
-) => {
+export const montarTextoRecomendacao = (resultado, grupo, nomesDaOpcao = () => []) => {
   if (resultado.modo === "faixas") {
     if (!resultado.categoria) return "";
     return [
@@ -1098,9 +935,9 @@ export const montarTextoRecomendacao = (
         bordo: grupo.bordo || 0,
       })}`,
       resultado.especiais.length > 0 &&
-        `Itens especiais: ${descreverEspeciais(resultado.especiais)}`,
+      `Itens especiais: ${descreverEspeciais(resultado.especiais)}`,
       resultado.consultar.length > 0 &&
-        `Sujeito a confirmação do operacional: ${descreverEspeciais(resultado.consultar)}.`,
+      `Sujeito a confirmação do operacional: ${descreverEspeciais(resultado.consultar)}.`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -1116,9 +953,7 @@ export const montarTextoRecomendacao = (
     ].join("");
   };
   return [
-    recomendadas.length === 1
-      ? "*Veículo recomendado*"
-      : "*Veículos recomendados*",
+    recomendadas.length === 1 ? "*Veículo recomendado*" : "*Veículos recomendados*",
     `Grupo: ${descreverGrupo({
       pax: grupo.pax || 0,
       grandes: grupo.grandes || 0,
@@ -1129,7 +964,7 @@ export const montarTextoRecomendacao = (
     ...recomendadas.map(linhaOpcao),
     consultar.length > 0 && "",
     consultar.length > 0 &&
-      `Sujeito a confirmação do operacional: ${descreverEspeciais(consultar)}.`,
+    `Sujeito a confirmação do operacional: ${descreverEspeciais(consultar)}.`,
   ]
     .filter((l) => l !== false && l !== null && l !== undefined)
     .join("\n");
@@ -1141,10 +976,7 @@ const pluralCap = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 // Frase do que a capacidade aceita, para o operacional conferir.
 export const resumoCapacidade = (combinacoes, fator) => {
   const linhas = combinacoes
-    .map((c) => ({
-      grandes: Number(c.grandes) || 0,
-      bordo: Number(c.bordo) || 0,
-    }))
+    .map((c) => ({ grandes: Number(c.grandes) || 0, bordo: Number(c.bordo) || 0 }))
     .filter((c) => c.grandes > 0 || c.bordo > 0);
   if (!linhas.length) return "Preencha o máximo que o veículo leva.";
 
@@ -1159,13 +991,12 @@ export const resumoCapacidade = (combinacoes, fator) => {
     partes.push(i === 0 ? `Aceita até ${base}` : `ou até ${base}`);
     const soMao = c.bordo + Math.floor(c.grandes * fator);
     if (c.grandes > 0 && fator > 0 && i === 0) {
-      partes.push(
-        `ou até ${pluralCap(soMao, "mala de 10 kg", "malas de 10 kg")} sem malas grandes`,
-      );
+      partes.push(`ou até ${pluralCap(soMao, "mala de 10 kg", "malas de 10 kg")} sem malas grandes`);
     }
   });
   return `${partes.join(", ")} — e qualquer quantidade menor.`;
 };
+
 
 // Texto copiado: o do tipo do cadastro + os complementos (idiomas do guia,
 // dados do veículo e a tabela de preços anexada).
@@ -1173,22 +1004,14 @@ export const montarTextoCopia = (item, vencida = false, config = null) => {
   const base = montarTextoBase(item, vencida, config);
   const c = obterComplementos(item);
   const extras = [
-    c.idiomas.length > 0 &&
-      `Idiomas${c.guiaNome ? ` (${c.guiaNome})` : ""}: ${c.idiomas.map(rotuloDoIdioma).join(", ")}`,
+    c.idiomas.length > 0 && `Idiomas${c.guiaNome ? ` (${c.guiaNome})` : ""}: ${c.idiomas.map(rotuloDoIdioma).join(", ")}`,
     (c.modelo || c.ano || c.cor || c.lugares) &&
-      `Veículo: ${[c.modelo, c.ano, c.cor, c.lugares && `${c.lugares} lugares`].filter(Boolean).join(" · ")}`,
+    `Veículo: ${[c.modelo, c.ano, c.cor, c.lugares && `${c.lugares} lugares`].filter(Boolean).join(" · ")}`,
   ].filter(Boolean);
-  const linhas =
-    obterFormato(item) === FORMATOS.TABELA || vencida
-      ? []
-      : obterTabelaPrecos(item);
+  const linhas = obterFormato(item) === FORMATOS.TABELA || vencida ? [] : obterTabelaPrecos(item);
   if (linhas.length) {
     extras.push("Valores:");
-    linhas.forEach((l) =>
-      extras.push(
-        `• ${l.servico}: ${formatarValor(l.valor)}${l.detalhe ? ` (${l.detalhe})` : ""}`,
-      ),
-    );
+    linhas.forEach((l) => extras.push(`• ${l.servico}: ${formatarValor(l.valor)}${l.detalhe ? ` (${l.detalhe})` : ""}`));
   }
   return extras.length ? `${base}\n\n${extras.join("\n")}`.trim() : base;
 };

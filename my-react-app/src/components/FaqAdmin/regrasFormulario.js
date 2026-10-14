@@ -76,6 +76,8 @@ export const FORMULARIO_VAZIO = {
   antecedencia: "",
   // complementos (qualquer tipo de cadastro, todos opcionais)
   ilustracao: "", // "" = automática pela categoria
+  usarAnexos: false,
+  anexos: [], // [{ id, nome, tipo, tamanho }] — arquivos em arquivos/{id}
   usarFotos: false, // fotos em resposta/tabela (os outros tipos já têm)
   usarTabela: false, // tabela de preços fora do tipo "Tabela de valores"
   usarGuia: false,
@@ -127,6 +129,16 @@ const obterImagens = (item) => {
 };
 
 // Item salvo → formulário. `copia` = duplicar (vira item novo).
+export const anexosDoItem = (item) =>
+  (Array.isArray(item?.anexos) ? item.anexos : [])
+    .filter((a) => a && a.id)
+    .map((a) => ({
+      id: String(a.id),
+      nome: String(a.nome || "arquivo"),
+      tipo: String(a.tipo || ""),
+      tamanho: Number(a.tamanho) || 0,
+    }));
+
 export const formularioDoItem = (item, copia = false) => {
   const ficha = obterFichaVeiculo(item);
   const tabela = obterTabelaPrecos(item);
@@ -162,15 +174,18 @@ export const formularioDoItem = (item, copia = false) => {
     tabelaPrecos: tabela.length ? tabela : [{ ...LINHA_PRECO_VAZIA }],
     configsVeiculo: [],
     ...camposEmbarcacaoELocal(item),
-    ...camposComplementos(item, tabela.length > 0),
+    ...camposComplementos(item, tabela.length > 0, copia),
   };
 };
 
-const camposComplementos = (item, temTabela) => {
+const camposComplementos = (item, temTabela, copia = false) => {
   const c = obterComplementos(item);
   const formato = obterFormato(item);
   return {
     ilustracao: item.ilustracao || "",
+    // duplicar não copia os anexos (cada arquivo pertence a um item só)
+    anexos: copia ? [] : anexosDoItem(item),
+    usarAnexos: !copia && anexosDoItem(item).length > 0,
     usarFotos: obterImagens(item).length > 0,
     usarTabela: temTabela && formato !== FORMATOS.TABELA,
     usarGuia: !!c.guiaId,
@@ -203,9 +218,7 @@ const camposEmbarcacaoELocal = (item) => {
   return {
     tipoEmbarcacao: fe.tipoEmbarcacao,
     capacidadeEmbarcacao: fe.capacidade ?? "",
-    recursosEmbarcacao: fe.recursos.filter((r) =>
-      NOMES_RECURSOS_BARCO.includes(r),
-    ),
+    recursosEmbarcacao: fe.recursos.filter((r) => NOMES_RECURSOS_BARCO.includes(r)),
     recursosEmbarcacaoExtras: fe.recursos
       .filter((r) => !NOMES_RECURSOS_BARCO.includes(r))
       .join(", "),
@@ -284,18 +297,15 @@ export const validarFormulario = (f) => {
   }
 
   if (formato === FORMATOS.RESPOSTA) {
-    if (!f.pergunta.trim())
-      erros.pergunta = "Escreva a pergunta como o cliente faria.";
-    if (!f.resposta.trim())
-      erros.resposta = "Escreva a resposta que o comercial vai enviar.";
+    if (!f.pergunta.trim()) erros.pergunta = "Escreva a pergunta como o cliente faria.";
+    if (!f.resposta.trim()) erros.resposta = "Escreva a resposta que o comercial vai enviar.";
   }
 
   if (formato === FORMATOS.VEICULO) {
     if (!f.nomeVeiculo.trim()) erros.nomeVeiculo = "Informe o nome do veículo.";
     const link = f.linkOficialVeiculo.trim();
     if (link && !/^https?:\/\//i.test(link)) {
-      erros.linkOficialVeiculo =
-        "O link precisa começar com http:// ou https://";
+      erros.linkOficialVeiculo = "O link precisa começar com http:// ou https://";
     }
     const preenchidas = f.configsVeiculo.filter(configPreenchida);
     if (!preenchidas.length) {
@@ -323,14 +333,12 @@ export const validarFormulario = (f) => {
 
   if (formato === FORMATOS.TABELA || f.usarTabela) {
     if (formato === FORMATOS.TABELA && !f.pergunta.trim()) {
-      erros.pergunta =
-        "Dê um título à tabela (ex.: Motoguia — valores por serviço).";
+      erros.pergunta = "Dê um título à tabela (ex.: Motoguia — valores por serviço).";
     }
     f.tabelaPrecos.forEach((l, i) => {
       const servico = String(l.servico || "").trim();
       const valor = String(l.valor ?? "").trim();
-      if (servico && !valor)
-        erros[`linha-${i}`] = "Falta o valor deste serviço.";
+      if (servico && !valor) erros[`linha-${i}`] = "Falta o valor deste serviço.";
       if (!servico && valor) erros[`linha-${i}`] = "Falta o nome do serviço.";
     });
     if (linhasPrecoPreenchidas(f.tabelaPrecos).length === 0) {
@@ -338,13 +346,8 @@ export const validarFormulario = (f) => {
     }
   }
 
-  if (f.usarGuia && !f.guiaId)
-    erros.guia = "Escolha o guia (ou desligue “Guia vinculado”).";
-  if (
-    f.usarDadosVeiculo &&
-    f.anoVeiculo &&
-    !/^\d{4}$/.test(String(f.anoVeiculo).trim())
-  ) {
+  if (f.usarGuia && !f.guiaId) erros.guia = "Escolha o guia (ou desligue “Guia vinculado”).";
+  if (f.usarDadosVeiculo && f.anoVeiculo && !/^\d{4}$/.test(String(f.anoVeiculo).trim())) {
     erros.anoVeiculo = "Ano com 4 dígitos (ex.: 2023).";
   }
 
@@ -360,8 +363,7 @@ export const validarFormulario = (f) => {
   if (formato === FORMATOS.LOCAL) {
     if (!f.pergunta.trim()) erros.pergunta = "Informe o nome do local.";
     if (!f.endereco.trim() && !f.bairro.trim()) {
-      avisos.endereco =
-        "Sem endereço, o comercial não consegue abrir o local no mapa.";
+      avisos.endereco = "Sem endereço, o comercial não consegue abrir o local no mapa.";
     }
     const link = f.linkMapa.trim();
     if (link && !/^https?:\/\//i.test(link)) {
@@ -370,8 +372,7 @@ export const validarFormulario = (f) => {
   }
 
   if (f.validade && f.validade < hojeIso()) {
-    avisos.validade =
-      "Essa data já passou — o comercial vai ver o item como vencido.";
+    avisos.validade = "Essa data já passou — o comercial vai ver o item como vencido.";
   }
 
   return { erros, avisos };
