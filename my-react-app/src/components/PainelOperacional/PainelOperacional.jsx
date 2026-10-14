@@ -647,7 +647,12 @@ const extrairEscalaId = (item) =>
   item?.roadmap?.id ||
   null;
 
+// Motorista / usuário escalado: o apelido do Phoenix (ex.: "CLODOVALDO"),
+// não o nome completo do cadastro do fornecedor.
 const extrairMotorista = (item) =>
+  item?.roadmapService?.roadmap?.driver?.nickname ||
+  item?.auxRoadmapService?.roadmap?.driver?.nickname ||
+  item?.driver?.nickname ||
   item?.roadmapService?.roadmap?.driver?.name ||
   item?.auxRoadmapService?.roadmap?.driver?.name ||
   item?.driver?.name ||
@@ -3048,7 +3053,7 @@ export default function PainelOperacionalUnificado() {
                 <span><span className="painel-op-th"><Icon name="activity" size={13} />Estimado</span></span>
                 <span><span className="painel-op-th"><Icon name="info" size={13} />Status</span></span>
                 <span className="ui-cell-end painel-op-pax"><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
-                <span><span className="painel-op-th"><Icon name="truck" size={13} />Fornecedor</span></span>
+                <span><span className="painel-op-th"><Icon name="truck" size={13} />Motorista · veículo</span></span>
                 <span />
               </TableHead>
 
@@ -3153,10 +3158,30 @@ export default function PainelOperacionalUnificado() {
                           <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
                             <Icon name="truck" size={16} />
                           </span>
-                          <span className="painel-op-fornecedor-cel__texto">
-                            <strong>{fornecedores[0].motorista}</strong>
-                            <span>{fornecedores.length} veículo(s)</span>
-                          </span>
+                          {fornecedores.length > 1 ? (
+                            // vários veículos no voo: o destaque é a quantidade; os nomes vão embaixo
+                            <span
+                              className="painel-op-fornecedor-cel__texto"
+                              title={fornecedores.map((f) => `${f.motorista} (${f.veiculo})`).join(" · ")}
+                            >
+                              <strong>{fornecedores.length} VEÍCULOS</strong>
+                              <span>
+                                {fornecedores
+                                  .slice(0, 2)
+                                  .map((f) => f.motorista)
+                                  .join(" · ")}
+                                {fornecedores.length > 2 ? ` +${fornecedores.length - 2}` : ""}
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              className="painel-op-fornecedor-cel__texto"
+                              title={`${fornecedores[0].motorista} · ${fornecedores[0].veiculo}`}
+                            >
+                              <strong>{fornecedores[0].motorista}</strong>
+                              <span>{fornecedores[0].veiculo}</span>
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="painel-op-fornecedor-cel is-pendente">
@@ -3216,7 +3241,7 @@ export default function PainelOperacionalUnificado() {
                               </span>
                               <span className="painel-op-forn__texto">
                                 <span className="painel-op-forn__rotulo">
-                                  Fornecedor · veículo {i + 1} de {voo.gruposPorVeiculo.length}
+                                  Motorista · veículo {i + 1} de {voo.gruposPorVeiculo.length}
                                 </span>
                                 <strong className="painel-op-forn__nome">{grupo.motorista}</strong>
                                 <span className="painel-op-forn__sub">
