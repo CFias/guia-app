@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   getDocs,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -15,6 +16,8 @@ import "./styles.css";
 import "./lista.css";
 import Icon from "../ui/Icon";
 import { iconeMui } from "../ui/iconeMui";
+import IlustracaoCategoria from "../FaqComercial/IlustracaoCategoria";
+import { ILUSTRACOES, ilustracaoDoItem } from "../FaqComercial/ilustracoes";
 import Segmented from "../ui/Segmented";
 import Drawer from "../ui/Drawer";
 import Button from "../ui/Button";
@@ -23,6 +26,7 @@ import KpiTiles from "../ui/KpiTiles";
 import { SearchInput } from "../ui/Form";
 import { useToast } from "../ui/toastContext";
 import AssistenteConfig from "./AssistenteConfig";
+import { sincronizarIdiomasDosGuias } from "./guiasVinculados";
 import FormularioItem from "./FormularioItem";
 import {
   FORMATOS,
@@ -38,12 +42,14 @@ import {
   ASSISTENTE_DOC_ID,
   FORMATO_CONFIG_ASSISTENTE,
   NOMES_SECOES_PADRAO,
+  normalizarPlaca,
 } from "../FaqComercial/catalogo";
 import {
   FORMULARIO_VAZIO,
   ORDEM_CAMPOS,
   formularioDoItem,
   linhasPrecoPreenchidas,
+  complementosDoFormulario,
   numeroDoCampo,
   recursosDoFormulario,
   validarFormulario,
@@ -245,19 +251,10 @@ const obterIconeCategoria = (categoria = "") => {
 const ROTULO_FORMATO = {
   [FORMATOS.RESPOSTA]: "Resposta",
   [FORMATOS.VEICULO]: "Veículo",
-  [FORMATOS.TABELA]: "Valores",
+  [FORMATOS.TABELA]: "Preços e taxas",
   [FORMATOS.EMBARCACAO]: "Embarcação",
   [FORMATOS.LOCAL]: "Local",
   [FORMATOS.EQUIPAMENTO]: "Equipamento",
-};
-
-const ICONE_FORMATO = {
-  [FORMATOS.RESPOSTA]: "message",
-  [FORMATOS.VEICULO]: "car",
-  [FORMATOS.TABELA]: "tag",
-  [FORMATOS.EMBARCACAO]: "ship",
-  [FORMATOS.LOCAL]: "mapPin",
-  [FORMATOS.EQUIPAMENTO]: "cadeirinha",
 };
 
 const tituloDoItem = (item) =>
@@ -408,6 +405,67 @@ const FaqAdmin = () => {
 
     carregar();
   }, []);
+
+  // cadastro de guias (para "Guia vinculado" e os idiomas do motoguia)
+  const [guias, setGuias] = useState([]);
+  useEffect(() => {
+    getDocs(collection(db, "guides"))
+      .then((snap) =>
+        setGuias(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((g) => g.ativo !== false && (g.nome || g.nickname))
+            .sort((a, b) => String(a.nome || a.nickname).localeCompare(String(b.nome || b.nickname), "pt-BR")),
+        ),
+      )
+      .catch((e) => console.error("Erro ao carregar guias:", e));
+  }, []);
+
+  // Fornecedores: nomes do cadastro de fornecedores e dos vínculos de
+  // Serviços por Fornecedor (que também guardam a placa de cada veículo)
+  const [fornecedoresBase, setFornecedoresBase] = useState({ nomes: [], porPlaca: {} });
+  useEffect(() => {
+    Promise.all([
+      getDocs(collection(db, "providers")).catch(() => null),
+      getDoc(doc(db, "settings", "vinculos_veiculos_fornecedor")).catch(() => null),
+    ]).then(([provs, vinc]) => {
+      const nomes = (provs?.docs || [])
+        .map((d) => d.data())
+        .filter((p) => p?.ativo !== false)
+        .map((p) => String(p?.nome || "").trim());
+      const porPlaca = {};
+      Object.values((vinc?.exists() && vinc.data()?.vinculos) || {}).forEach((v) => {
+        const fornecedor = String(v?.fornecedor || "").trim();
+        if (!fornecedor) return;
+        nomes.push(fornecedor);
+        const placa = normalizarPlaca(v?.placa).replace(/-/g, "");
+        if (placa) porPlaca[placa] = fornecedor;
+      });
+      setFornecedoresBase({ nomes, porPlaca });
+    });
+  }, []);
+
+  const fornecedores = useMemo(() => {
+    const vistos = new Map();
+    [...fornecedoresBase.nomes, ...itens.map((i) => String(i.fornecedor || "").trim())]
+      .filter(Boolean)
+      .forEach((n) => {
+        const chave = n.toLocaleLowerCase("pt-BR");
+        if (!vistos.has(chave)) vistos.set(chave, n);
+      });
+    return [...vistos.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [fornecedoresBase, itens]);
+
+  // o comercial não lê a coleção de guias: os idiomas ficam copiados no
+  // item. Ao abrir a Central, atualiza a cópia dos que mudaram.
+  const sincronizouRef = useRef(false);
+  useEffect(() => {
+    if (sincronizouRef.current || !guias.length || !itens.length) return;
+    sincronizouRef.current = true;
+    sincronizarIdiomasDosGuias(itens, guias).then((n) => {
+      if (n) carregarItens();
+    });
+  }, [guias, itens, carregarItens]);
 
   const categoriasDisponiveis = useMemo(() => {
     const unicas = new Set(itens.map((item) => item.categoria).filter(Boolean));
@@ -768,10 +826,19 @@ const FaqAdmin = () => {
         destaque: !!formulario.destaque,
         ativo: formulario.ativo !== false,
         nomeVeiculo: formulario.nomeVeiculo.trim(),
-        imagensVeiculo: formulario.imagensVeiculoTexto
-          .split("\n")
-          .map((url) => url.trim())
-          .filter(Boolean),
+        fornecedor:
+          formato === FORMATOS.VEICULO || formato === FORMATOS.EMBARCACAO
+            ? formulario.fornecedor.trim()
+            : "",
+        placa: formato === FORMATOS.VEICULO ? normalizarPlaca(formulario.placa) : "",
+        // resposta/tabela: fotos só com o complemento "Fotos" ligado
+        imagensVeiculo:
+          (formato === FORMATOS.RESPOSTA || formato === FORMATOS.TABELA) && !formulario.usarFotos
+            ? []
+            : formulario.imagensVeiculoTexto
+                .split("\n")
+                .map((url) => url.trim())
+                .filter(Boolean),
         linkOficialVeiculo: formulario.linkOficialVeiculo.trim(),
         veiculoForaCatalogo: !!formulario.veiculoForaCatalogo,
         formato,
@@ -782,7 +849,12 @@ const FaqAdmin = () => {
           malasBordo: numeroDoCampo(formulario.malasBordo),
           recursos: recursosDoFormulario(formulario),
         },
-        tabelaPrecos: linhasPrecoPreenchidas(formulario.tabelaPrecos),
+        tabelaPrecos:
+          formato === FORMATOS.TABELA || formulario.usarTabela
+            ? linhasPrecoPreenchidas(formulario.tabelaPrecos)
+            : [],
+        ilustracao: formulario.ilustracao || "",
+        complementos: complementosDoFormulario(formulario),
         fichaEmbarcacao: {
           tipoEmbarcacao: formulario.tipoEmbarcacao.trim(),
           capacidade: numeroDoCampo(formulario.capacidadeEmbarcacao),
@@ -797,6 +869,7 @@ const FaqAdmin = () => {
           horario: formulario.horario.trim(),
           linkMapa: formulario.linkMapa.trim(),
           site: formulario.site.trim(),
+          cardapio: formulario.cardapio.trim(),
         },
         fichaEquipamento: {
           tipoEquipamento: formulario.tipoEquipamento.trim(),
@@ -893,7 +966,7 @@ const FaqAdmin = () => {
     <div className="ui-page fa">
       <PageHeader
         title="Central de Informações"
-        description="Cadastre o que o comercial consulta: respostas prontas, fichas de veículo e tabelas de valores."
+        description="Cadastre o que o comercial consulta: políticas e regras, fichas de veículo e tabelas de preços e taxas."
         more={[
           { label: "Nomes das seções", icon: "pencil", onClick: abrirNomes },
         ]}
@@ -995,7 +1068,7 @@ const FaqAdmin = () => {
                 { value: FORMATOS.EMBARCACAO, label: "Embarcações", icon: "ship", count: contagem[FORMATOS.EMBARCACAO] },
                 { value: FORMATOS.LOCAL, label: "Locais", icon: "mapPin", count: contagem[FORMATOS.LOCAL] },
                 { value: FORMATOS.EQUIPAMENTO, label: "Equipamentos", icon: "cadeirinha", count: contagem[FORMATOS.EQUIPAMENTO] },
-                { value: FORMATOS.TABELA, label: "Valores", icon: "tag", count: contagem[FORMATOS.TABELA] },
+                { value: FORMATOS.TABELA, label: "Preços e taxas", icon: "tag", count: contagem[FORMATOS.TABELA] },
               ]}
               value={filtroFormato}
               onChange={setFiltroFormato}
@@ -1111,8 +1184,8 @@ const FaqAdmin = () => {
             { chave: "embarcacao", rotulo: "Embarcações", icone: "ship" },
             { chave: "local", rotulo: "Locais", icone: "mapPin" },
             { chave: "equipamento", rotulo: "Equipamentos e acessórios", icone: "cadeirinha" },
-            { chave: "tabela", rotulo: "Tabelas de valores", icone: "tag" },
-            { chave: "resposta", rotulo: "Respostas prontas", icone: "message" },
+            { chave: "tabela", rotulo: "Preços e taxas", icone: "tag" },
+            { chave: "resposta", rotulo: "Políticas e regras", icone: "message" },
           ].map((s) => (
             <div key={s.chave} className="fi-campo">
               <label className="fi-rotulo" htmlFor={`nome-secao-${s.chave}`}>
@@ -1160,6 +1233,9 @@ const FaqAdmin = () => {
             onIrParaCampo={irParaCampo}
             opcoesAssistente={opcoesComUso}
             fator={configNormalizada.fatorBordoPorGrande}
+            guias={guias}
+            fornecedores={fornecedores}
+            fornecedorPorPlaca={fornecedoresBase.porPlaca}
           />
         )}
       </Drawer>
@@ -1173,13 +1249,8 @@ const LinhaItem = ({ item, config, removendo, onEditar, onDuplicar, onRemover, o
   const formato = obterFormato(item);
   const cor = obterCorCategoria(item.categoria);
   const IconeCategoria = obterIconeCategoria(item.categoria);
-  const capa =
-    (formato === FORMATOS.VEICULO && !item.veiculoForaCatalogo) ||
-    formato === FORMATOS.EMBARCACAO ||
-    formato === FORMATOS.LOCAL ||
-    formato === FORMATOS.EQUIPAMENTO
-      ? obterImagensVeiculo(item)[0]
-      : null;
+  const capa = formato === FORMATOS.VEICULO && item.veiculoForaCatalogo ? null : obterImagensVeiculo(item)[0];
+  const ilustracao = ilustracaoDoItem(item, formato);
   const vencida = itemEstaVencido(item);
   const venceBreve = !vencida && itemVenceEmBreve(item);
   const inativo = item.ativo === false;
@@ -1192,8 +1263,12 @@ const LinhaItem = ({ item, config, removendo, onEditar, onDuplicar, onRemover, o
         onClick={() => onEditar(item)}
         title="Editar"
       >
-        <span className={`fa-item-capa is-${formato}`}>
-          {capa ? <img src={capa} alt="" loading="lazy" /> : <Icon name={ICONE_FORMATO[formato]} size={18} />}
+        <span
+          className={`fa-item-capa is-${formato} ${capa ? "" : "is-ilustrada"}`}
+          style={capa ? undefined : { "--fundo-ilus": ILUSTRACOES[ilustracao].fundo }}
+          title={capa ? undefined : `Ilustração: ${ILUSTRACOES[ilustracao].nome}`}
+        >
+          {capa ? <img src={capa} alt="" loading="lazy" /> : <IlustracaoCategoria chave={ilustracao} tamanho={34} />}
         </span>
 
         <span className="fa-item-texto">

@@ -214,17 +214,18 @@
     gap: var(--space-4);
 }
 
-.faq-cat-grade--frota {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-}
-
-.faq-cat-grade--valores {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-}
-
+/* Todas as seções no mesmo molde: mesma largura de coluna, mesma capa e
+   cards da mesma altura (o rodapé fica sempre embaixo). */
+.faq-cat-grade--frota,
+.faq-cat-grade--valores,
 .faq-cat-grade--respostas {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+@media (min-width: 721px) {
+    .faq-cat-grade .faq-cat-card {
+        min-height: var(--altura-card-central, 372px);
+    }
 }
 
 /* ---------- card base ---------- */
@@ -390,9 +391,8 @@
 }
 
 .faq-cat-selo-categoria svg {
-    width: 13px;
-    height: 13px;
-    color: var(--cor-categoria);
+    width: 16px;
+    height: 16px;
 }
 
 .faq-cat-estrela {
@@ -428,7 +428,8 @@
 /* ---------- card de veículo ---------- */
 .faq-cat-veiculo-foto {
     position: relative;
-    aspect-ratio: 16 / 10;
+    flex: none;
+    height: var(--altura-capa-central, 150px);
     overflow: hidden;
     background: var(--raised);
 }
@@ -1559,4 +1560,411 @@
     .faq-visor-dica {
         display: none;
     }
+}
+
+
+/* =========================================================
+   Capas com ilustração da categoria (sem foto) e complementos
+   ========================================================= */
+.faq-cat-capa {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    height: var(--altura-capa-central, 150px);
+    overflow: hidden;
+    background: var(--fundo-ilus, var(--raised));
+}
+
+.faq-cat-capa.tem-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.faq-cat-card:hover .faq-cat-capa .ilus-categoria,
+.faq-cat-card:hover .faq-cat-veiculo-sem-foto .ilus-categoria {
+    transform: translateY(-3px) scale(1.04);
+}
+
+.faq-cat-capa .ilus-categoria,
+.faq-cat-veiculo-sem-foto .ilus-categoria {
+    transition: transform 0.25s ease;
+}
+
+.faq-cat-capa-rotulo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    max-width: calc(100% - 130px);
+    overflow: hidden;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.9);
+    color: #1d2322;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.faq-cat-capa-destaque {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    background: #fff3c9;
+    color: #8a6a00;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.faq-cat-veiculo-sem-foto.is-ilustrada,
+.faq-cat-galeria--vazia.is-ilustrada {
+    background: var(--fundo-ilus, var(--raised));
+}
+
+[data-theme="dark"] .faq-cat-capa:not(.tem-foto),
+[data-theme="dark"] .faq-cat-veiculo-sem-foto.is-ilustrada,
+[data-theme="dark"] .faq-cat-galeria--vazia.is-ilustrada {
+    background: color-mix(in srgb, var(--fundo-ilus) 16%, var(--surface));
+}
+
+.faq-cat-chip .ilus-categoria {
+    flex: none;
+    margin-left: -4px;
+}
+
+.faq-cat-idiomas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.faq-cat-dados {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.faq-cat-dados span {
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    background: var(--raised);
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+}
+
+.faq-cat-dados b {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.faq-cat-chip svg.ilus-categoria {
+    width: 20px;
+    height: 20px;
+}
+
+.faq-cat-veiculo-sem-foto.is-ilustrada svg,
+.faq-cat-galeria--vazia.is-ilustrada svg {
+    opacity: 1;
+}
+
+.faq-cat-idiomas.is-mini {
+    gap: 4px;
+    margin-top: 8px;
+}
+
+/* =========================================================
+   Motoguia: faixa do guia sobre a foto (mesmo card da frota)
+   ========================================================= */
+.faq-cat-foto-selo.is-motoguia {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--accent);
+    color: #fff;
+}
+
+.faq-cat-faixa-guia {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 26px 12px 9px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+    color: #fff;
+    pointer-events: none;
+}
+
+.faq-cat-faixa-avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.faq-cat-faixa-texto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.faq-cat-faixa-texto b {
+    overflow: hidden;
+    font-size: var(--fs-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.faq-cat-faixa-texto small {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 11px;
+}
+
+/* a faixa ocupa a base da foto: os outros selos sobem */
+.faq-cat-veiculo-foto.tem-faixa .faq-cat-foto-contagem {
+    bottom: 52px;
+}
+
+.faq-cat-veiculo-foto.tem-faixa .faq-cat-cabe {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    left: auto;
+}
+
+.faq-cat-card-sub.is-motoguia {
+    color: var(--accent-text);
+    font-weight: 600;
+}
+
+/* =========================================================
+   Políticas e regras: capa marinho com o desenho num cartão branco
+   ========================================================= */
+.faq-cat-capa.is-regra:not(.tem-foto),
+[data-theme="dark"] .faq-cat-capa.is-regra:not(.tem-foto) {
+    background: linear-gradient(135deg, #1c2a4a, #2a3d68);
+}
+
+.faq-cat-capa.is-regra:not(.tem-foto) {
+    padding-top: 18px;
+    /* espaço para o rótulo */
+}
+
+.faq-cat-capa-cartao {
+    display: grid;
+    place-items: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    background: #eef2fb;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    transition: transform 0.25s ease;
+}
+
+.faq-cat-card:hover .faq-cat-capa-cartao {
+    transform: translateY(-3px);
+}
+
+.faq-cat-capa.is-regra .faq-cat-capa-rotulo {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+@media (max-width: 720px) {
+    .faq-cat-veiculo-foto {
+        height: auto;
+    }
+
+    .faq-cat-faixa-guia {
+        gap: 6px;
+        padding: 18px 6px 6px;
+    }
+
+    .faq-cat-faixa-avatar {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+    }
+
+    .faq-cat-faixa-texto small {
+        display: none;
+    }
+
+    .faq-cat-veiculo-foto.tem-faixa .faq-cat-cabe {
+        top: auto;
+        right: 6px;
+        bottom: 36px;
+        left: 6px;
+    }
+}
+
+/* Locais: botão "Cardápio" (abre o link cadastrado) */
+.faq-cat-local-info .faq-cat-cardapio {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 5px 12px;
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: var(--radius-pill);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.faq-cat-local-info .faq-cat-cardapio:hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* =========================================================
+   Fornecedor e placa (veículos e embarcações)
+   ========================================================= */
+.faq-cat-fornecedor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    min-width: 0;
+}
+
+.faq-cat-fornecedor-nome {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.faq-cat-fornecedor-nome svg {
+    flex: none;
+    color: var(--accent-text);
+}
+
+.faq-cat-placa {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid #c4c9d0;
+    border-radius: 4px;
+    background: #fff;
+    color: #1d2125;
+    font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    padding-bottom: 2px;
+}
+
+.faq-cat-placa i {
+    align-self: stretch;
+    margin-bottom: 2px;
+    padding: 1px 6px;
+    background: #1c4fa0;
+    color: #fff;
+    font-family: inherit;
+    font-size: 5.5px;
+    font-style: normal;
+    letter-spacing: 0.2em;
+    text-align: center;
+}
+
+.faq-cat-placa {
+    padding-right: 6px;
+    padding-left: 6px;
+}
+
+.faq-cat-placa i {
+    margin-right: -6px;
+    margin-left: -6px;
+}
+
+.faq-cat-placa.is-grande {
+    padding: 0 14px 5px;
+    border-width: 2px;
+    border-radius: 6px;
+    font-size: 20px;
+}
+
+.faq-cat-placa.is-grande i {
+    margin: 0 -14px 5px;
+    padding: 3px 0;
+    font-size: 8px;
+}
+
+.faq-cat-fornecedor-ficha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.faq-cat-fornecedor-tile {
+    display: flex;
+    flex: 1 1 200px;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-md);
+    background: var(--raised);
+}
+
+.faq-cat-fornecedor-tile svg {
+    flex: none;
+    color: var(--accent-text);
+}
+
+.faq-cat-fornecedor-tile span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.faq-cat-fornecedor-tile small {
+    color: var(--text-3);
+    font-size: var(--fs-xs);
+}
+
+.faq-cat-fornecedor-tile strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: var(--fs-md);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

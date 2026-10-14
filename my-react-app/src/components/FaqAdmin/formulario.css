@@ -856,3 +856,120 @@ textarea.fi-input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---------- Complementos (qualquer tipo de cadastro) ---------- */
+.fi-capa {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.fi-capa-previa {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--fundo-ilus, var(--raised));
+}
+
+[data-theme="dark"] .fi-capa-previa:not(.tem-foto) {
+  background: color-mix(in srgb, var(--fundo-ilus) 16%, var(--surface));
+}
+
+.fi-capa-previa img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fi-capa-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fi-capa-texto strong {
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.fi-capa-texto small {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.fi-capa-select {
+  width: auto;
+  max-width: 220px;
+}
+
+.fi-comp {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.fi-comp>.fi-switch {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+.fi-comp.is-on {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--divider));
+}
+
+.fi-comp-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 12px;
+  border-top: 1px dashed var(--divider);
+}
+
+.fi-idiomas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fi-idiomas .fi-msg {
+  flex-basis: 100%;
+}
+
+.fi-grade-4 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .fi-capa {
+    flex-wrap: wrap;
+  }
+
+  .fi-capa-select {
+    max-width: none;
+    width: 100%;
+  }
+
+  .fi-grade-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* placa do veículo */
+.fi-input.fi-input-placa {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

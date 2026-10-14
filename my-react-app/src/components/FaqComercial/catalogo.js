@@ -7,9 +7,13 @@
 //   fichaVeiculo     { tipoVeiculo, recursos[] }  (capacidade: Assistente)
 //   tabelaPrecos     [{ servico, valor, detalhe }]
 //   fichaEmbarcacao  { tipoEmbarcacao, capacidade, recursos[], roteiros }
-//   fichaLocal       { tipoLocal, endereco, bairro, telefone, horario, linkMapa, site }
+//   fornecedor, placa  fornecedor e placa do veículo (embarcação: só fornecedor)
+//   fichaLocal       { tipoLocal, endereco, bairro, telefone, horario, linkMapa, site, cardapio }
 //   fichaEquipamento { tipoEquipamento, faixaUso, quantidade, valor, antecedencia }
 //   imagensVeiculo   fotos (o nome do campo é histórico; vale para todo item com foto)
+//   ilustracao       capa sem foto ("" = automática pela categoria; ver ilustracoes.js)
+//   complementos     { guiaId, guiaNome, guiaIdiomas[], modelo, ano, cor, lugares }
+import { rotuloDoIdioma } from "../../Services/Utils/idiomas";
 
 export const FORMATOS = {
   RESPOSTA: "resposta",
@@ -102,6 +106,13 @@ export const obterFichaEmbarcacao = (item) => {
   };
 };
 
+// Link digitado sem "https://" (ex.: instagram.com/restaurante) → link que abre
+export const linkExterno = (url = "") => {
+  const t = String(url || "").trim();
+  if (!t) return "";
+  return /^https?:\/\//i.test(t) ? t : `https://${t.replace(/^\/+/, "")}`;
+};
+
 export const linkMapaDoEndereco = (endereco = "", bairro = "") => {
   const alvo = [endereco, bairro]
     .map((x) => String(x || "").trim())
@@ -123,6 +134,7 @@ export const obterFichaLocal = (item) => {
     telefone: String(f.telefone || "").trim(),
     horario: String(f.horario || "").trim(),
     site: String(f.site || "").trim(),
+    cardapio: String(f.cardapio || "").trim(),
     linkMapa:
       String(f.linkMapa || "").trim() || linkMapaDoEndereco(endereco, bairro),
   };
@@ -227,6 +239,74 @@ export const fichaTemDados = (ficha) =>
     ficha.recursos.length
   );
 
+// Complementos do cadastro (qualquer tipo): guia vinculado (com os idiomas
+// copiados do cadastro de guias — o comercial não lê a coleção de guias),
+// e dados do veículo (modelo, ano, cor, lugares). Tudo opcional.
+export const obterComplementos = (item) => {
+  const c = item?.complementos || {};
+  const texto = (v) => String(v ?? "").trim();
+  const lugares = Number(c.lugares);
+  return {
+    guiaId: texto(c.guiaId),
+    guiaNome: texto(c.guiaNome),
+    idiomas: (Array.isArray(c.guiaIdiomas) ? c.guiaIdiomas : [])
+      .map(texto)
+      .filter(Boolean),
+    modelo: texto(c.modelo),
+    ano: texto(c.ano),
+    cor: texto(c.cor),
+    lugares:
+      Number.isFinite(lugares) && lugares > 0 ? Math.floor(lugares) : null,
+  };
+};
+
+// Motoguia = guia que faz o passeio no próprio carro. Um veículo é de
+// motoguia quando tem guia vinculado nos Complementos (ou o tipo diz isso).
+const semAcento = (t = "") =>
+  String(t || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+export const ehMotoguia = (item) =>
+  obterFormato(item) === FORMATOS.VEICULO &&
+  (Boolean(obterComplementos(item).guiaId) ||
+    semAcento(item?.fichaVeiculo?.tipoVeiculo).includes("motoguia") ||
+    /(^|[^a-z])moto ?guia([^a-z]|$)/.test(
+      semAcento(item?.nomeVeiculo || item?.pergunta),
+    ));
+
+// "NISSAN VERSA - MOTOGUIA QUEIROZ" → { carro: "NISSAN VERSA", guia: "QUEIROZ" }
+// (o guia vinculado tem preferência sobre o nome escrito no título)
+export const nomeDoMotoguia = (item) => {
+  const nome = String(item?.nomeVeiculo || item?.pergunta || "").trim();
+  const m = nome.match(/^(.*?)\s*[-–—|·:]\s*moto\s?guia\s*(.*)$/i);
+  const comp = obterComplementos(item);
+  return {
+    carro: (m ? m[1] : nome).trim() || nome,
+    guia: comp.guiaNome || (m ? m[2].trim() : ""),
+  };
+};
+
+// Regras e políticas (o comercial precisa cumprir): visual próprio na Central.
+export const ehRegra = (item) =>
+  obterFormato(item) === FORMATOS.RESPOSTA &&
+  /(^|[^a-z])(politica|regra|norma|obrigatori)/.test(
+    semAcento(item?.categoria),
+  );
+
+// Placa: maiúsculas, sem espaços (ABC1D23 / ABC-1234)
+export const normalizarPlaca = (placa = "") =>
+  String(placa || "")
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .trim();
+
+export const obterFornecedorPlaca = (item) => ({
+  fornecedor: String(item?.fornecedor || "").trim(),
+  placa: normalizarPlaca(item?.placa),
+});
+
 export const obterTabelaPrecos = (item) =>
   (Array.isArray(item?.tabelaPrecos) ? item.tabelaPrecos : [])
     .map((linha) => ({
@@ -291,7 +371,7 @@ export const linhaPreco = (linha) =>
 
 // Texto que vai para a área de transferência / WhatsApp.
 // Resposta pronta: exatamente o formato de antes (pergunta + resposta).
-export const montarTextoCopia = (item, vencida = false, config = null) => {
+const montarTextoBase = (item, vencida = false, config = null) => {
   const formato = obterFormato(item);
   const resposta = vencida ? MENSAGEM_VENCIDA : item?.resposta || "";
 
@@ -347,6 +427,7 @@ export const montarTextoCopia = (item, vencida = false, config = null) => {
       f.telefone && `Telefone: ${f.telefone}`,
       f.horario && `Horário: ${f.horario}`,
       f.linkMapa && `Mapa: ${f.linkMapa}`,
+      f.cardapio && `Cardápio: ${linkExterno(f.cardapio)}`,
       resposta && `\n${resposta}`,
     ]
       .filter(Boolean)
@@ -448,8 +529,8 @@ export const NOMES_SECOES_PADRAO = {
   embarcacao: "Embarcações",
   local: "Locais e pontos de apoio",
   equipamento: "Equipamentos e acessórios",
-  tabela: "Valores",
-  resposta: "Respostas prontas",
+  tabela: "Preços e taxas",
+  resposta: "Políticas e regras",
 };
 
 // ---------------------------------------------------------------------
@@ -606,7 +687,14 @@ export const normalizarConfigAssistente = (bruto) => {
     nomesSecoes: Object.fromEntries(
       Object.entries(NOMES_SECOES_PADRAO).map(([chave, padrao]) => [
         chave,
-        String(nomes[chave] || "").trim() || padrao,
+        // "Valores" era o nome antigo da seção de preços (soava como valores da empresa)
+        // e "Respostas prontas" o da seção de políticas e regras
+        ((chave === "tabela" &&
+          /^valores$/i.test(String(nomes[chave] || "").trim())) ||
+        (chave === "resposta" &&
+          /^respostas prontas$/i.test(String(nomes[chave] || "").trim()))
+          ? ""
+          : String(nomes[chave] || "").trim()) || padrao,
       ]),
     ),
     fatorBordoPorGrande: Number.isFinite(fator) && fator >= 0 ? fator : 1,
@@ -1077,4 +1165,30 @@ export const resumoCapacidade = (combinacoes, fator) => {
     }
   });
   return `${partes.join(", ")} — e qualquer quantidade menor.`;
+};
+
+// Texto copiado: o do tipo do cadastro + os complementos (idiomas do guia,
+// dados do veículo e a tabela de preços anexada).
+export const montarTextoCopia = (item, vencida = false, config = null) => {
+  const base = montarTextoBase(item, vencida, config);
+  const c = obterComplementos(item);
+  const extras = [
+    c.idiomas.length > 0 &&
+      `Idiomas${c.guiaNome ? ` (${c.guiaNome})` : ""}: ${c.idiomas.map(rotuloDoIdioma).join(", ")}`,
+    (c.modelo || c.ano || c.cor || c.lugares) &&
+      `Veículo: ${[c.modelo, c.ano, c.cor, c.lugares && `${c.lugares} lugares`].filter(Boolean).join(" · ")}`,
+  ].filter(Boolean);
+  const linhas =
+    obterFormato(item) === FORMATOS.TABELA || vencida
+      ? []
+      : obterTabelaPrecos(item);
+  if (linhas.length) {
+    extras.push("Valores:");
+    linhas.forEach((l) =>
+      extras.push(
+        `• ${l.servico}: ${formatarValor(l.valor)}${l.detalhe ? ` (${l.detalhe})` : ""}`,
+      ),
+    );
+  }
+  return extras.length ? `${base}\n\n${extras.join("\n")}`.trim() : base;
 };

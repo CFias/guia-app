@@ -24,23 +24,23 @@ const RECURSOS = [
   {
     chave: "respostas",
     icone: "message",
-    titulo: "Respostas prontas",
-    texto: "Textos revisados pela operação para copiar ou mandar direto no WhatsApp do cliente.",
+    titulo: "Políticas e regras",
+    texto: "Políticas, regras e combinados explicados de forma direta — você entende e repassa ao cliente do seu jeito.",
     formatos: [FORMATOS.RESPOSTA],
     unidade: "resposta(s)",
   },
   {
     chave: "veiculos",
     icone: "truck",
-    titulo: "Frota e assistente de veículo",
-    texto: "Fotos, lugares e bagagem de cada veículo — e o assistente indica o certo pelo nº de passageiros e malas.",
+    titulo: "Frota, motoguias e assistente",
+    texto: "Fotos, lugares, bagagem, idiomas do motoguia e tabela de preços — e o assistente indica o veículo pelo nº de passageiros e malas.",
     formatos: [FORMATOS.VEICULO],
     unidade: "veículo(s)",
   },
   {
     chave: "valores",
     icone: "coins",
-    titulo: "Valores e tabelas",
+    titulo: "Preços e taxas",
     texto: "Tabelas de preço sempre atualizadas, com aviso quando um valor passou da validade.",
     formatos: [FORMATOS.TABELA],
     unidade: "tabela(s)",
@@ -132,8 +132,8 @@ const ModalBoasVindas = ({ nome, vez, previa, contagem, onFechar }) => {
             {nome ? `Boas-vindas, ${nome}!` : "Boas-vindas!"} <span className="bv-aceno">👋</span>
           </h2>
           <p className="bv-intro">
-            Esta é a <b>Central de Informações</b>: tudo o que o atendimento precisa para responder o cliente com
-            segurança, num só lugar — e sempre atualizado pela operação.
+            Esta é a <b>Central de Informações</b>: o lugar para tirar as suas dúvidas antes de responder o cliente —
+            tudo num só lugar e sempre atualizado pela operação.
           </p>
 
           <ul className="bv-recursos">
@@ -163,7 +163,7 @@ const ModalBoasVindas = ({ nome, vez, previa, contagem, onFechar }) => {
           <div className="bv-dica" style={{ "--i": RECURSOS.length }}>
             <Icon name="search" size={16} />
             <span>
-              <b>Dica:</b> digite na busca o que o cliente perguntou — ex.: <i>“malas na Spin”</i>, <i>“cadeirinha”</i>,{" "}
+              <b>Dica:</b> digite na busca a sua dúvida — ex.: <i>“motoguia que fala espanhol”</i>, <i>“malas na Spin”</i>,{" "}
               <i>“cancelamento”</i>. Não achou? Use <b>Perguntar ao operacional</b>.
             </span>
           </div>

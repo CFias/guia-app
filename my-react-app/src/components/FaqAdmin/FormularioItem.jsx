@@ -1,5 +1,9 @@
 import Icon from "../ui/Icon";
 import FotosVeiculo from "./FotosVeiculo";
+import IlustracaoCategoria from "../FaqComercial/IlustracaoCategoria";
+import IdiomaTag from "../ui/IdiomaTag";
+import { ILUSTRACOES, LISTA_ILUSTRACOES, ilustracaoDoItem } from "../FaqComercial/ilustracoes";
+import { idiomasOrdenadosDoGuia } from "./guiasVinculados";
 import {
   FORMATOS,
   RECURSOS_VEICULO,
@@ -14,6 +18,7 @@ import {
   RECURSOS_EMBARCACAO,
   TIPOS_LOCAL,
   linkMapaDoEndereco,
+  normalizarPlaca,
 } from "../FaqComercial/catalogo";
 import {
   CATEGORIA_PADRAO,
@@ -51,8 +56,8 @@ const TIPOS = [
   },
   {
     value: FORMATOS.TABELA,
-    titulo: "Tabela de valores",
-    descricao: "Serviços com preço. Aparece em Valores.",
+    titulo: "Tabela de preços",
+    descricao: "Serviços com preço. Aparece em Preços e taxas.",
     exemplo: "Ex.: motoguia por serviço",
     icone: "tag",
   },
@@ -140,6 +145,14 @@ const Interruptor = ({ ativo, onChange, titulo, descricao, disabled }) => (
   </button>
 );
 
+// Bloco opcional dos Complementos: um interruptor que abre o conteúdo
+const Complemento = ({ ativo, onAlternar, titulo, descricao, disabled, children }) => (
+  <div className={`fi-comp ${ativo ? "is-on" : ""}`}>
+    <Interruptor ativo={ativo} onChange={onAlternar} titulo={titulo} descricao={descricao} disabled={disabled} />
+    {ativo && <div className="fi-comp-corpo">{children}</div>}
+  </div>
+);
+
 const FormularioItem = ({
   formulario,
   setFormulario,
@@ -150,6 +163,9 @@ const FormularioItem = ({
   onIrParaCampo,
   opcoesAssistente = [],
   fator = 1,
+  guias = [],
+  fornecedores = [],
+  fornecedorPorPlaca = {},
 }) => {
   const f = formulario;
   const formato = f.formato || FORMATOS.RESPOSTA;
@@ -159,6 +175,47 @@ const FormularioItem = ({
   const ehEmbarcacao = formato === FORMATOS.EMBARCACAO;
   const ehLocal = formato === FORMATOS.LOCAL;
   const ehEquip = formato === FORMATOS.EQUIPAMENTO;
+
+  // Placa já vinculada em Serviços por Fornecedor → sugere o fornecedor
+  const fornecedorDaPlaca = fornecedorPorPlaca[normalizarPlaca(f.placa).replace(/-/g, "")] || "";
+  const mudarPlaca = (valor) =>
+    setFormulario((atual) => {
+      const achado = fornecedorPorPlaca[normalizarPlaca(valor).replace(/-/g, "")] || "";
+      return {
+        ...atual,
+        placa: valor.toUpperCase(),
+        fornecedor: !atual.fornecedor.trim() && achado ? achado : atual.fornecedor,
+      };
+    });
+
+  const campoFornecedor = (className = "") => (
+    <Campo
+      id="fi-fornecedor"
+      rotulo="Fornecedor"
+      className={className}
+      dica={
+        fornecedorDaPlaca && fornecedorDaPlaca !== f.fornecedor.trim()
+          ? `Pela placa, o fornecedor vinculado em Serviços por Fornecedor é ${fornecedorDaPlaca}.`
+          : "Aparece no card e na ficha. Escolha da lista ou digite."
+      }
+    >
+      <input
+        id="fi-fornecedor"
+        type="text"
+        className="fi-input"
+        list="fi-fornecedores"
+        placeholder="Ex.: Transportes Bahia"
+        value={f.fornecedor}
+        onChange={(e) => atualizar("fornecedor", e.target.value)}
+        disabled={salvando}
+      />
+      <datalist id="fi-fornecedores">
+        {fornecedores.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+    </Campo>
+  );
 
   const erro = (campo) => (mostrarErros ? validacao.erros[campo] : undefined);
   const aviso = (campo) => validacao.avisos[campo];
@@ -309,6 +366,143 @@ const FormularioItem = ({
       return { ...prev, tabelaPrecos: lista };
     });
 
+  // editor da tabela de preços (tipo "Tabela de preços" ou complemento)
+  const editorPrecos = (
+          <div className={`fi-campo ${erro("tabela") ? "is-erro" : ""}`} data-campo="tabela">
+            <span className="fi-rotulo">
+              Valores por serviço <span className="fi-obrig">*</span>
+            </span>
+            <div className="fi-precos">
+              <div className="fi-precos-cabecalho" aria-hidden="true">
+                <span>Serviço</span>
+                <span>Valor</span>
+                <span>Detalhe</span>
+                <span />
+              </div>
+              {f.tabelaPrecos.map((linha, i) => {
+                const erroLinha = mostrarErros ? validacao.erros[`linha-${i}`] : null;
+                return (
+                  <div key={i} className={`fi-preco ${erroLinha ? "is-erro" : ""}`}>
+                    <input
+                      type="text"
+                      className="fi-input"
+                      placeholder="Ex.: City Tour"
+                      value={linha.servico}
+                      onChange={(e) => atualizarLinha(i, "servico", e.target.value)}
+                      aria-label={`Serviço da linha ${i + 1}`}
+                      disabled={salvando}
+                    />
+                    <div className="fi-preco-valor">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="fi-input"
+                        placeholder="Ex.: 350"
+                        value={linha.valor}
+                        onChange={(e) => atualizarLinha(i, "valor", e.target.value)}
+                        aria-label={`Valor da linha ${i + 1}`}
+                        disabled={salvando}
+                      />
+                      {linha.valor && (
+                        <small className="fi-preco-formatado">{formatarValor(linha.valor)}</small>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      className="fi-input"
+                      placeholder="Ex.: até 4 horas"
+                      value={linha.detalhe}
+                      onChange={(e) => atualizarLinha(i, "detalhe", e.target.value)}
+                      aria-label={`Detalhe da linha ${i + 1}`}
+                      disabled={salvando}
+                    />
+                    <div className="fi-preco-acoes">
+                      <button
+                        type="button"
+                        onClick={() => moverLinha(i, -1)}
+                        disabled={salvando || i === 0}
+                        title="Subir"
+                        aria-label="Subir linha"
+                      >
+                        <Icon name="chevronUp" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moverLinha(i, 1)}
+                        disabled={salvando || i === f.tabelaPrecos.length - 1}
+                        title="Descer"
+                        aria-label="Descer linha"
+                      >
+                        <Icon name="chevronDown" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="is-perigo"
+                        onClick={() => removerLinha(i)}
+                        disabled={salvando}
+                        title="Remover linha"
+                        aria-label="Remover linha"
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
+                    {erroLinha && (
+                      <span className="fi-msg is-erro fi-preco-erro">
+                        <Icon name="alert" size={13} />
+                        {erroLinha}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className="fi-adicionar"
+                onClick={adicionarLinha}
+                disabled={salvando}
+              >
+                <Icon name="plus" size={15} />
+                Adicionar serviço
+              </button>
+            </div>
+            {erro("tabela") ? (
+              <span className="fi-msg is-erro" role="alert">
+                <Icon name="alert" size={13} />
+                {erro("tabela")}
+              </span>
+            ) : (
+              <span className="fi-msg">
+                Valor só com números (250 ou 1.250,00) vira R$; texto como “Sob
+                consulta” aparece como foi escrito.
+              </span>
+            )}
+          </div>
+  );
+
+  const escolherGuia = (id) => {
+    const g = guias.find((x) => x.id === id);
+    setFormulario((prev) => ({
+      ...prev,
+      guiaId: id,
+      guiaNome: g ? g.nome || g.nickname || "" : "",
+      guiaIdiomas: g ? idiomasOrdenadosDoGuia(g) : [],
+    }));
+  };
+
+  const fotosDoForm = f.imagensVeiculoTexto
+    .split("\n")
+    .map((u) => u.trim())
+    .filter(Boolean);
+  const fotoCapa = (ehResposta || ehTabela) && !f.usarFotos ? "" : fotosDoForm[0] || "";
+  const baseIlus = {
+    categoria: f.categoria,
+    pergunta: f.pergunta,
+    fichaVeiculo: { tipoVeiculo: f.tipoVeiculo },
+    complementos: { guiaId: f.usarGuia ? f.guiaId : "" },
+  };
+  const ilusAuto = ilustracaoDoItem(baseIlus, formato);
+  const ilusAtual = ilustracaoDoItem({ ...baseIlus, ilustracao: f.ilustracao }, formato);
+
   // Prévia do texto que o comercial vai copiar
   const itemPrevia = {
     formato,
@@ -338,6 +532,7 @@ const FormularioItem = ({
       horario: f.horario,
       linkMapa: f.linkMapa,
       site: f.site,
+      cardapio: f.cardapio,
     },
     fichaEquipamento: {
       tipoEquipamento: f.tipoEquipamento,
@@ -568,6 +763,22 @@ const FormularioItem = ({
                     <option key={t} value={t} />
                   ))}
                 </datalist>
+              </Campo>
+            </div>
+
+            <div className="fi-grade">
+              {campoFornecedor("fi-col-2")}
+              <Campo id="fi-placa" rotulo="Placa">
+                <input
+                  id="fi-placa"
+                  type="text"
+                  className="fi-input fi-input-placa"
+                  placeholder="Ex.: ABC1D23"
+                  maxLength={9}
+                  value={f.placa}
+                  onChange={(e) => mudarPlaca(e.target.value)}
+                  disabled={salvando}
+                />
               </Campo>
             </div>
 
@@ -892,7 +1103,7 @@ const FormularioItem = ({
       )}
 
       {ehTabela && (
-        <Secao numero={proximo()} titulo="Tabela de valores">
+        <Secao numero={proximo()} titulo="Tabela de preços">
           <Campo
             id="fi-pergunta"
             rotulo="Título da tabela"
@@ -912,115 +1123,7 @@ const FormularioItem = ({
 
           {campoCategoria}
 
-          <div className={`fi-campo ${erro("tabela") ? "is-erro" : ""}`} data-campo="tabela">
-            <span className="fi-rotulo">
-              Valores por serviço <span className="fi-obrig">*</span>
-            </span>
-            <div className="fi-precos">
-              <div className="fi-precos-cabecalho" aria-hidden="true">
-                <span>Serviço</span>
-                <span>Valor</span>
-                <span>Detalhe</span>
-                <span />
-              </div>
-              {f.tabelaPrecos.map((linha, i) => {
-                const erroLinha = mostrarErros ? validacao.erros[`linha-${i}`] : null;
-                return (
-                  <div key={i} className={`fi-preco ${erroLinha ? "is-erro" : ""}`}>
-                    <input
-                      type="text"
-                      className="fi-input"
-                      placeholder="Ex.: City Tour"
-                      value={linha.servico}
-                      onChange={(e) => atualizarLinha(i, "servico", e.target.value)}
-                      aria-label={`Serviço da linha ${i + 1}`}
-                      disabled={salvando}
-                    />
-                    <div className="fi-preco-valor">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="fi-input"
-                        placeholder="Ex.: 350"
-                        value={linha.valor}
-                        onChange={(e) => atualizarLinha(i, "valor", e.target.value)}
-                        aria-label={`Valor da linha ${i + 1}`}
-                        disabled={salvando}
-                      />
-                      {linha.valor && (
-                        <small className="fi-preco-formatado">{formatarValor(linha.valor)}</small>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      className="fi-input"
-                      placeholder="Ex.: até 4 horas"
-                      value={linha.detalhe}
-                      onChange={(e) => atualizarLinha(i, "detalhe", e.target.value)}
-                      aria-label={`Detalhe da linha ${i + 1}`}
-                      disabled={salvando}
-                    />
-                    <div className="fi-preco-acoes">
-                      <button
-                        type="button"
-                        onClick={() => moverLinha(i, -1)}
-                        disabled={salvando || i === 0}
-                        title="Subir"
-                        aria-label="Subir linha"
-                      >
-                        <Icon name="chevronUp" size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moverLinha(i, 1)}
-                        disabled={salvando || i === f.tabelaPrecos.length - 1}
-                        title="Descer"
-                        aria-label="Descer linha"
-                      >
-                        <Icon name="chevronDown" size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="is-perigo"
-                        onClick={() => removerLinha(i)}
-                        disabled={salvando}
-                        title="Remover linha"
-                        aria-label="Remover linha"
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
-                    </div>
-                    {erroLinha && (
-                      <span className="fi-msg is-erro fi-preco-erro">
-                        <Icon name="alert" size={13} />
-                        {erroLinha}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                className="fi-adicionar"
-                onClick={adicionarLinha}
-                disabled={salvando}
-              >
-                <Icon name="plus" size={15} />
-                Adicionar serviço
-              </button>
-            </div>
-            {erro("tabela") ? (
-              <span className="fi-msg is-erro" role="alert">
-                <Icon name="alert" size={13} />
-                {erro("tabela")}
-              </span>
-            ) : (
-              <span className="fi-msg">
-                Valor só com números (250 ou 1.250,00) vira R$; texto como “Sob
-                consulta” aparece como foi escrito.
-              </span>
-            )}
-          </div>
+          {editorPrecos}
         </Secao>
       )}
 
@@ -1063,6 +1166,7 @@ const FormularioItem = ({
                 </datalist>
               </Campo>
             </div>
+            {campoFornecedor()}
             {campoCategoria}
           </Secao>
 
@@ -1235,6 +1339,22 @@ const FormularioItem = ({
                   placeholder="Ex.: todos os dias, 7h às 22h · check-in 14h"
                   value={f.horario}
                   onChange={(e) => atualizar("horario", e.target.value)}
+                  disabled={salvando}
+                />
+              </Campo>
+              <Campo
+                id="fi-cardapio"
+                rotulo="Link do cardápio"
+                className="fi-col-2"
+                dica="Restaurantes e pontos de apoio: aparece o botão “Cardápio” no card, que abre este link."
+              >
+                <input
+                  id="fi-cardapio"
+                  type="text"
+                  className="fi-input"
+                  placeholder="Ex.: https://restaurante.com.br/cardapio ou link do PDF / Instagram"
+                  value={f.cardapio}
+                  onChange={(e) => atualizar("cardapio", e.target.value)}
                   disabled={salvando}
                 />
               </Campo>
@@ -1434,6 +1554,165 @@ const FormularioItem = ({
           </Campo>
         </Secao>
       )}
+
+      <Secao
+        numero={proximo()}
+        titulo="Complementos"
+        descricao="Opcional. Ligue só o que quiser anexar — no card do comercial aparece tudo junto."
+      >
+        <div className="fi-capa">
+          <span
+            className={`fi-capa-previa ${fotoCapa ? "tem-foto" : ""}`}
+            style={fotoCapa ? undefined : { "--fundo-ilus": ILUSTRACOES[ilusAtual].fundo }}
+          >
+            {fotoCapa ? <img src={fotoCapa} alt="" /> : <IlustracaoCategoria chave={ilusAtual} tamanho={60} />}
+          </span>
+          <div className="fi-capa-texto">
+            <strong>Capa do card</strong>
+            <small>
+              {fotoCapa
+                ? "A primeira foto é a capa."
+                : f.ilustracao
+                  ? `Sem foto: usa a ilustração “${ILUSTRACOES[ilusAtual].nome}”, escolhida à mão.`
+                  : `Sem foto: usa a ilustração “${ILUSTRACOES[ilusAuto].nome}”, escolhida pelo título ou pela categoria.`}
+            </small>
+          </div>
+          <select
+            className="fi-input fi-capa-select"
+            value={f.ilustracao}
+            onChange={(e) => atualizar("ilustracao", e.target.value)}
+            disabled={salvando}
+            aria-label="Ilustração da capa"
+          >
+            <option value="">Automática ({ILUSTRACOES[ilusAuto].nome})</option>
+            {LISTA_ILUSTRACOES.map((x) => (
+              <option key={x.chave} value={x.chave}>
+                {x.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(ehResposta || ehTabela) && (
+          <Complemento
+            ativo={f.usarFotos}
+            onAlternar={(v) => atualizar("usarFotos", v)}
+            titulo="Fotos"
+            descricao="A primeira foto vira a capa do card."
+            disabled={salvando}
+          >
+            <FotosVeiculo
+              valor={fotosDoForm}
+              onChange={(lista) => atualizar("imagensVeiculoTexto", lista.join("\n"))}
+              disabled={salvando}
+              nome={f.pergunta || "Foto"}
+            />
+          </Complemento>
+        )}
+
+        <Complemento
+          ativo={f.usarGuia}
+          onAlternar={(v) => atualizar("usarGuia", v)}
+          titulo="Guia vinculado"
+          descricao="Para motoguia: mostra os idiomas que o guia fala, direto do cadastro de guias."
+          disabled={salvando}
+        >
+          <Campo id="fi-guia" rotulo="Guia" obrigatorio erro={erro("guia")}>
+            <select
+              id="fi-guia"
+              className="fi-input"
+              value={f.guiaId}
+              onChange={(e) => escolherGuia(e.target.value)}
+              disabled={salvando}
+            >
+              <option value="">Escolha o guia…</option>
+              {guias.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nome || g.nickname}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          {f.guiaId && (
+            <div className="fi-idiomas">
+              {f.guiaIdiomas.length ? (
+                f.guiaIdiomas.map((id) => <IdiomaTag key={id} idioma={id} nome />)
+              ) : (
+                <span className="fi-msg">Este guia não tem idiomas no cadastro.</span>
+              )}
+              <span className="fi-msg">
+                Vem do cadastro de guias e se atualiza quando o guia mudar os idiomas.
+              </span>
+            </div>
+          )}
+        </Complemento>
+
+        <Complemento
+          ativo={f.usarDadosVeiculo}
+          onAlternar={(v) => atualizar("usarDadosVeiculo", v)}
+          titulo="Dados do veículo"
+          descricao="Modelo, ano, cor e lugares."
+          disabled={salvando}
+        >
+          <div className="fi-grade fi-grade-4">
+            <Campo id="fi-modelo" rotulo="Modelo" className="fi-col-2">
+              <input
+                id="fi-modelo"
+                className="fi-input"
+                placeholder="Ex.: Toyota Corolla Cross"
+                value={f.modeloVeiculo}
+                onChange={(e) => atualizar("modeloVeiculo", e.target.value)}
+                disabled={salvando}
+              />
+            </Campo>
+            <Campo id="fi-ano" rotulo="Ano" erro={erro("anoVeiculo")}>
+              <input
+                id="fi-ano"
+                className="fi-input"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="2023"
+                value={f.anoVeiculo}
+                onChange={(e) => atualizar("anoVeiculo", e.target.value.replace(/\D/g, ""))}
+                disabled={salvando}
+              />
+            </Campo>
+            <Campo id="fi-cor" rotulo="Cor">
+              <input
+                id="fi-cor"
+                className="fi-input"
+                placeholder="Prata"
+                value={f.corVeiculo}
+                onChange={(e) => atualizar("corVeiculo", e.target.value)}
+                disabled={salvando}
+              />
+            </Campo>
+            <Campo id="fi-lugares" rotulo="Lugares">
+              <input
+                id="fi-lugares"
+                className="fi-input"
+                inputMode="numeric"
+                placeholder="4"
+                value={f.lugaresVeiculo}
+                onChange={(e) => atualizar("lugaresVeiculo", e.target.value.replace(/\D/g, ""))}
+                disabled={salvando}
+              />
+            </Campo>
+          </div>
+        </Complemento>
+
+        {!ehTabela && (
+          <Complemento
+            ativo={f.usarTabela}
+            onAlternar={(v) => atualizar("usarTabela", v)}
+            titulo="Tabela de preços"
+            descricao="Serviço, valor e detalhe — fica dentro deste cadastro."
+            disabled={salvando}
+          >
+            {editorPrecos}
+          </Complemento>
+        )}
+      </Secao>
 
       <Secao
         numero={proximo()}

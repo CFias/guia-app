@@ -352,3 +352,12 @@
   background: var(--accent-soft);
   color: var(--accent-text);
 }
+
+/* capa sem foto: ilustração da categoria (mesma do card do comercial) */
+.fa-item-capa.is-ilustrada {
+  background: var(--fundo-ilus, var(--raised));
+}
+
+[data-theme="dark"] .fa-item-capa.is-ilustrada {
+  background: color-mix(in srgb, var(--fundo-ilus) 16%, var(--surface));
+}

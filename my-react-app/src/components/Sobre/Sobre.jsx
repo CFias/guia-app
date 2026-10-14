@@ -33,7 +33,7 @@ const CONSTRUIDO = [
   {
     icone: "bookOpen",
     titulo: "Central de Informações",
-    texto: "Veículos, embarcações, locais, valores e respostas prontas para o comercial.",
+    texto: "Veículos, embarcações, locais, preços e taxas, políticas e regras para o comercial.",
   },
   {
     icone: "sparkles",

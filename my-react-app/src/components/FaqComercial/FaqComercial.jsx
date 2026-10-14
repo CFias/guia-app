@@ -10,12 +10,21 @@ import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../../components/CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
-import { iconeMui } from "../ui/iconeMui";
 import Drawer from "../ui/Drawer";
 import Button from "../ui/Button";
 import Segmented from "../ui/Segmented";
 import PageHeader from "../ui/PageHeader";
 import AssistenteVeiculo from "./AssistenteVeiculo";
+import IlustracaoCategoria from "./IlustracaoCategoria";
+import {
+  ILUSTRACOES,
+  fundoComTom,
+  ilustracaoDaCategoria,
+  ilustracaoDoItem,
+  tonsDaLista,
+} from "./ilustracoes";
+import IdiomaTag from "../ui/IdiomaTag";
+import { rotuloDoIdioma } from "../../Services/Utils/idiomas";
 import BoasVindasComercial from "../BoasVindas/BoasVindasComercial";
 import { useAuth } from "../../Context/AuthContext";
 import VisualizadorFoto from "./VisualizadorFoto";
@@ -38,23 +47,14 @@ import {
   obterFichaEmbarcacao,
   obterFichaEquipamento,
   obterFichaLocal,
-  iconeTipoLocal,
   linkWhatsappTelefone,
+  obterComplementos,
+  obterFornecedorPlaca,
+  linkExterno,
+  ehMotoguia,
+  nomeDoMotoguia,
+  ehRegra,
 } from "./catalogo";
-
-// ícones usados como componente (ex.: devolvidos por função)
-const LuggageRounded = iconeMui("briefcase");
-const DirectionsCarRounded = iconeMui("truck");
-const DescriptionRounded = iconeMui("fileText");
-const PaidRounded = iconeMui("coins");
-const AccessTimeRounded = iconeMui("clock");
-const HotelRounded = iconeMui("building");
-const ChildCareRounded = iconeMui("baby");
-const CadeirinhaRounded = iconeMui("cadeirinha");
-const GavelRounded = iconeMui("scale");
-const HelpRounded = iconeMui("help");
-const ShipRounded = iconeMui("ship");
-const PlaceRounded = iconeMui("mapPin");
 
 const getHojeIso = () => {
   const hoje = new Date();
@@ -181,55 +181,6 @@ const obterCorCategoria = (categoria = "") => {
   return PALETA_CATEGORIAS[Math.abs(hash) % PALETA_CATEGORIAS.length];
 };
 
-const obterIconeCategoria = (categoria = "") => {
-  const texto = normalizarTexto(categoria);
-
-  if (texto.includes("bagage") || texto.includes("mala")) return LuggageRounded;
-  if (
-    texto.includes("veicul") ||
-    texto.includes("carro") ||
-    texto.includes("van") ||
-    texto.includes("onibus")
-  )
-    return DirectionsCarRounded;
-  if (texto.includes("embarca") || texto.includes("barco") || texto.includes("nautic"))
-    return ShipRounded;
-  if (
-    texto.includes("local") ||
-    texto.includes("restaurante") ||
-    texto.includes("apoio")
-  )
-    return PlaceRounded;
-  if (texto.includes("documen")) return DescriptionRounded;
-  if (
-    texto.includes("cotac") ||
-    texto.includes("preco") ||
-    texto.includes("valor") ||
-    texto.includes("pagamento")
-  )
-    return PaidRounded;
-  if (texto.includes("horari") || texto.includes("tempo"))
-    return AccessTimeRounded;
-  if (texto.includes("hotel") || texto.includes("hospedagem"))
-    return HotelRounded;
-  if (
-    texto.includes("equipament") ||
-    texto.includes("cadeir") ||
-    texto.includes("acessori")
-  )
-    return CadeirinhaRounded;
-  if (texto.includes("crianc") || texto.includes("infant"))
-    return ChildCareRounded;
-  if (
-    texto.includes("politic") ||
-    texto.includes("regra") ||
-    texto.includes("cancelamento")
-  )
-    return GavelRounded;
-
-  return HelpRounded;
-};
-
 // Formatação leve, no mesmo padrão do WhatsApp: *negrito* e linhas
 // começando com "- " viram lista. Sem dependências externas.
 const processarNegrito = (texto, prefixo) => {
@@ -301,6 +252,28 @@ const ordenarComDestaque = (a, b) => {
   return ordenarPorPergunta(a, b);
 };
 
+// guia vinculado (nome e idiomas por extenso), modelo, ano e cor
+const textosDosComplementos = (item) => {
+  const c = obterComplementos(item);
+  return [c.guiaNome, ...c.idiomas.map(rotuloDoIdioma), c.modelo, c.ano, c.cor];
+};
+
+// A busca é pela dúvida do comercial, em linguagem natural ("motoguia que
+// fala espanhol"): ignora palavras de ligação e exige as demais, aceitando
+// plural/singular ("malas" acha "mala").
+const PALAVRAS_VAZIAS = new Set(
+  "a o as os de da do das dos e é em no na nos nas um uma uns umas que qual quais quem como com para pra por tem ter fala falam falar pode posso precisa preciso sobre se ou ao aos the".split(" "),
+);
+
+const raiz = (p) => (p.length > 4 && p.endsWith("s") ? p.slice(0, -1) : p);
+
+const combinaBusca = (texto, termo) => {
+  if (texto.includes(termo)) return true;
+  const palavras = termo.split(/\s+/).filter((p) => p && !PALAVRAS_VAZIAS.has(p));
+  if (!palavras.length) return false;
+  return palavras.every((p) => texto.includes(raiz(p)));
+};
+
 const textoBuscavel = (item) => {
   const ficha = obterFichaVeiculo(item);
   return normalizarTexto(
@@ -313,9 +286,14 @@ const textoBuscavel = (item) => {
       ...ficha.recursos,
       ...obterTabelaPrecos(item).flatMap((l) => [l.servico, l.detalhe]),
       ...Object.values(obterFichaEmbarcacao(item)).flat().filter((v) => typeof v === "string"),
-      ...Object.values(obterFichaLocal(item)).filter((v) => !String(v).startsWith("http")),
+      ...Object.entries(obterFichaLocal(item))
+        .filter(([k, v]) => k !== "cardapio" && !String(v).startsWith("http"))
+        .map(([, v]) => v),
+      obterFichaLocal(item).cardapio && "cardápio menu",
       ...Object.values(obterFichaEquipamento(item)).filter((v) => typeof v === "string"),
       ...(Array.isArray(item.palavrasChave) ? item.palavrasChave : []),
+      ...textosDosComplementos(item),
+      ...Object.values(obterFornecedorPlaca(item)),
     ]
       .filter(Boolean)
       .join(" "),
@@ -337,7 +315,7 @@ const segmentos = (nomes) => [
   { value: FORMATOS.LOCAL, label: nomes.local, icon: "mapPin" },
   { value: FORMATOS.EQUIPAMENTO, label: nomes.equipamento, icon: "cadeirinha" },
   { value: FORMATOS.TABELA, label: nomes.tabela, icon: "tag" },
-  { value: FORMATOS.RESPOSTA, label: nomes.resposta, icon: "message" },
+  { value: FORMATOS.RESPOSTA, label: nomes.resposta, icon: "shield" },
 ];
 
 const FaqComercial = () => {
@@ -423,7 +401,7 @@ const FaqComercial = () => {
         if (formatoAtivo !== "todos" && obterFormato(item) !== formatoAtivo)
           return false;
         if (!termo) return true;
-        return textoBuscavel(item).includes(termo);
+        return combinaBusca(textoBuscavel(item), termo);
       })
       .sort(ordenarComDestaque);
   }, [itens, busca, categoriaAtiva, formatoAtivo]);
@@ -490,7 +468,7 @@ const FaqComercial = () => {
         .sort(
           (a, b) =>
             (obterFichaEmbarcacao(a).capacidade ?? 9999) -
-            (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
         ),
     [itensFiltrados],
   );
@@ -521,7 +499,7 @@ const FaqComercial = () => {
     [itensFiltrados],
   );
 
-  // Respostas prontas numa grade só, ordenadas por categoria (a categoria
+  // Políticas e regras numa grade só, ordenadas por categoria (a categoria
   // aparece em cada card; os chips do topo filtram por ela).
   const respostas = useMemo(
     () =>
@@ -529,6 +507,8 @@ const FaqComercial = () => {
         .filter((item) => obterFormato(item) === FORMATOS.RESPOSTA)
         .sort(
           (a, b) =>
+            // regras e políticas primeiro: o que é obrigatório aparece antes
+            Number(ehRegra(b)) - Number(ehRegra(a)) ||
             (a.categoria || "Outros").localeCompare(
               b.categoria || "Outros",
               "pt-BR",
@@ -536,6 +516,20 @@ const FaqComercial = () => {
             ) || ordenarComDestaque(a, b),
         ),
     [itensFiltrados],
+  );
+
+  // Tom do fundo de cada capa: itens da mesma seção com o mesmo desenho
+  // ganham fundos diferentes.
+  const tons = useMemo(
+    () => ({
+      ...tonsDaLista(veiculos, () => FORMATOS.VEICULO),
+      ...tonsDaLista(embarcacoes, () => FORMATOS.EMBARCACAO),
+      ...tonsDaLista(locais, () => FORMATOS.LOCAL),
+      ...tonsDaLista(equipamentos, () => FORMATOS.EQUIPAMENTO),
+      ...tonsDaLista(tabelas, () => FORMATOS.TABELA),
+      ...tonsDaLista(respostas, () => FORMATOS.RESPOSTA),
+    }),
+    [veiculos, embarcacoes, locais, equipamentos, tabelas, respostas],
   );
 
   // "Mais buscadas": atalhos no topo da vitrine.
@@ -590,17 +584,6 @@ const FaqComercial = () => {
     }
   };
 
-  const compartilharWhatsapp = (item) => {
-    const texto = montarTextoCopia(item, itemEstaVencido(item), configAssistente);
-
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(texto)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-    registrarUso(item, "contadorCopias");
-  };
-
   const limparFiltros = () => {
     setBusca("");
     setCategoriaAtiva("todas");
@@ -610,7 +593,6 @@ const FaqComercial = () => {
   const acoesCard = {
     onAbrir: abrirDetalhe,
     onCopiar: copiarResposta,
-    onCompartilhar: compartilharWhatsapp,
   };
 
   const mostrarAssistente =
@@ -643,7 +625,7 @@ const FaqComercial = () => {
     <div className="ui-page faq-cat">
       <PageHeader
         title="Central de Informações"
-        description="Tudo o que o atendimento precisa: veículos, valores e respostas prontas para enviar ao cliente."
+        description="Tire suas dúvidas antes de responder o cliente: veículos, motoguias, preços e taxas, políticas e mais — sempre atualizado pela operação."
         actions={
           <>
             {role !== "comercial" && (
@@ -669,7 +651,7 @@ const FaqComercial = () => {
         <Icon name="search" size={18} />
         <input
           type="text"
-          placeholder="O que o cliente perguntou? Ex.: malas na Spin, motoguia, cancelamento, criança…"
+          placeholder="Qual é a sua dúvida? Ex.: motoguia que fala espanhol, malas na Spin, política de cancelamento…"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           aria-label="Buscar na Central de Informações"
@@ -715,7 +697,6 @@ const FaqComercial = () => {
               Todas as categorias
             </button>
             {categorias.map((cat) => {
-              const Icone = obterIconeCategoria(cat);
               return (
                 <button
                   key={cat}
@@ -726,7 +707,7 @@ const FaqComercial = () => {
                     setCategoriaAtiva(categoriaAtiva === cat ? "todas" : cat)
                   }
                 >
-                  <Icone fontSize="small" />
+                  <IlustracaoCategoria chave={ilustracaoDaCategoria(cat) || "duvida"} tamanho={20} />
                   {cat}
                 </button>
               );
@@ -839,6 +820,7 @@ const FaqComercial = () => {
                   <CardVeiculo
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                     selo={seloVeiculo(item)}
@@ -866,6 +848,7 @@ const FaqComercial = () => {
                   <CardVisual
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                   />
@@ -891,6 +874,7 @@ const FaqComercial = () => {
                   <CardVisual
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                   />
@@ -916,6 +900,7 @@ const FaqComercial = () => {
                   <CardVisual
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                   />
@@ -933,7 +918,7 @@ const FaqComercial = () => {
                     {configAssistente.nomesSecoes.tabela}
                     <span className="faq-cat-contador">{tabelas.length}</span>
                   </h2>
-                  <p>Tabelas por serviço — copie a tabela inteira ou só a linha.</p>
+                  <p>Preços por serviço e taxas dos passeios — abra para ver todos os valores.</p>
                 </div>
               </header>
 
@@ -942,6 +927,7 @@ const FaqComercial = () => {
                   <CardTabela
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                   />
@@ -955,11 +941,11 @@ const FaqComercial = () => {
               <header className="faq-cat-secao-topo">
                 <div className="faq-cat-secao-titulos">
                   <h2>
-                    <Icon name="message" size={18} />
+                    <Icon name="shield" size={18} />
                     {configAssistente.nomesSecoes.resposta}
                     <span className="faq-cat-contador">{respostas.length}</span>
                   </h2>
-                  <p>Abra para ler inteira, ou copie direto do card.</p>
+                  <p>Políticas e regras da operação primeiro, depois os demais combinados — abra para ver os detalhes.</p>
                 </div>
               </header>
 
@@ -968,6 +954,7 @@ const FaqComercial = () => {
                   <CardResposta
                     key={item.id}
                     item={item}
+                    tom={tons[item.id]}
                     {...acoesCard}
                     copiado={perguntaCopiadaId === item.id}
                   />
@@ -997,7 +984,6 @@ const FaqComercial = () => {
           item={itemDetalhado}
           onFechar={() => setItemDetalhado(null)}
           onCopiar={() => copiarResposta(itemDetalhado)}
-          onCompartilhar={() => compartilharWhatsapp(itemDetalhado)}
           onCopiarLinha={(linha, i) => copiarLinhaPreco(itemDetalhado, linha, i)}
           configAssistente={configAssistente}
           copiadoId={perguntaCopiadaId}
@@ -1040,35 +1026,74 @@ const SeloValidade = ({ item }) => {
 
 const SeloCategoria = ({ categoria }) => {
   if (!categoria) return null;
-  const Icone = obterIconeCategoria(categoria);
   return (
     <span
       className="faq-cat-selo-categoria"
       style={{ "--cor-categoria": obterCorCategoria(categoria) }}
     >
-      <Icone fontSize="small" />
+      <IlustracaoCategoria chave={ilustracaoDaCategoria(categoria) || "duvida"} tamanho={16} />
       {categoria}
     </span>
   );
 };
 
-const AcoesRapidas = ({ item, onCopiar, onCompartilhar, copiado }) => (
-  <div className="faq-cat-acoes" onClick={(e) => e.stopPropagation()}>
-    <button
-      type="button"
-      className="faq-cat-acao"
-      onClick={() => onCompartilhar(item)}
-      title="Enviar no WhatsApp"
-      aria-label="Enviar no WhatsApp"
+// Capa do card: a foto do cadastro ou, sem foto, a ilustração da categoria
+// `regra`: capa azul-marinho com o desenho num cartão branco.
+const CapaCard = ({ item, formato, rotulo, destaque = false, tom = 0, regra = false }) => {
+  const imagens = obterImagensVeiculo(item);
+  const chave = ilustracaoDoItem(item, formato);
+  return (
+    <div
+      className={`faq-cat-capa ${imagens.length ? "tem-foto" : ""} ${regra ? "is-regra" : ""}`}
+      style={imagens.length ? undefined : { "--fundo-ilus": fundoComTom(ILUSTRACOES[chave].fundo, tom) }}
     >
-      <Icon name="message" size={15} />
-    </button>
+      {imagens.length ? (
+        <img src={imagens[0]} alt="" loading="lazy" />
+      ) : regra ? (
+        <span className="faq-cat-capa-cartao">
+          <IlustracaoCategoria chave={chave} tamanho={68} />
+        </span>
+      ) : (
+        <IlustracaoCategoria chave={chave} tamanho={88} />
+      )}
+      {rotulo && (
+        <span className="faq-cat-capa-rotulo">
+          {regra && <Icon name="shield" size={11} />}
+          {rotulo}
+        </span>
+      )}
+      {destaque && (
+        <span className="faq-cat-capa-destaque">
+          <Icon name="star" size={12} />
+          Mais buscada
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Sem foto (veículo, embarcação, local, equipamento): ilustração no lugar
+const SemFotoIlustrada = ({ item, formato, tom = 0 }) => {
+  const chave = ilustracaoDoItem(item, formato);
+  return (
+    <div
+      className="faq-cat-veiculo-sem-foto is-ilustrada"
+      style={{ "--fundo-ilus": fundoComTom(ILUSTRACOES[chave].fundo, tom) }}
+    >
+      <IlustracaoCategoria chave={chave} tamanho={96} />
+    </div>
+  );
+};
+
+// Ação discreta: copiar a informação (a Central é para consulta do comercial)
+const AcoesRapidas = ({ item, onCopiar, copiado }) => (
+  <div className="faq-cat-acoes" onClick={(e) => e.stopPropagation()}>
     <button
       type="button"
       className={`faq-cat-acao ${copiado ? "is-ok" : ""}`}
       onClick={() => onCopiar(item)}
-      title={copiado ? "Copiado!" : "Copiar texto pronto"}
-      aria-label={copiado ? "Copiado!" : "Copiar texto pronto"}
+      title={copiado ? "Copiado!" : "Copiar informação"}
+      aria-label={copiado ? "Copiado!" : "Copiar informação"}
     >
       <Icon name={copiado ? "check" : "copy"} size={15} />
     </button>
@@ -1110,40 +1135,71 @@ const Especificacoes = ({ ficha, compacto = false }) => {
   );
 };
 
+// Placa no estilo Mercosul (faixa azul em cima)
+const Placa = ({ placa, grande = false }) => (
+  <span className={`faq-cat-placa ${grande ? "is-grande" : ""}`} title="Placa">
+    <i aria-hidden="true">BRASIL</i>
+    {placa}
+  </span>
+);
+
+// Fornecedor e placa no card (uma linha discreta)
+const FornecedorNoCard = ({ item }) => {
+  const { fornecedor, placa } = obterFornecedorPlaca(item);
+  if (!fornecedor && !placa) return null;
+  return (
+    <div className="faq-cat-fornecedor">
+      {fornecedor && (
+        <span className="faq-cat-fornecedor-nome" title={`Fornecedor: ${fornecedor}`}>
+          <Icon name="truck" size={13} />
+          {fornecedor}
+        </span>
+      )}
+      {placa && <Placa placa={placa} />}
+    </div>
+  );
+};
+
 const TEXTO_SELO = {
   recomendado: { texto: "Recomendado", icone: "sparkles" },
   comporta: { texto: "Também atende", icone: "check" },
   nao: { texto: "Não comporta", icone: "x" },
 };
 
-const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, config }) => {
+const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) => {
   const ficha = obterFichaVeiculo(item, config);
   const imagens = item.veiculoForaCatalogo ? [] : obterImagensVeiculo(item);
-  const nome = item.nomeVeiculo || item.pergunta;
   const temFicha = fichaTemDados(ficha);
+  const comp = obterComplementos(item);
+  // motoguia: o título fica só com o carro e o guia vai para a faixa da foto
+  const moto = ehMotoguia(item) ? nomeDoMotoguia(item) : null;
+  const nome = moto ? moto.carro : item.nomeVeiculo || item.pergunta;
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${
+        selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-        }`}
+      }`}
       {...propsCardClicavel(item, onAbrir)}
     >
-      <div className="faq-cat-veiculo-foto">
+      <div className={`faq-cat-veiculo-foto ${moto ? "tem-faixa" : ""}`}>
         {imagens.length > 0 ? (
           <img src={imagens[0]} alt={nome} loading="lazy" />
         ) : (
-          <div className="faq-cat-veiculo-sem-foto">
-            <Icon name="car" size={34} />
-            <span>Sem foto</span>
-          </div>
+          <SemFotoIlustrada item={item} formato={FORMATOS.VEICULO} tom={tom} />
         )}
         <div className="faq-cat-veiculo-selos">
-          {ficha.tipoVeiculo && (
-            <span className="faq-cat-foto-selo">{ficha.tipoVeiculo}</span>
+          {moto ? (
+            <span className="faq-cat-foto-selo is-motoguia">
+              <Icon name="user" size={12} />
+              Motoguia
+            </span>
+          ) : (
+            ficha.tipoVeiculo && <span className="faq-cat-foto-selo">{ficha.tipoVeiculo}</span>
           )}
           {item.destaque && (
             <span className="faq-cat-foto-selo is-destaque" title="Mais buscada">
@@ -1163,18 +1219,45 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, c
             {TEXTO_SELO[selo].texto}
           </span>
         )}
+        {moto && (
+          <div className="faq-cat-faixa-guia">
+            <span className="faq-cat-faixa-avatar" aria-hidden="true">
+              {(moto.guia || "G").charAt(0).toUpperCase()}
+            </span>
+            <span className="faq-cat-faixa-texto">
+              <b>{moto.guia || "Motoguia"}</b>
+              <small>dirige e guia o passeio</small>
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="faq-cat-card-corpo">
         <h3 className="faq-cat-card-titulo">{nome}</h3>
-        {item.nomeVeiculo && item.pergunta && item.pergunta !== item.nomeVeiculo && (
-          <p className="faq-cat-card-sub">{item.pergunta}</p>
+        {moto ? (
+          moto.guia &&
+          !normalizarTexto(nome).includes(normalizarTexto(moto.guia)) && (
+            <p className="faq-cat-card-sub is-motoguia">Motoguia {moto.guia}</p>
+          )
+        ) : (
+          item.nomeVeiculo &&
+          item.pergunta &&
+          item.pergunta !== item.nomeVeiculo && <p className="faq-cat-card-sub">{item.pergunta}</p>
         )}
+        <FornecedorNoCard item={item} />
 
         {temFicha ? (
           <Especificacoes ficha={ficha} compacto />
         ) : (
           <p className="faq-cat-card-previa">{textoPrevia(item.resposta)}</p>
+        )}
+
+        {comp.idiomas.length > 0 && (
+          <div className="faq-cat-idiomas is-mini" title="Idiomas do guia">
+            {comp.idiomas.map((id) => (
+              <IdiomaTag key={id} idioma={id} />
+            ))}
+          </div>
         )}
 
         {ficha.recursos.length > 0 && (
@@ -1196,7 +1279,6 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, c
         <AcoesRapidas
           item={item}
           onCopiar={onCopiar}
-          onCompartilhar={onCompartilhar}
           copiado={copiado}
         />
       </footer>
@@ -1205,7 +1287,7 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, onCompartilhar, copiado, selo, c
 };
 
 /* Card com foto para embarcações, locais e equipamentos (mesma estrutura do veículo). */
-const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
+const CardVisual = ({ item, onAbrir, onCopiar, copiado, tom }) => {
   const formato = obterFormato(item);
   const ehLocal = formato === FORMATOS.LOCAL;
   const ehEquip = formato === FORMATOS.EQUIPAMENTO;
@@ -1214,7 +1296,6 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
   const fq = obterFichaEquipamento(item);
   const imagens = obterImagensVeiculo(item);
   const tipo = ehEquip ? fq.tipoEquipamento : ehLocal ? fl.tipoLocal : fe.tipoEmbarcacao;
-  const iconeVazio = ehEquip ? "cadeirinha" : ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship";
 
   return (
     <article className="faq-cat-card faq-cat-veiculo" {...propsCardClicavel(item, onAbrir)}>
@@ -1222,10 +1303,7 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
         {imagens.length > 0 ? (
           <img src={imagens[0]} alt={item.pergunta} loading="lazy" />
         ) : (
-          <div className="faq-cat-veiculo-sem-foto">
-            <Icon name={iconeVazio} size={34} />
-            <span>Sem foto</span>
-          </div>
+          <SemFotoIlustrada item={item} formato={formato} tom={tom} />
         )}
         <div className="faq-cat-veiculo-selos">
           {tipo && <span className="faq-cat-foto-selo">{tipo}</span>}
@@ -1245,6 +1323,7 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
 
       <div className="faq-cat-card-corpo">
         <h3 className="faq-cat-card-titulo">{item.pergunta}</h3>
+        {!ehLocal && !ehEquip && <FornecedorNoCard item={item} />}
         {ehEquip ? (
           <div className="faq-cat-local-info">
             {fq.faixaUso && (
@@ -1288,6 +1367,20 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
                 <Icon name="phone" size={14} />
                 {fl.telefone}
               </span>
+            )}
+            {fl.cardapio && (
+              <a
+                className="faq-cat-cardapio"
+                href={linkExterno(fl.cardapio)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title="Abrir o cardápio"
+              >
+                <Icon name="utensils" size={14} />
+                Cardápio
+                <Icon name="external" size={12} />
+              </a>
             )}
           </div>
         ) : (
@@ -1339,7 +1432,6 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
         <AcoesRapidas
           item={item}
           onCopiar={onCopiar}
-          onCompartilhar={onCompartilhar}
           copiado={copiado}
         />
       </footer>
@@ -1347,9 +1439,9 @@ const CardVisual = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
   );
 };
 
-const LINHAS_NO_CARD = 4;
+const LINHAS_NO_CARD = 3; // o resto fica em "+ N valores" (cards do mesmo tamanho)
 
-const CardTabela = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
+const CardTabela = ({ item, onAbrir, onCopiar, copiado, tom }) => {
   const linhas = obterTabelaPrecos(item);
   const vencida = itemEstaVencido(item);
 
@@ -1358,20 +1450,12 @@ const CardTabela = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
       className={`faq-cat-card faq-cat-tabela ${vencida ? "is-vencida" : ""}`}
       {...propsCardClicavel(item, onAbrir)}
     >
+      <CapaCard item={item} formato={FORMATOS.TABELA} rotulo={item.categoria} destaque={item.destaque} tom={tom} />
       <div className="faq-cat-card-corpo">
         <div className="faq-cat-tabela-topo">
-          <span className="faq-cat-tile">
-            <Icon name="tag" size={18} />
-          </span>
           <div>
-            <h3 className="faq-cat-card-titulo">
-              {item.pergunta}
-              {item.destaque && (
-                <Icon name="star" size={14} className="faq-cat-estrela" />
-              )}
-            </h3>
+            <h3 className="faq-cat-card-titulo">{item.pergunta}</h3>
             <div className="faq-cat-card-selos">
-              <SeloCategoria categoria={item.categoria} />
               <SeloValidade item={item} />
             </div>
           </div>
@@ -1393,7 +1477,7 @@ const CardTabela = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
             ))}
             {linhas.length > LINHAS_NO_CARD && (
               <li className="faq-cat-precos-mais">
-                + {linhas.length - LINHAS_NO_CARD} serviço(s)
+                + {linhas.length - LINHAS_NO_CARD} {linhas.length - LINHAS_NO_CARD === 1 ? "valor" : "valores"}
               </li>
             )}
           </ul>
@@ -1409,7 +1493,6 @@ const CardTabela = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
         <AcoesRapidas
           item={item}
           onCopiar={onCopiar}
-          onCompartilhar={onCompartilhar}
           copiado={copiado}
         />
       </footer>
@@ -1417,25 +1500,29 @@ const CardTabela = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
   );
 };
 
-const CardResposta = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
+const CardResposta = ({ item, onAbrir, onCopiar, copiado, tom }) => {
   const vencida = itemEstaVencido(item);
+  const regra = ehRegra(item);
 
   return (
     <article
-      className={`faq-cat-card faq-cat-resposta ${vencida ? "is-vencida" : ""}`}
+      className={`faq-cat-card faq-cat-resposta ${vencida ? "is-vencida" : ""} ${regra ? "is-regra" : ""}`}
       {...propsCardClicavel(item, onAbrir)}
     >
+      <CapaCard
+        item={item}
+        formato={FORMATOS.RESPOSTA}
+        rotulo={item.categoria}
+        destaque={item.destaque && !vencida}
+        tom={tom}
+        regra={regra}
+      />
       <div className="faq-cat-card-corpo">
-        <div className="faq-cat-card-selos">
-          <SeloCategoria categoria={item.categoria} />
-          {item.destaque && !vencida && (
-            <span className="faq-cat-selo is-destaque">
-              <Icon name="star" size={12} />
-              Mais buscada
-            </span>
-          )}
-          <SeloValidade item={item} />
-        </div>
+        {item.validade && (
+          <div className="faq-cat-card-selos">
+            <SeloValidade item={item} />
+          </div>
+        )}
         <h3 className="faq-cat-card-titulo">{item.pergunta}</h3>
         {vencida ? (
           <p className="faq-cat-vencida-aviso">
@@ -1449,12 +1536,11 @@ const CardResposta = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
 
       <footer className="faq-cat-card-rodape">
         <span className="faq-cat-ver">
-          Ler resposta <Icon name="arrowRight" size={13} />
+          {regra ? "Ler a regra" : "Ver detalhes"} <Icon name="arrowRight" size={13} />
         </span>
         <AcoesRapidas
           item={item}
           onCopiar={onCopiar}
-          onCompartilhar={onCompartilhar}
           copiado={copiado}
         />
       </footer>
@@ -1464,15 +1550,55 @@ const CardResposta = ({ item, onAbrir, onCopiar, onCompartilhar, copiado }) => {
 
 /* ---------- detalhe (painel lateral) ---------- */
 
-const Galeria = ({ imagens, nome, icone = "car" }) => {
+const ListaPrecos = ({ item, linhas, vencida, copiadoId, onCopiarLinha }) => {
+  if (vencida) {
+    return (
+      <p className="faq-cat-vencida-aviso">
+        <Icon name="alert" size={14} />
+        {MENSAGEM_VENCIDA}
+      </p>
+    );
+  }
+  if (!linhas.length) return <p className="faq-cat-muted">Nenhum valor cadastrado.</p>;
+  return (
+    <ul className="faq-cat-tabela-detalhe">
+      {linhas.map((linha, i) => {
+        const chave = `${item.id}#${i}`;
+        const linhaCopiada = copiadoId === chave;
+        return (
+          <li key={chave}>
+            <div className="faq-cat-tabela-servico">
+              <strong>{linha.servico || "Serviço"}</strong>
+              {linha.detalhe && <span>{linha.detalhe}</span>}
+            </div>
+            <strong className="faq-cat-tabela-valor ui-cell-num">{formatarValor(linha.valor)}</strong>
+            <button
+              type="button"
+              className={`faq-cat-acao ${linhaCopiada ? "is-ok" : ""}`}
+              onClick={() => onCopiarLinha(linha, i)}
+              title={linhaCopiada ? "Copiado!" : "Copiar só esta linha"}
+              aria-label={linhaCopiada ? "Copiado!" : `Copiar ${linha.servico}`}
+            >
+              <Icon name={linhaCopiada ? "check" : "copy"} size={14} />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
+const Galeria = ({ imagens, nome, ilustracao = "duvida" }) => {
   const [indice, setIndice] = useState(0);
   const [ampliada, setAmpliada] = useState(false);
 
   if (!imagens.length) {
     return (
-      <div className="faq-cat-galeria faq-cat-galeria--vazia">
-        <Icon name={icone} size={40} />
-        <span>Sem foto cadastrada</span>
+      <div
+        className="faq-cat-galeria faq-cat-galeria--vazia is-ilustrada"
+        style={{ "--fundo-ilus": (ILUSTRACOES[ilustracao] || ILUSTRACOES.duvida).fundo }}
+      >
+        <IlustracaoCategoria chave={ilustracao} tamanho={120} />
       </div>
     );
   }
@@ -1549,11 +1675,33 @@ const Galeria = ({ imagens, nome, icone = "car" }) => {
   );
 };
 
+// Ficha: fornecedor e placa
+const BlocoFornecedor = ({ item }) => {
+  const { fornecedor, placa } = obterFornecedorPlaca(item);
+  if (!fornecedor && !placa) return null;
+  return (
+    <div className="faq-cat-bloco">
+      <h4>{placa ? "Fornecedor e placa" : "Fornecedor"}</h4>
+      <div className="faq-cat-fornecedor-ficha">
+        {fornecedor && (
+          <div className="faq-cat-fornecedor-tile">
+            <Icon name="truck" size={18} />
+            <span>
+              <small>Fornecedor</small>
+              <strong>{fornecedor}</strong>
+            </span>
+          </div>
+        )}
+        {placa && <Placa placa={placa} grande />}
+      </div>
+    </div>
+  );
+};
+
 const FaqDetalhe = ({
   item,
   onFechar,
   onCopiar,
-  onCompartilhar,
   onCopiarLinha,
   copiadoId,
   configAssistente,
@@ -1579,6 +1727,15 @@ const FaqDetalhe = ({
   const whatsLocal = linkWhatsappTelefone(fl.telefone);
 
   const titulo = ehVeiculo ? item.nomeVeiculo || item.pergunta : item.pergunta;
+  const ilustracao = ilustracaoDoItem(item, formato);
+  const comp = obterComplementos(item);
+  const fotosExtras = !ehVeiculo && !ehVisual ? obterImagensVeiculo(item) : [];
+  const dadosVeiculo = [
+    comp.modelo && { rotulo: "Modelo", valor: comp.modelo },
+    comp.ano && { rotulo: "Ano", valor: comp.ano },
+    comp.cor && { rotulo: "Cor", valor: comp.cor },
+    comp.lugares && { rotulo: "Lugares", valor: comp.lugares },
+  ].filter(Boolean);
 
   return (
     <Drawer
@@ -1598,18 +1755,9 @@ const FaqDetalhe = ({
       }
       onClose={onFechar}
       footer={
-        <>
-          <Button variant="secondary" icon="message" onClick={onCompartilhar}>
-            Enviar no WhatsApp
-          </Button>
-          <Button
-            variant="primary"
-            icon={copiado ? "check" : "copy"}
-            onClick={onCopiar}
-          >
-            {copiado ? "Copiado!" : ehTabela ? "Copiar tabela" : "Copiar texto"}
-          </Button>
-        </>
+        <Button variant="secondary" icon={copiado ? "check" : "copy"} onClick={onCopiar}>
+          {copiado ? "Copiado!" : ehTabela ? "Copiar tabela" : "Copiar informação"}
+        </Button>
       }
     >
       <div className="faq-cat-detalhe">
@@ -1627,24 +1775,26 @@ const FaqDetalhe = ({
 
         {ehVeiculo && (
           <>
-            <Galeria imagens={imagens} nome={titulo} />
+            <Galeria imagens={imagens} nome={titulo} ilustracao={ilustracao} />
 
             {item.nomeVeiculo && item.pergunta && item.pergunta !== item.nomeVeiculo && (
               <p className="faq-cat-detalhe-pergunta">{item.pergunta}</p>
             )}
 
+            <BlocoFornecedor item={item} />
+
             {(ficha.passageiros !== null ||
               ficha.malasGrandes !== null ||
               ficha.malasBordo !== null) && (
-                <div className="faq-cat-bloco">
-                  <h4>
-                    {configuracoes.length > 1
-                      ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
-                      : "Capacidade"}
-                  </h4>
-                  <Especificacoes ficha={ficha} />
-                </div>
-              )}
+              <div className="faq-cat-bloco">
+                <h4>
+                  {configuracoes.length > 1
+                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                    : "Capacidade"}
+                </h4>
+                <Especificacoes ficha={ficha} />
+              </div>
+            )}
 
             {configuracoes.length > 0 && (
               <div className="faq-cat-bloco">
@@ -1687,46 +1837,12 @@ const FaqDetalhe = ({
           </>
         )}
 
+        {fotosExtras.length > 0 && <Galeria imagens={fotosExtras} nome={titulo} ilustracao={ilustracao} />}
+
         {ehTabela && (
           <div className="faq-cat-bloco">
             <h4>Valores por serviço</h4>
-            {vencida ? (
-              <p className="faq-cat-vencida-aviso">
-                <Icon name="alert" size={14} />
-                {MENSAGEM_VENCIDA}
-              </p>
-            ) : linhas.length ? (
-              <ul className="faq-cat-tabela-detalhe">
-                {linhas.map((linha, i) => {
-                  const chave = `${item.id}#${i}`;
-                  const linhaCopiada = copiadoId === chave;
-                  return (
-                    <li key={chave}>
-                      <div className="faq-cat-tabela-servico">
-                        <strong>{linha.servico || "Serviço"}</strong>
-                        {linha.detalhe && <span>{linha.detalhe}</span>}
-                      </div>
-                      <strong className="faq-cat-tabela-valor ui-cell-num">
-                        {formatarValor(linha.valor)}
-                      </strong>
-                      <button
-                        type="button"
-                        className={`faq-cat-acao ${linhaCopiada ? "is-ok" : ""}`}
-                        onClick={() => onCopiarLinha(linha, i)}
-                        title={linhaCopiada ? "Copiado!" : "Copiar só esta linha"}
-                        aria-label={
-                          linhaCopiada ? "Copiado!" : `Copiar ${linha.servico}`
-                        }
-                      >
-                        <Icon name={linhaCopiada ? "check" : "copy"} size={14} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="faq-cat-muted">Nenhum valor cadastrado.</p>
-            )}
+            <ListaPrecos item={item} linhas={linhas} vencida={vencida} copiadoId={copiadoId} onCopiarLinha={onCopiarLinha} />
           </div>
         )}
 
@@ -1735,7 +1851,7 @@ const FaqDetalhe = ({
             <Galeria
               imagens={fotos}
               nome={item.pergunta}
-              icone={ehEquip ? "cadeirinha" : ehLocal ? iconeTipoLocal(fl.tipoLocal) : "ship"}
+              ilustracao={ilustracao}
             />
 
             {ehEquip && (fq.faixaUso || fq.valor || fq.antecedencia || fq.quantidade) && (
@@ -1781,6 +1897,8 @@ const FaqDetalhe = ({
                 </ul>
               </div>
             )}
+
+            {ehEmbarcacao && <BlocoFornecedor item={item} />}
 
             {ehEmbarcacao && fe.capacidade && (
               <div className="faq-cat-bloco">
@@ -1851,6 +1969,15 @@ const FaqDetalhe = ({
                       <span>{fl.horario}</span>
                     </li>
                   )}
+                  {fl.cardapio && (
+                    <li>
+                      <Icon name="utensils" size={16} />
+                      <span>Cardápio</span>
+                      <a href={linkExterno(fl.cardapio)} target="_blank" rel="noopener noreferrer">
+                        Abrir cardápio
+                      </a>
+                    </li>
+                  )}
                   {fl.site && (
                     <li>
                       <Icon name="globe" size={16} />
@@ -1864,13 +1991,44 @@ const FaqDetalhe = ({
                       </a>
                     </li>
                   )}
-                  {!fl.endereco && !fl.bairro && !fl.telefone && !fl.horario && !fl.site && (
+                  {!fl.endereco && !fl.bairro && !fl.telefone && !fl.horario && !fl.site && !fl.cardapio && (
                     <li className="faq-cat-muted">Sem endereço ou contato cadastrado.</li>
                   )}
                 </ul>
               </div>
             )}
           </>
+        )}
+
+        {comp.idiomas.length > 0 && (
+          <div className="faq-cat-bloco">
+            <h4>Idiomas{comp.guiaNome ? ` · ${comp.guiaNome}` : ""}</h4>
+            <div className="faq-cat-idiomas">
+              {comp.idiomas.map((id) => (
+                <IdiomaTag key={id} idioma={id} nome />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {dadosVeiculo.length > 0 && (
+          <div className="faq-cat-bloco">
+            <h4>Veículo</h4>
+            <div className="faq-cat-dados">
+              {dadosVeiculo.map((d) => (
+                <span key={d.rotulo}>
+                  {d.rotulo} <b>{d.valor}</b>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!ehTabela && linhas.length > 0 && (
+          <div className="faq-cat-bloco">
+            <h4>Tabela de preços</h4>
+            <ListaPrecos item={item} linhas={linhas} vencida={vencida} copiadoId={copiadoId} onCopiarLinha={onCopiarLinha} />
+          </div>
         )}
 
         {(item.resposta || (!ehVeiculo && !ehTabela && !ehVisual)) && (
@@ -1900,11 +2058,6 @@ const FaqDetalhe = ({
             {linkVeiculo.tipo === "oficial" ? "Ver site oficial" : "Buscar fotos no Google"}
           </a>
         )}
-
-        <div className="faq-cat-previa-copia">
-          <span>Como o cliente vai receber</span>
-          <pre>{montarTextoCopia(item, vencida, configAssistente)}</pre>
-        </div>
 
         {item.atualizadoEm && (
           <p className="faq-cat-muted">

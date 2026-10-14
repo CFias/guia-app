@@ -9,6 +9,7 @@ import {
   obterFichaEmbarcacao,
   obterFichaLocal,
   obterFichaEquipamento,
+  obterComplementos,
   RECURSOS_VEICULO,
   RECURSOS_EMBARCACAO,
 } from "../FaqComercial/catalogo";
@@ -21,7 +22,7 @@ const NOMES_RECURSOS_BARCO = RECURSOS_EMBARCACAO.map((r) => r.label);
 // Categoria sugerida ao escolher o tipo (o operacional pode trocar).
 export const CATEGORIA_PADRAO = {
   [FORMATOS.VEICULO]: "Veículo",
-  [FORMATOS.TABELA]: "Valores",
+  [FORMATOS.TABELA]: "Preços e taxas",
   [FORMATOS.EMBARCACAO]: "Embarcações",
   [FORMATOS.LOCAL]: "Locais",
   [FORMATOS.EQUIPAMENTO]: "Equipamentos",
@@ -44,6 +45,8 @@ export const FORMULARIO_VAZIO = {
   destaque: false,
   ativo: true,
   nomeVeiculo: "",
+  fornecedor: "",
+  placa: "",
   imagensVeiculoTexto: "",
   linkOficialVeiculo: "",
   veiculoForaCatalogo: false,
@@ -64,12 +67,26 @@ export const FORMULARIO_VAZIO = {
   horario: "",
   linkMapa: "",
   site: "",
+  cardapio: "",
   // equipamento (cadeirinha, bebê conforto...)
   tipoEquipamento: "",
   faixaUso: "",
   quantidadeEquipamento: "",
   valorEquipamento: "",
   antecedencia: "",
+  // complementos (qualquer tipo de cadastro, todos opcionais)
+  ilustracao: "", // "" = automática pela categoria
+  usarFotos: false, // fotos em resposta/tabela (os outros tipos já têm)
+  usarTabela: false, // tabela de preços fora do tipo "Tabela de valores"
+  usarGuia: false,
+  guiaId: "",
+  guiaNome: "",
+  guiaIdiomas: [],
+  usarDadosVeiculo: false,
+  modeloVeiculo: "",
+  anoVeiculo: "",
+  corVeiculo: "",
+  lugaresVeiculo: "",
 };
 
 export const CONFIG_VEICULO_VAZIA = () => ({
@@ -129,6 +146,8 @@ export const formularioDoItem = (item, copia = false) => {
     destaque: copia ? false : !!item.destaque,
     ativo: copia ? true : item.ativo !== false,
     nomeVeiculo: item.nomeVeiculo || "",
+    fornecedor: String(item.fornecedor || "").trim(),
+    placa: String(item.placa || "").trim(),
     imagensVeiculoTexto: obterImagens(item).join("\n"),
     linkOficialVeiculo: item.linkOficialVeiculo || "",
     veiculoForaCatalogo: !!item.veiculoForaCatalogo,
@@ -143,8 +162,39 @@ export const formularioDoItem = (item, copia = false) => {
     tabelaPrecos: tabela.length ? tabela : [{ ...LINHA_PRECO_VAZIA }],
     configsVeiculo: [],
     ...camposEmbarcacaoELocal(item),
+    ...camposComplementos(item, tabela.length > 0),
   };
 };
+
+const camposComplementos = (item, temTabela) => {
+  const c = obterComplementos(item);
+  const formato = obterFormato(item);
+  return {
+    ilustracao: item.ilustracao || "",
+    usarFotos: obterImagens(item).length > 0,
+    usarTabela: temTabela && formato !== FORMATOS.TABELA,
+    usarGuia: !!c.guiaId,
+    guiaId: c.guiaId,
+    guiaNome: c.guiaNome,
+    guiaIdiomas: c.idiomas,
+    usarDadosVeiculo: !!(c.modelo || c.ano || c.cor || c.lugares),
+    modeloVeiculo: c.modelo,
+    anoVeiculo: c.ano,
+    corVeiculo: c.cor,
+    lugaresVeiculo: c.lugares ?? "",
+  };
+};
+
+// Formulário → campos salvos dos complementos (desligado = vazio)
+export const complementosDoFormulario = (f) => ({
+  guiaId: f.usarGuia ? f.guiaId : "",
+  guiaNome: f.usarGuia ? f.guiaNome.trim() : "",
+  guiaIdiomas: f.usarGuia ? f.guiaIdiomas : [],
+  modelo: f.usarDadosVeiculo ? f.modeloVeiculo.trim() : "",
+  ano: f.usarDadosVeiculo ? String(f.anoVeiculo).trim() : "",
+  cor: f.usarDadosVeiculo ? f.corVeiculo.trim() : "",
+  lugares: f.usarDadosVeiculo ? numeroDoCampo(f.lugaresVeiculo) : null,
+});
 
 const camposEmbarcacaoELocal = (item) => {
   const fe = obterFichaEmbarcacao(item);
@@ -168,6 +218,7 @@ const camposEmbarcacaoELocal = (item) => {
     // só o link digitado (o automático é gerado na hora a partir do endereço)
     linkMapa: String(fl.linkMapa || "").trim(),
     site: flNorm.site,
+    cardapio: flNorm.cardapio,
     ...camposEquipamento(item),
   };
 };
@@ -270,8 +321,8 @@ export const validarFormulario = (f) => {
     }
   }
 
-  if (formato === FORMATOS.TABELA) {
-    if (!f.pergunta.trim()) {
+  if (formato === FORMATOS.TABELA || f.usarTabela) {
+    if (formato === FORMATOS.TABELA && !f.pergunta.trim()) {
       erros.pergunta =
         "Dê um título à tabela (ex.: Motoguia — valores por serviço).";
     }
@@ -285,6 +336,16 @@ export const validarFormulario = (f) => {
     if (linhasPrecoPreenchidas(f.tabelaPrecos).length === 0) {
       erros.tabela = "Adicione pelo menos um serviço com valor.";
     }
+  }
+
+  if (f.usarGuia && !f.guiaId)
+    erros.guia = "Escolha o guia (ou desligue “Guia vinculado”).";
+  if (
+    f.usarDadosVeiculo &&
+    f.anoVeiculo &&
+    !/^\d{4}$/.test(String(f.anoVeiculo).trim())
+  ) {
+    erros.anoVeiculo = "Ano com 4 dígitos (ex.: 2023).";
   }
 
   if (formato === FORMATOS.EMBARCACAO) {
@@ -327,6 +388,8 @@ export const ORDEM_CAMPOS = [
   "tabela",
   "linkOficialVeiculo",
   "linkMapa",
+  "guia",
+  "anoVeiculo",
 ];
 
 export const ROTULO_ERRO = {
@@ -339,4 +402,6 @@ export const ROTULO_ERRO = {
   linkOficialVeiculo: "Link do site oficial",
   capacidade: "Capacidade",
   linkMapa: "Link do mapa",
+  guia: "Guia vinculado",
+  anoVeiculo: "Ano do veículo",
 };
