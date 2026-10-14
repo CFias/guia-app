@@ -403,3 +403,30 @@ body:is(.dark, .dark-pro) {
 .ui-cell-end.painel-op-com-icone {
   justify-content: flex-end;
 }
+
+/* aviso: serviços com guia ocultos da lista/fechamento (abre "Serviços da lista") */
+.painel-op-ocultos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.painel-op-ocultos:hover {
+  border-color: var(--accent);
+  color: var(--text-2);
+}
+
+.painel-op-ocultos span {
+  margin-left: auto;
+  color: var(--accent-text);
+  font-weight: 600;
+}

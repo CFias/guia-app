@@ -33,11 +33,49 @@ import {
   TableRow,
 } from "../ui";
 import { usePhoenixStatus } from "../Shell/shellContext";
+import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
+import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 import {
   acumularIdiomas,
+  bandeiraDoIdioma,
   extrairIdiomasDoItem,
   listarIdiomasExigidos,
+  siglaDoIdioma,
 } from "../../Services/Utils/idiomas";
+
+// Modalidade do Phoenix → "Regular" / "Privativo" (outro texto passa como veio)
+const categoriaDoModo = (modo = "") => {
+  const t = String(modo || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (!t) return "";
+  if (t.includes("priv") || t.includes("exclus")) return "Privativo";
+  if (t.includes("regul") || t.includes("compart") || t.includes("shared")) return "Regular";
+  return String(modo).trim().charAt(0).toUpperCase() + String(modo).trim().slice(1).toLowerCase();
+};
+
+// Categoria do serviço para a mensagem ao guia: DISP é privativo; com
+// reservas dos dois tipos mostra os dois (com o pax de cada).
+const linhaCategoriaServico = (item) => {
+  const modos = Object.entries(item?.modos || {});
+  if (!modos.length) return item?.isDisp ? "🏷️ Categoria: *Privativo*" : "";
+  if (modos.length === 1) return `🏷️ Categoria: *${modos[0][0]}*`;
+  return `🏷️ Categoria: ${modos
+    .sort((a, b) => b[1] - a[1])
+    .map(([nome, pax]) => `*${nome}* (${pax} pax)`)
+    .join(" + ")}`;
+};
+
+// Idiomas do passeio além do português: sigla + bandeira (+ pax), para as
+// mensagens ao guia. Ex.: "🗣️ Idioma: *ES* 🇪🇸 (4 pax)"
+const linhaIdiomasServico = (item) => {
+  const idiomas = listarIdiomasExigidos(item?.idiomas);
+  if (!idiomas.length) return "";
+  return `🗣️ Idioma${idiomas.length > 1 ? "s" : ""}: ${idiomas
+    .map((id) => {
+      const qtd = Number(item.idiomas?.[id] || 0);
+      return `*${siglaDoIdioma(id)}* ${bandeiraDoIdioma(id)}${qtd ? ` (${qtd} pax)` : ""}`;
+    })
+    .join(" · ")}`;
+};
 
 const DIAS = [
   "Segunda",
@@ -436,6 +474,13 @@ const Home = () => {
   const [ordenacaoPaxDia, setOrdenacaoPaxDia] = useState("maior");
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [servicoCopiadoChave, setServicoCopiadoChave] = useState(null);
+  // serviços fora da lista do dia (mesma configuração do fechamento do Painel)
+  const {
+    lista: servicosOcultosLista,
+    estaOculto: servicoOculto,
+    salvar: salvarServicosOcultos,
+  } = useServicosOcultos();
+  const [configServicosAberto, setConfigServicosAberto] = useState(false);
 
   const semana = useMemo(
     () => getSemanaPorOffset(semanaOffset),
@@ -563,7 +608,14 @@ const Home = () => {
           serviceModeAsText: extrairModoServico(item),
           isDisp: ehServicoDispPorNomeOuTipo(item),
           idiomas: {}, // pax por idioma estrangeiro (Phoenix), ex.: { en: 3 }
+          modos: {}, // categoria das reservas (Regular / Privativo) → pax
         };
+      }
+
+      const modo = categoriaDoModo(extrairModoServico(item));
+      if (modo) {
+        itensApiAgrupados[chave].modos[modo] =
+          (itensApiAgrupados[chave].modos[modo] || 0) + pax.total;
       }
 
       // idioma dos passageiros desta reserva
@@ -767,7 +819,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -776,11 +828,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -845,13 +897,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -915,7 +967,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                  normalizarTexto(guia.nome || ""),
+                normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -945,11 +997,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-          distribuicaoGuias.reduce(
-            (acc, guia) => acc + Number(guia.percentualUso || 0),
-            0,
-          ) / distribuicaoGuias.length,
-        )
+        distribuicaoGuias.reduce(
+          (acc, guia) => acc + Number(guia.percentualUso || 0),
+          0,
+        ) / distribuicaoGuias.length,
+      )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1001,8 +1053,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1309,7 +1361,7 @@ const Home = () => {
     if (!diaSelecionadoHome) return [];
 
     return dashboard.servicosExecutivos
-      .filter((item) => item.date === diaSelecionadoHome)
+      .filter((item) => item.date === diaSelecionadoHome && !servicoOculto(item.serviceName))
       .map((item) => {
         let statusOperacional = "Sem guia";
         if (item.fechado) statusOperacional = "Fechado";
@@ -1332,7 +1384,20 @@ const Home = () => {
           isDisp,
         };
       });
-  }, [dashboard.servicosExecutivos, diaSelecionadoHome]);
+  }, [dashboard.servicosExecutivos, diaSelecionadoHome, servicoOculto]);
+
+  // todos os serviços do dia (para "Serviços da lista") e os ocultos hoje
+  const servicosDoDiaTodos = useMemo(
+    () =>
+      dashboard.servicosExecutivos
+        .filter((item) => item.date === diaSelecionadoHome)
+        .map((item) => ({ nome: item.serviceName, pax: item.passengers })),
+    [dashboard.servicosExecutivos, diaSelecionadoHome],
+  );
+  const ocultosNoDia = useMemo(
+    () => servicosDoDiaTodos.filter((s) => servicoOculto(s.nome)),
+    [servicosDoDiaTodos, servicoOculto],
+  );
 
   const guiasDisponiveisNoDia = useMemo(() => {
     const unicos = Array.from(
@@ -1431,7 +1496,7 @@ const Home = () => {
       return `
 Olá, ${nomeGuia}.
 
-Confirmamos sua programação ${textoData}: ${item.serviceName}, com previsão de ${item.passengers} passageiro(s).
+Confirmamos sua programação ${textoData}: ${item.serviceName}, com previsão de ${item.passengers} passageiro(s).${[linhaCategoriaServico(item), linhaIdiomasServico(item)].filter(Boolean).map((l) => `\n${l}`).join("")}
 
 Caso haja qualquer ajuste operacional, entraremos em contato.
 
@@ -1482,20 +1547,25 @@ Operacional - Luck Receptivo
     const totalPax =
       Number(item.adultCount || 0) + Number(item.childCount || 0) + Number(item.infantCount || 0);
 
+    const linhaIdiomas = linhaIdiomasServico(item);
+
     const partes = [
-      item.guiaNome ? `Olá, ${primeiroNome}!` : "Olá!",
-      "Tudo bem?",
+      item.guiaNome ? `Olá, ${primeiroNome}! Tudo bem?` : "Olá! Tudo bem?",
       "",
       `Segue sua programação para ${quando}:`,
       "",
-      `*${item.serviceName}*`,
-      `Pax: *${totalPax}*${detalhePax ? ` (${detalhePax})` : ""}`,
+      `📍 *${item.serviceName}*`,
+      linhaCategoriaServico(item) || null,
+      `👥 Pax: *${totalPax}*${detalhePax ? ` (${detalhePax})` : ""}`,
+      linhaIdiomas || null,
       "",
       "Qualquer dúvida, estamos à disposição.",
       "Bom trabalho! 🍀",
       "",
       "_Operacional · Luck SSA_",
-    ];
+    ]
+      .filter((linha) => linha !== null)
+      .filter((linha, i, arr) => linha !== "" || arr[i - 1] !== "");
 
     return partes.join("\n");
   };
@@ -1760,7 +1830,7 @@ Operacional - Luck Receptivo
 
       {abaAtiva === "operacao" && (
         <>
-  
+
 
           {/* ---- tiles do dia (clicar filtra a tabela) ---- */}
           <KpiTiles
@@ -1797,7 +1867,7 @@ Operacional - Luck Receptivo
             ]}
           />
 
-                  {/* ---- dias da semana ---- */}
+          {/* ---- dias da semana ---- */}
           <div className="dash-days" role="tablist" aria-label="Dia">
             {semana.map((dia) => {
               const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
@@ -1875,6 +1945,17 @@ Operacional - Luck Receptivo
                       <option value="nome">Nome</option>
                     </select>
                   </Field>
+                  <Button
+                    icon="sliders"
+                    onClick={() => setConfigServicosAberto(true)}
+                    title={
+                      ocultosNoDia.length
+                        ? `Fora da lista hoje: ${ocultosNoDia.map((s) => s.nome).join(" · ")}`
+                        : "Escolher os serviços que aparecem nesta lista e no fechamento do Painel"
+                    }
+                  >
+                    Serviços da lista{ocultosNoDia.length ? ` · ${ocultosNoDia.length} oculto(s)` : ""}
+                  </Button>
                 </div>
               }
             />
@@ -1965,6 +2046,16 @@ Operacional - Luck Receptivo
               </Table>
             )}
           </Card>
+
+          {configServicosAberto && (
+            <ConfigServicosDrawer
+              open
+              onClose={() => setConfigServicosAberto(false)}
+              servicosDoDia={servicosDoDiaTodos}
+              ocultosSalvos={servicosOcultosLista}
+              salvar={salvarServicosOcultos}
+            />
+          )}
 
           {/* ---- resumo da semana ---- */}
           <section className="dash-section">

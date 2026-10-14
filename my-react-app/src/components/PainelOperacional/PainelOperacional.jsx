@@ -34,6 +34,8 @@ import {
   TableRow,
 } from "../ui";
 import { usePhoenixStatus } from "../Shell/shellContext";
+import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
+import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 
 // status do voo → tom e ícone (atrasado/cancelado em --alert)
 // ícones da linha de OUT/Transfer (só apresentação)
@@ -145,16 +147,8 @@ const situacaoAeroporto = (status = "") => {
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
 
-const SERVICOS_IGNORADOS = [
-  "PASSEIO PRAIA DO FORTE 4H (LTN-VOLTA)",
-  "IN  - LITORAL NORTE",
-  "CITY TOUR PANORAMICO",
-  "VOLTA FRADES COM ITAPARICA",
-  "OUT -  LITORAL NORTE",
-  "OUT - SALVADOR",
-  "COORDENADOR LTN 04H OU 08H",
-  "COORDENADOR SSA 08H",
-];
+// Serviços fora da lista e do fechamento: configuráveis em "Serviços da lista"
+// (settings/servicos_lista_dia — ver ServicosOcultos/servicosOcultos.js).
 
 /**
  * Configure aqui manualmente os passeios que devem sair com ponto de apoio.
@@ -282,6 +276,16 @@ const textoOuPadrao = (valor, padrao = "-") => {
   return t && t !== "-" ? t : padrao;
 };
 
+// separa blocos (hotel, trecho, passeio) na cópia do WhatsApp
+const SEPARADOR = "━━━━━━━━━━━━━━━";
+
+// junta as linhas sem deixar duas linhas em branco seguidas
+const juntarLinhas = (linhas) =>
+  linhas
+    .filter((linha, i, arr) => linha !== "" || (i > 0 && arr[i - 1] !== ""))
+    .join("\n")
+    .trim();
+
 const linhasPassageirosScript = (reservas = [], { mostrarVoo = false } = {}) => {
   const linhas = [];
   reservas.forEach((reserva, index) => {
@@ -295,24 +299,30 @@ const linhasPassageirosScript = (reservas = [], { mostrarVoo = false } = {}) => 
     const codigo = textoOuPadrao(reserva?.reserva, "");
     const voo = textoOuPadrao(reserva?.vooRetorno, "");
 
-    linhas.push(`${index + 1}. *${nome}* — ${quantidade}`);
-    if (codigo) linhas.push(`   Reserva: ${codigo}`);
-    if (telefone) linhas.push(`   Contato: ${telefone}`);
-    if (mostrarVoo && voo) linhas.push(`   Voo: ${voo}`);
-    linhas.push("");
+    if (index > 0) linhas.push("");
+    linhas.push(`*${index + 1}. ${nome}* · ${quantidade}`);
+    if (codigo) linhas.push(`Reserva: ${codigo}`);
+    if (telefone) linhas.push(`Contato: ${telefone}`);
+    if (mostrarVoo && voo) linhas.push(`✈️ Voo: ${voo}`);
   });
   return linhas;
 };
 
-// só mostra veículo/modalidade quando vierem preenchidos
-const linhasVeiculoModalidade = (grupo) =>
-  [
-    textoOuPadrao(grupo.veiculo, "") && `Veículo: *${textoOuPadrao(grupo.veiculo)}*`,
-    textoOuPadrao(grupo.modalidade, "") && `Modalidade: *${textoOuPadrao(grupo.modalidade)}*`,
-  ].filter(Boolean);
+// data (com o dia da semana) e veículo · modalidade, só o que vier preenchido
+const linhaData = (dataIso) => {
+  const dia = diaDaSemana(dataIso);
+  return `📅 *${formatarDataBr(dataIso)}*${dia ? ` · ${dia}` : ""}`;
+};
+
+const linhasVeiculoModalidade = (grupo) => {
+  const veiculo = textoOuPadrao(grupo.veiculo, "");
+  const modalidade = textoOuPadrao(grupo.modalidade, "");
+  if (!veiculo && !modalidade) return [];
+  return [`🚐 ${[veiculo && `*${veiculo}*`, modalidade].filter(Boolean).join(" · ")}`];
+};
 
 const rodapeMonitoramento = [
-  "Por favor, envie a *localização em tempo real*.",
+  "📍 Por favor, envie a *localização em tempo real*.",
   "",
   "_Equipe de Monitoramento · Luck SSA_",
 ];
@@ -324,36 +334,35 @@ const montarTextoOut = (grupo, blocos) => {
     "",
     "Olá! Tudo certo para este OUT?",
     "",
-    `Data: *${formatarDataBr(blocos[0]?.dataServicoReal || grupo.dataServicoReal)}*`,
+    linhaData(blocos[0]?.dataServicoReal || grupo.dataServicoReal),
     ...linhasVeiculoModalidade(grupo),
     "",
   ];
 
   if (!blocos.length) {
-    linhas.push("*HOTEL NÃO INFORMADO*", "");
+    linhas.push(SEPARADOR, "🏨 *HOTEL NÃO INFORMADO*");
   }
 
   blocos.forEach((hotel, index) => {
     const titulo = blocos.length > 1 ? `Hotel ${index + 1} · ` : "";
-    linhas.push(`*${titulo}${textoOuPadrao(hotel.hotelOrigemAbreviado, "HOTEL NÃO INFORMADO")}*`);
-    linhas.push(`Saída do hotel: *${hotel.horario || "--:--"}*`);
+    linhas.push(SEPARADOR);
+    linhas.push(`🏨 *${titulo}${textoOuPadrao(hotel.hotelOrigemAbreviado, "HOTEL NÃO INFORMADO")}*`);
     linhas.push(
-      `Pax: *${formatarQuantidadeDetalhada(hotel.totalAdultos, hotel.totalCriancas, hotel.totalInfantes)}*`,
+      `Saída do hotel: *${hotel.horario || "--:--"}* · Pax: *${formatarQuantidadeDetalhada(hotel.totalAdultos, hotel.totalCriancas, hotel.totalInfantes)}*`,
     );
     linhas.push("");
-    linhas.push("*Passageiros*");
     linhas.push(...linhasPassageirosScript(hotel.reservas, { mostrarVoo: true }));
   });
 
+  linhas.push(SEPARADOR);
   if (blocos.length > 1) {
     linhas.push(
       `*Total do veículo: ${formatarQuantidadeDetalhada(grupo.totalAdultos, grupo.totalCriancas, grupo.totalInfantes)}*`,
-      "",
     );
   }
 
-  linhas.push(...rodapeMonitoramento);
-  return linhas.join("\n");
+  linhas.push("", ...rodapeMonitoramento);
+  return juntarLinhas(linhas);
 };
 
 // TRANSFER: origem → destino, pax, reserva, titular e modalidade
@@ -368,24 +377,24 @@ const montarTextoTransfer = (grupo, blocos) => {
   ];
 
   if (!blocos.length) {
-    linhas.push("Origem: *NÃO INFORMADA*", "Destino: *NÃO INFORMADO*", "");
+    linhas.push(SEPARADOR, "Origem: *NÃO INFORMADA*", "Destino: *NÃO INFORMADO*");
   }
 
   blocos.forEach((trecho, index) => {
+    linhas.push(SEPARADOR);
     if (blocos.length > 1) linhas.push(`*Trecho ${index + 1}*`);
-    linhas.push(`Data: *${formatarDataBr(trecho.dataServicoReal)}* · Horário: *${trecho.horario || "--:--"}*`);
+    linhas.push(`${linhaData(trecho.dataServicoReal)} · 🕒 *${trecho.horario || "--:--"}*`);
     linhas.push(`Origem: *${textoOuPadrao(trecho.hotelOrigem || trecho.hotelOrigemAbreviado, "NÃO INFORMADA")}*`);
     linhas.push(`Destino: *${textoOuPadrao(trecho.hotelDestino || trecho.hotelDestinoAbreviado, "NÃO INFORMADO")}*`);
     linhas.push(
       `Pax: *${formatarQuantidadeDetalhada(trecho.totalAdultos, trecho.totalCriancas, trecho.totalInfantes)}*`,
     );
     linhas.push("");
-    linhas.push("*Reservas*");
     linhas.push(...linhasPassageirosScript(trecho.reservas));
   });
 
-  linhas.push(...rodapeMonitoramento);
-  return linhas.join("\n");
+  linhas.push(SEPARADOR, "", ...rodapeMonitoramento);
+  return juntarLinhas(linhas);
 };
 
 const montarTextoMonitoramentoGrupo = (grupo) => {
@@ -426,21 +435,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -928,21 +937,6 @@ const somarReservas = (reservas = []) =>
 const normalizarCodigoVoo = (valor = "") =>
   String(valor).toUpperCase().replace(/\s+/g, "").replace("-", "");
 
-const deveIgnorarServico = (nome = "") => {
-  const normalizado = nome
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-  return SERVICOS_IGNORADOS.some((ignorado) =>
-    normalizado.includes(
-      ignorado
-        .toUpperCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""),
-    ),
-  );
-};
 
 const extrairGuiaEscalado = (item) =>
   item?.roadmapService?.roadmap?.guide?.nickname ||
@@ -1013,12 +1007,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -1054,10 +1048,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1415,6 +1409,12 @@ export default function PainelOperacionalUnificado() {
   const [gruposExpandidosGuia, setGruposExpandidosGuia] = useState({});
 
   const [copiado, setCopiado] = useState(false);
+  const {
+    lista: servicosOcultosLista,
+    estaOculto: servicoOculto,
+    salvar: salvarServicosOcultos,
+  } = useServicosOcultos();
+  const [configServicosAberto, setConfigServicosAberto] = useState(false);
   const [grupoOutCopiado, setGrupoOutCopiado] = useState(null);
 
   // ---- Buscador de reservas ----
@@ -1440,18 +1440,18 @@ export default function PainelOperacionalUnificado() {
       return salvo
         ? { ...JSON.parse(salvo), logoUrl: logoLuck }
         : {
-            repetirCabecalhoVooAoQuebrarPagina: true,
-            mostrarLogoNasPlacas: true,
-            quantidadePorPaginaColecao: 5,
-            fundoPlaca: [255, 255, 255],
-            fundoHeader: [238, 238, 238],
-            bordaPlaca: [196, 196, 196],
-            linhaDivisoria: [90, 90, 90],
-            corTitulo: [65, 74, 95],
-            corTexto: [65, 74, 95],
-            corDestaque: [65, 74, 95],
-            corData: [90, 90, 90],
-          };
+          repetirCabecalhoVooAoQuebrarPagina: true,
+          mostrarLogoNasPlacas: true,
+          quantidadePorPaginaColecao: 5,
+          fundoPlaca: [255, 255, 255],
+          fundoHeader: [238, 238, 238],
+          bordaPlaca: [196, 196, 196],
+          linhaDivisoria: [90, 90, 90],
+          corTitulo: [65, 74, 95],
+          corTexto: [65, 74, 95],
+          corDestaque: [65, 74, 95],
+          corData: [90, 90, 90],
+        };
     } catch {
       return {
         repetirCabecalhoVooAoQuebrarPagina: true,
@@ -1720,12 +1720,12 @@ export default function PainelOperacionalUnificado() {
       const situacao = situacaoAeroporto(noAeroporto?.status);
       const voo = noAeroporto
         ? {
-            ...vooPhoenix,
-            horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
-            cancelado: vooPhoenix.cancelado || situacao.cancelado,
-            pousado: vooPhoenix.pousado || situacao.pousado,
-            aeroporto: noAeroporto,
-          }
+          ...vooPhoenix,
+          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+          cancelado: vooPhoenix.cancelado || situacao.cancelado,
+          pousado: vooPhoenix.pousado || situacao.pousado,
+          aeroporto: noAeroporto,
+        }
         : vooPhoenix;
 
       const calculoStatus = calcularStatusVooPorHorario({
@@ -2014,7 +2014,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2065,9 +2065,10 @@ export default function PainelOperacionalUnificado() {
   }, [gruposOutBase, filtroVeiculo]);
 
   const gruposGuiasBase = useMemo(() => {
+    // só serviços com guia e que estão na lista (os ocultos ficam de fora)
     const somenteComGuia = itensGuias.filter((item) => {
       const guia = extrairGuiaEscalado(item);
-      return String(guia || "").trim();
+      return String(guia || "").trim() && !servicoOculto(extrairNomePasseio(item));
     });
 
     const mapaGuias = {};
@@ -2191,7 +2192,24 @@ export default function PainelOperacionalUnificado() {
         };
       })
       .sort((a, b) => String(a.guia).localeCompare(String(b.guia), "pt-BR"));
+  }, [itensGuias, servicoOculto]);
+
+  // serviços com guia do dia (para "Serviços da lista") e quantos estão ocultos
+  const servicosComGuiaDoDia = useMemo(() => {
+    const mapa = new Map();
+    itensGuias.forEach((item) => {
+      if (!String(extrairGuiaEscalado(item) || "").trim()) return;
+      const nome = extrairNomePasseio(item);
+      const pax = extrairAdultos(item) + extrairCriancas(item) + extrairInfantes(item);
+      mapa.set(nome, (mapa.get(nome) || 0) + pax);
+    });
+    return [...mapa.entries()].map(([nome, pax]) => ({ nome, pax }));
   }, [itensGuias]);
+
+  const ocultosHoje = useMemo(
+    () => servicosComGuiaDoDia.filter((s) => servicoOculto(s.nome)),
+    [servicosComGuiaDoDia, servicoOculto],
+  );
 
   const guiasDisponiveis = useMemo(
     () => gruposGuiasBase.map((item) => item.guia),
@@ -2350,17 +2368,16 @@ export default function PainelOperacionalUnificado() {
     const dia = diaDaSemana(dataSelecionada);
     const linhas = [
       "🍀 *LUCK SSA · PASSEIOS DO DIA*",
-      `${dia ? `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ` : ""}${formatarDataBr(dataSelecionada)}`,
+      `📅 ${dia ? `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ` : ""}${formatarDataBr(dataSelecionada)}`,
       "",
     ];
 
     let totalPasseios = 0;
     let totalPax = 0;
 
+    // os serviços ocultos em "Serviços da lista" já não entram nos grupos
     gruposGuiasFiltrados.forEach((grupo) => {
       grupo.passeios.forEach((passeio) => {
-        if (deveIgnorarServico(passeio.passeio)) return;
-
         const veiculosOrdenados = [...(passeio.veiculos || [])].sort((a, b) => {
           if ((b.totalPax || 0) !== (a.totalPax || 0)) {
             return (b.totalPax || 0) - (a.totalPax || 0);
@@ -2375,8 +2392,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2401,41 +2418,43 @@ export default function PainelOperacionalUnificado() {
         totalPasseios += 1;
         totalPax += Number(passeio.totalPaxPasseio || 0);
 
+        linhas.push(SEPARADOR);
         linhas.push(`*${nomePasseio}*`);
-        linhas.push(`${ehMotoguia ? "Motoguia" : "Guia"}: ${nomeGuia}`);
-        linhas.push(`Pax: ${passeio.totalPaxPasseio || 0}`);
+        linhas.push(`${ehMotoguia ? "🚗 Motoguia" : "👤 Guia"}: ${nomeGuia}`);
+        linhas.push(`👥 Pax: *${passeio.totalPaxPasseio || 0}*`);
 
         if (!ehMotoguia) {
           linesPushIfValue(
             linhas,
-            `Veículo principal: ${veiculoPrincipal}`,
+            `🚐 Veículo: ${veiculoPrincipal}`,
             veiculoPrincipal && veiculoPrincipal !== "-",
           );
         }
 
         linesPushIfValue(
           linhas,
-          `Veículo de apoio: ${veiculoApoio}`,
+          `🚙 Apoio: ${veiculoApoio}`,
           // não repete quando o apoio é o mesmo veículo do principal
           veiculoApoio && veiculoApoio !== "-" && veiculoApoio !== veiculoPrincipal,
         );
 
         linesPushIfValue(
           linhas,
-          `Ponto de apoio: ${pontoDeApoio}`,
+          `📍 Ponto de apoio: ${pontoDeApoio}`,
           pontoDeApoio,
         );
-
-        linhas.push("");
       });
     });
 
-    linhas.push(`*Total: ${totalPasseios} passeio(s) · ${totalPax} pax*`);
+    linhas.push(SEPARADOR);
+    linhas.push(
+      `📊 *Total: ${totalPasseios} ${totalPasseios === 1 ? "serviço" : "serviços"} com guia · ${totalPax} pax*`,
+    );
     linhas.push("");
     linhas.push("Pontos de apoio informados! 🍀");
     linhas.push("_Operacional · Luck SSA_");
 
-    return linhas.join("\n").trim();
+    return juntarLinhas(linhas);
   };
 
   const copiarResumo = async () => {
@@ -2741,6 +2760,15 @@ export default function PainelOperacionalUnificado() {
             </Button>
             {abaAtiva === ABAS.GUIAS && (
               <Button
+                icon="sliders"
+                onClick={() => setConfigServicosAberto(true)}
+                title="Escolher os serviços que aparecem na lista e no fechamento"
+              >
+                Serviços da lista
+              </Button>
+            )}
+            {abaAtiva === ABAS.GUIAS && (
+              <Button
                 variant="primary"
                 icon={copiado ? "check" : "copy"}
                 onClick={copiarResumo}
@@ -2986,10 +3014,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) , icon: "planeLanding" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) , icon: "ticket" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) , icon: "truck" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) , icon: "users" },
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos), icon: "planeLanding" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas), icon: "ticket" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos), icon: "truck" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax), icon: "users" },
               {
                 key: "alterados",
                 label: "Voos alterados",
@@ -3067,9 +3095,8 @@ export default function PainelOperacionalUnificado() {
                           return (
                             <>
                               <span
-                                className={`ui-cell-sub tabular painel-op-fonte ${
-                                  voo.horariosPhoenixDivergentes ? "is-alerta" : ""
-                                }`}
+                                className={`ui-cell-sub tabular painel-op-fonte ${voo.horariosPhoenixDivergentes ? "is-alerta" : ""
+                                  }`}
                                 title={
                                   voo.horariosPhoenixDivergentes
                                     ? "As reservas deste voo têm horários diferentes no Phoenix"
@@ -3227,9 +3254,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -3293,9 +3319,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -3337,12 +3362,12 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) , icon: "grid" },
-              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) , icon: "planeTakeoff" },
-              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) , icon: "navigation" },
-              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) , icon: "users" },
-              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) , icon: "building" },
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length), icon: "grid" },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs), icon: "planeTakeoff" },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers), icon: "navigation" },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax), icon: "users" },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis), icon: "building" },
               {
                 key: "monitorados",
                 label: "Monitorados",
@@ -3594,12 +3619,35 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) , icon: "idCard" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) , icon: "truck" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) , icon: "users" },
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias), icon: "idCard" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos), icon: "truck" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax), icon: "users" },
             ]}
           />
+
+          {!carregando && ocultosHoje.length > 0 && (
+            <button
+              type="button"
+              className="painel-op-ocultos"
+              onClick={() => setConfigServicosAberto(true)}
+              title={ocultosHoje.map((s) => s.nome).join(" · ")}
+            >
+              <Icon name="eyeOff" size={14} />
+              {ocultosHoje.length} serviço(s) com guia fora da lista e do fechamento hoje
+              <span>Serviços da lista</span>
+            </button>
+          )}
+
+          {configServicosAberto && (
+            <ConfigServicosDrawer
+              open
+              onClose={() => setConfigServicosAberto(false)}
+              servicosDoDia={servicosComGuiaDoDia}
+              ocultosSalvos={servicosOcultosLista}
+              salvar={salvarServicosOcultos}
+            />
+          )}
 
           {carregando ? (
             <Card>{renderCarregando()}</Card>

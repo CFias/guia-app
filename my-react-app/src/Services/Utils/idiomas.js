@@ -39,6 +39,20 @@ IDIOMAS.forEach((i) => {
 export const siglaDoIdioma = (id) =>
   IDIOMAS.find((i) => i.id === id)?.sigla || String(id || "").toUpperCase();
 
+// Bandeira em emoji para textos de WhatsApp (no app a bandeira é SVG: IdiomaTag)
+const BANDEIRA_EMOJI = {
+  pt: "🇧🇷",
+  en: "🇬🇧",
+  es: "🇪🇸",
+  fr: "🇫🇷",
+  it: "🇮🇹",
+  de: "🇩🇪",
+  jp: "🇯🇵",
+  cn: "🇨🇳",
+};
+
+export const bandeiraDoIdioma = (id) => BANDEIRA_EMOJI[id] || "🌐";
+
 export const rotuloDoIdioma = (id) =>
   IDIOMAS.find((i) => i.id === id)?.label || String(id || "");
 
