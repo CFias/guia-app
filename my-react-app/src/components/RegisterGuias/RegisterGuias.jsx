@@ -1,19 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import {
-  AssignmentIndRounded,
-  ChatRounded,
-  DriveFileRenameOutlineRounded,
-  LanguageRounded,
-  LocalActivityRounded,
-  NoCrashRounded,
-  SaveRounded,
-  StarRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
+import GuiaAvatar from "../ui/GuiaAvatar";
+import { prepararFotoGuia, salvarFotoGuia } from "../../Services/Utils/fotoGuia";
 
 const CadastroGuia = () => {
   const [nome, setNome] = useState("");
@@ -33,6 +26,23 @@ const CadastroGuia = () => {
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // foto de perfil (opcional): preparada ao escolher, gravada depois do cadastro
+  const [foto, setFoto] = useState("");
+  const [erroFoto, setErroFoto] = useState("");
+  const inputFotoRef = useRef(null);
+
+  const escolherFoto = async (arquivo) => {
+    if (!arquivo) return;
+    setErroFoto("");
+    try {
+      setFoto(await prepararFotoGuia(arquivo));
+    } catch (e) {
+      setErroFoto(e?.message?.startsWith("Escolha") ? e.message : "Não foi possível ler a imagem.");
+    } finally {
+      if (inputFotoRef.current) inputFotoRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -101,7 +111,7 @@ const CadastroGuia = () => {
     try {
       setSalvando(true);
 
-      await addDoc(collection(db, "guides"), {
+      const novoGuia = await addDoc(collection(db, "guides"), {
         nome,
         whatsapp,
         idiomas: idiomasSelecionados.map((i) => i.label),
@@ -112,7 +122,18 @@ const CadastroGuia = () => {
         createdAt: Timestamp.now(),
       });
 
+      if (foto) {
+        try {
+          await salvarFotoGuia(novoGuia.id, foto);
+        } catch (e) {
+          console.error("Erro ao salvar a foto do guia:", e);
+          alert("Guia cadastrado, mas a foto não foi salva. Adicione pela Lista de Guias.");
+        }
+      }
+
       alert("Guia cadastrado com sucesso!");
+
+      setFoto("");
 
       setNome("");
       setWhatsapp("");
@@ -137,7 +158,7 @@ const CadastroGuia = () => {
       <div className="cadastro-guia-header">
         <div>
           <h2 className="cadastro-guia-title">
-            Cadastrar Guia Turístico <AssignmentIndRounded fontSize="small" />
+            Cadastrar Guia Turístico <Icon name="idCard" size={16} />
           </h2>
           <p className="cadastro-guia-subtitle">
             Cadastre guias, defina idiomas, serviços aptos e diferenciais
@@ -164,11 +185,48 @@ const CadastroGuia = () => {
               <CardSkeleton variant="filters" />
             ) : (
               <form className="cadastro-guia-form" onSubmit={salvarGuia}>
+                <div className="cadastro-guia-foto">
+                  <button
+                    type="button"
+                    className="cadastro-guia-foto__botao"
+                    onClick={() => inputFotoRef.current?.click()}
+                    disabled={bloqueado}
+                    title={foto ? "Trocar foto" : "Adicionar foto"}
+                  >
+                    <GuiaAvatar nome={nome || "?"} foto={foto} soFoto semLink tamanho={64} />
+                    <span className="cadastro-guia-foto__camera" aria-hidden="true">
+                      <Icon name="image" size={13} />
+                    </span>
+                  </button>
+                  <div>
+                    <strong>Foto do perfil</strong>
+                    <small>Opcional. Aparece junto do nome do guia nas telas do sistema.</small>
+                    <div className="cadastro-guia-foto__acoes">
+                      <button type="button" onClick={() => inputFotoRef.current?.click()} disabled={bloqueado}>
+                        {foto ? "Trocar foto" : "Adicionar foto"}
+                      </button>
+                      {foto && (
+                        <button type="button" className="is-sec" onClick={() => setFoto("")} disabled={bloqueado}>
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    {erroFoto && <small className="cadastro-guia-foto__erro">{erroFoto}</small>}
+                  </div>
+                  <input
+                    ref={inputFotoRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => escolherFoto(e.target.files?.[0])}
+                  />
+                </div>
+
                 <div className="cadastro-guia-form-grid">
                   <div className="cadastro-guia-field">
                     <label htmlFor="guia-nome">
                       Nome do guia{" "}
-                      <DriveFileRenameOutlineRounded fontSize="small" />
+                      <Icon name="pencil" size={16} />
                     </label>
                     <input
                       id="guia-nome"
@@ -182,7 +240,7 @@ const CadastroGuia = () => {
 
                   <div className="cadastro-guia-field">
                     <label htmlFor="guia-whatsapp">
-                      WhatsApp <ChatRounded fontSize="small" />
+                      WhatsApp <Icon name="message" size={16} />
                     </label>
                     <input
                       id="guia-whatsapp"
@@ -199,7 +257,7 @@ const CadastroGuia = () => {
                 <div className="cadastro-guia-form-grid">
                   <div className="cadastro-guia-field">
                     <label>
-                      Idiomas <LanguageRounded fontSize="small" />
+                      Idiomas <Icon name="languages" size={16} />
                     </label>
 
                     <div className="cadastro-guia-dropdown">
@@ -243,7 +301,7 @@ const CadastroGuia = () => {
 
                   <div className="cadastro-guia-field">
                     <label>
-                      Passeios aptos <LocalActivityRounded fontSize="small" />
+                      Passeios aptos <Icon name="ticket" size={16} />
                     </label>
 
                     <div className="cadastro-guia-dropdown">
@@ -301,14 +359,14 @@ const CadastroGuia = () => {
                       <span className="cadastro-guia-switch-thumb" />
                     </span>
                     <span className="cadastro-guia-switch-label">
-                      Atua como Motoguia <NoCrashRounded fontSize="small" />
+                      Atua como Motoguia <Icon name="truck" size={16} />
                     </span>
                   </button>
                 </div>
 
                 <div className="cadastro-guia-field">
                   <label htmlFor="guia-diferencial">
-                    Diferencial do guia <StarRounded fontSize="small" />
+                    Diferencial do guia <Icon name="star" size={16} />
                   </label>
                   <textarea
                     id="guia-diferencial"
@@ -325,7 +383,7 @@ const CadastroGuia = () => {
                     disabled={salvando}
                     className={`cadastro-guia-btn-primary ${salvando ? "is-saving" : ""}`}
                   >
-                    <SaveRounded fontSize="small" />
+                    <Icon name="save" size={16} />
                     {salvando ? "Salvando..." : "Cadastrar guia"}
                   </button>
                 </div>

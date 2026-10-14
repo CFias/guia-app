@@ -24,6 +24,7 @@ import {
   tonsDaLista,
 } from "./ilustracoes";
 import IdiomaTag from "../ui/IdiomaTag";
+import GuiaAvatar from "../ui/GuiaAvatar";
 import { rotuloDoIdioma } from "../../Services/Utils/idiomas";
 import BoasVindasComercial from "../BoasVindas/BoasVindasComercial";
 import { useAuth } from "../../Context/AuthContext";
@@ -468,7 +469,7 @@ const FaqComercial = () => {
         .sort(
           (a, b) =>
             (obterFichaEmbarcacao(a).capacidade ?? 9999) -
-              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+            (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
         ),
     [itensFiltrados],
   );
@@ -1177,13 +1178,12 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${
-        selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-      }`}
+        }`}
       {...propsCardClicavel(item, onAbrir)}
     >
       <div className={`faq-cat-veiculo-foto ${moto ? "tem-faixa" : ""}`}>
@@ -1222,7 +1222,7 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
         {moto && (
           <div className="faq-cat-faixa-guia">
             <span className="faq-cat-faixa-avatar" aria-hidden="true">
-              {(moto.guia || "G").charAt(0).toUpperCase()}
+              <GuiaAvatar nome={moto.guia || "Guia"} id={comp.guiaId || undefined} soFoto semLink tamanho={28} />
             </span>
             <span className="faq-cat-faixa-texto">
               <b>{moto.guia || "Motoguia"}</b>
@@ -1786,15 +1786,15 @@ const FaqDetalhe = ({
             {(ficha.passageiros !== null ||
               ficha.malasGrandes !== null ||
               ficha.malasBordo !== null) && (
-              <div className="faq-cat-bloco">
-                <h4>
-                  {configuracoes.length > 1
-                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
-                    : "Capacidade"}
-                </h4>
-                <Especificacoes ficha={ficha} />
-              </div>
-            )}
+                <div className="faq-cat-bloco">
+                  <h4>
+                    {configuracoes.length > 1
+                      ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                      : "Capacidade"}
+                  </h4>
+                  <Especificacoes ficha={ficha} />
+                </div>
+              )}
 
             {configuracoes.length > 0 && (
               <div className="faq-cat-bloco">
@@ -2002,7 +2002,10 @@ const FaqDetalhe = ({
 
         {comp.idiomas.length > 0 && (
           <div className="faq-cat-bloco">
-            <h4>Idiomas{comp.guiaNome ? ` · ${comp.guiaNome}` : ""}</h4>
+            <h4 className="faq-cat-bloco-guia">
+              {comp.guiaNome && <GuiaAvatar nome={comp.guiaNome} id={comp.guiaId || undefined} soFoto semLink tamanho={22} />}
+              Idiomas{comp.guiaNome ? ` · ${comp.guiaNome}` : ""}
+            </h4>
             <div className="faq-cat-idiomas">
               {comp.idiomas.map((id) => (
                 <IdiomaTag key={id} idioma={id} nome />

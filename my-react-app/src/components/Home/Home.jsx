@@ -22,6 +22,7 @@ import {
   EmptyState,
   Field,
   FilterBar,
+  GuiaAvatar,
   Icon,
   IdiomaTag,
   KpiTiles,
@@ -2004,7 +2005,12 @@ Operacional - Luck Receptivo
                       </span>
                       <span>
                         {item.guiaNome ? (
-                          <span className="ui-cell-main">{item.guiaNome}</span>
+                          <GuiaAvatar
+                            className="ui-cell-main"
+                            nome={item.guiaNome}
+                            id={item.guiaId}
+                            tamanho={26}
+                          />
                         ) : (
                           <StatusDot tone="alert" icon="alert">
                             Sem guia

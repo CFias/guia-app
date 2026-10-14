@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
+import FotoRapidaGuia from "./FotoRapidaGuia";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./guias.css";
 import {
@@ -29,6 +31,26 @@ const ListaGuias = () => {
 
   const [guiaEditando, setGuiaEditando] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // perfil aberto pelo link (?guia={id}) — clique na foto/nome do guia em
+  // qualquer tela do sistema
+  const [params, setParams] = useSearchParams();
+  const guiaDoLink = params.get("guia");
+  useEffect(() => {
+    if (!guiaDoLink || !guias.length) return;
+    const g = guias.find((x) => x.id === guiaDoLink);
+    if (g) setGuiaEditando(g);
+  }, [guiaDoLink, guias]);
+
+  const abrirPerfil = (guia) => {
+    setGuiaEditando(guia);
+    setParams({ guia: guia.id }, { replace: true });
+  };
+
+  const fecharPerfil = () => {
+    setGuiaEditando(null);
+    if (params.get("guia")) setParams({}, { replace: true });
+  };
 
   useEffect(() => {
     carregarGuias();
@@ -172,7 +194,17 @@ const ListaGuias = () => {
             const prioridade = Number(guia.nivelPrioridade || 2);
             return (
               <TableRow key={guia.id}>
-                <span className="ui-cell-main">{guia.nome}</span>
+                <span className="guias-nome-cel">
+                  <FotoRapidaGuia guia={guia} />
+                  <button
+                    type="button"
+                    className="ui-cell-main guias-nome-link"
+                    onClick={() => abrirPerfil(guia)}
+                    title={`Abrir o perfil de ${guia.nome}`}
+                  >
+                    {guia.nome}
+                  </button>
+                </span>
                 <span className="tabular">{guia.whatsapp}</span>
                 <span className="guias-chips">
                   {(guia.idiomas || []).map((idioma) => (
@@ -193,7 +225,7 @@ const ListaGuias = () => {
                   {guia.ativo ? "Ativo" : "Inativo"}
                 </StatusDot>
                 <span className="ui-cell-end">
-                  <Button size="sm" icon="pencil" onClick={() => setGuiaEditando(guia)}>
+                  <Button size="sm" icon="pencil" onClick={() => abrirPerfil(guia)}>
                     Editar
                   </Button>
                 </span>
@@ -206,7 +238,7 @@ const ListaGuias = () => {
       {guiaEditando && (
         <EditarGuiaModal
           guia={guiaEditando}
-          onClose={() => setGuiaEditando(null)}
+          onClose={fecharPerfil}
           onSaved={carregarGuias}
         />
       )}

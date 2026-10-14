@@ -40,6 +40,7 @@ import {
   PageHeader,
   SearchInput,
 } from "../ui";
+import GuiaAvatar from "../ui/GuiaAvatar";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não operar";
@@ -670,9 +671,7 @@ const MapaAfinidadeGuias = () => {
                       onClick={() => setGuiaSelecionado(guia.id)}
                       disabled={salvando}
                     >
-                      <span className="afinidade-guia__avatar" aria-hidden="true">
-                        {String(guia.nome || "?").trim().charAt(0).toUpperCase()}
-                      </span>
+                      <GuiaAvatar nome={guia.nome} id={guia.id} soFoto semLink tamanho={30} />
                       <span className="afinidade-guia__nome">{guia.nome}</span>
                       {guia.ativo === false && <span className="ui-cell-sub">inativo</span>}
                     </button>
@@ -700,9 +699,8 @@ const MapaAfinidadeGuias = () => {
                 subtitle={
                   loadingMapa
                     ? "Carregando..."
-                    : `${passeios.length - passeiosFora.length} passeio(s) na escala${
-                        passeiosFora.length ? ` · ${passeiosFora.length} fora` : ""
-                      }`
+                    : `${passeios.length - passeiosFora.length} passeio(s) na escala${passeiosFora.length ? ` · ${passeiosFora.length} fora` : ""
+                    }`
                 }
               />
               <div className="afinidade-passeios__ferramentas">

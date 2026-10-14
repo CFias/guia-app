@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Timestamp,
@@ -24,6 +24,8 @@ import {
   somarDias,
 } from "../../Services/Utils/janelaDisponibilidade";
 import PaisagemNordeste from "../Auth/PaisagemNordeste";
+import { prepararFotoGuia, removerFotoGuia, salvarFotoGuia } from "../../Services/Utils/fotoGuia";
+import FotoAmpliada from "../ui/FotoAmpliada";
 import logo from "../../assets/clover.png";
 import "./styles.css";
 import "./guia-visual.css";
@@ -142,6 +144,58 @@ const MinhaDisponibilidade = () => {
   const [idiomasEdicao, setIdiomasEdicao] = useState(null);
   const [salvandoIdiomas, setSalvandoIdiomas] = useState(false);
   const [msgIdiomas, setMsgIdiomas] = useState(null);
+
+  // foto de perfil (guide_fotos/{guideId})
+  const [foto, setFoto] = useState("");
+  const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const [msgFoto, setMsgFoto] = useState(null);
+  const inputFotoRef = useRef(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState(false);
+
+  useEffect(() => {
+    if (!guideId) return undefined;
+    let vivo = true;
+    getDoc(doc(db, "guide_fotos", guideId))
+      .then((snap) => vivo && setFoto(snap.exists() ? snap.data()?.foto || "" : ""))
+      .catch(() => { });
+    return () => {
+      vivo = false;
+    };
+  }, [guideId]);
+
+  const trocarFoto = async (arquivo) => {
+    if (!arquivo || !guideId) return;
+    setSalvandoFoto(true);
+    setMsgFoto(null);
+    try {
+      const nova = await prepararFotoGuia(arquivo);
+      await salvarFotoGuia(guideId, nova);
+      setFoto(nova);
+      setMsgFoto({ tipo: "ok", texto: "Foto atualizada! A equipe já vê sua foto." });
+    } catch (e) {
+      console.error("Erro ao salvar foto:", e);
+      setMsgFoto({ tipo: "erro", texto: e?.message?.startsWith("Escolha") ? e.message : "Não foi possível salvar a foto. Tente de novo." });
+    } finally {
+      setSalvandoFoto(false);
+      if (inputFotoRef.current) inputFotoRef.current.value = "";
+    }
+  };
+
+  const tirarFoto = async () => {
+    if (!guideId || !foto) return;
+    setSalvandoFoto(true);
+    setMsgFoto(null);
+    try {
+      await removerFotoGuia(guideId);
+      setFoto("");
+      setMsgFoto({ tipo: "ok", texto: "Foto removida." });
+    } catch (e) {
+      console.error("Erro ao remover foto:", e);
+      setMsgFoto({ tipo: "erro", texto: "Não foi possível remover a foto agora." });
+    } finally {
+      setSalvandoFoto(false);
+    }
+  };
 
   useEffect(() => {
     if (!guideId) return;
@@ -503,9 +557,29 @@ const MinhaDisponibilidade = () => {
         </div>
 
         <div className="guia-hero__pessoa">
-          <span className="guia-hero__avatar" aria-hidden="true">
-            {iniciais(perfil?.nome)}
-          </span>
+          {foto ? (
+            <button
+              type="button"
+              className="guia-hero__avatar tem-foto guia-foto-botao"
+              onClick={() => setFotoAmpliada(true)}
+              title="Ver a foto ampliada"
+              aria-label="Ver a foto ampliada"
+            >
+              <img src={foto} alt="" />
+            </button>
+          ) : (
+            <span className="guia-hero__avatar" aria-hidden="true">
+              {iniciais(perfil?.nome)}
+            </span>
+          )}
+          {fotoAmpliada && foto && (
+            <FotoAmpliada
+              foto={foto}
+              nome={guia?.nome || perfil?.nome}
+              legenda="Sua foto de perfil"
+              onClose={() => setFotoAmpliada(false)}
+            />
+          )}
           <div>
             <h1>Olá, {perfil?.nome?.split(" ")[0]}!</h1>
             <p>Informe seus dias disponíveis e confira seu perfil.</p>
@@ -598,11 +672,10 @@ const MinhaDisponibilidade = () => {
                 <p>
                   {janela.aberta
                     ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
-                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
-                        janela.diasAteAbrir > 0
-                          ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
-                          : ""
-                      }.`}
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${janela.diasAteAbrir > 0
+                      ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
+                      : ""
+                    }.`}
                 </p>
                 {janela.aberta && (
                   <div
@@ -640,14 +713,14 @@ const MinhaDisponibilidade = () => {
                   <section className="minha-disp-card guia-semana">
                     <div className="guia-semana__topo">
                       <div>
-                      <h2>
-                        <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
-                      </h2>
-                      <p className="minha-disp-nota">
-                        {janela.aberta
-                          ? "Toque só nos dias em que você está totalmente livre."
-                          : "O envio dos dias da semana que vem abre na quinta-feira."}
-                      </p>
+                        <h2>
+                          <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
+                        </h2>
+                        <p className="minha-disp-nota">
+                          {janela.aberta
+                            ? "Toque só nos dias em que você está totalmente livre."
+                            : "O envio dos dias da semana que vem abre na quinta-feira."}
+                        </p>
                       </div>
                       <span className="guia-contador" aria-label={`${marcadas.size} de ${janela.dias.length} dias marcados`}>
                         <strong>{marcadas.size}</strong>/{janela.dias.length}
@@ -857,14 +930,56 @@ const MinhaDisponibilidade = () => {
                 <>
                   <section className="minha-disp-card guia-perfil">
                     <div className="guia-perfil__topo">
-                      <span className="guia-hero__avatar guia-hero__avatar--grande" aria-hidden="true">
-                        {iniciais(guia.nome)}
+                      <span className="guia-foto-wrap">
+                        <button
+                          type="button"
+                          className={`guia-hero__avatar guia-hero__avatar--grande guia-foto-botao ${foto ? "tem-foto" : ""}`}
+                          onClick={() => (foto ? setFotoAmpliada(true) : inputFotoRef.current?.click())}
+                          disabled={salvandoFoto}
+                          title={foto ? "Ver a foto ampliada" : "Adicionar foto do perfil"}
+                          aria-label={foto ? "Ver a foto ampliada" : "Adicionar foto do perfil"}
+                        >
+                          {foto ? <img src={foto} alt="" /> : iniciais(guia.nome)}
+                        </button>
+                        <button
+                          type="button"
+                          className="guia-foto-botao__camera"
+                          onClick={() => inputFotoRef.current?.click()}
+                          disabled={salvandoFoto}
+                          title={foto ? "Trocar foto" : "Adicionar foto"}
+                          aria-label={foto ? "Trocar foto do perfil" : "Adicionar foto do perfil"}
+                        >
+                          <Icon name={salvandoFoto ? "loader" : "image"} size={13} className={salvandoFoto ? "ui-spin" : ""} />
+                        </button>
                       </span>
+
+                      <input
+                        ref={inputFotoRef}
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => trocarFoto(e.target.files?.[0])}
+                      />
                       <div>
                         <h2>{guia.nome}</h2>
                         <p className="minha-disp-nota">Guia Luck Receptivo · Salvador</p>
+                        <div className="guia-foto-acoes">
+                          <button type="button" onClick={() => inputFotoRef.current?.click()} disabled={salvandoFoto}>
+                            {foto ? "Trocar foto" : "Adicionar foto"}
+                          </button>
+                          {foto && (
+                            <button type="button" className="is-sec" onClick={tirarFoto} disabled={salvandoFoto}>
+                              Remover
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    {msgFoto && (
+                      <p className={`guia-foto-msg is-${msgFoto.tipo}`} role="status">
+                        {msgFoto.texto}
+                      </p>
+                    )}
                     <div className="guia-perfil__numeros">
                       <span>
                         <strong>{idiomasSalvos.length}</strong>
@@ -984,12 +1099,12 @@ const MinhaDisponibilidade = () => {
                             {(Array.isArray(p.frequencia)
                               ? p.frequencia.length > 0
                               : p.frequencia) && (
-                              <span className="minha-disp-freq">
-                                {Array.isArray(p.frequencia)
-                                  ? p.frequencia.join(" · ")
-                                  : p.frequencia}
-                              </span>
-                            )}
+                                <span className="minha-disp-freq">
+                                  {Array.isArray(p.frequencia)
+                                    ? p.frequencia.join(" · ")
+                                    : p.frequencia}
+                                </span>
+                              )}
                           </li>
                         ))}
                       </ul>

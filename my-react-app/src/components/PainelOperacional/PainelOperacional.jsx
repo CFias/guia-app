@@ -23,6 +23,7 @@ import {
   EmptyState,
   Field,
   FilterBar,
+  GuiaAvatar,
   Icon,
   KpiTiles,
   PageHeader,
@@ -3679,12 +3680,9 @@ export default function PainelOperacionalUnificado() {
                       onToggle={() => toggleExpandirGrupoGuia(grupo.id)}
                     >
                       <span className="painel-op-fornecedor-cel">
-                        <span className="painel-op-fornecedor-cel__icone" aria-hidden="true">
-                          <Icon name="idCard" size={16} />
-                        </span>
-                        <span className="painel-op-fornecedor-cel__texto">
+                        <GuiaAvatar nome={grupo.guia} tamanho={34}>
                           <strong>{grupo.guia}</strong>
-                        </span>
+                        </GuiaAvatar>
                       </span>
                       <span className="painel-op-resumo painel-op-com-icone">
                         <Icon name="compass" size={14} />

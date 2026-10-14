@@ -11,6 +11,7 @@ import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./guias.css";
 import { Bandeira, Drawer, Field, Icon } from "../ui";
+import FotoGuiaEditor from "./FotoGuiaEditor";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não opera";
@@ -182,13 +183,15 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     <Drawer
       open
       onClose={() => !loadingSalvar && onClose()}
-      title="Editar guia"
-      subtitle="Dados principais, idiomas, prioridade e o resumo de operação deste guia."
+      title="Perfil do guia"
+      subtitle="Foto, dados principais, idiomas, prioridade e o resumo de operação deste guia."
       width={460}
       onSave={salvar}
       saving={loadingSalvar}
       saveLabel={loadingSalvar ? "Salvando..." : "Salvar"}
     >
+      <FotoGuiaEditor guia={guia} />
+
       <Field label="Nome">
         <input
           placeholder="Nome"

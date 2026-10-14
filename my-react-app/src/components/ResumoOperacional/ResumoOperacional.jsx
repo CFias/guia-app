@@ -1,23 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  CalendarMonthRounded,
-  RefreshRounded,
-  AccessTimeRounded,
-  GroupsRounded,
-  Inventory2Rounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-  FilterAltRounded,
-  SyncRounded,
-  AssignmentRounded,
-  PersonRounded,
-  DirectionsBusRounded,
-  ContentCopyRounded,
-  CheckRounded,
-  SwapHorizRounded,
-  LocalShippingRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
 import "./styles.css";
+import GuiaAvatar from "../ui/GuiaAvatar";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -143,10 +127,10 @@ const extrairHotel = (item) =>
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      ""
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    ""
   );
 
 const extrairObservacao = (item) =>
@@ -443,7 +427,7 @@ export default function ResumoOperacionalGuias() {
       <div className="painel-outs-header">
         <div>
           <h2 className="painel-outs-title">
-            <SwapHorizRounded fontSize="small" />
+            <Icon name="navigation" size={16} />
             Resumo operacional por guia
           </h2>
           <p className="painel-outs-subtitle">
@@ -468,7 +452,7 @@ export default function ResumoOperacionalGuias() {
           <div className="painel-outs-toolbar">
             <div className="painel-outs-field">
               <label>
-                <CalendarMonthRounded fontSize="small" />
+                <Icon name="calendar" size={16} />
                 Data operacional
               </label>
               <input
@@ -481,7 +465,7 @@ export default function ResumoOperacionalGuias() {
 
             <div className="painel-outs-field">
               <label>
-                <FilterAltRounded fontSize="small" />
+                <Icon name="filter" size={16} />
                 Filtrar guia
               </label>
               <select
@@ -500,7 +484,7 @@ export default function ResumoOperacionalGuias() {
 
             <div className="painel-outs-field">
               <label>
-                <FilterAltRounded fontSize="small" />
+                <Icon name="filter" size={16} />
                 Tipo
               </label>
               <select
@@ -521,10 +505,7 @@ export default function ResumoOperacionalGuias() {
                 onClick={carregarServicos}
                 disabled={loading}
               >
-                <RefreshRounded
-                  fontSize="small"
-                  className={loading ? "spin" : ""}
-                />
+                <Icon name="refresh" size={16} className={loading ? "spin" : ""} />
                 {loading ? "Atualizando..." : "Atualizar"}
               </button>
             </div>
@@ -541,14 +522,14 @@ export default function ResumoOperacionalGuias() {
 
           <div className="painel-outs-stat">
             <div className="painel-outs-stat-icon">
-              <AccessTimeRounded fontSize="small" />
+              <Icon name="clock" size={16} />
             </div>
 
             <div>
               <span>Atualizado em</span>
               <strong>
                 {loading ? (
-                  <SyncRounded className="spin" fontSize="small" />
+                  <Icon name="refresh" size={16} className="spin" />
                 ) : ultimaAtualizacao ? (
                   ultimaAtualizacao.toLocaleString("pt-BR")
                 ) : (
@@ -571,13 +552,13 @@ export default function ResumoOperacionalGuias() {
           <div className="painel-outs-kpis">
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <PersonRounded fontSize="small" />
+                <Icon name="user" size={16} />
               </div>
               <div>
                 <span>Guias</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.guias
                   )}
@@ -587,13 +568,13 @@ export default function ResumoOperacionalGuias() {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <LocalShippingRounded fontSize="small" />
+                <Icon name="truck" size={16} />
               </div>
               <div>
                 <span>Serviços</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.servicos
                   )}
@@ -603,13 +584,13 @@ export default function ResumoOperacionalGuias() {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <Inventory2Rounded fontSize="small" />
+                <Icon name="list" size={16} />
               </div>
               <div>
                 <span>Reservas</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.reservas
                   )}
@@ -619,13 +600,13 @@ export default function ResumoOperacionalGuias() {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <GroupsRounded fontSize="small" />
+                <Icon name="users" size={16} />
               </div>
               <div>
                 <span>Pax</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.pax
                   )}
@@ -652,9 +633,9 @@ export default function ResumoOperacionalGuias() {
                   disabled={loading || !gruposFiltrados.length}
                 >
                   {copiado ? (
-                    <CheckRounded fontSize="small" />
+                    <Icon name="check" size={16} />
                   ) : (
-                    <ContentCopyRounded fontSize="small" />
+                    <Icon name="copy" size={16} />
                   )}
                   {copiado ? "Copiado!" : "Copiar resumo"}
                 </button>
@@ -671,7 +652,7 @@ export default function ResumoOperacionalGuias() {
             <div className="painel-outs-empty centered">{erro}</div>
           ) : loading ? (
             <div className="painel-outs-empty centered">
-              <SyncRounded className="spin" fontSize="small" />
+              <Icon name="refresh" size={16} className="spin" />
               <span>Atualizando serviços...</span>
             </div>
           ) : gruposFiltrados.length === 0 ? (
@@ -694,7 +675,7 @@ export default function ResumoOperacionalGuias() {
                       <div className="painel-outs-item-main">
                         <div className="painel-outs-item-title-wrap resumo-guia-title-wrap">
                           <div className="painel-outs-item-title resumo-guia-title">
-                            {grupo.guia}
+                            <GuiaAvatar nome={grupo.guia} tamanho={26} />
                           </div>
 
                           <div className="painel-outs-item-subtitle resumo-guia-subtitle">
@@ -723,9 +704,9 @@ export default function ResumoOperacionalGuias() {
 
                       <div className="painel-outs-expand-icon">
                         {expandido ? (
-                          <KeyboardArrowUpRounded />
+                          <Icon name="chevronUp" size={16} />
                         ) : (
-                          <KeyboardArrowDownRounded />
+                          <Icon name="chevronDown" size={16} />
                         )}
                       </div>
                     </button>
@@ -740,7 +721,7 @@ export default function ResumoOperacionalGuias() {
                             >
                               <div className="painel-outs-hotel-header resumo-guia-servico-header">
                                 <div className="painel-outs-hotel-title">
-                                  <DirectionsBusRounded fontSize="small" />
+                                  <Icon name="truck" size={16} />
                                   <strong>{servico.passeio}</strong>
                                 </div>
 

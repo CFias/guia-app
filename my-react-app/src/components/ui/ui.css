@@ -1016,3 +1016,134 @@
     animation: none;
   }
 }
+
+/* ---------- avatar do guia (foto de perfil ou iniciais) + nome ---------- */
+.ui-guia-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.ui-guia-avatar__foto {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.ui-guia-avatar__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ui-guia-avatar__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ui-guia-avatar__nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-guia-avatar__sub {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.ui-guia-avatar.is-link,
+.ui-guia-avatar__foto.is-link {
+  cursor: pointer;
+}
+
+.ui-guia-avatar.is-link:hover .ui-guia-avatar__nome {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ui-guia-avatar.is-link:focus-visible,
+.ui-guia-avatar__foto.is-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* ---------- foto ampliada ---------- */
+.ui-foto-ampliada {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 12, 12, 0.78);
+  backdrop-filter: blur(3px);
+  animation: ui-foto-entra 0.2s ease both;
+}
+
+.ui-foto-ampliada figure {
+  position: relative;
+  margin: 0;
+  width: min(440px, 88vw);
+}
+
+.ui-foto-ampliada img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.ui-foto-ampliada figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  color: #fff;
+  text-align: center;
+}
+
+.ui-foto-ampliada figcaption span {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: var(--fs-sm);
+}
+
+.ui-foto-ampliada__fechar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+
+@keyframes ui-foto-entra {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

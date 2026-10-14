@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Icon } from "../ui";
+import { GuiaAvatar, Icon } from "../ui";
 import { NOME_CATEGORIA, NOME_TIPO, formatarReais } from "../../Services/Services/custosCalculo";
 import { BlocoRecomendacao } from "./Recomendacoes";
 import { idDoCardVeiculo } from "./custosDatas";
@@ -34,7 +34,7 @@ const LinhaServico = ({ linha, par, onAbrir }) => (
         {linha.noShow && <span className="cst-chip-noshow">No-show · {linha.noShowPct}%</span>}
         {linha.guiaNome && (
           <span className={`cst-chip-guia ${linha.guiaStatus === "a-confirmar" ? "is-pendente" : ""}`}>
-            <Icon name="user" size={11} />
+            <GuiaAvatar nome={linha.guiaNome} soFoto tamanho={16} />
             {linha.guiaNome}
             {linha.guiaModalidade === "mi" ? " · MI" : linha.guiaModalidade === "idioma" ? " · +idioma" : ""}
             {linha.guiaValor !== null ? ` · ${formatarReais(linha.guiaValor, { semCentavos: true })}` : " · a confirmar"}

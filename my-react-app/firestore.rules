@@ -10,7 +10,7 @@ rules_version = '2';
 //  Níveis (campo `role` em users/{uid}):
 //    operacional → tudo
 //    comercial   → só a Central de Dúvidas (faq_itens)
-//    guia        → própria disponibilidade (dentro da janela configurável) e próprios idiomas
+//    guia        → própria disponibilidade (dentro da janela configurável), próprios idiomas e própria foto
 //  Conta sem documento em `users`, ou com ativo != true → nada.
 // =========================================================
 service cloud.firestore {
@@ -115,6 +115,21 @@ service cloud.firestore {
              .hasOnly(['idiomas', 'updatedAt'])
         && request.resource.data.idiomas is list
         && request.resource.data.idiomas.size() <= 20;
+    }
+    // ---------- Guia: própria foto de perfil ----------
+    // guide_fotos/{guideId}: { guideId, foto (data URL JPEG), atualizadoEm }.
+    // O guia lê, troca e remove só a própria foto; o operacional lê todas
+    // (aparecem junto do nome do guia nas telas) pela regra geral; o
+    // comercial lê uma a uma (foto do motoguia na Central, pelo id do guia).
+    match /guide_fotos/{guideId} {
+      allow get: if isGuiaDono(guideId) || isComercial();
+      allow delete: if isGuiaDono(guideId);
+      allow create, update: if isGuiaDono(guideId)
+        && request.resource.data.keys().hasOnly(['guideId', 'foto', 'atualizadoEm'])
+        && request.resource.data.guideId == guideId
+        && request.resource.data.foto is string
+        && request.resource.data.foto.matches('^data:image/jpeg;base64,.*')
+        && request.resource.data.foto.size() < 200000;
     }
     match /guide_tour_levels/{guideId} {
       allow get: if isGuiaDono(guideId);

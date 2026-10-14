@@ -16,6 +16,7 @@ import {
   ROTAS_FORA_DO_MENU,
 } from "../../components/Shell/navConfig";
 import { ShellContext } from "../../components/Shell/shellContext";
+import FotosGuiasProvider from "../../Context/FotosGuias";
 import { definirTituloAba } from "../../components/Shell/tituloAba";
 
 /* =========================================================
@@ -328,7 +329,9 @@ const Dashboard = ({ loading }) => {
                 <div className="spinner" />
               </div>
             )}
-            <Outlet />
+            <FotosGuiasProvider>
+              <Outlet />
+            </FotosGuiasProvider>
           </main>
           {role === "comercial" && <BoasVindasComercial />}
         </div>

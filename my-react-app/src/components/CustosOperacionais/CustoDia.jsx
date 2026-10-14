@@ -5,6 +5,7 @@ import {
   CardHeader,
   EmptyState,
   Field,
+  GuiaAvatar,
   Icon,
   KpiTiles,
   SearchInput,
@@ -129,7 +130,7 @@ const CelulaGuia = ({ linha, onSalvar, onAbrir, adicionalIdioma }) => {
   return (
     <div className="cst-cel-valor">
       <span className="cst-guia-nome" title={linha.guiaNome}>
-        <Icon name="user" size={13} />
+        <GuiaAvatar nome={linha.guiaNome} soFoto tamanho={18} />
         {linha.guiaNome}
         {linha.guiaModalidade === "mi" && <span className="cst-mod">MI</span>}
         {linha.guiaModalidade === "idioma" && (

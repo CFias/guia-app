@@ -15,14 +15,14 @@ const Servico = ({ linha, veiculo, onAbrir }) => (
   </button>
 );
 
-export const BlocoRecomendacao = ({ rec, onAbrir, onCopiar, compacto = false }) => ( 
+export const BlocoRecomendacao = ({ rec, onAbrir, onCopiar, compacto = false }) => (
   <div className={`cst-rec ${compacto ? "is-compacto" : ""}`}>
     <div className="cst-rec__topo">
       <span className="cst-rec__selo">
         <Icon name="sparkles" size={13} />
         {rec.tipo === "troca" ? `Trocar com ${rec.para.veiculo}` : `Passar para ${rec.para.veiculo}`}
       </span>
-      <b className="cst-eco tabular"> 
+      <b className="cst-eco tabular">
         −{formatarReais(rec.economia, { semCentavos: rec.economia >= 100 })} ({String(rec.pct).replace(".", ",")}%)
       </b>
     </div>
@@ -73,7 +73,7 @@ const CardRecomendacoes = ({ recomendacoes, casadosHoje, economiaCasados, regras
       <CardHeader
         icon="sparkles"
         title="Recomendador de custo"
-        subtitle={`Trocas entre veículos que formam serviço casado (${regras.regioes.join(", ") || "—"}, de ${duracaoTexto(regras.minHoras * 60)} a ${duracaoTexto(regras.maxHoras * 60)}), conferindo horário livre e lotação.`}
+        subtitle={`Trocas entre veículos que formam serviço casado (${regras.regioes.join(", ") || "—"}, de ${duracaoTexto(regras.minHoras * 60)} a ${duracaoTexto(regras.maxHoras * 60)}), sempre entre veículos da mesma categoria, conferindo horário livre e lotação.`}
       />
       <div className="cst-casados-resumo">
         <span>

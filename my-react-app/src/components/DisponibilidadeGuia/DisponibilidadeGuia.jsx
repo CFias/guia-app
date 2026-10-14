@@ -11,14 +11,8 @@ import {
 import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import {
-  CalendarMonthRounded,
-  FilterListRounded,
-  ManageAccountsRounded,
-  SaveRounded,
-  SearchRounded,
-  TodayRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
+import GuiaAvatar from "../ui/GuiaAvatar";
 
 /* ===== ABREVIAÇÃO DOS DIAS ===== */
 const DIA_ABREV = {
@@ -329,7 +323,7 @@ const DisponibilidadeGuia = () => {
       <div className="disponibilidade-guia-header">
         <div>
           <h2 className="disponibilidade-guia-title">
-            Disponibilidade da Semana <CalendarMonthRounded fontSize="small" />
+            Disponibilidade da Semana <Icon name="calendar" size={16} />
           </h2>
           <p className="disponibilidade-guia-subtitle">
             Organize os dias disponíveis por guia e acompanhe a distribuição da
@@ -357,7 +351,7 @@ const DisponibilidadeGuia = () => {
             <div className="disponibilidade-guia-form">
               <div className="disponibilidade-guia-field">
                 <label htmlFor="guia-select">
-                  Guia <ManageAccountsRounded fontSize="small" />
+                  Guia <Icon name="user" size={16} />
                 </label>
                 <select
                   id="guia-select"
@@ -382,7 +376,7 @@ const DisponibilidadeGuia = () => {
                 <>
                   <div className="disponibilidade-guia-field">
                     <label>
-                      Dias disponíveis <TodayRounded fontSize="small" />
+                      Dias disponíveis <Icon name="calendar" size={16} />
                     </label>
 
                     <div className="disponibilidade-guia-days-actions">
@@ -449,7 +443,7 @@ const DisponibilidadeGuia = () => {
                   onClick={salvarDisponibilidade}
                   disabled={salvando || !guiaSelecionado || !selecionados.length}
                 >
-                  <SaveRounded fontSize="small" />
+                  <Icon name="save" size={16} />
                   {salvando ? "Salvando..." : "Salvar disponibilidade"}
                 </button>
               </div>
@@ -526,7 +520,7 @@ const DisponibilidadeGuia = () => {
             <>
               <div className="disponibilidade-guia-toolbar">
                 <div className="disponibilidade-guia-search">
-                  <SearchRounded fontSize="small" />
+                  <Icon name="search" size={16} />
                   <input
                     className="disponibilidade-guia-search-input"
                     placeholder="Buscar por guia ou data"
@@ -539,7 +533,7 @@ const DisponibilidadeGuia = () => {
 
               <div className="disponibilidade-guia-filter-block">
                 <div className="disponibilidade-guia-filter-title">
-                  <FilterListRounded fontSize="small" />
+                  <Icon name="filter" size={16} />
                   Filtrar por data
                 </div>
 
@@ -588,7 +582,7 @@ const DisponibilidadeGuia = () => {
                             >
                               P{g.nivelPrioridade || 2}
                             </span>
-                            <span>{g.nome}</span>
+                            <GuiaAvatar nome={g.nome} id={g.id} tamanho={24} />
                           </div>
                         </div>
 

@@ -1712,14 +1712,18 @@
     flex: none;
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
     border: 2px solid #fff;
     border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 800;
+}
+
+.faq-cat-faixa-avatar .ui-guia-avatar__foto {
+    box-shadow: none;
+}
+
+.faq-cat-bloco-guia {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .faq-cat-faixa-texto {
@@ -1802,10 +1806,10 @@
         padding: 18px 6px 6px;
     }
 
-    .faq-cat-faixa-avatar {
-        width: 22px;
-        height: 22px;
-        font-size: 11px;
+    .faq-cat-faixa-avatar .ui-guia-avatar__foto {
+        width: 22px !important;
+        height: 22px !important;
+        font-size: 10px !important;
     }
 
     .faq-cat-faixa-texto small {
