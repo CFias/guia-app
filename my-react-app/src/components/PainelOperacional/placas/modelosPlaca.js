@@ -1,0 +1,253 @@
+// modelosPlaca.js
+//
+// Modelos das placas de recepção (Painel Operacional → Chegadas).
+// - Modelos prontos: ficam no código (MODELOS_PRONTOS).
+// - Modelos da equipe: criados no próprio painel, salvos em
+//   settings/placas_modelos = { modelos: [...], atualizadoEm }.
+// - O que cada computador escolheu por último (modelo, mensagem, opções da
+//   coleção) fica no localStorage: é só uma conveniência de quem imprime.
+
+import { useCallback, useEffect, useState } from "react";
+import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
+import { db } from "../../../Services/Services/firebase";
+
+const REF = () => doc(db, "settings", "placas_modelos");
+
+export const DESENHOS = [
+  { value: "nenhum", label: "Nenhum" },
+  { value: "farol", label: "Farol" },
+  { value: "bonfim", label: "Igreja do Bonfim" },
+  { value: "pelourinho", label: "Pelourinho" },
+  { value: "orla", label: "Orla" },
+  { value: "fitinhas", label: "Fitinhas" },
+];
+
+export const POSICOES = [
+  { value: "direita", label: "Canto direito" },
+  { value: "esquerda", label: "Canto esquerdo" },
+  { value: "base", label: "Na base" },
+  { value: "laterais", label: "Nas laterais" },
+];
+
+export const MOLDURAS = [
+  { value: "nenhuma", label: "Nenhuma" },
+  { value: "fina", label: "Linha fina" },
+  { value: "dupla", label: "Dupla" },
+  { value: "cantos", label: "Só cantos" },
+];
+
+export const LETRAS = [
+  { value: "forte", label: "Forte" },
+  { value: "elegante", label: "Elegante (serifa)" },
+];
+
+export const TRACOS = [
+  { value: "leve", label: "Leve" },
+  { value: "bem-leve", label: "Bem leve" },
+];
+
+// posições que cada desenho aceita (as fitinhas não ficam num canto só;
+// os prédios não cabem nas laterais)
+export const posicoesDoDesenho = (desenho) => {
+  if (desenho === "nenhum") return [];
+  if (desenho === "fitinhas") return ["base", "laterais"];
+  if (desenho === "pelourinho" || desenho === "orla") return ["base"];
+  return ["direita", "esquerda", "base"];
+};
+
+export const MODELO_BASE = {
+  nome: "",
+  desenho: "nenhum",
+  posicao: "base",
+  moldura: "nenhuma",
+  letra: "forte",
+  traco: "leve",
+  mensagem: "",
+  trevo: 0.06,
+};
+
+export const MODELOS_PRONTOS = [
+  { id: "classico", nome: "Clássico", desenho: "nenhum" },
+  { id: "farol", nome: "Farol da Barra", desenho: "farol", posicao: "direita" },
+  { id: "bonfim", nome: "Senhor do Bonfim", desenho: "bonfim", posicao: "direita" },
+  { id: "pelourinho", nome: "Pelourinho", desenho: "pelourinho", posicao: "base" },
+  { id: "orla", nome: "Orla", desenho: "orla", posicao: "base" },
+  { id: "fitinhas", nome: "Fitinhas", desenho: "fitinhas", posicao: "base", novo: true },
+  { id: "moldura_fitas", nome: "Moldura de fitas", desenho: "fitinhas", posicao: "laterais", novo: true },
+].map((m) => ({ ...MODELO_BASE, ...m, pronto: true }));
+
+const valido = (lista, v, padrao) => (lista.some((o) => o.value === v) ? v : padrao);
+
+// Garante um modelo completo e coerente (vale para o que vem do Firestore)
+export const normalizarModelo = (m = {}) => {
+  const desenho = valido(DESENHOS, m.desenho, MODELO_BASE.desenho);
+  const aceitas = posicoesDoDesenho(desenho);
+  const posicao = aceitas.includes(m.posicao) ? m.posicao : aceitas[0] || "base";
+  const trevo = Number(m.trevo);
+  return {
+    ...MODELO_BASE,
+    ...m,
+    nome: String(m.nome || "").trim().slice(0, 40) || "Sem nome",
+    desenho,
+    posicao,
+    moldura: valido(MOLDURAS, m.moldura, MODELO_BASE.moldura),
+    letra: valido(LETRAS, m.letra, MODELO_BASE.letra),
+    traco: valido(TRACOS, m.traco, MODELO_BASE.traco),
+    mensagem: String(m.mensagem || "").slice(0, 90),
+    trevo: Number.isFinite(trevo) ? Math.min(0.2, Math.max(0, trevo)) : MODELO_BASE.trevo,
+  };
+};
+
+export const novoIdModelo = () =>
+  `mod_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
+// ---------- mensagem de boas-vindas pelo idioma ----------
+// jp/cn usam inglês: a fonte padrão do PDF não tem esses caracteres.
+const MENSAGENS = {
+  pt: ["Seja bem-vindo(a) a Salvador!", "Sejam bem-vindos a Salvador!"],
+  en: ["Welcome to Salvador!", "Welcome to Salvador!"],
+  es: ["¡Bienvenido(a) a Salvador!", "¡Bienvenidos a Salvador!"],
+  fr: ["Bienvenue à Salvador !", "Bienvenue à Salvador !"],
+  it: ["Benvenuto/a a Salvador!", "Benvenuti a Salvador!"],
+  de: ["Willkommen in Salvador!", "Willkommen in Salvador!"],
+};
+
+export const mensagemDoIdioma = (idioma, { plural = false } = {}) => {
+  const par = MENSAGENS[idioma] || (idioma && idioma !== "pt" ? MENSAGENS.en : MENSAGENS.pt);
+  return plural ? par[1] : par[0];
+};
+
+// idioma da maioria (coleção): o mais frequente; empate → português
+export const idiomaDaMaioria = (idiomas = []) => {
+  const conta = {};
+  idiomas.forEach((i) => {
+    const id = i || "pt";
+    conta[id] = (conta[id] || 0) + 1;
+  });
+  const ordem = Object.entries(conta).sort((a, b) => b[1] - a[1] || (a[0] === "pt" ? -1 : 1));
+  return ordem[0]?.[0] || "pt";
+};
+
+const primeiroNome = (nome = "") => {
+  const p = String(nome || "").trim().split(/\s+/)[0] || "";
+  return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : "";
+};
+
+// modo: "auto" (pelo idioma) | "modelo" (texto do modelo; vazio → auto) | "nenhuma"
+export const textoMensagem = ({ modo = "auto", modelo, idioma, nome, hotel, plural = false }) => {
+  if (modo === "nenhuma") return "";
+  const propria = String(modelo?.mensagem || "").trim();
+  if (modo === "modelo" && propria) {
+    return propria
+      .replace(/\{primeiro nome\}/gi, plural ? "" : primeiroNome(nome))
+      .replace(/\{hotel\}/gi, hotel || "")
+      .replace(/\s+([,!.?])/g, "$1")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+  return mensagemDoIdioma(idioma, { plural });
+};
+
+// ---------- preferências deste computador ----------
+const CHAVE_PREFS = "painel_operacional_placas_v2";
+
+export const PREFS_PADRAO = {
+  modeloId: "classico",
+  mensagem: "auto", // auto | modelo | nenhuma
+  mostrarVoo: true,
+  mostrarHotel: false,
+  mostrarRodape: false,
+  // coleção
+  colecaoPorPlaca: 5,
+  colecaoSeparacao: "linha", // linha | caixa | faixa
+  colecaoOrdem: "phoenix", // phoenix | az
+  colecaoTamanho: "auto", // auto | manual
+  colecaoEscala: 1, // 0.7 a 1.3 (manual)
+  colecaoModeloId: "classico",
+};
+
+export const lerPrefsPlacas = () => {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS) || "null");
+    return { ...PREFS_PADRAO, ...(salvo && typeof salvo === "object" ? salvo : {}) };
+  } catch {
+    return { ...PREFS_PADRAO };
+  }
+};
+
+export const salvarPrefsPlacas = (prefs) => {
+  try {
+    localStorage.setItem(CHAVE_PREFS, JSON.stringify(prefs));
+  } catch {
+    /* navegador sem storage: fica só nesta sessão */
+  }
+};
+
+// ---------- modelos da equipe (Firestore) ----------
+export const useModelosEquipe = () => {
+  const [modelos, setModelos] = useState([]);
+  const [carregado, setCarregado] = useState(false);
+
+  useEffect(
+    () =>
+      onSnapshot(
+        REF(),
+        (snap) => {
+          const lista = snap.exists() ? snap.data()?.modelos : null;
+          setModelos(
+            Array.isArray(lista)
+              ? lista.filter((m) => m && m.id).map((m) => ({ ...normalizarModelo(m), id: m.id }))
+              : [],
+          );
+          setCarregado(true);
+        },
+        (e) => {
+          console.error("Erro ao ler modelos de placa:", e);
+          setCarregado(true);
+        },
+      ),
+    [],
+  );
+
+  const gravar = useCallback(
+    (lista) =>
+      setDoc(
+        REF(),
+        {
+          modelos: lista.map((m) => {
+            const limpo = normalizarModelo(m);
+            delete limpo.pronto;
+            delete limpo.novo;
+            return { ...limpo, id: m.id };
+          }),
+          atualizadoEm: Timestamp.now(),
+        },
+        { merge: true },
+      ),
+    [],
+  );
+
+  const salvarModelo = useCallback(
+    (modelo) => {
+      const id = modelo.id && !modelo.pronto ? modelo.id : novoIdModelo();
+      const existe = modelos.some((m) => m.id === id);
+      const lista = existe
+        ? modelos.map((m) => (m.id === id ? { ...modelo, id } : m))
+        : [...modelos, { ...modelo, id }];
+      return gravar(lista).then(() => id);
+    },
+    [modelos, gravar],
+  );
+
+  const removerModelo = useCallback(
+    (id) => gravar(modelos.filter((m) => m.id !== id)),
+    [modelos, gravar],
+  );
+
+  return { modelos, carregado, salvarModelo, removerModelo };
+};
+
+export const acharModelo = (id, modelosEquipe = []) =>
+  MODELOS_PRONTOS.find((m) => m.id === id) ||
+  modelosEquipe.find((m) => m.id === id) ||
+  MODELOS_PRONTOS[0];

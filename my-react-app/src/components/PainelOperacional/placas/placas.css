@@ -1,0 +1,322 @@
+/* Placas de recepção (Painel Operacional → Chegadas) */
+.plc {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .plc {
+    grid-template-columns: 1fr;
+  }
+  .plc-previa {
+    order: -1;
+    position: static;
+  }
+}
+
+.plc-opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.plc-secao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.plc-rotulo {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* miniaturas dos modelos */
+.plc-modelos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.plc-mod {
+  position: relative;
+}
+
+.plc-mod__btn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 5px;
+  border: 2px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.plc-mod__btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--divider));
+}
+
+.plc-mod.is-on .plc-mod__btn {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.plc-mod__mini {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--divider);
+}
+
+.plc-mod__nome {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.plc-mod__novo {
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #e0a019;
+  color: #1b1b1b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.plc-mod__editar {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--divider);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.plc-mod:hover .plc-mod__editar,
+.plc-mod__editar:focus-visible,
+.plc-mod.is-on .plc-mod__editar {
+  opacity: 1;
+}
+
+.plc-mod--criar .plc-mod__btn {
+  border-style: dashed;
+  color: var(--accent-text);
+}
+
+.plc-mod__mais {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 297 / 210;
+  border-radius: 4px;
+}
+
+/* interruptores */
+.plc-switches {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--divider);
+}
+
+.plc-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.plc-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.plc-switch i {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+  transition: background 0.15s;
+}
+
+.plc-switch i::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.plc-switch input:checked + i {
+  background: var(--accent);
+}
+
+.plc-switch input:checked + i::after {
+  transform: translateX(14px);
+}
+
+.plc-switch input:focus-visible + i {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* chips (editor) */
+.plc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--divider);
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.plc-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--divider));
+}
+
+.plc-chip.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.plc-chips--teste {
+  margin-bottom: var(--space-2);
+}
+
+/* controle deslizante */
+.plc-faixa {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.plc-faixa input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.plc-faixa b {
+  min-width: 38px;
+  color: var(--text);
+  text-align: right;
+}
+
+/* pré-visualização */
+.plc-previa {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  min-width: 0;
+}
+
+.plc-previa__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 30px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.plc-previa__topo b {
+  color: var(--text);
+}
+
+.plc-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.plc-previa__placa {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.plc-legenda,
+.plc-vazio {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.plc-espaco {
+  flex: 1;
+}
+
+.plc code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--accent-text);
+  font-size: 0.95em;
+}

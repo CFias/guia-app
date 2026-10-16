@@ -11,8 +11,6 @@ import {
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 
-import jsPDF from "jspdf";
-import logoLuck from "../../assets/clover.png";
 import "./styles.css";
 import "./painel.css";
 import {
@@ -37,6 +35,8 @@ import {
 import { usePhoenixStatus } from "../Shell/shellContext";
 import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
 import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
+import PlacasDrawer from "./placas/PlacasDrawer";
+import { extrairIdiomasDoItem } from "../../Services/Utils/idiomas";
 
 // status do voo → tom e ícone (atrasado/cancelado em --alert)
 // ícones da linha de OUT/Transfer (só apresentação)
@@ -163,20 +163,6 @@ const PONTOS_DE_APOIO_CONFIG = {
   "praias do litoral norte": "Zoião",
   "city tour salvador saindo do litoral": "Coliseu",
   "city tour historico e panoramico": "alternar",
-};
-
-const resolverQuantidadePorPaginaColecao = (
-  totalNomes,
-  quantidadeSelecionada,
-) => {
-  const qtdSelecionada = Number(quantidadeSelecionada || 5);
-  const total = Number(totalNomes || 0);
-
-  if ([1, 2, 3, 4, 5, 6].includes(total)) {
-    return total;
-  }
-
-  return qtdSelecionada;
 };
 
 const ABAS = {
@@ -1086,298 +1072,6 @@ const extrairTipoOutOuTransfer = (item) => {
   return "TRANSFER";
 };
 
-const carregarImagemComoDataURL = (src) =>
-  new Promise((resolve) => {
-    if (!src) {
-      resolve(null);
-      return;
-    }
-
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      } catch (error) {
-        console.error("Erro ao converter logo:", error);
-        resolve(null);
-      }
-    };
-
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-
-const quebrarTextoCentralizado = (doc, texto = "", larguraMax = 220) => {
-  const linhas = doc.splitTextToSize(String(texto || ""), larguraMax);
-  return Array.isArray(linhas) ? linhas : [String(texto || "")];
-};
-
-const extrairTextoVooPlaca = (voo = "") =>
-  String(voo || "")
-    .trim()
-    .toUpperCase() || "VOO NÃO INFORMADO";
-
-const extrairTextoNomePlaca = (nome = "") => {
-  if (!nome) return "NOME NÃO INFORMADO";
-
-  const partes = String(nome)
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .filter(Boolean);
-
-  if (partes.length <= 2) {
-    return partes.join(" ").toUpperCase();
-  }
-
-  const conectores = ["de", "da", "do", "dos", "das"];
-  const segundaPalavra = String(partes[1] || "").toLowerCase();
-
-  if (conectores.includes(segundaPalavra) && partes.length >= 3) {
-    return partes.slice(0, 3).join(" ").toUpperCase();
-  }
-
-  return partes.slice(0, 2).join(" ").toUpperCase();
-};
-
-const formatarDataPlaca = (dataIso = "") => {
-  if (!dataIso) return "";
-  const [ano, mes, dia] = String(dataIso).split("-");
-  return `${dia}/${mes}/${ano}`;
-};
-
-const desenharCabecalhoPadraoPlaca = ({ doc, voo, config, logoDataUrl }) => {
-  const largura = doc.internal.pageSize.getWidth();
-  const altura = doc.internal.pageSize.getHeight();
-
-  const margemX = 14;
-  const larguraUtil = largura - margemX * 2;
-
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, largura, altura, "F");
-
-  if (config?.mostrarLogoNasPlacas && logoDataUrl) {
-    try {
-      const props = doc.getImageProperties(logoDataUrl);
-      const larguraOriginal = props?.width || 1;
-      const alturaOriginal = props?.height || 1;
-      const formato = String(
-        props?.fileType || props?.format || "PNG",
-      ).toUpperCase();
-
-      const proporcao = larguraOriginal / alturaOriginal;
-
-      const larguraMax = 25;
-      const alturaMax = 25;
-
-      let larguraFinal = larguraMax;
-      let alturaFinal = larguraFinal / proporcao;
-
-      if (alturaFinal > alturaMax) {
-        alturaFinal = alturaMax;
-        larguraFinal = alturaFinal * proporcao;
-      }
-
-      const xLogo = margemX + 1;
-      const yLogo = 8;
-
-      doc.addImage(
-        logoDataUrl,
-        formato,
-        xLogo,
-        yLogo,
-        larguraFinal,
-        alturaFinal,
-      );
-    } catch (error) {
-      console.error("Erro ao desenhar logo:", error);
-    }
-  }
-
-  doc.setTextColor(...(config?.corTitulo || [65, 74, 95]));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("LUCK RECEPTIVO", margemX + 22, 18);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("Base SSA", margemX + 22, 25);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("VOO", largura - 48, 13);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(30);
-  doc.text(extrairTextoVooPlaca(voo), largura - 18, 28, {
-    align: "right",
-  });
-
-  doc.setDrawColor(...(config?.linhaDivisoria || [90, 90, 90]));
-  doc.setLineWidth(0.8);
-  doc.line(margemX, 34, largura - margemX, 34);
-
-  return {
-    largura,
-    altura,
-    margemX,
-    larguraUtil,
-  };
-};
-
-const desenharRodapePadraoPlaca = ({ doc, data, config }) => {
-  const largura = doc.internal.pageSize.getWidth();
-  const altura = doc.internal.pageSize.getHeight();
-  const margemX = 14;
-
-  doc.setDrawColor(...(config?.linhaDivisoria || [90, 90, 90]));
-  doc.setLineWidth(0.8);
-  doc.line(margemX, altura - 14, largura - margemX, altura - 14);
-
-  doc.setTextColor(...(config?.corData || [90, 90, 90]));
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("Operacional • Luck Receptivo", margemX, altura - 9);
-  doc.text(`Data: ${formatarDataPlaca(data)}`, margemX, altura - 4);
-};
-
-const desenharPlacaIndividual = ({
-  doc,
-  reserva,
-  voo,
-  data,
-  config,
-  logoDataUrl,
-}) => {
-  const { largura, altura } = desenharCabecalhoPadraoPlaca({
-    doc,
-    voo,
-    config,
-    logoDataUrl,
-  });
-
-  const nomePlaca = extrairTextoNomePlaca(reserva?.cliente || "");
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
-
-  let fontSize = 60;
-  let linhas = quebrarTextoCentralizado(doc, nomePlaca, largura - 60);
-
-  while (linhas.length > 2 && fontSize > 24) {
-    fontSize -= 2;
-    doc.setFontSize(fontSize);
-    linhas = quebrarTextoCentralizado(doc, nomePlaca, largura - 60);
-  }
-
-  doc.setFontSize(fontSize);
-
-  const centroY = (34 + (altura - 14)) / 2 + 4;
-  const espacamentoLinhas = fontSize * 0.42;
-
-  if (linhas.length === 1) {
-    doc.text(linhas[0], largura / 2, centroY, { align: "center" });
-  } else {
-    const blocoAltura = (linhas.length - 1) * espacamentoLinhas;
-    let linhaY = centroY - blocoAltura / 2;
-
-    linhas.slice(0, 2).forEach((linha) => {
-      doc.text(linha, largura / 2, linhaY, { align: "center" });
-      linhaY += espacamentoLinhas;
-    });
-  }
-
-  desenharRodapePadraoPlaca({
-    doc,
-    data,
-    config,
-  });
-};
-
-const desenharCabecalhoColecao = ({ doc, voo, data, config, logoDataUrl }) => {
-  return desenharCabecalhoPadraoPlaca({
-    doc,
-    voo,
-    config,
-    logoDataUrl,
-  });
-};
-
-const desenharItemColecao = ({
-  doc,
-  nome,
-  indice,
-  inicioY,
-  totalPorPagina,
-  config,
-}) => {
-  const larguraPagina = doc.internal.pageSize.getWidth();
-  const margemX = 14;
-  const larguraUtil = larguraPagina - margemX * 2;
-  const areaUtil = 150;
-
-  const alturaBox = areaUtil / totalPorPagina;
-  const posY = inicioY + indice * alturaBox;
-
-  const nomePlaca = extrairTextoNomePlaca(nome);
-
-  // fundo
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margemX, posY, larguraUtil, alturaBox, "F");
-
-  // borda
-  doc.setDrawColor(...(config?.bordaPlaca || [196, 196, 196]));
-  doc.setLineWidth(0.5);
-  doc.rect(margemX, posY, larguraUtil, alturaBox);
-
-  const paddingHorizontal = 20;
-
-  let fontSize = totalPorPagina >= 5 ? 44 : totalPorPagina === 4 ? 50 : 58;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...(config?.corTexto || [65, 74, 95]));
-  doc.setFontSize(fontSize);
-
-  let linhas = doc.splitTextToSize(
-    nomePlaca,
-    larguraUtil - paddingHorizontal * 2,
-  );
-
-  while (linhas.length > 2 && fontSize > 20) {
-    fontSize -= 2;
-    doc.setFontSize(fontSize);
-    linhas = doc.splitTextToSize(
-      nomePlaca,
-      larguraUtil - paddingHorizontal * 2,
-    );
-  }
-
-  if (linhas.length > 2) {
-    linhas = linhas.slice(0, 2);
-  }
-
-  const lineHeight = fontSize * 0.4;
-  const blocoAltura = linhas.length * lineHeight;
-
-  const centroY = posY + alturaBox / 2;
-
-  let yTexto = centroY - blocoAltura / 2 + lineHeight * 0.8;
-
-  linhas.forEach((linha) => {
-    doc.text(linha, larguraPagina / 2, yTexto, {
-      align: "center",
-    });
-    yTexto += lineHeight;
-  });
-};
-
 // Chave estável do grupo pra usar como identificador do documento no
 // Firestore — troca "/" por "-" porque documentId não pode conter barra.
 const montarChaveMonitoramento = (dataMapa, grupoId) =>
@@ -1437,43 +1131,9 @@ export default function PainelOperacionalUnificado() {
   const [placaPersonalizadaNome, setPlacaPersonalizadaNome] = useState("");
   const [placaPersonalizadaVoo, setPlacaPersonalizadaVoo] = useState("");
   const [placaEmEdicao, setPlacaEmEdicao] = useState(null);
-  const [drawerConfigPlacas, setDrawerConfigPlacas] = useState(false);
   const [nomesPlacaOverride, setNomesPlacaOverride] = useState({});
-
-  const [configPlacas, setConfigPlacas] = useState(() => {
-    try {
-      const salvo = localStorage.getItem("painel_operacional_config_placas");
-      return salvo
-        ? { ...JSON.parse(salvo), logoUrl: logoLuck }
-        : {
-          repetirCabecalhoVooAoQuebrarPagina: true,
-          mostrarLogoNasPlacas: true,
-          quantidadePorPaginaColecao: 5,
-          fundoPlaca: [255, 255, 255],
-          fundoHeader: [238, 238, 238],
-          bordaPlaca: [196, 196, 196],
-          linhaDivisoria: [90, 90, 90],
-          corTitulo: [65, 74, 95],
-          corTexto: [65, 74, 95],
-          corDestaque: [65, 74, 95],
-          corData: [90, 90, 90],
-        };
-    } catch {
-      return {
-        repetirCabecalhoVooAoQuebrarPagina: true,
-        mostrarLogoNasPlacas: true,
-        quantidadePorPaginaColecao: 5,
-        fundoPlaca: [255, 255, 255],
-        fundoHeader: [238, 238, 238],
-        bordaPlaca: [196, 196, 196],
-        linhaDivisoria: [90, 90, 90],
-        corTitulo: [65, 74, 95],
-        corTexto: [65, 74, 95],
-        corDestaque: [65, 74, 95],
-        corData: [90, 90, 90],
-      };
-    }
-  });
+  // painel das placas (modelos, pré-visualização e PDF): { modo, origem }
+  const [placasAbertas, setPlacasAbertas] = useState(null);
 
   const carregando = loadingInicial || atualizando;
 
@@ -1561,13 +1221,6 @@ export default function PainelOperacionalUnificado() {
       setAtualizando(false);
     }
   };
-
-  useEffect(() => {
-    localStorage.setItem(
-      "painel_operacional_config_placas",
-      JSON.stringify(configPlacas),
-    );
-  }, [configPlacas]);
 
   // Observa em tempo real quem já foi monitorado na data selecionada —
   // qualquer alteração feita por outro computador chega aqui sozinha.
@@ -1696,6 +1349,7 @@ export default function PainelOperacionalUnificado() {
         veiculo: extrairVeiculoEscalado(item),
         observacao: extrairObservacao(item),
         horarioVoo: formatarHoraOuVazio(extrairHorarioVooPhoenix(item)),
+        idioma: extrairIdiomasDoItem(item).ids[0] || "pt",
       });
     });
 
@@ -2535,6 +2189,8 @@ export default function PainelOperacionalUnificado() {
       codigoReserva: reserva.codigoReserva,
       voo: voo?.voo || "",
       nome: obterNomePlaca(reserva),
+      hotel: reserva.destino,
+      idioma: reserva.idioma,
     });
   };
 
@@ -2547,32 +2203,33 @@ export default function PainelOperacionalUnificado() {
     setPlacaEmEdicao(null);
   };
 
-  const gerarPdfPlacaUnica = async (dadosPlaca) => {
-    try {
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      });
+  // Abre o painel das placas (escolha do modelo, pré-visualização e PDF)
+  const abrirPlacas = (modo, voo, reservas) =>
+    setPlacasAbertas({
+      modo,
+      chave: `${modo}_${voo || ""}_${Date.now()}`,
+      origem: { voo: voo || "", reservas },
+    });
 
-      const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
+  const reservasDaPlaca = (voo) =>
+    (voo?.reservas || []).map((r) => ({
+      id: r.id,
+      nome: obterNomePlaca(r),
+      hotel: r.destino,
+      idioma: r.idioma,
+    }));
 
-      desenharPlacaIndividual({
-        doc,
-        reserva: { cliente: dadosPlaca.nome },
-        voo: dadosPlaca.voo,
-        data: dataSelecionada,
-        config: configPlacas,
-        logoDataUrl,
-      });
-
-      doc.save(
-        `placa-${String(dadosPlaca.nome || "passageiro").replace(/\s+/g, "-")}.pdf`,
-      );
-    } catch (error) {
-      console.error("Erro ao gerar PDF da placa individual:", error);
-      alert("Não foi possível gerar o PDF da placa.");
-    }
+  const abrirPlacaUnica = (dadosPlaca) => {
+    if (!dadosPlaca) return;
+    setPlacaEmEdicao(null);
+    abrirPlacas("individual", dadosPlaca.voo, [
+      {
+        id: dadosPlaca.reservaId || "avulsa",
+        nome: dadosPlaca.nome,
+        hotel: dadosPlaca.hotel || "",
+        idioma: dadosPlaca.idioma || "pt",
+      },
+    ]);
   };
 
   const abrirPopupNovaPlaca = () => {
@@ -2581,9 +2238,9 @@ export default function PainelOperacionalUnificado() {
     setPopupPlacaAberto(true);
   };
 
-  const gerarPlacaPersonalizada = async () => {
+  const gerarPlacaPersonalizada = () => {
     if (!placaPersonalizadaNome.trim()) return;
-    await gerarPdfPlacaUnica({
+    abrirPlacaUnica({
       nome: placaPersonalizadaNome,
       voo: placaPersonalizadaVoo,
     });
@@ -2592,105 +2249,19 @@ export default function PainelOperacionalUnificado() {
     setPlacaPersonalizadaVoo("");
   };
 
-  const gerarPdfPlacasIndividuais = async (voo) => {
-    try {
-      if (!voo?.reservas?.length) return;
-
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
-
-      voo.reservas.forEach((reserva, index) => {
-        if (index > 0) doc.addPage();
-
-        desenharPlacaIndividual({
-          doc,
-          reserva: { ...reserva, cliente: obterNomePlaca(reserva) },
-          voo: voo.voo,
-          data: dataSelecionada,
-          config: configPlacas,
-          logoDataUrl,
-        });
-      });
-
-      doc.save(
-        `placas-individuais-${String(voo.voo || "voo").replace(/\s+/g, "-")}.pdf`,
-      );
-    } catch (error) {
-      console.error("Erro ao gerar PDF individual:", error);
-      alert("Não foi possível gerar o PDF das placas individuais.");
-    }
+  const abrirPlacasIndividuais = (voo) => {
+    if (!voo?.reservas?.length) return;
+    abrirPlacas("individual", voo.voo, reservasDaPlaca(voo));
   };
 
-  const gerarPdfPlacasColecao = async (voo) => {
-    try {
-      if (!voo?.reservas?.length) return;
-
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const logoDataUrl = await carregarImagemComoDataURL(logoLuck);
-
-      const totalNomes = voo.reservas.length;
-      const porPagina = resolverQuantidadePorPaginaColecao(
-        totalNomes,
-        configPlacas?.quantidadePorPaginaColecao,
-      );
-
-      const inicioYBase = 44;
-
-      voo.reservas.forEach((reserva, index) => {
-        const indiceNaPagina = index % porPagina;
-        const novaPagina = index > 0 && indiceNaPagina === 0;
-
-        if (novaPagina) {
-          doc.addPage();
-        }
-
-        if (
-          indiceNaPagina === 0 &&
-          (index === 0 || configPlacas.repetirCabecalhoVooAoQuebrarPagina)
-        ) {
-          desenharCabecalhoColecao({
-            doc,
-            voo: voo.voo,
-            data: dataSelecionada,
-            config: configPlacas,
-            logoDataUrl,
-          });
-
-          desenharRodapePadraoPlaca({
-            doc,
-            data: dataSelecionada,
-            config: configPlacas,
-          });
-        }
-
-        desenharItemColecao({
-          doc,
-          nome: obterNomePlaca(reserva) || "-",
-          indice: indiceNaPagina,
-          inicioY: inicioYBase,
-          totalPorPagina: porPagina,
-          config: configPlacas,
-        });
-      });
-
-      doc.save(
-        `placas-colecao-${String(voo.voo || "voo").replace(/\s+/g, "-")}.pdf`,
-      );
-    } catch (error) {
-      console.error("Erro ao gerar PDF coleção:", error);
-      alert("Não foi possível gerar o PDF da coleção de placas.");
-    }
+  const abrirPlacaColecao = (voo) => {
+    if (!voo?.reservas?.length) return;
+    abrirPlacas("colecao", voo.voo, reservasDaPlaca(voo));
   };
+
+  // menu "Modelos de placa": abre com um nome de exemplo
+  const abrirModelosDePlaca = () =>
+    abrirPlacas("individual", "", [{ id: "exemplo", nome: "Maira Souza", hotel: "", idioma: "pt" }]);
 
   // indicador "Phoenix · HH:MM" da topbar: chama o mesmo "Atualizar" da tela
   usePhoenixStatus({
@@ -2741,9 +2312,9 @@ export default function PainelOperacionalUnificado() {
         description="Chegadas, OUT's e passeios do dia, direto do Phoenix."
         more={[
           abaAtiva === ABAS.CHEGADAS && {
-            label: "Configurações das placas PDF",
-            icon: "sliders",
-            onClick: () => setDrawerConfigPlacas(true),
+            label: "Modelos de placa",
+            icon: "palette",
+            onClick: abrirModelosDePlaca,
           },
         ].filter(Boolean)}
         actions={
@@ -3220,14 +2791,14 @@ export default function PainelOperacionalUnificado() {
                           <Button
                             size="sm"
                             icon="fileText"
-                            onClick={() => gerarPdfPlacasIndividuais(voo)}
+                            onClick={() => abrirPlacasIndividuais(voo)}
                           >
                             Placas individuais
                           </Button>
                           <Button
                             size="sm"
                             icon="printer"
-                            onClick={() => gerarPdfPlacasColecao(voo)}
+                            onClick={() => abrirPlacaColecao(voo)}
                           >
                             Placa coleção
                           </Button>
@@ -3811,72 +3382,22 @@ export default function PainelOperacionalUnificado() {
       )}
 
       {/* ===== DRAWERS ===== */}
-      <Drawer
-        open={drawerConfigPlacas}
-        onClose={() => setDrawerConfigPlacas(false)}
-        title="Configurações das placas PDF"
-        subtitle="Valem para a impressão individual e a coleção. Salvas neste navegador."
-        footer={
-          <Button variant="primary" icon="check" onClick={() => setDrawerConfigPlacas(false)}>
-            Pronto
-          </Button>
-        }
-      >
-        <Field label="Qtd. por página na coleção">
-          <select
-            value={configPlacas.quantidadePorPaginaColecao}
-            onChange={(e) =>
-              setConfigPlacas((prev) => ({
-                ...prev,
-                quantidadePorPaginaColecao: Number(e.target.value),
-              }))
-            }
-          >
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-            <option value={4}>4</option>
-            <option value={5}>5</option>
-            <option value={6}>6</option>
-          </select>
-        </Field>
-
-        <Field label="Mostrar logo">
-          <select
-            value={configPlacas.mostrarLogoNasPlacas ? "sim" : "nao"}
-            onChange={(e) =>
-              setConfigPlacas((prev) => ({
-                ...prev,
-                mostrarLogoNasPlacas: e.target.value === "sim",
-              }))
-            }
-          >
-            <option value="sim">Sim</option>
-            <option value="nao">Não</option>
-          </select>
-        </Field>
-
-        <Field label="Repetir cabeçalho do voo em nova página">
-          <select
-            value={configPlacas.repetirCabecalhoVooAoQuebrarPagina ? "sim" : "nao"}
-            onChange={(e) =>
-              setConfigPlacas((prev) => ({
-                ...prev,
-                repetirCabecalhoVooAoQuebrarPagina: e.target.value === "sim",
-              }))
-            }
-          >
-            <option value="sim">Sim</option>
-            <option value="nao">Não</option>
-          </select>
-        </Field>
-        <p className="painel-op-dica">As mudanças valem na hora — não precisa salvar.</p>
-      </Drawer>
+      {placasAbertas && (
+        <PlacasDrawer
+          key={placasAbertas.chave}
+          open
+          modo={placasAbertas.modo}
+          origem={placasAbertas.origem}
+          data={dataSelecionada}
+          onClose={() => setPlacasAbertas(null)}
+        />
+      )}
 
       <Drawer
         open={popupPlacaAberto}
         onClose={() => setPopupPlacaAberto(false)}
         title="Nova placa personalizada"
-        subtitle="Gera um PDF com uma placa avulsa."
+        subtitle="Uma placa avulsa: depois é só escolher o modelo."
         footer={
           <>
             <Button onClick={() => setPopupPlacaAberto(false)}>Cancelar</Button>
@@ -3886,7 +3407,7 @@ export default function PainelOperacionalUnificado() {
               onClick={gerarPlacaPersonalizada}
               disabled={!placaPersonalizadaNome.trim()}
             >
-              Gerar PDF da placa
+              Continuar
             </Button>
           </>
         }
@@ -3918,8 +3439,8 @@ export default function PainelOperacionalUnificado() {
         }
         footer={
           <>
-            <Button icon="fileText" onClick={() => gerarPdfPlacaUnica(placaEmEdicao)}>
-              Gerar PDF agora
+            <Button icon="fileText" onClick={() => abrirPlacaUnica(placaEmEdicao)}>
+              Gerar placa
             </Button>
             <Button variant="primary" icon="check" onClick={salvarEdicaoPlaca}>
               Salvar nome
