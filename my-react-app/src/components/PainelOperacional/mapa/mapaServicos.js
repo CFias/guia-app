@@ -32,7 +32,8 @@ const esc = (t) =>
 const celula = (c) => {
   if (c === null || c === undefined) return "<td></td>";
   const obj = typeof c === "object" ? c : { t: c };
-  const texto = obj.t === undefined || obj.t === null || obj.t === "-" ? "" : esc(obj.t);
+  const texto =
+    obj.t === undefined || obj.t === null || obj.t === "-" ? "" : esc(obj.t);
   let conteudo = obj.b ? `<b>${texto}</b>` : texto;
   if (obj.i && texto) conteudo = `<i>${conteudo}</i>`;
   if (obj.tag) conteudo += `<span class="idi">${esc(obj.tag)}</span>`;
@@ -83,15 +84,33 @@ tr.sep td { border-top: 1px solid #868e96; }
 .rod { margin-top: 8px; display: flex; justify-content: space-between; font-size: 8.5px; color: #666; border-top: 1px solid #ced4da; padding-top: 3px; }
 `;
 
-export const montarHtmlMapa = ({ titulo, subtitulo, resumo = [], colunas = [], blocos = [], rodape = "" }) => {
+// opcoes: { umPorFolha } → cada bloco começa numa folha nova (para entregar
+// a folha de cada fornecedor/guia); { previa } → versão de tela para a
+// prévia do painel (folha branca com sombra, sem margem da impressora).
+export const montarHtmlMapa = (
+  { titulo, subtitulo, resumo = [], colunas = [], blocos = [], rodape = "" },
+  opcoes = {},
+) => {
+  const cssExtra =
+    (opcoes.umPorFolha
+      ? ".esc + .esc { break-before: page; page-break-before: always; }"
+      : "") +
+    (opcoes.previa
+      ? "html { background: #e9ecef; } body { width: 1123px; min-height: 794px; margin: 0 auto; padding: 23px 26px; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18); }"
+      : "");
   const cols =
     `<colgroup><col style="width:22px">` +
-    colunas.map((c) => `<col${c.largura ? ` style="width:${c.largura}px"` : ""}>`).join("") +
+    colunas
+      .map((c) => `<col${c.largura ? ` style="width:${c.largura}px"` : ""}>`)
+      .join("") +
     `</colgroup>`;
   const thead = `<thead><tr><th>✓</th>${colunas.map((c) => `<th>${esc(c.titulo)}</th>`).join("")}</tr></thead>`;
   const linhasHtml = (linhas = []) =>
     linhas
-      .map((l) => `<tr class="${l.sep ? "sep" : ""}"><td><span class="chk"></span></td>${l.celulas.map(celula).join("")}</tr>`)
+      .map(
+        (l) =>
+          `<tr class="${l.sep ? "sep" : ""}"><td><span class="chk"></span></td>${l.celulas.map(celula).join("")}</tr>`,
+      )
       .join("");
 
   const blocosHtml = blocos
@@ -122,7 +141,7 @@ export const montarHtmlMapa = ({ titulo, subtitulo, resumo = [], colunas = [], b
   const agora = new Date();
   const impresso = `${agora.toLocaleDateString("pt-BR")} ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)} ${esc(subtitulo || "")}</title><style>${CSS}</style></head><body>
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)} ${esc(subtitulo || "")}</title><style>${CSS}${cssExtra}</style></head><body>
 <header class="topo"><img src="${logoLuck}" alt=""><div><b>${esc(titulo)}</b><span>${esc(subtitulo || "")}</span></div>
 <div class="res">${resumo.map(([l, v]) => `<div>${esc(l)}<b>${esc(v)}</b></div>`).join("")}</div></header>
 ${blocosHtml || '<p class="vazio">Nenhum serviço para imprimir com os filtros atuais.</p>'}
@@ -131,11 +150,12 @@ ${blocosHtml || '<p class="vazio">Nenhum serviço para imprimir com os filtros a
 };
 
 // Abre a impressão sem trocar de tela (iframe escondido).
-export const imprimirMapa = (dados) => {
-  const html = montarHtmlMapa(dados);
+export const imprimirMapa = (dados, opcoes = {}) => {
+  const html = montarHtmlMapa(dados, opcoes);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();

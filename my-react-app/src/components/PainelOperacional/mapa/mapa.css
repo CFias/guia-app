@@ -113,3 +113,186 @@
   font-size: var(--fs-sm);
   text-align: center;
 }
+
+/* ---------- painel com prévia ---------- */
+.mpd2 {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.mpd2__filtros .mpd-lista {
+  max-height: 30vh;
+}
+
+.mpd-faixas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mpd-faixa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mpd-faixa i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mpd-faixa small {
+  color: var(--text-3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.mpd-faixa.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.mpd-faixa.is-on small {
+  color: var(--accent-text);
+}
+
+.mpd-horas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mpd-horas label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.mpd-horas input {
+  width: 128px;
+}
+
+.mpd-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.mpd-check input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.mpd-check span {
+  display: flex;
+  flex-direction: column;
+}
+
+.mpd-check small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.mpd-prev {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.mpd-prev__topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.mpd-prev__topo b {
+  color: var(--text);
+}
+
+.mpd-prev__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.mpd-prev__caixa {
+  max-height: calc(100vh - 220px);
+  padding: 12px;
+  overflow: auto;
+  background: #e9ecef;
+}
+
+.mpd-prev__folha {
+  position: relative;
+  overflow: hidden;
+}
+
+.mpd-prev__folha iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  background: #e9ecef;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.mpd-rodape-resumo {
+  margin-right: auto;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.mpd-rodape-resumo b {
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .mpd2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mpd-prev {
+    position: static;
+  }
+
+  .mpd-prev__caixa {
+    max-height: 60vh;
+  }
+
+  .mpd-rodape-resumo {
+    display: none;
+  }
+}
