@@ -8,7 +8,14 @@ rules_version = '2';
 //  chamar o Firestore direto — estas regras impedem.
 //
 //  Níveis (campo `role` em users/{uid}):
-//    operacional → tudo
+//    operacional → telas do operacional. Dentro dele:
+//      · gerência (users/{uid}.gerencia == true) → tudo, e é quem decide
+//        o que cada conta pode ver (tela Controle de acessos);
+//      · as demais contas seguem users/{uid}.acessos: { tela: false }
+//        bloqueia a tela. Os dados EXCLUSIVOS de uma tela (custos, Central
+//        de Informações, usuários, turnos, acessos) ficam bloqueados aqui
+//        também; dados usados por várias telas (serviços, guias, escala…)
+//        continuam liberados para todo o Operacional.
 //    comercial   → só a Central de Dúvidas (faq_itens)
 //    guia        → própria disponibilidade (dentro da janela configurável), próprios idiomas e própria foto
 //  Conta sem documento em `users`, ou com ativo != true → nada.
@@ -35,6 +42,45 @@ service cloud.firestore {
     }
 
     function isOperacional() { return roleIs('operacional'); }
+
+    // ---------- Controle de acessos por tela (operacional) ----------
+    // Mesmas chaves de src/Context/acessos.js.
+    function meuPerfil() { return get(perfilPath()).data; }
+    function isGerencia() {
+      return isOperacional() && meuPerfil().get('gerencia', false) == true;
+    }
+    function podeArea(area) {
+      return isOperacional()
+        && (meuPerfil().get('gerencia', false) == true
+            || meuPerfil().get('acessos', {}).get(area, true) != false);
+    }
+    function caminhoControle() {
+      return /databases/$(database)/documents/settings/acessos;
+    }
+
+    // Coleções / documentos que pertencem a UMA tela só
+    function podeLerColecao(col, id) {
+      return isOperacional() && col != 'users' && (
+        (col == 'custos_dia' && podeArea('custos'))
+        || (col == 'settings' && id == 'custos'
+            && (podeArea('custos') || podeArea('servicosFornecedor')))
+        || ((col == 'faq_itens' || col == 'arquivos')
+            && (podeArea('centralInformacoes') || podeArea('verComercial')))
+        || (!(col in ['custos_dia', 'faq_itens', 'arquivos'])
+            && !(col == 'settings' && id == 'custos'))
+      );
+    }
+    function podeGravarColecao(col, id) {
+      return isOperacional() && col != 'users' && (
+        (col == 'custos_dia' && podeArea('custos'))
+        || (col == 'settings' && id == 'custos' && podeArea('custos'))
+        || (col == 'settings' && id == 'turnos_equipe' && podeArea('demandaTurnos'))
+        || (col == 'settings' && id == 'acessos' && isGerencia())
+        || ((col == 'faq_itens' || col == 'arquivos') && podeArea('centralInformacoes'))
+        || (!(col in ['custos_dia', 'faq_itens', 'arquivos'])
+            && !(col == 'settings' && id in ['custos', 'turnos_equipe', 'acessos']))
+      );
+    }
     function isComercial()   { return roleIs('comercial'); }
 
     function isGuiaDono(guideId) {
@@ -82,8 +128,36 @@ service cloud.firestore {
              .hasOnly(['boasVindasVistas', 'boasVindasUltima'])
         && request.resource.data.boasVindasVistas is int
         && request.resource.data.boasVindasVistas <= 10;
-      // só o operacional cria / edita / lista / remove perfis
-      allow read, write: if isOperacional();
+      // GERÊNCIA: cria, edita, lista e remove qualquer perfil — inclusive
+      // contas do Operacional, a marcação de gerência e os acessos por tela.
+      allow read, write: if isGerencia();
+      // Operacional com a tela "Usuários" liberada: lista as contas e cuida
+      // SÓ das contas do Comercial e dos Guias. Não cria nem altera conta do
+      // Operacional/gerência e não mexe em gerência nem em acessos.
+      allow read: if podeArea('usuarios');
+      allow create: if podeArea('usuarios')
+        && request.resource.data.role in ['comercial', 'guia']
+        && request.resource.data.keys().hasOnly([
+             'nome', 'email', 'role', 'ativo', 'guideId', 'guideName',
+             'createdAt', 'createdBy'
+           ]);
+      allow update: if podeArea('usuarios')
+        && resource.data.role in ['comercial', 'guia']
+        && resource.data.get('gerencia', false) != true
+        && request.resource.data.role in ['comercial', 'guia']
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName', 'updatedAt']);
+      allow delete: if podeArea('usuarios')
+        && resource.data.role in ['comercial', 'guia'];
+      // Ativação do controle de acessos (UMA vez): quem ativa vira gerência,
+      // no mesmo lote em que cria settings/acessos. Depois que ele existe,
+      // só a gerência promove outras contas.
+      allow update: if isOperacional() && request.auth.uid == uid
+        && !exists(caminhoControle())
+        && existsAfter(caminhoControle())
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['gerencia', 'gerenciaDesde'])
+        && request.resource.data.gerencia == true;
     }
 
     // ---------- Guia: só o próprio documento de disponibilidade ----------
@@ -104,6 +178,9 @@ service cloud.firestore {
     // valor dos guias) é só do operacional — cai na regra geral.
     match /settings/{settingId} {
       allow read: if ativo() && settingId != 'custos';
+      // settings/acessos nasce junto com a primeira gerência (ver users)
+      allow create: if settingId == 'acessos' && isOperacional()
+        && getAfter(perfilPath()).data.get('gerencia', false) == true;
     }
 
     // ---------- Guia: lê (sem alterar) o próprio perfil e o catálogo ----------
@@ -183,17 +260,21 @@ service cloud.firestore {
     match /faq_itens/{itemId} {
       allow read: if isComercial();
       // única escrita permitida: os contadores de uso (visualização / cópia)
-      allow update: if isComercial()
+      // — também para o Operacional na tela "Ver como o comercial"
+      allow update: if (isComercial() || podeArea('verComercial'))
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['contadorVisualizacoes', 'contadorCopias']);
     }
 
-    // ---------- Operacional: acesso total (inclui coleções futuras) ----------
+    // ---------- Operacional (inclui coleções futuras) ----------
     // Todo o resto — services, weekly_services, guides, providers,
     // settings, guide_tour_levels, weekly_scale_meta,
-    // painel_out_monitoramento, custos_dia... — cai aqui: só operacional.
-    match /{document=**} {
-      allow read, write: if isOperacional();
+    // painel_out_monitoramento, custos_dia... — cai aqui: só operacional,
+    // respeitando as telas bloqueadas para a conta (podeLer/GravarColecao).
+    // users fica de fora: tem regras próprias lá em cima.
+    match /{colecao}/{docId}/{resto=**} {
+      allow read: if podeLerColecao(colecao, docId);
+      allow write: if podeGravarColecao(colecao, docId);
     }
   }
 }

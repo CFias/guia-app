@@ -27,7 +27,8 @@ import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponi
 import Sobre from "./components/Sobre/Sobre";
 import Login from "./pages/Login/Login";
 import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
-import { RedirectHome, RequireRole } from "./components/Auth/RouteGuards";
+import { RedirectHome, RequireArea, RequireRole } from "./components/Auth/RouteGuards";
+import ControleAcessos from "./components/ControleAcessos/ControleAcessos";
 import { ACESSO } from "./Context/permissions";
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
         <Route path="/" element={<Dashboard />}>
           {/* ---- Telas do OPERACIONAL ---- */}
           <Route element={<RequireRole roles={ACESSO.painel} />}>
+          <Route element={<RequireArea />}>
             <Route index element={<Home />} />
             <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
             <Route path="previas" element={<PreviaTransfers />} />
@@ -81,6 +83,9 @@ function App() {
             <Route path="guias" element={<ListaGuias />} />
             <Route path="passeios" element={<ListaPasseios />} />
           </Route>
+            {/* Controle de acessos: a própria tela decide (gerência / ativação) */}
+            <Route path="acessos" element={<ControleAcessos />} />
+          </Route>
 
           {/* ---- Configurações (comercial vê só a aba Tema) ---- */}
           <Route element={<RequireRole roles={ACESSO.configuracoes} />}>
@@ -94,7 +99,9 @@ function App() {
 
           {/* ---- Telas do COMERCIAL (Operacional também acessa) ---- */}
           <Route element={<RequireRole roles={ACESSO.faqComercial} />}>
-            <Route path="faqcomercial" element={<FaqComercial />} />
+            <Route element={<RequireArea />}>
+              <Route path="faqcomercial" element={<FaqComercial />} />
+            </Route>
           </Route>
         </Route>
       </Route>

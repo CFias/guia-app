@@ -24,6 +24,7 @@ import {
   Segmented,
   StatusDot,
 } from "../../components/ui";
+import { podeArea } from "../../Context/acessos";
 import { extrairIdPastaDrive, extrairIdPlanilhaDrive, linkPlanilhaDrive } from "../../Services/Services/googleDrive";
 import {
   listaForaDaEscalaDe,
@@ -80,7 +81,8 @@ const Configuracoes = () => {
   const { theme, toggleTheme, togglePro } = useTheme();
   const { perfil, role } = useAuth();
   // regras da escala são da equipe operacional; os outros só mexem na aparência
-  const podeVerEscala = role === ROLES.OPERACIONAL;
+  // (no Operacional, a gerência pode bloquear essas abas — Controle de acessos)
+  const podeVerEscala = role === ROLES.OPERACIONAL && podeArea(perfil, "configuracoes");
   const { accent, setAccent, escalaFonte, setEscalaFonte } = usePreferenciasUI();
 
   const [abaAtiva, setAbaAtiva] = useState("tema");

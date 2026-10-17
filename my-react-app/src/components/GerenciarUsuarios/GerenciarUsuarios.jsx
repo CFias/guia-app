@@ -23,15 +23,9 @@ import {
   ROLE_DESCRIPTIONS,
   ROLE_LABELS,
 } from "../../Context/permissions";
-import {
-  AdminPanelSettingsRounded,
-  AutorenewRounded,
-  ContentCopyRounded,
-  EditRounded,
-  ExpandMoreRounded,
-  LockResetRounded,
-  PersonAddRounded,
-} from "@mui/icons-material";
+import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
+import { Link } from "react-router-dom";
+import Icon from "../ui/Icon";
 import "./styles.css";
 
 /* ---------------------------------------------------------
@@ -79,7 +73,12 @@ const FORM_VAZIO = {
 };
 
 const GerenciarUsuarios = () => {
-  const { user: usuarioLogado } = useAuth();
+  const { user: usuarioLogado, perfil } = useAuth();
+  // Contas do Operacional (e a gerência) só a gerência cria ou altera — a
+  // regra também está no firestore.rules. Os demais criam/editam comercial e guia.
+  const souGerencia = ehGerencia(perfil);
+  const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA];
+  const podeEditar = (u) => souGerencia || (u.role !== ROLES.OPERACIONAL && !u.gerencia);
 
   const [usuarios, setUsuarios] = useState([]);
   const [guias, setGuias] = useState([]);
@@ -295,11 +294,19 @@ const GerenciarUsuarios = () => {
     <div className="usuarios-page">
       <div className="usuarios-header">
         <h2>
-          Usuários e acessos <AdminPanelSettingsRounded fontSize="small" />
+          Usuários e acessos <Icon name="shield" size={16} />
         </h2>
         <p>
           Só o operacional cria contas. Escolha o nível de acesso de cada
           pessoa — não existe cadastro aberto na tela de login.
+          {souGerencia ? (
+            <>
+              {" "}
+              As telas que cada conta do Operacional vê ficam em <Link to="/acessos">Controle de acessos</Link>.
+            </>
+          ) : (
+            <> Contas do Operacional só a gerência cria e altera.</>
+          )}
         </p>
       </div>
 
@@ -319,7 +326,7 @@ const GerenciarUsuarios = () => {
           </code>
           <div className="usuarios-credenciais-acoes">
             <button type="button" className="usuarios-btn" onClick={copiarCredenciais}>
-              <ContentCopyRounded fontSize="small" />
+              <Icon name="copy" size={16} />
               {copiado ? "Copiado!" : "Copiar mensagem"}
             </button>
             <button
@@ -337,7 +344,7 @@ const GerenciarUsuarios = () => {
         {/* ============ CRIAR ============ */}
         <form className="usuarios-card" onSubmit={criarUsuario} autoComplete="off">
           <h3>
-            <PersonAddRounded fontSize="small" /> Nova conta
+            <Icon name="userPlus" size={16} /> Nova conta
           </h3>
 
           <label className="usuarios-field">
@@ -378,7 +385,7 @@ const GerenciarUsuarios = () => {
                 onClick={() => setCampo("senha", gerarSenha())}
                 disabled={salvando}
               >
-                <AutorenewRounded fontSize="small" />
+                <Icon name="refresh" size={16} />
               </button>
             </div>
           </label>
@@ -386,7 +393,7 @@ const GerenciarUsuarios = () => {
           <div className="usuarios-field">
             <span>Nível de acesso</span>
             <div className="usuarios-roles">
-              {Object.values(ROLES).map((r) => (
+              {rolesPermitidos.map((r) => (
                 <label
                   key={r}
                   className={`usuarios-role-option ${form.role === r ? "ativo" : ""}`}
@@ -483,6 +490,14 @@ const GerenciarUsuarios = () => {
                     <span className={`usuarios-badge role-${u.role}`}>
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
+                    {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
+                      <span className="usuarios-badge gerencia">Gerência</span>
+                    )}
+                    {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
+                      <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
+                        {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                      </span>
+                    )}
                     {u.ativo === false && (
                       <span className="usuarios-badge desativado">Desativado</span>
                     )}
@@ -495,18 +510,19 @@ const GerenciarUsuarios = () => {
                       title="Enviar link de nova senha"
                       onClick={() => enviarRedefinicao(u)}
                     >
-                      <LockResetRounded fontSize="small" />
+                      <Icon name="key" size={16} />
                     </button>
                     <button
                       type="button"
                       className="usuarios-icon-btn"
-                      title="Editar"
+                      title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
+                      disabled={!podeEditar(u)}
                       onClick={() => {
                         setMsg(null);
                         setEditando(u);
                       }}
                     >
-                      <EditRounded fontSize="small" />
+                      <Icon name="pencil" size={16} />
                     </button>
                   </div>
                 </li>
@@ -522,7 +538,7 @@ const GerenciarUsuarios = () => {
                 setQtdVisivel((v) => v + ITENS_POR_PAGINA)
               }
             >
-              <ExpandMoreRounded fontSize="small" />
+              <Icon name="chevronDown" size={16} />
               Carregar mais ({restantes} restante{restantes === 1 ? "" : "s"})
             </button>
           )}
@@ -535,6 +551,7 @@ const GerenciarUsuarios = () => {
           guias={guias}
           guiasVinculados={guiasVinculados}
           ehVoce={editando.id === usuarioLogado.uid}
+          rolesPermitidos={rolesPermitidos}
           onFechar={() => setEditando(null)}
           onSalvar={async (dados) => {
             const ok = await salvarEdicao(dados);
@@ -551,6 +568,7 @@ const EditarUsuarioModal = ({
   guias,
   guiasVinculados,
   ehVoce,
+  rolesPermitidos = Object.values(ROLES),
   onFechar,
   onSalvar,
 }) => {
@@ -602,7 +620,7 @@ const EditarUsuarioModal = ({
             onChange={(e) => set("role", e.target.value)}
             disabled={ehVoce}
           >
-            {Object.values(ROLES).map((r) => (
+            {rolesPermitidos.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>

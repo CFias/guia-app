@@ -74,3 +74,26 @@ A tela nova fica em `/redefinir-senha`. Para o link do e-mail abrir nela (e não
      ```
    - *Customize action URL:* `https://SEU-DOMINIO/redefinir-senha`
 3. Salve. Só troque a URL de ação **depois** de publicar o front com a rota nova (senão o link cai numa página inexistente).
+
+## 8. Controle de acessos por tela (gerência)
+
+Dentro do nível **Operacional** existe a **gerência** (ex.: supervisor operacional,
+coordenação operacional e gerente geral): vê todas as telas e decide, conta por
+conta, o que cada pessoa do operacional pode abrir.
+
+1. Publique as regras novas: `firebase deploy --only firestore:rules`.
+2. Entre com a sua conta (Operacional) e abra **Cadastros → Usuários e acessos**
+   → link **Controle de acessos** (ou o endereço `/acessos`).
+3. Clique em **Ativar e me tornar gerência**. Isso só funciona **uma vez**: quem
+   ativa vira gerência; depois disso, só a gerência promove outras contas.
+4. Na lista, escolha as outras pessoas da gerência e marque **Gerência** → Salvar.
+5. Para as demais contas do Operacional, marque **Pode / Não pode** em cada tela
+   do menu → **Salvar acessos**. A mudança vale na hora (a sessão aberta da pessoa
+   já some com a tela).
+
+O que fica protegido também no banco (firestore.rules), e não só no menu:
+custos operacionais (lançamentos e tarifas), Central de Informações (edição),
+usuários, turnos e equipe (Demanda por turno) e a própria configuração de
+acessos. Quem não é da gerência só cria/edita contas do Comercial e dos Guias.
+Dados que várias telas usam (serviços, guias, escala, fornecedores) continuam
+liberados para todo o Operacional — senão as telas liberadas quebrariam.

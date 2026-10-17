@@ -1,7 +1,8 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { LockRounded, LogoutRounded } from "@mui/icons-material";
+import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
+import Icon from "../ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
-import { HOME_BY_ROLE } from "../../Context/permissions";
+import { HOME_BY_ROLE, ROLES } from "../../Context/permissions";
+import { areaDaRota, podeArea, rotaInicial } from "../../Context/acessos";
 import "./styles.css";
 
 export const TelaCarregando = () => (
@@ -21,7 +22,7 @@ export const SemAcesso = () => {
     <div className="auth-fullscreen">
       <div className="auth-card auth-card-center">
         <div className="auth-icon-badge">
-          <LockRounded />
+          <Icon name="key" size={16} />
         </div>
         <h2>{desativada ? "Acesso desativado" : "Acesso não liberado"}</h2>
         <p>
@@ -30,7 +31,7 @@ export const SemAcesso = () => {
             : "Sua conta ainda não foi liberada no sistema. Fale com o operacional."}
         </p>
         <button type="button" className="auth-btn-secondary" onClick={logout}>
-          <LogoutRounded fontSize="small" />
+          <Icon name="logout" size={16} />
           Sair
         </button>
       </div>
@@ -65,4 +66,35 @@ export const RedirectHome = () => {
   if (!role) return <SemAcesso />;
 
   return <Navigate to={HOME_BY_ROLE[role]} replace />;
+};
+
+/* Telas do Operacional com acesso por conta (Controle de acessos).
+   Envolve as rotas operacionais: se a conta não pode abrir a tela da URL,
+   a home ("/") manda para a primeira tela liberada; as demais mostram o
+   aviso de sem permissão. Comercial e Guia não passam por aqui (o nível
+   deles já decide). */
+export const RequireArea = () => {
+  const { perfil, role, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <TelaCarregando />;
+  if (role !== ROLES.OPERACIONAL) return <Outlet />;
+
+  const area = areaDaRota(location.pathname);
+  if (!area || podeArea(perfil, area.chave)) return <Outlet />;
+
+  if (location.pathname === "/") return <Navigate to={rotaInicial(perfil)} replace />;
+
+  return (
+    <div className="auth-sem-permissao">
+      <Icon name="lock" size={22} />
+      <h2>Você não tem acesso a esta tela</h2>
+      <p>
+        <b>{area.label}</b> não está liberada para a sua conta. Se precisar, peça à gerência para liberar em Controle de acessos.
+      </p>
+      <Link className="auth-btn-secondary" to={rotaInicial(perfil)}>
+        Ir para uma tela liberada
+      </Link>
+    </div>
+  );
 };

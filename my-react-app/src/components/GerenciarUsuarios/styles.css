@@ -329,6 +329,22 @@
   border-color: color-mix(in srgb, var(--warning) 40%, transparent 60%);
 }
 
+.usuarios-badge.gerencia {
+  color: var(--on-accent, #fff);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.usuarios-badge.restrito {
+  color: var(--text-2);
+  border-style: dashed;
+}
+
+.usuarios-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .usuarios-badge.desativado {
   color: var(--alert);
   border-color: color-mix(in srgb, var(--alert) 40%, transparent 60%);

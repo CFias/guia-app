@@ -20,7 +20,7 @@ export const ROLE_LABELS = {
 
 export const ROLE_DESCRIPTIONS = {
   [ROLES.OPERACIONAL]:
-    "Acesso total ao sistema, inclusive cadastro de usuários.",
+    "Telas do operacional — a gerência escolhe quais em Controle de acessos.",
   [ROLES.COMERCIAL]:
     "Somente as telas de teor comercial (Central de Informações).",
   [ROLES.GUIA]: "Somente a tela para preencher a própria disponibilidade.",

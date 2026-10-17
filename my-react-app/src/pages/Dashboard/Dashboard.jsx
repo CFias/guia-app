@@ -6,7 +6,8 @@ import logo from "../../assets/clover.png";
 import { useAuth } from "../../Context/AuthContext";
 import BoasVindasComercial from "../../components/BoasVindas/BoasVindasComercial";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
-import { ACESSO, ROLE_LABELS } from "../../Context/permissions";
+import { ACESSO, ROLE_LABELS, ROLES } from "../../Context/permissions";
+import { ehGerencia, podeArea } from "../../Context/acessos";
 import { usePreferenciasUI } from "../../Context/preferenciasUIContext";
 import Icon from "../../components/ui/Icon";
 import {
@@ -92,17 +93,36 @@ const Dashboard = ({ loading }) => {
   // e a rota em ACESSO (permissions.js) + App.jsx.
   const veOperacao = ACESSO.painel.includes(role);
 
+  // Além do nível, no Operacional cada tela pode estar bloqueada para a
+  // conta (Controle de acessos — Context/acessos.js).
   const podeVer = useCallback(
-    (item) => (ACESSO[item.area] || []).includes(role),
-    [role],
+    (item) => {
+      if (!(ACESSO[item.area] || []).includes(role)) return false;
+      if (role !== ROLES.OPERACIONAL) return true;
+      if (item.somenteGerencia) return ehGerencia(perfil);
+      if (!item.chave) return true;
+      const chaves = Array.isArray(item.chave) ? item.chave : [item.chave];
+      return chaves.some((c) => podeArea(perfil, c));
+    },
+    [role, perfil],
+  );
+
+  // item com várias telas (Cadastros): abre na primeira liberada
+  const ajustarRota = useCallback(
+    (item) => {
+      if (!item.rotaPorChave || role !== ROLES.OPERACIONAL) return item;
+      const chave = (Array.isArray(item.chave) ? item.chave : [item.chave]).find((c) => podeArea(perfil, c));
+      return chave ? { ...item, to: item.rotaPorChave[chave] } : item;
+    },
+    [role, perfil],
   );
 
   const grupos = useMemo(
     () =>
       GRUPOS_MENU.filter((g) => !(g.somenteSemPainel && veOperacao))
-        .map((g) => ({ ...g, itens: g.itens.filter(podeVer) }))
+        .map((g) => ({ ...g, itens: g.itens.filter(podeVer).map(ajustarRota) }))
         .filter((g) => g.itens.length > 0),
-    [podeVer, veOperacao],
+    [podeVer, ajustarRota, veOperacao],
   );
 
   // breadcrumb: Grupo / Página

@@ -12,6 +12,7 @@ export const GRUPOS_MENU = [
     itens: [
       {
         to: "/",
+        chave: "dashboard",
         label: "Dashboard",
         icon: "dashboard",
         area: "painel",
@@ -25,18 +26,21 @@ export const GRUPOS_MENU = [
     itens: [
       {
         to: "/op",
+        chave: "painelOperacional",
         label: "Painel Operacional",
         icon: "painel",
         area: "painel",
       },
       {
         to: "/previas",
+        chave: "previas",
         label: "Prévia de Serviços",
         icon: "send",
         area: "painel",
       },
       {
         to: "/planilha",
+        chave: "planilha",
         label: "Planilha operacional",
         icon: "planilha",
         area: "painel",
@@ -49,19 +53,28 @@ export const GRUPOS_MENU = [
     itens: [
       {
         to: "/passeios",
+        chave: "gerarEscala",
         label: "Gerar Escala",
         icon: "sparkles",
         area: "painel",
       },
-      { to: "/guias", label: "Lista de Guias", icon: "users", area: "painel" },
+      {
+        to: "/guias",
+        chave: "listaGuias",
+        label: "Lista de Guias",
+        icon: "users",
+        area: "painel",
+      },
       {
         to: "/mapear-guias",
+        chave: "mapaAfinidade",
         label: "Mapa de afinidade",
         icon: "map",
         area: "painel",
       },
       {
         to: "/disponibilidade-guia",
+        chave: "disponibilidade",
         label: "Disponibilidade da semana",
         icon: "calendarCheck",
         area: "painel",
@@ -74,18 +87,21 @@ export const GRUPOS_MENU = [
     itens: [
       {
         to: "/custos",
+        chave: "custos",
         label: "Custos operacionais",
         icon: "coins",
         area: "painel",
       },
       {
         to: "/recepcao-turnos",
+        chave: "demandaTurnos",
         label: "Demanda por turno",
         icon: "clock",
         area: "painel",
       },
       {
         to: "/servicos-fornecedor",
+        chave: "servicosFornecedor",
         label: "Serviços por Fornecedor",
         icon: "barChart",
         area: "painel",
@@ -98,6 +114,9 @@ export const GRUPOS_MENU = [
     itens: [
       {
         to: "/register-guias",
+        chave: ["cadastros", "usuarios"],
+        // abre na primeira aba liberada para a conta
+        rotaPorChave: { cadastros: "/register-guias", usuarios: "/usuarios" },
         label: "Cadastros",
         icon: "folder",
         area: "painel",
@@ -105,15 +124,24 @@ export const GRUPOS_MENU = [
       },
       {
         to: "/faqadmin",
+        chave: "centralInformacoes",
         label: "Central de Informações",
         icon: "bookOpen",
         area: "painel",
       },
       {
         to: "/faqcomercial",
+        chave: "verComercial",
         label: "Ver como o comercial",
         icon: "eye",
         area: "painel",
+      },
+      {
+        to: "/acessos",
+        label: "Controle de acessos",
+        icon: "shield",
+        area: "painel",
+        somenteGerencia: true,
       },
     ],
   },
@@ -155,6 +183,7 @@ export const ROTAS_FORA_DO_MENU = {
   "/outs": ["Operação do dia", "OUT's"],
   "/escala-semanal": ["Escala e guias", "Escala semanal"],
   "/register-tours": ["Gestão", "Cadastro de passeios"],
+  "/acessos": ["Gestão", "Controle de acessos"],
   "/configuracoes": ["Conta", "Configurações"],
   "/sobre": ["Conta", "Sobre a FiaSystem"],
 };
