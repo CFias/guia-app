@@ -1,0 +1,963 @@
+/* Relatório "Recepção por turno" */
+.rtn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rtn-filtro {
+  padding: var(--space-3) var(--space-4);
+}
+
+.rtn-filtro__linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.rtn-filtro__datas {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.rtn-aviso {
+  margin: 8px 0 0;
+  color: var(--alert);
+  font-size: var(--fs-sm);
+}
+
+.rtn-progresso {
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 4px;
+  background: var(--divider);
+  overflow: hidden;
+}
+
+.rtn-progresso span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.rtn-faixa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-faixa--aviso {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--text);
+}
+
+.rtn-faixa--erro {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--text);
+}
+
+/* cartões dos turnos */
+.rtn-turnos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.rtn-turno {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-4);
+  border-top: 4px solid var(--c);
+}
+
+.rtn-turno__topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rtn-turno__topo h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-lg);
+}
+
+.rtn-turno__topo span {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rtn-turno__equipe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-turno__media {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0 4px;
+}
+
+.rtn-turno__media b {
+  color: var(--text);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.rtn-turno__media span {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-turno__dados {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.rtn-turno__dados div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--divider);
+  font-size: var(--fs-sm);
+}
+
+.rtn-turno__dados dt {
+  color: var(--text-2);
+}
+
+.rtn-turno__dados dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+
+.rtn-turno__reforco {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-turno__reforco b {
+  color: var(--text);
+}
+
+/* gráfico por hora + tabela por dia da semana */
+.rtn-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.rtn-horas {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.rtn-horas__barras {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  height: 180px;
+  padding-top: 8px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.rtn-horas__col {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.rtn-horas__col span {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.15s;
+}
+
+.rtn-horas__barras:hover .rtn-horas__col span {
+  opacity: 0.5;
+}
+
+.rtn-horas__barras:hover .rtn-horas__col.is-foco span {
+  opacity: 1;
+}
+
+.rtn-horas__col:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.rtn-horas__dica {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.rtn-horas__dica b {
+  color: var(--text);
+}
+
+.rtn-horas__x {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.rtn-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rtn-legenda i,
+.rtn-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.rtn-dot {
+  margin-right: 6px;
+}
+
+.rtn-semana {
+  padding: 0 var(--space-4) var(--space-4);
+  overflow-x: auto;
+}
+
+.rtn-semana table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.rtn-semana th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.rtn-semana td {
+  padding: 8px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-2);
+  text-align: right;
+}
+
+.rtn-semana th:first-child,
+.rtn-semana td:first-child {
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.rtn-semana td.is-max {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.rtn-notas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-notas p {
+  margin: 0;
+}
+
+.rtn-notas b {
+  color: var(--text);
+}
+
+.rtn-notas__como {
+  color: var(--text-3);
+}
+
+@media (max-width: 900px) {
+  .rtn-grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .rtn-filtro__datas {
+    width: 100%;
+  }
+
+  .rtn-filtro__datas .ui-field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .rtn-filtro__datas input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ---------- filtros: tipos de serviço ---------- */
+.rtn-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rtn-filtro .rtn-filtro__linha+.rtn-filtro__linha {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rtn-tipos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.rtn-tipos__rot {
+  margin-right: 4px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.rtn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rtn-chip.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.rtn-ver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* ---------- cartões dos turnos ---------- */
+.rtn-turno.is-apoio {
+  border-top-style: dashed;
+}
+
+.rtn-tag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  vertical-align: 2px;
+}
+
+.rtn-equipe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+
+.rtn-equipe li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.rtn-equipe b {
+  color: var(--text);
+}
+
+.rtn-equipe span {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.rtn-equipe .is-sinergia b {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.rtn-equipe .is-vazio {
+  color: var(--text-3);
+}
+
+/* ---------- mapa de calor ---------- */
+.rtn-calor-0 {
+  background: var(--raised);
+  color: var(--text-3);
+}
+
+.rtn-calor-1 {
+  background: color-mix(in srgb, #e8590c 18%, var(--surface));
+  color: var(--text);
+}
+
+.rtn-calor-2 {
+  background: color-mix(in srgb, #e8590c 36%, var(--surface));
+  color: var(--text);
+}
+
+.rtn-calor-3 {
+  background: color-mix(in srgb, #e8590c 56%, var(--surface));
+  color: var(--text);
+}
+
+.rtn-calor-4 {
+  background: color-mix(in srgb, #e8590c 78%, var(--surface));
+  color: #fff;
+}
+
+.rtn-calor-5 {
+  background: #e8590c;
+  color: #fff;
+}
+
+.rtn-cal {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.rtn-cal__meses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-5);
+}
+
+.rtn-cal__mes h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.rtn-cal__grade {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.rtn-cal__dsem {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: center;
+}
+
+.rtn-cal__dia {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.rtn-cal__dia:hover {
+  outline: 2px solid var(--text-2);
+  outline-offset: -1px;
+}
+
+.rtn-cal__dia b {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.rtn-cal__dia span {
+  align-self: flex-end;
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.rtn-cal__dia.is-fora {
+  border: 1px dashed var(--divider);
+  background: transparent;
+  color: var(--text-3);
+  cursor: default;
+}
+
+.rtn-cal__dia.is-sel {
+  outline: 3px solid var(--text);
+  outline-offset: -1px;
+}
+
+.rtn-cal__dia.is-top b::after {
+  content: " ★";
+}
+
+.rtn-calor-leg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-3);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.rtn-calor-leg i {
+  width: 18px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.rtn-cal__top {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-cal__top b {
+  color: var(--text);
+}
+
+.rtn-sh {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.rtn-sh__rolagem {
+  overflow-x: auto;
+}
+
+.rtn-sh__grade {
+  display: grid;
+  grid-template-columns: 34px repeat(24, minmax(14px, 1fr));
+  gap: 2px;
+  min-width: 420px;
+}
+
+.rtn-sh__h {
+  color: var(--text-3);
+  font-size: 10px;
+  text-align: center;
+}
+
+.rtn-sh__dsem {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.rtn-sh__cel {
+  height: 22px;
+  border-radius: 3px;
+}
+
+/* ---------- colaboradores ---------- */
+.rtn-colabs td,
+.rtn-colabs th {
+  text-align: left;
+}
+
+.rtn-colabs td:nth-child(n + 6),
+.rtn-colabs th:nth-child(n + 6) {
+  text-align: right;
+}
+
+.rtn-colabs td small {
+  color: var(--text-3);
+}
+
+.rtn-papel {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.rtn-papel--principal {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.rtn-papel--sinergia {
+  border: 1px dashed var(--text-3);
+  color: var(--text-2);
+}
+
+.rtn-semana__apoio {
+  color: var(--text-3);
+}
+
+.rtn-folg {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtn-folg b {
+  color: var(--text);
+}
+
+/* ---------- detalhe do dia ---------- */
+.rtn-det {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.rtn-det h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.rtn-det__horas {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2px;
+  height: 90px;
+}
+
+.rtn-det__horas span {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.rtn-det__horas i {
+  display: block;
+  border-radius: 3px 3px 0 0;
+  background: #e8590c;
+}
+
+.rtn-det__horas small {
+  height: 14px;
+  color: var(--text-3);
+  font-size: 9px;
+  text-align: center;
+}
+
+.rtn-barras {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rtn-barras__topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.rtn-barras__trilho {
+  height: 6px;
+  margin-top: 3px;
+  border-radius: 4px;
+  background: var(--divider);
+  overflow: hidden;
+}
+
+.rtn-barras__trilho span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.rtn-barras small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- painel "Turnos e equipe" ---------- */
+.rtc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rtc-ajuda {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtc-ajuda b {
+  color: var(--text);
+}
+
+.rtc-turno {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--divider);
+  border-left: 5px solid var(--c);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.rtc-turno__topo,
+.rtc-turno__acoes,
+.rtc-colab__linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rtc-turno__acoes {
+  justify-content: space-between;
+}
+
+.rtc-turno__nome {
+  flex: 1 1 180px;
+  font-weight: 700;
+}
+
+.rtc-horas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtc-horas input {
+  width: 128px;
+}
+
+.rtc-cores {
+  display: flex;
+  gap: 6px;
+}
+
+.rtc-cor {
+  width: 22px;
+  height: 22px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rtc-cor.is-on {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+}
+
+.rtc-turno__mover {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rtc-colabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rtc-colab {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.rtc-colab__nome {
+  flex: 1 1 160px;
+}
+
+.rtc-colab__papel {
+  flex: 0 1 190px;
+}
+
+.rtc-dias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rtc-dia {
+  min-width: 40px;
+  padding: 3px 8px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rtc-dia.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.rtc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.rtc-obs {
+  width: 100%;
+}
+
+.rtc-folg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--divider);
+}
+
+.rtc-folg h4 {
+  margin: 0;
+  color: var(--text);
+}
+
+.rtc-restaurar {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rtc-erros {
+  padding: 10px 12px;
+  border: 1px solid var(--alert);
+  border-radius: var(--radius-md);
+  background: var(--alert-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.rtc-erros p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+@media (max-width: 600px) {
+  .rtn-cal__dia {
+    min-height: 44px;
+    padding: 3px 4px;
+  }
+
+  .rtn-cal__dia span {
+    font-size: var(--fs-sm);
+  }
+
+  .rtn-filtro__gerar {
+    width: 100%;
+  }
+}

@@ -79,6 +79,12 @@ export const GRUPOS_MENU = [
         area: "painel",
       },
       {
+        to: "/recepcao-turnos",
+        label: "Demanda por turno",
+        icon: "clock",
+        area: "painel",
+      },
+      {
         to: "/servicos-fornecedor",
         label: "Serviços por Fornecedor",
         icon: "barChart",
