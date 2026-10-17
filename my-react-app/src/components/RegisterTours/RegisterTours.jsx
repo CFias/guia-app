@@ -14,6 +14,7 @@ import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
 import { datasDoPeriodo } from "../../Services/Services/servicosPhoenix";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const diasSemana = [
   "Segunda",
@@ -93,12 +94,15 @@ const montarUrlApi = (date) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairNomePasseio = (item) =>
   item?.service?.name ||

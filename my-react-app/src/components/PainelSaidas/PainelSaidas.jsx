@@ -1,21 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  FlightTakeoffRounded,
-  CalendarMonthRounded,
-  RefreshRounded,
-  AccessTimeRounded,
-  GroupsRounded,
-  Inventory2Rounded,
-  WarningAmberRounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-  FilterAltRounded,
-  DirectionsBusRounded,
-  HotelRounded,
-  SyncRounded,
-  PlaceRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
 import "./styles.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -39,12 +25,15 @@ const montarUrlApi = (date) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const normalizarTexto = (texto = "") =>
   String(texto)
@@ -429,7 +418,7 @@ const PainelOuts = () => {
       <div className="painel-outs-header">
         <div>
           <h2 className="painel-outs-title">
-            <FlightTakeoffRounded fontSize="small" />
+            <Icon name="planeTakeoff" size={16} />
             Painel de OUT's
           </h2>
           <p className="painel-outs-subtitle">
@@ -455,7 +444,7 @@ const PainelOuts = () => {
           <div className="painel-outs-toolbar">
             <div className="painel-outs-field">
               <label>
-                <CalendarMonthRounded fontSize="small" />
+                <Icon name="calendar" size={16} />
                 Data operacional
               </label>
               <input
@@ -468,7 +457,7 @@ const PainelOuts = () => {
 
             <div className="painel-outs-field">
               <label>
-                <FilterAltRounded fontSize="small" />
+                <Icon name="filter" size={16} />
                 Filtrar veículo
               </label>
               <select
@@ -492,10 +481,7 @@ const PainelOuts = () => {
                 onClick={carregarOuts}
                 disabled={loading}
               >
-                <RefreshRounded
-                  fontSize="small"
-                  className={loading ? "spin" : ""}
-                />
+                <Icon name="refresh" size={16} className={loading ? "spin" : ""} />
                 {loading ? "Atualizando OUT's..." : "Atualizar"}
               </button>
             </div>
@@ -512,13 +498,13 @@ const PainelOuts = () => {
 
           <div className="painel-outs-stat">
             <div className="painel-outs-stat-icon">
-              <AccessTimeRounded fontSize="small" />
+              <Icon name="clock" size={16} />
             </div>
             <div>
               <span>Atualizado em</span>
               <strong>
                 {loading ? (
-                  <SyncRounded className="spin" fontSize="small" />
+                  <Icon name="refresh" size={16} className="spin" />
                 ) : ultimaAtualizacao ? (
                   ultimaAtualizacao.toLocaleString("pt-BR")
                 ) : (
@@ -541,13 +527,13 @@ const PainelOuts = () => {
           <div className="painel-outs-kpis">
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <DirectionsBusRounded fontSize="small" />
+                <Icon name="truck" size={16} />
               </div>
               <div>
                 <span>Veículos</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.veiculos
                   )}
@@ -557,13 +543,13 @@ const PainelOuts = () => {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <Inventory2Rounded fontSize="small" />
+                <Icon name="list" size={16} />
               </div>
               <div>
                 <span>Reservas</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.reservas
                   )}
@@ -573,13 +559,13 @@ const PainelOuts = () => {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <GroupsRounded fontSize="small" />
+                <Icon name="users" size={16} />
               </div>
               <div>
                 <span>Pax</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.pax
                   )}
@@ -589,13 +575,13 @@ const PainelOuts = () => {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon">
-                <HotelRounded fontSize="small" />
+                <Icon name="building" size={16} />
               </div>
               <div>
                 <span>Hotéis</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.hoteis
                   )}
@@ -605,13 +591,13 @@ const PainelOuts = () => {
 
             <div className="painel-outs-kpi">
               <div className="painel-outs-kpi-icon alerta">
-                <WarningAmberRounded fontSize="small" />
+                <Icon name="alert" size={16} />
               </div>
               <div>
                 <span>Sem veículo</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.semVeiculo
                   )}
@@ -641,7 +627,7 @@ const PainelOuts = () => {
             <div className="painel-outs-empty">{erro}</div>
           ) : loading ? (
             <div className="painel-outs-empty">
-              <SyncRounded className="spin" fontSize="small" />
+              <Icon name="refresh" size={16} className="spin" />
               <span style={{ marginLeft: 8 }}>Atualizando OUT's...</span>
             </div>
           ) : gruposFiltrados.length === 0 ? (
@@ -681,9 +667,9 @@ const PainelOuts = () => {
 
                       <div className="painel-outs-expand-icon">
                         {expandido ? (
-                          <KeyboardArrowUpRounded />
+                          <Icon name="chevronUp" size={16} />
                         ) : (
-                          <KeyboardArrowDownRounded />
+                          <Icon name="chevronDown" size={16} />
                         )}
                       </div>
                     </button>
@@ -697,7 +683,7 @@ const PainelOuts = () => {
                           >
                             <div className="painel-outs-hotel-header">
                               <div className="painel-outs-hotel-title">
-                                <HotelRounded fontSize="small" />
+                                <Icon name="building" size={16} />
                                 <strong>{hotelGrupo.hotel}</strong>
                               </div>
 
@@ -713,7 +699,7 @@ const PainelOuts = () => {
                                   {hotelGrupo.horario}
                                 </div>
                                 <div className="painel-outs-hotel-time">
-                                  <PlaceRounded fontSize="small" />
+                                  <Icon name="mapPin" size={16} />
                                   <span style={{ marginLeft: 4 }}>
                                     {hotelGrupo.regiao}
                                   </span>

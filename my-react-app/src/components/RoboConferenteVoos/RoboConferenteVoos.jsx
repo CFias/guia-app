@@ -1,21 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  SearchRounded,
-  CalendarMonthRounded,
-  RefreshRounded,
-  SyncRounded,
-  DirectionsBusRounded,
-  BadgeRounded,
-  WarningAmberRounded,
-  CheckCircleRounded,
-  ErrorRounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-  FlightRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_AEROPORTO = "https://guia-app.onrender.com";
 const PHOENIX_RESERVE_SERVICE_URL =
@@ -51,12 +39,15 @@ const montarUrlPhoenixReserveService = (date, tipo = null) => {
   return `${PHOENIX_RESERVE_SERVICE_URL}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const abrirBuscaGoogleVoo = (codigoOuHorario = "") => {
   const termo = String(codigoOuHorario || "").trim();
@@ -1213,7 +1204,7 @@ function BlocoResumo({ resumo, abaAtiva }) {
       <div className="previa-operacional-card-header">
         <div className="previa-operacional-card-title-row">
           <h3>
-            <BadgeRounded fontSize="small" />
+            <Icon name="idCard" size={16} />
             Resumo do Robô — {abaAtiva}
           </h3>
         </div>
@@ -1227,19 +1218,19 @@ function BlocoResumo({ resumo, abaAtiva }) {
           [
             "Serviços",
             resumo?.totalServicos || 0,
-            <DirectionsBusRounded fontSize="small" />,
+            <Icon name="truck" size={16} />,
           ],
-          ["OK", resumo?.ok || 0, <CheckCircleRounded fontSize="small" />],
+          ["OK", resumo?.ok || 0, <Icon name="circleCheck" size={16} />],
           [
             "Alerta",
             resumo?.divergencia || 0,
-            <WarningAmberRounded fontSize="small" />,
+            <Icon name="alert" size={16} />,
           ],
-          ["Crítico", resumo?.critico || 0, <ErrorRounded fontSize="small" />],
+          ["Crítico", resumo?.critico || 0, <Icon name="alert" size={16} />],
           [
             "Sem match",
             resumo?.semMatch || 0,
-            <SearchRounded fontSize="small" />,
+            <Icon name="search" size={16} />,
           ],
         ].map(([label, value, icon]) => (
           <div className="previa-operacional-kpi" key={label}>
@@ -1279,10 +1270,10 @@ function TabsTipoServico({ abaAtiva, setAbaAtiva, contagemPorAba }) {
 const getCardSemaforoStyle = (status = "") => {
   if (status === "ok") {
     return {
-      border: "1px solid color-mix(in srgb, var(--p3) 26%, transparent 74%)",
-      boxShadow: "inset 4px 0 0 var(--p3)",
+      border: "1px solid color-mix(in srgb, var(--accent-text) 26%, transparent 74%)",
+      boxShadow: "inset 4px 0 0 var(--accent-text)",
       background:
-        "linear-gradient(90deg, color-mix(in srgb, var(--p3) 12%, transparent 88%) 0%, var(--card) 12%, var(--card) 100%)",
+        "linear-gradient(90deg, color-mix(in srgb, var(--accent-text) 12%, transparent 88%) 0%, var(--surface) 12%, var(--surface) 100%)",
     };
   }
 
@@ -1291,7 +1282,7 @@ const getCardSemaforoStyle = (status = "") => {
       border: "1px solid rgba(245, 158, 11, 0.26)",
       boxShadow: "inset 4px 0 0 #f59e0b",
       background:
-        "linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, var(--card) 12%, var(--card) 100%)",
+        "linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, var(--surface) 12%, var(--surface) 100%)",
     };
   }
 
@@ -1300,15 +1291,15 @@ const getCardSemaforoStyle = (status = "") => {
       border: "1px solid rgba(239, 68, 68, 0.26)",
       boxShadow: "inset 4px 0 0 #ef4444",
       background:
-        "linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, var(--card) 12%, var(--card) 100%)",
+        "linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, var(--surface) 12%, var(--surface) 100%)",
     };
   }
 
   return {
-    border: "1px solid var(--border)",
+    border: "1px solid var(--divider)",
     boxShadow: "inset 4px 0 0 #94a3b8",
     background:
-      "linear-gradient(90deg, rgba(148, 163, 184, 0.10) 0%, var(--card) 12%, var(--card) 100%)",
+      "linear-gradient(90deg, rgba(148, 163, 184, 0.10) 0%, var(--surface) 12%, var(--surface) 100%)",
   };
 };
 
@@ -1330,7 +1321,7 @@ function ListaServicosEscalados({
       <div className="previa-operacional-card-header">
         <div className="previa-operacional-card-title-row">
           <h3>
-            <DirectionsBusRounded fontSize="small" />
+            <Icon name="truck" size={16} />
             Serviços escalados
           </h3>
           <span className="previa-operacional-badge">
@@ -1417,7 +1408,7 @@ function ListaServicosEscalados({
                             abrirBuscaGoogleVooPhoenix(item.vooPrincipal);
                           }}
                         >
-                          <SearchRounded fontSize="small" />
+                          <Icon name="search" size={16} />
                           Buscar voo
                         </button>
                       )}
@@ -1502,9 +1493,9 @@ function ListaServicosEscalados({
 
                   <div className="painel-chegadas-expand-icon">
                     {expandido ? (
-                      <KeyboardArrowUpRounded fontSize="small" />
+                      <Icon name="chevronUp" size={16} />
                     ) : (
-                      <KeyboardArrowDownRounded fontSize="small" />
+                      <Icon name="chevronDown" size={16} />
                     )}
                   </div>
                 </div>
@@ -1514,7 +1505,7 @@ function ListaServicosEscalados({
                     <div className="painel-chegadas-driver-block">
                       <div className="painel-chegadas-driver-header">
                         <div className="painel-chegadas-driver-title">
-                          <FlightRounded fontSize="small" />
+                          <Icon name="plane" size={16} />
                           <strong>
                             {roboResultado?.companhia ||
                               item.serviceName ||
@@ -1790,7 +1781,7 @@ const servicosAgrupados = useMemo(
     <div className="previa-operacional-page robo-conferente-page">
       <div className="previa-operacional-header">
         <h2 className="previa-operacional-title">
-          <SearchRounded fontSize="small" />
+          <Icon name="search" size={16} />
           Robô Conferente Operacional
         </h2>
         <p className="previa-operacional-subtitle">
@@ -1819,7 +1810,7 @@ const servicosAgrupados = useMemo(
           <div className="previa-operacional-toolbar">
             <div className="previa-operacional-field">
               <label>
-                <CalendarMonthRounded fontSize="small" />
+                <Icon name="calendar" size={16} />
                 Data da conferência
               </label>
               <input
@@ -1839,9 +1830,9 @@ const servicosAgrupados = useMemo(
                 disabled={loading || roboRodando}
               >
                 {loading ? (
-                  <SyncRounded className="spin" fontSize="small" />
+                  <Icon name="refresh" size={16} className="spin" />
                 ) : (
-                  <RefreshRounded fontSize="small" />
+                  <Icon name="refresh" size={16} />
                 )}
                 Atualizar dados
               </button>
@@ -1853,9 +1844,9 @@ const servicosAgrupados = useMemo(
                 disabled={loading || roboRodando || !listaFiltrada.length}
               >
                 {roboRodando ? (
-                  <SyncRounded className="spin" fontSize="small" />
+                  <Icon name="refresh" size={16} className="spin" />
                 ) : (
-                  <SearchRounded fontSize="small" />
+                  <Icon name="search" size={16} />
                 )}
                 {roboRodando ? "Rodando robô..." : `Rodar robô — ${abaAtiva}`}
               </button>

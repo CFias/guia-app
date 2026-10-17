@@ -13,22 +13,8 @@ import {
 import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
-import {
-  BadgeRounded,
-  ChatRounded,
-  DirectionsBusRounded,
-  DriveFileRenameOutlineRounded,
-  LocalShippingRounded,
-  SaveRounded,
-  TaxiAlertRounded,
-  SearchRounded,
-  SyncRounded,
-  EditRounded,
-  ToggleOnRounded,
-  ToggleOffRounded,
-  CalendarMonthRounded,
-  PlaylistAddCheckRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -54,12 +40,15 @@ const montarUrlApi = (date) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairVeiculo = (item) =>
   item?.roadmapService?.roadmap?.serviceOrder?.vehicle?.name ||
@@ -379,7 +368,7 @@ const CadastroFornecedores = () => {
       <div className="cadastro-fornecedor-header">
         <div>
           <h2 className="cadastro-fornecedor-title">
-            Cadastrar Fornecedor <LocalShippingRounded fontSize="small" />
+            Cadastrar Fornecedor <Icon name="truck" size={16} />
           </h2>
           <p className="cadastro-fornecedor-subtitle">
             Cadastre fornecedores, vincule veículos escalados da API e mantenha
@@ -419,7 +408,7 @@ const CadastroFornecedores = () => {
                   <div className="cadastro-fornecedor-field">
                     <label htmlFor="fornecedor-nome">
                       Nome do fornecedor{" "}
-                      <DriveFileRenameOutlineRounded fontSize="small" />
+                      <Icon name="pencil" size={16} />
                     </label>
                     <input
                       id="fornecedor-nome"
@@ -433,7 +422,7 @@ const CadastroFornecedores = () => {
 
                   <div className="cadastro-fornecedor-field">
                     <label htmlFor="fornecedor-whatsapp">
-                      WhatsApp <ChatRounded fontSize="small" />
+                      WhatsApp <Icon name="message" size={16} />
                     </label>
                     <input
                       id="fornecedor-whatsapp"
@@ -450,7 +439,7 @@ const CadastroFornecedores = () => {
                 <div className="cadastro-fornecedor-api-bar">
                   <div className="cadastro-fornecedor-field">
                     <label htmlFor="fornecedor-data-api">
-                      Data operacional <CalendarMonthRounded fontSize="small" />
+                      Data operacional <Icon name="calendar" size={16} />
                     </label>
                     <input
                       id="fornecedor-data-api"
@@ -467,10 +456,7 @@ const CadastroFornecedores = () => {
                     onClick={() => carregarVeiculosDaApi(dataOperacional)}
                     disabled={sincronizandoVeiculos}
                   >
-                    <SyncRounded
-                      fontSize="small"
-                      className={sincronizandoVeiculos ? "spin" : ""}
-                    />
+                    <Icon name="refresh" size={16} className={sincronizandoVeiculos ? "ui-spin" : ""} />
                     {sincronizandoVeiculos
                       ? "Atualizando veículos..."
                       : "Atualizar veículos da API"}
@@ -480,7 +466,7 @@ const CadastroFornecedores = () => {
                 <div className="cadastro-fornecedor-field">
                   <label>
                     Veículos vinculados{" "}
-                    <DirectionsBusRounded fontSize="small" />
+                    <Icon name="truck" size={16} />
                   </label>
 
                   <div className="cadastro-fornecedor-dropdown">
@@ -633,7 +619,7 @@ const CadastroFornecedores = () => {
                       </span>
                       <span className="cadastro-fornecedor-switch-label">
                         Exibir como Plotado{" "}
-                        <TaxiAlertRounded fontSize="small" />
+                        <Icon name="alert" size={16} />
                       </span>
                     </button>
                   </div>
@@ -651,7 +637,7 @@ const CadastroFornecedores = () => {
                       </span>
                       <span className="cadastro-fornecedor-switch-label">
                         Fornecedor ativo{" "}
-                        <PlaylistAddCheckRounded fontSize="small" />
+                        <Icon name="listCheck" size={16} />
                       </span>
                     </button>
                   </div>
@@ -665,7 +651,7 @@ const CadastroFornecedores = () => {
                       salvando ? "is-saving" : ""
                     }`}
                   >
-                    <SaveRounded fontSize="small" />
+                    <Icon name="save" size={16} />
                     {salvando
                       ? "Salvando..."
                       : fornecedorEditandoId
@@ -766,7 +752,7 @@ const CadastroFornecedores = () => {
 
             <div className="cadastro-fornecedor-list-toolbar">
               <div className="cadastro-fornecedor-search">
-                <SearchRounded fontSize="small" />
+                <Icon name="search" size={16} />
                 <input
                   type="text"
                   placeholder="Buscar por nome, telefone ou veículo"
@@ -852,7 +838,7 @@ const CadastroFornecedores = () => {
                           className="cadastro-fornecedor-btn-secondary"
                           onClick={() => preencherFormEdicao(fornecedor)}
                         >
-                          <EditRounded fontSize="small" />
+                          <Icon name="pencil" size={16} />
                           Editar
                         </button>
 
@@ -864,9 +850,9 @@ const CadastroFornecedores = () => {
                           onClick={() => alternarStatusFornecedor(fornecedor)}
                         >
                           {fornecedor.ativo === false ? (
-                            <ToggleOnRounded fontSize="small" />
+                            <Icon name="toggleOn" size={16} />
                           ) : (
-                            <ToggleOffRounded fontSize="small" />
+                            <Icon name="toggleOff" size={16} />
                           )}
                           {fornecedor.ativo === false ? "Ativar" : "Inativar"}
                         </button>

@@ -37,12 +37,24 @@ import { usePhoenixStatus } from "../Shell/shellContext";
 import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
 import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 import {
+  detalheComplementos,
+  juntarComplementoPanoramico,
+  resumoComplementos,
+} from "../../Services/Utils/complementoPanoramico";
+import {
+  detalhePendentes,
+  exigeConfirmacao,
+  resumoPendentes,
+  situacaoConfirmacao,
+} from "../../Services/Utils/confirmacaoPasseio";
+import {
   acumularIdiomas,
   bandeiraDoIdioma,
   extrairIdiomasDoItem,
   listarIdiomasExigidos,
   siglaDoIdioma,
 } from "../../Services/Utils/idiomas";
+import { observacaoExclui, semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 // Modalidade do Phoenix → "Regular" / "Privativo" (outro texto passa como veio)
 const categoriaDoModo = (modo = "") => {
@@ -235,12 +247,15 @@ const montarUrlApi = (date) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -354,6 +369,19 @@ const extrairCodigoReserva = (item) =>
   item?.code ||
   item?.reserve?.id ||
   null;
+
+// Praia do Forte 4h com reservas, mas nenhuma confirmada ainda
+const aguardandoConfirmacao = (item) =>
+  (item?.pendentesConfirmacao?.length || 0) > 0 && !Number(item?.passengers || 0);
+
+const extrairClienteReserva = (item) =>
+  String(
+    item?.reserve?.customer?.name ||
+      item?.customer?.name ||
+      item?.reserve?.holder_name ||
+      item?.passenger_name ||
+      "",
+  ).trim();
 
 const extrairHotelReserva = (item) => {
   const hotel =
@@ -490,18 +518,9 @@ const Home = () => {
   const inicioSemana = semana[0]?.date;
   const fimSemana = semana[semana.length - 1]?.date;
 
-  const ehObservacaoCancelada = (observacao = "") => {
-    const texto = normalizarTexto(String(observacao || ""));
-
-    if (!texto) return false;
-
-    return (
-      texto === "cld" ||
-      texto.includes(" cld") ||
-      texto.startsWith("cld ") ||
-      texto.includes("cancelado")
-    );
-  };
+  // CLD, cancelado, não escalar, dispensado (as listas do Phoenix já vêm sem
+  // essas reservas; aqui fica como segunda garantia)
+  const ehObservacaoCancelada = (observacao = "") => observacaoExclui(observacao);
 
   const itemEstaCancelado = (item) => {
     const observacao =
@@ -563,6 +582,8 @@ const Home = () => {
     const itensApiAgrupados = {};
     const itensBrutos = [];
 
+    // 1) cada reserva válida do Phoenix
+    const registros = [];
     respostasApi.flat().forEach((item) => {
       if (itemEstaCancelado(item)) return;
 
@@ -577,7 +598,27 @@ const Home = () => {
       if (!nomeExibicao) return;
       if (deveIgnorarServico(nomeExibicao)) return;
 
-      itensBrutos.push({
+      registros.push({
+        item,
+        date,
+        nome: nomeExibicao,
+        nomeOriginal,
+        externalServiceId: externalServiceId || null,
+        pax,
+        cliente: extrairClienteReserva(item),
+        codigo: extrairCodigoReserva(item) || "",
+        // Praia do Forte 4h: só conta reserva confirmada (observação ou vendedor)
+        naoConfirmada: exigeConfirmacao(nomeExibicao) && !situacaoConfirmacao(item).confirmada,
+      });
+    });
+
+    // 2) Histórico + Panorâmico do mesmo passageiro = Histórico e Panorâmico
+    juntarComplementoPanoramico(registros).forEach((r) => {
+      const { item, date, nomeOriginal, pax } = r;
+      const nomeExibicao = r.nome;
+      const externalServiceId = r.externalServiceId;
+
+      if (!r.naoConfirmada) itensBrutos.push({
         ...item,
         _date: date,
         _serviceNameCanonico: nomeExibicao,
@@ -589,6 +630,7 @@ const Home = () => {
         _serviceType: Number(item?.service?.type || 0),
         _serviceModeAsText: extrairModoServico(item),
         _isDisp: ehServicoDispPorNomeOuTipo(item),
+        _complementoPanoramico: r.complemento || null,
       });
 
       const chave = `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
@@ -610,7 +652,25 @@ const Home = () => {
           isDisp: ehServicoDispPorNomeOuTipo(item),
           idiomas: {}, // pax por idioma estrangeiro (Phoenix), ex.: { en: 3 }
           modos: {}, // categoria das reservas (Regular / Privativo) → pax
+          complementos: [], // reservas de Histórico que compraram o Panorâmico
+          pendentesConfirmacao: [], // Praia do Forte 4h: reservas sem confirmação (não contam)
         };
+      }
+
+      // Praia do Forte 4h sem confirmação: o serviço aparece, mas o pax não conta
+      if (r.naoConfirmada) {
+        const operadora = extrairOperadora(item);
+        itensApiAgrupados[chave].pendentesConfirmacao.push({
+          codigo: r.codigo,
+          cliente: r.cliente,
+          operadora: operadora === "SEM OPERADORA" ? "" : operadora,
+          pax: pax.total,
+        });
+        return;
+      }
+
+      if (r.complemento) {
+        itensApiAgrupados[chave].complementos.push({ ...r.complemento, pax: pax.total });
       }
 
       const modo = categoriaDoModo(extrairModoServico(item));
@@ -820,7 +880,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -829,11 +889,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -898,13 +958,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -968,7 +1028,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                normalizarTexto(guia.nome || ""),
+                  normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -998,11 +1058,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-        distribuicaoGuias.reduce(
-          (acc, guia) => acc + Number(guia.percentualUso || 0),
-          0,
-        ) / distribuicaoGuias.length,
-      )
+          distribuicaoGuias.reduce(
+            (acc, guia) => acc + Number(guia.percentualUso || 0),
+            0,
+          ) / distribuicaoGuias.length,
+        )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1054,8 +1114,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -1831,7 +1891,37 @@ Operacional - Luck Receptivo
 
       {abaAtiva === "operacao" && (
         <>
-
+          {/* ---- dias da semana ---- */}
+          <div className="dash-days" role="tablist" aria-label="Dia">
+            {semana.map((dia) => {
+              const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
+              const ativo = diaSelecionadoHome === dia.date;
+              return (
+                <button
+                  key={dia.date}
+                  type="button"
+                  role="tab"
+                  aria-selected={ativo}
+                  className={`dash-day ${ativo ? "is-active" : ""}`}
+                  onClick={() => setDiaSelecionadoHome(dia.date)}
+                  disabled={carregandoCards}
+                >
+                  <span className="dash-day__nome">{dia.day}</span>
+                  <span className="dash-day__data tabular">{dia.label}</span>
+                  <span className="dash-day__meta tabular">
+                    {carregandoCards ? (
+                      <span className="ui-sk ui-sk--fina" style={{ width: 64 }} aria-hidden="true" />
+                    ) : (
+                      `${info?.comGuia ?? 0}/${info?.total ?? 0} com guia`
+                    )}
+                    {!carregandoCards && info?.semGuia > 0 && (
+                      <span className="dash-day__alerta" title={`${info.semGuia} sem guia`} />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* ---- tiles do dia (clicar filtra a tabela) ---- */}
           <KpiTiles
@@ -1867,38 +1957,6 @@ Operacional - Luck Receptivo
               },
             ]}
           />
-
-          {/* ---- dias da semana ---- */}
-          <div className="dash-days" role="tablist" aria-label="Dia">
-            {semana.map((dia) => {
-              const info = dashboard.distribuicaoSemana.find((d) => d.date === dia.date);
-              const ativo = diaSelecionadoHome === dia.date;
-              return (
-                <button
-                  key={dia.date}
-                  type="button"
-                  role="tab"
-                  aria-selected={ativo}
-                  className={`dash-day ${ativo ? "is-active" : ""}`}
-                  onClick={() => setDiaSelecionadoHome(dia.date)}
-                  disabled={carregandoCards}
-                >
-                  <span className="dash-day__nome">{dia.day}</span>
-                  <span className="dash-day__data tabular">{dia.label}</span>
-                  <span className="dash-day__meta tabular">
-                    {carregandoCards ? (
-                      <span className="ui-sk ui-sk--fina" style={{ width: 64 }} aria-hidden="true" />
-                    ) : (
-                      `${info?.comGuia ?? 0}/${info?.total ?? 0} com guia`
-                    )}
-                    {!carregandoCards && info?.semGuia > 0 && (
-                      <span className="dash-day__alerta" title={`${info.semGuia} sem guia`} />
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
 
           {/* ---- guias e serviços do dia ---- */}
           <Card>
@@ -1998,10 +2056,24 @@ Operacional - Luck Receptivo
                             ))}
                           </span>
                         )}
-                        <span className="ui-cell-sub tabular">
-                          ADT {item.adultCount || 0} · CHD {item.childCount || 0} · INF{" "}
-                          {item.infantCount || 0}
-                        </span>
+                        {!aguardandoConfirmacao(item) && (
+                          <span className="ui-cell-sub tabular">
+                            ADT {item.adultCount || 0} · CHD {item.childCount || 0} · INF{" "}
+                            {item.infantCount || 0}
+                          </span>
+                        )}
+                        {item.pendentesConfirmacao?.length > 0 && (
+                          <span className="dash-complemento is-pendente" title={detalhePendentes(item.pendentesConfirmacao)}>
+                            <Icon name="clock" size={11} />
+                            {resumoPendentes(item.pendentesConfirmacao)}
+                          </span>
+                        )}
+                        {item.complementos?.length > 0 && (
+                          <span className="dash-complemento" title={detalheComplementos(item.complementos)}>
+                            <Icon name="plus" size={11} />
+                            {resumoComplementos(item.complementos)}
+                          </span>
+                        )}
                       </span>
                       <span>
                         {item.guiaNome ? (
@@ -2018,7 +2090,13 @@ Operacional - Luck Receptivo
                         )}
                       </span>
                       <span className="ui-cell-end ui-cell-main tabular dash-pax">
-                        {item.passengers || 0}
+                        {aguardandoConfirmacao(item) ? (
+                          <span className="dash-a-confirmar" title="Nenhuma reserva confirmada ainda">
+                            A confirmar
+                          </span>
+                        ) : (
+                          item.passengers || 0
+                        )}
                       </span>
                       <StatusDot tone={tomStatusOperacional(item.statusOperacional)}>
                         {item.statusOperacional}

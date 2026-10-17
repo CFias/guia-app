@@ -1,22 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  FlightLandRounded,
-  CalendarMonthRounded,
-  RefreshRounded,
-  AccessTimeRounded,
-  GroupsRounded,
-  Inventory2Rounded,
-  AirplanemodeActiveRounded,
-  WarningAmberRounded,
-  KeyboardArrowDownRounded,
-  KeyboardArrowUpRounded,
-  FilterAltRounded,
-  ConnectingAirportsRounded,
-  SearchRounded,
-  SyncRounded,
-  DirectionsBusRounded,
-} from "@mui/icons-material";
+import Icon from "../ui/Icon";
 import "./styles.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -67,12 +52,15 @@ const montarUrlApi = (date) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairPax = (item) => {
   const adultos = Number(item?.is_adult_count || 0);
@@ -785,7 +773,7 @@ const PainelChegadas = () => {
       <div className="painel-chegadas-header">
         <div>
           <h2 className="painel-chegadas-title">
-            <FlightLandRounded fontSize="small" />
+            <Icon name="planeLanding" size={16} />
             Painel de Chegadas
           </h2>
           <p className="painel-chegadas-subtitle">
@@ -811,7 +799,7 @@ const PainelChegadas = () => {
           <div className="painel-chegadas-toolbar">
             <div className="painel-chegadas-field">
               <label>
-                <CalendarMonthRounded fontSize="small" />
+                <Icon name="calendar" size={16} />
                 Data operacional
               </label>
               <input
@@ -824,7 +812,7 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-field">
               <label>
-                <FilterAltRounded fontSize="small" />
+                <Icon name="filter" size={16} />
                 Filtrar status do voo
               </label>
               <select
@@ -847,7 +835,7 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-field">
               <label>
-                <FilterAltRounded fontSize="small" />
+                <Icon name="filter" size={16} />
                 Filtrar escala
               </label>
               <select
@@ -873,10 +861,7 @@ const PainelChegadas = () => {
                 onClick={carregarChegadas}
                 disabled={loading}
               >
-                <RefreshRounded
-                  fontSize="small"
-                  className={loading ? "spin" : ""}
-                />
+                <Icon name="refresh" size={16} className={loading ? "spin" : ""} />
                 {loading ? "Atualizando..." : "Atualizar"}
               </button>
             </div>
@@ -893,13 +878,13 @@ const PainelChegadas = () => {
 
           <div className="painel-chegadas-stat">
             <div className="painel-chegadas-stat-icon">
-              <AccessTimeRounded fontSize="small" />
+              <Icon name="clock" size={16} />
             </div>
             <div>
               <span>Atualizado em</span>
               <strong>
                 {loading ? (
-                  <SyncRounded className="spin" fontSize="small" />
+                  <Icon name="refresh" size={16} className="spin" />
                 ) : ultimaAtualizacao ? (
                   ultimaAtualizacao.toLocaleString("pt-BR")
                 ) : (
@@ -968,13 +953,13 @@ const PainelChegadas = () => {
           <div className="painel-chegadas-kpis">
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon">
-                <AirplanemodeActiveRounded fontSize="small" />
+                <Icon name="plane" size={16} />
               </div>
               <div>
                 <span>Voos</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.voos
                   )}
@@ -984,13 +969,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon">
-                <Inventory2Rounded fontSize="small" />
+                <Icon name="list" size={16} />
               </div>
               <div>
                 <span>Reservas</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.reservas
                   )}
@@ -1000,13 +985,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon">
-                <GroupsRounded fontSize="small" />
+                <Icon name="users" size={16} />
               </div>
               <div>
                 <span>Pax</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.pax
                   )}
@@ -1016,13 +1001,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon">
-                <GroupsRounded fontSize="small" />
+                <Icon name="users" size={16} />
               </div>
               <div>
                 <span>Crianças</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.criancas
                   )}
@@ -1032,13 +1017,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon">
-                <GroupsRounded fontSize="small" />
+                <Icon name="users" size={16} />
               </div>
               <div>
                 <span>Infantes</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.infantes
                   )}
@@ -1048,13 +1033,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon alerta">
-                <WarningAmberRounded fontSize="small" />
+                <Icon name="alert" size={16} />
               </div>
               <div>
                 <span>Voos alterados</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.alterados
                   )}
@@ -1064,13 +1049,13 @@ const PainelChegadas = () => {
 
             <div className="painel-chegadas-kpi">
               <div className="painel-chegadas-kpi-icon alerta">
-                <WarningAmberRounded fontSize="small" />
+                <Icon name="alert" size={16} />
               </div>
               <div>
                 <span>Voos com não escalados</span>
                 <strong>
                   {loading ? (
-                    <SyncRounded className="spin" fontSize="small" />
+                    <Icon name="refresh" size={16} className="spin" />
                   ) : (
                     resumo.voosComNaoEscalados
                   )}
@@ -1099,7 +1084,7 @@ const PainelChegadas = () => {
             <div className="painel-chegadas-empty">{erro}</div>
           ) : loading ? (
             <div className="painel-chegadas-empty">
-              <SyncRounded className="spin" fontSize="small" />
+              <Icon name="refresh" size={16} className="spin" />
               <span style={{ marginLeft: 8 }}>Atualizando chegadas...</span>
             </div>
           ) : voosFiltrados.length === 0 ? (
@@ -1133,7 +1118,7 @@ const PainelChegadas = () => {
                             }}
                             title={`Buscar ${voo.voo} no Google`}
                           >
-                            <SearchRounded fontSize="small" />
+                            <Icon name="search" size={16} />
                             <span>Buscar no Google</span>
                           </button>
                         </div>
@@ -1170,9 +1155,9 @@ const PainelChegadas = () => {
 
                       <div className="painel-chegadas-expand-icon">
                         {expandido ? (
-                          <KeyboardArrowUpRounded />
+                          <Icon name="chevronUp" size={16} />
                         ) : (
-                          <KeyboardArrowDownRounded />
+                          <Icon name="chevronDown" size={16} />
                         )}
                       </div>
                     </button>
@@ -1183,7 +1168,7 @@ const PainelChegadas = () => {
                           <div className="painel-chegadas-driver-block nao-escalado">
                             <div className="painel-chegadas-driver-header">
                               <div className="painel-chegadas-driver-title">
-                                <WarningAmberRounded fontSize="small" />
+                                <Icon name="alert" size={16} />
                                 <strong>Chegadas não escaladas</strong>
                               </div>
 
@@ -1246,7 +1231,7 @@ const PainelChegadas = () => {
                           >
                             <div className="painel-chegadas-driver-header">
                               <div className="painel-chegadas-driver-title">
-                                <DirectionsBusRounded fontSize="small" />
+                                <Icon name="truck" size={16} />
                                 <strong>{grupoVeiculo.veiculo}</strong>
                               </div>
 

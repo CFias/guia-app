@@ -36,7 +36,10 @@ import { usePhoenixStatus } from "../Shell/shellContext";
 import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
 import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 import PlacasDrawer from "./placas/PlacasDrawer";
+import { imprimirMapa } from "./mapa/mapaServicos";
+import { montarMapaChegadas, montarMapaOuts, montarMapaPasseios } from "./mapa/montarMapas";
 import { extrairIdiomasDoItem } from "../../Services/Utils/idiomas";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 // status do voo → tom e ícone (atrasado/cancelado em --alert)
 // ícones da linha de OUT/Transfer (só apresentação)
@@ -191,12 +194,15 @@ const montarUrlApi = (date, serviceType = null) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const normalizarTexto = (texto = "") =>
   String(texto)
@@ -422,21 +428,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-    item?.presentation_hour_end ||
-    item?.schedule?.presentation_hour ||
-    item?.date ||
-    item?.execution_date ||
-    "",
+      item?.presentation_hour_end ||
+      item?.schedule?.presentation_hour ||
+      item?.date ||
+      item?.execution_date ||
+      "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-    item?.reserve?.created_at ||
-    item?.reserve?.updated_at ||
-    item?.date ||
-    item?.execution_date ||
-    "",
+      item?.reserve?.created_at ||
+      item?.reserve?.updated_at ||
+      item?.date ||
+      item?.execution_date ||
+      "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -700,13 +706,22 @@ const extrairHorarioVooPhoenix = (item) =>
   item?.flight?.scheduled_time ||
   "";
 
+// horário que o painel mostra e usa para ordenar: a apresentação inicial do
+// Phoenix; sem ela, o horário do voo
+const horaDoVoo = (voo) => voo?.horarioApresentacao || formatarHoraOuVazio(voo?.horarioPrevisto) || "";
+
+// "00:00" no horário do voo = voo não informado no Phoenix (não é meia-noite)
+const semMeiaNoite = (valor) => (formatarHora(valor) === "00:00" ? "" : valor || "");
+
 const extrairHorarioPrevistoVoo = (item) =>
-  item?.fly_hour ||
-  item?.reserve?.flight_time ||
-  item?.reserve?.flight?.scheduled_time ||
-  item?.reserve?.arrival_flight_time ||
-  item?.flight_time ||
-  item?.flight?.scheduled_time ||
+  semMeiaNoite(
+    item?.fly_hour ||
+      item?.reserve?.flight_time ||
+      item?.reserve?.flight?.scheduled_time ||
+      item?.reserve?.arrival_flight_time ||
+      item?.flight_time ||
+      item?.flight?.scheduled_time,
+  ) ||
   extrairHorarioServico(item) ||
   "";
 
@@ -999,12 +1014,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-      item?.reserve?.flight?.scheduled_departure ||
-      item?.reserve?.departure_flight_time ||
-      item?.flight?.departure_time ||
-      item?.flight?.scheduled_departure ||
-      item?.fly_hour ||
-      "",
+        item?.reserve?.flight?.scheduled_departure ||
+        item?.reserve?.departure_flight_time ||
+        item?.flight?.departure_time ||
+        item?.flight?.scheduled_departure ||
+        item?.fly_hour ||
+        "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -1040,10 +1055,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-    item?.schedule?.presentation_hour ||
-    item?.our_schedule ||
-    item?.fly_hour ||
-    "",
+      item?.schedule?.presentation_hour ||
+      item?.our_schedule ||
+      item?.fly_hour ||
+      "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1309,7 +1324,12 @@ export default function PainelOperacionalUnificado() {
       if (!String(vooBruto || "").trim()) return;
 
       const vooExibicao = String(vooBruto).trim().toUpperCase();
-      const vooNormalizado = normalizarCodigoVoo(vooExibicao);
+      // apresentação inicial do Phoenix: é o horário que manda no painel e no mapa
+      const apresentacao = extrairHorarioServico(item);
+      // voo "não informado": não junta reservas de horários diferentes
+      const vooNormalizado = normalizarTexto(vooExibicao).includes("nao informado")
+        ? `${normalizarCodigoVoo(vooExibicao)}_${apresentacao}`
+        : normalizarCodigoVoo(vooExibicao);
 
       if (!mapa[vooNormalizado]) {
         mapa[vooNormalizado] = {
@@ -1348,8 +1368,11 @@ export default function PainelOperacionalUnificado() {
         motorista: extrairMotorista(item),
         veiculo: extrairVeiculoEscalado(item),
         observacao: extrairObservacao(item),
-        horarioVoo: formatarHoraOuVazio(extrairHorarioVooPhoenix(item)),
+        horarioVoo: formatarHoraOuVazio(semMeiaNoite(extrairHorarioVooPhoenix(item))),
+        horarioApresentacao: apresentacao,
         idioma: extrairIdiomasDoItem(item).ids[0] || "pt",
+        adultos: extrairAdultos(item),
+        guia: extrairGuiaEscalado(item),
       });
     });
 
@@ -1363,10 +1386,18 @@ export default function PainelOperacionalUnificado() {
       const horarios = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
       voo.horarioVooPhoenix = horarios[0] || "";
       voo.horariosPhoenixDivergentes = horarios.length > 1;
+
+      // apresentação inicial: a mais comum entre as reservas (a mais cedo no empate)
+      const apres = {};
+      voo.reservas.forEach((r) => {
+        if (r.horarioApresentacao) apres[r.horarioApresentacao] = (apres[r.horarioApresentacao] || 0) + 1;
+      });
+      voo.horarioApresentacao =
+        Object.keys(apres).sort((a, b) => apres[b] - apres[a] || a.localeCompare(b))[0] || "";
     });
 
     return Object.values(mapa).sort((a, b) =>
-      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
+      ordenarHora(horaDoVoo(a), horaDoVoo(b)),
     );
   }, [itensChegadas]);
 
@@ -1380,12 +1411,12 @@ export default function PainelOperacionalUnificado() {
       const situacao = situacaoAeroporto(noAeroporto?.status);
       const voo = noAeroporto
         ? {
-          ...vooPhoenix,
-          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
-          cancelado: vooPhoenix.cancelado || situacao.cancelado,
-          pousado: vooPhoenix.pousado || situacao.pousado,
-          aeroporto: noAeroporto,
-        }
+            ...vooPhoenix,
+            horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+            cancelado: vooPhoenix.cancelado || situacao.cancelado,
+            pousado: vooPhoenix.pousado || situacao.pousado,
+            aeroporto: noAeroporto,
+          }
         : vooPhoenix;
 
       const calculoStatus = calcularStatusVooPorHorario({
@@ -1487,9 +1518,7 @@ export default function PainelOperacionalUnificado() {
     if (filtroEscala === "somente-nao-escalados")
       lista = lista.filter((v) => v.totalmenteNaoEscalado);
 
-    return lista.sort((a, b) =>
-      ordenarHora(a.horarioPrevisto, b.horarioPrevisto),
-    );
+    return lista.sort((a, b) => ordenarHora(horaDoVoo(a), horaDoVoo(b)));
   }, [voos, filtroStatus, filtroEscala]);
 
   const resumoChegadas = useMemo(
@@ -1582,6 +1611,7 @@ export default function PainelOperacionalUnificado() {
         horarioHotel: horarioApresentacao,
         dataServicoReal,
         dataReserva,
+        idioma: extrairIdiomasDoItem(item).ids[0] || "pt",
       });
     });
 
@@ -1674,7 +1704,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-              "Hotel não informado",
+                "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -1758,6 +1788,8 @@ export default function PainelOperacionalUnificado() {
         mapaGuias[guia].passeiosMap[passeio].veiculosMap[veiculo] = {
           veiculo,
           fornecedor,
+          escalaId: extrairEscalaId(item),
+          motorista: extrairMotorista(item),
           reservas: [],
         };
       }
@@ -1777,6 +1809,11 @@ export default function PainelOperacionalUnificado() {
         horarioApresentacao: extrairHorarioApresentacao(item),
         contato: formatarContato(extrairContatoPax(item)),
         observacao: extrairObservacao(item),
+        adultos: extrairAdultos(item),
+        criancas: extrairCriancas(item),
+        infantes: extrairInfantes(item),
+        operadora: extrairOperadora(item),
+        idioma: extrairIdiomasDoItem(item).ids[0] || "pt",
       });
     });
 
@@ -2052,8 +2089,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-            )
+                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+              )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2263,6 +2300,22 @@ export default function PainelOperacionalUnificado() {
   const abrirModelosDePlaca = () =>
     abrirPlacas("individual", "", [{ id: "exemplo", nome: "Maira Souza", hotel: "", idioma: "pt" }]);
 
+  // Mapa de serviços organizado por escala (Chegadas/OUT's) ou por guia
+  // (Passeios), com os filtros da aba aplicados
+  const imprimirMapaDaAba = () => {
+    const dia = diaDaSemana(dataSelecionada);
+    const subtitulo = `Luck Receptivo SSA · ${dia ? `${dia}, ` : ""}${formatarDataBr(dataSelecionada)} · por horário e ${
+      abaAtiva === ABAS.GUIAS ? "guia" : "número da escala"
+    }`;
+    const mapa =
+      abaAtiva === ABAS.CHEGADAS
+        ? montarMapaChegadas(voosFiltrados)
+        : abaAtiva === ABAS.OUTS
+          ? montarMapaOuts(gruposOutFiltrados)
+          : montarMapaPasseios(gruposGuiasFiltrados);
+    imprimirMapa({ ...mapa, subtitulo });
+  };
+
   // indicador "Phoenix · HH:MM" da topbar: chama o mesmo "Atualizar" da tela
   usePhoenixStatus({
     atualizadoEm: ultimaAtualizacao,
@@ -2324,6 +2377,18 @@ export default function PainelOperacionalUnificado() {
                 Nova placa personalizada
               </Button>
             )}
+            <Button
+              icon="printer"
+              onClick={imprimirMapaDaAba}
+              disabled={carregando}
+              title={
+                abaAtiva === ABAS.GUIAS
+                  ? "Imprime o mapa dos passeios, organizado por guia e horário"
+                  : "Imprime o mapa organizado por horário e número da escala"
+              }
+            >
+              Imprimir mapa
+            </Button>
             <Button
               icon="refresh"
               onClick={() => {
@@ -2591,10 +2656,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos), icon: "planeLanding" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas), icon: "ticket" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos), icon: "truck" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax), icon: "users" },
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) , icon: "planeLanding" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) , icon: "ticket" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) , icon: "truck" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) , icon: "users" },
               {
                 key: "alterados",
                 label: "Voos alterados",
@@ -2659,7 +2724,7 @@ export default function PainelOperacionalUnificado() {
                       <span>
                         <span className="tabular painel-op-hora">
                           <Icon name="clock" size={14} />
-                          {formatarHora(voo.horarioPrevisto) || "--:--"}
+                          <span title="Apresentação inicial no Phoenix">{horaDoVoo(voo) || "--:--"}</span>
                         </span>
                         {(() => {
                           // horário do voo no Phoenix x painel do aeroporto
@@ -2672,15 +2737,16 @@ export default function PainelOperacionalUnificado() {
                           return (
                             <>
                               <span
-                                className={`ui-cell-sub tabular painel-op-fonte ${voo.horariosPhoenixDivergentes ? "is-alerta" : ""
-                                  }`}
+                                className={`ui-cell-sub tabular painel-op-fonte ${
+                                  voo.horariosPhoenixDivergentes ? "is-alerta" : ""
+                                }`}
                                 title={
                                   voo.horariosPhoenixDivergentes
                                     ? "As reservas deste voo têm horários diferentes no Phoenix"
-                                    : "Horário do voo cadastrado no Phoenix"
+                                    : "Horário do voo cadastrado no Phoenix (o horário grande é a apresentação inicial)"
                                 }
                               >
-                                Phoenix {phoenix || "sem horário"}
+                                Voo {phoenix || "não informado"}
                                 {voo.horariosPhoenixDivergentes && <Icon name="alert" size={11} />}
                               </span>
                               {aero && (
@@ -2851,8 +2917,9 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                          }`}
+                                        className={`ui-cell-sub painel-op-fonte ${
+                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                        }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -2916,8 +2983,9 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                          }`}
+                                        className={`ui-cell-sub painel-op-fonte ${
+                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                        }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -2959,12 +3027,12 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length), icon: "grid" },
-              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs), icon: "planeTakeoff" },
-              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers), icon: "navigation" },
-              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas), icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax), icon: "users" },
-              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis), icon: "building" },
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) , icon: "grid" },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) , icon: "planeTakeoff" },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) , icon: "navigation" },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) , icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) , icon: "users" },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) , icon: "building" },
               {
                 key: "monitorados",
                 label: "Monitorados",
@@ -3216,10 +3284,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias), icon: "idCard" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos), icon: "truck" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas), icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax), icon: "users" },
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) , icon: "idCard" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) , icon: "truck" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) , icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) , icon: "users" },
             ]}
           />
 

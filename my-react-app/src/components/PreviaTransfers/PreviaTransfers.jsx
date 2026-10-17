@@ -20,8 +20,9 @@ import {
 import { usePhoenixStatus } from "../Shell/shellContext";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
-import "./previa.css";
 import "./styles.css";
+import "./previa.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -208,12 +209,15 @@ const montarUrlApi = (date, serviceTypes = []) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairAdultos = (item) => Number(item?.is_adult_count || 0);
 const extrairCriancas = (item) => Number(item?.is_child_count || 0);

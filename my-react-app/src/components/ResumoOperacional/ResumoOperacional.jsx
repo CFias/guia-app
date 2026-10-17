@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Icon from "../ui/Icon";
 import "./styles.css";
 import GuiaAvatar from "../ui/GuiaAvatar";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const API_BASE =
   "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
@@ -65,12 +66,15 @@ const formatarHora = (valor = "") => {
   return "--:--";
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.data)) return json.data;
   if (Array.isArray(json?.results)) return json.results;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const montarUrlApi = (data) => {
   const params = new URLSearchParams();
@@ -127,10 +131,10 @@ const extrairHotel = (item) =>
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-    item?.schedule?.presentation_hour ||
-    item?.our_schedule ||
-    item?.fly_hour ||
-    ""
+      item?.schedule?.presentation_hour ||
+      item?.our_schedule ||
+      item?.fly_hour ||
+      ""
   );
 
 const extrairObservacao = (item) =>

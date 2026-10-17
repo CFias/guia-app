@@ -3,6 +3,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { getSemana } from "../../utils/getSemana";
 import "./styles.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 const EXPAND =
     "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -18,12 +19,15 @@ const normalizarTexto = (texto = "") =>
         .trim()
         .toLowerCase();
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
     if (Array.isArray(json)) return json;
     if (Array.isArray(json?.data)) return json.data;
     if (Array.isArray(json?.results)) return json.results;
     return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const extrairNomePasseio = (item) => {
     return (

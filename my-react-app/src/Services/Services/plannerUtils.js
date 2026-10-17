@@ -1,6 +1,7 @@
 // plannerUtils.js
 
 import { listarIdiomasExigidos, somarMapasIdiomas } from "../Utils/idiomas";
+import { semReservasExcluidas } from "../Utils/reservasExcluidas";
 
 export const DIAS = [
   "Segunda",
@@ -183,7 +184,7 @@ export const mapearRegistrosPorData = (semana = [], registrosLista = []) => {
   return mapa;
 };
 
-export const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
 
   const candidatos = [
@@ -204,6 +205,10 @@ export const extrairListaResposta = (json) => {
 
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+export const extrairListaResposta = (json) =>
+  semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||

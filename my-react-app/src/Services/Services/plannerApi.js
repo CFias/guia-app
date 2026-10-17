@@ -29,8 +29,13 @@ import {
   listarCamposParecidosComIdioma,
   listarIdiomasExigidos,
 } from "../Utils/idiomas";
+import {
+  exigeConfirmacao,
+  situacaoConfirmacao,
+} from "../Utils/confirmacaoPasseio";
+import { semReservasExcluidas } from "../Utils/reservasExcluidas";
 
-export const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
 
   const candidatos = [
@@ -51,6 +56,10 @@ export const extrairListaResposta = (json) => {
 
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+export const extrairListaResposta = (json) =>
+  semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -429,6 +438,12 @@ export const sincronizarPasseiosDaApiNaSemana = async (
 
         if (!nomeFinal) return;
         if (deveIgnorarServico(nomeFinal)) return;
+        // Praia do Forte 4h: só escala reserva confirmada (observação ou vendedor)
+        if (
+          exigeConfirmacao(nomeFinal) &&
+          !situacaoConfirmacao(item).confirmada
+        )
+          return;
 
         const chave = montarChaveImportacao({
           date: dataServico,

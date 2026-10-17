@@ -36,6 +36,7 @@ import {
 } from "./relatorioHtml";
 import PlotadosDrawer from "./PlotadosDrawer";
 import "./styles.css";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
 // "plotado" = veículo com a marca (adesivado). Automático pelo nome
 // ("- PLOTADA"); dá para marcar/desmarcar à mão (fica no vínculo do veículo).
@@ -227,12 +228,15 @@ const montarUrlApi = (date, serviceTypes) => {
   return `${API_BASE}?${params.toString()}`;
 };
 
-const extrairListaResposta = (json) => {
+const extrairListaRespostaBruta = (json) => {
   if (Array.isArray(json)) return json;
   const candidatos = [json?.data, json?.results, json?.rows, json?.items];
   for (const c of candidatos) if (Array.isArray(c)) return c;
   return [];
 };
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 const buscarJson = async (url) => {
   const resp = await fetch(url, {
@@ -2599,7 +2603,7 @@ const ServicosFornecedor = () => {
               <div className="sf-atalhos sem-margem">
                 {[TODOS, ...TIPOS].map((t) => (
                   <button
-                    key={t} 
+                    key={t}
                     type="button"
                     className={`sf-chip ${tipoDetalhe === t ? "ativo" : ""}`}
                     onClick={() => setTipoDetalhe(t)}
