@@ -64,16 +64,28 @@ export const carregarBasePlanner = async () => {
     // serviços com menos pax que isso não recebem guia (0/1 = desligado)
     paxMinimoParaGuia:
       settings.paxMinimoParaGuia === undefined ||
-      settings.paxMinimoParaGuia === null ||
-      !Number.isFinite(Number(settings.paxMinimoParaGuia))
+        settings.paxMinimoParaGuia === null ||
+        !Number.isFinite(Number(settings.paxMinimoParaGuia))
         ? 2
         : Number(settings.paxMinimoParaGuia),
     // pasta do Google Drive pra onde "Salvar no Drive" grava (vazio = raiz)
     driveFolderId: settings.driveFolderId || "",
     // Client ID do Google Cloud, configurado em Configurações → Escala
     driveClientId: settings.driveClientId || "",
+    // planilha de histórico da escala no Drive (uma aba por semana)
+    driveEscalaPlanilhaId: settings.driveEscalaPlanilhaId || "",
     normalizarTexto,
   };
+};
+
+// Guarda o ID da planilha de histórico criada no primeiro "Salvar no Drive",
+// para a equipe toda continuar gravando no mesmo arquivo.
+export const salvarPlanilhaHistoricoDrive = async (planilhaId) => {
+  await setDoc(
+    doc(db, "settings", "scale"),
+    { driveEscalaPlanilhaId: planilhaId || "", updatedAt: new Date() },
+    { merge: true },
+  );
 };
 
 export const carregarModoGeradoSemana = async (semanaRef = []) => {

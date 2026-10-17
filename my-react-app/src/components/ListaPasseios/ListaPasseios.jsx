@@ -64,6 +64,7 @@ import {
   aplicarPlanoDeAlocacao,
   removerGuiasSemana as removerGuiasSemanaRepo,
   limparGuiasDeServicosFechados,
+  salvarPlanilhaHistoricoDrive,
 } from "../../Services/Services/plannerRepository";
 
 import {
@@ -159,6 +160,7 @@ const ListaPasseiosSemana = () => {
   const [enviandoDrive, setEnviandoDrive] = useState(false);
   const [driveFolderId, setDriveFolderId] = useState("");
   const [driveClientId, setDriveClientId] = useState("");
+  const [drivePlanilhaId, setDrivePlanilhaId] = useState("");
 
   const [novoServico, setNovoServico] = useState({});
   const [paxEditando, setPaxEditando] = useState({});
@@ -343,6 +345,7 @@ const ListaPasseiosSemana = () => {
       setPaxMinimoParaGuia(base.paxMinimoParaGuia);
       setDriveFolderId(base.driveFolderId || "");
       setDriveClientId(base.driveClientId || "");
+      setDrivePlanilhaId(base.driveEscalaPlanilhaId || "");
       setModoGeradoSemana(modoGerado);
       setApiSemanaListaPasseios(apiAgrupada);
       setExtras(weeklyServices);
@@ -656,18 +659,33 @@ const ListaPasseiosSemana = () => {
     try {
       setEnviandoDrive(true);
 
-      const arquivo = await salvarEscalaNoDrive({
+      const envio = await salvarEscalaNoDrive({
         semana,
         extras,
         agruparRegistrosPorServico,
         getTextoStatusServico,
+        getClasseStatusServico,
         pastaId: driveFolderId,
         clientId: driveClientId,
+        planilhaId: drivePlanilhaId,
       });
 
-      if (arquivo?.webViewLink) {
-        window.open(arquivo.webViewLink, "_blank");
+      // primeira vez (ou a planilha antiga foi apagada): guarda a nova para a equipe
+      if (envio.planilhaId !== drivePlanilhaId) {
+        setDrivePlanilhaId(envio.planilhaId);
+        try {
+          await salvarPlanilhaHistoricoDrive(envio.planilhaId);
+        } catch (errSalvar) {
+          console.error("Erro ao guardar a planilha de histórico:", errSalvar);
+        }
       }
+
+      mostrarToast(
+        envio.atualizouPeriodo
+          ? `Aba ${envio.periodo} atualizada na planilha de histórico`
+          : `Semana ${envio.periodo} lançada na planilha de histórico`,
+      );
+      window.open(envio.url, "_blank");
     } catch (err) {
       console.error("Erro ao salvar escala no Drive:", err);
 
@@ -675,6 +693,11 @@ const ListaPasseiosSemana = () => {
         alert(
           "O acesso ao Google Drive ainda não foi configurado. " +
           "Cole o Client ID em Configurações → Escala → Google Drive.",
+        );
+      } else if (err.message === "ESCOPO_INCOMPLETO") {
+        alert(
+          "Para lançar a escala na planilha de histórico, marque também o acesso às Planilhas Google " +
+          "na tela de permissão do Google e tente de novo.",
         );
       } else if (err.message === "PERMISSAO_NEGADA") {
         // a pessoa cancelou o popup de permissão do Google — não precisa de alerta
@@ -1345,7 +1368,7 @@ Operacional - Luck Receptivo 🍀
             icon: "cloudUpload",
             onClick: salvarNoDrive,
             disabled: travado || enviandoDrive,
-            hint: driveFolderId ? "pasta configurada" : "seu Drive",
+            hint: drivePlanilhaId ? "planilha de histórico" : driveFolderId ? "cria na pasta configurada" : "cria no seu Drive",
           },
           {
             label: "Atualizar dados (Phoenix)",

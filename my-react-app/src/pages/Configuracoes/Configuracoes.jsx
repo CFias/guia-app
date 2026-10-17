@@ -24,7 +24,7 @@ import {
   Segmented,
   StatusDot,
 } from "../../components/ui";
-import { extrairIdPastaDrive } from "../../Services/Services/googleDrive";
+import { extrairIdPastaDrive, extrairIdPlanilhaDrive, linkPlanilhaDrive } from "../../Services/Services/googleDrive";
 import {
   listaForaDaEscalaDe,
   salvarServicosForaDaEscala,
@@ -92,6 +92,7 @@ const Configuracoes = () => {
   const [paxMinimoParaGuia, setPaxMinimoParaGuia] = useState(2);
   const [pastaDriveTexto, setPastaDriveTexto] = useState("");
   const [driveClientId, setDriveClientId] = useState("");
+  const [planilhaDriveTexto, setPlanilhaDriveTexto] = useState("");
   const [whatsappOperacao, setWhatsappOperacao] = useState("");
   const [janelaConfig, setJanelaConfig] = useState(JANELA_PADRAO);
   const [foraDaEscala, setForaDaEscala] = useState([]);
@@ -148,6 +149,7 @@ const Configuracoes = () => {
           }
           if (data.driveFolderId) setPastaDriveTexto(data.driveFolderId);
           if (data.driveClientId) setDriveClientId(data.driveClientId);
+          if (data.driveEscalaPlanilhaId) setPlanilhaDriveTexto(data.driveEscalaPlanilhaId);
           if (data.whatsappOperacao) setWhatsappOperacao(data.whatsappOperacao);
         }
       } catch (err) {
@@ -213,6 +215,12 @@ const Configuracoes = () => {
     const id = extrairIdPastaDrive(pastaDriveTexto);
     setPastaDriveTexto(id);
     await salvarConfiguracao({ driveFolderId: id });
+  };
+
+  const salvarPlanilhaDrive = async () => {
+    const id = extrairIdPlanilhaDrive(planilhaDriveTexto);
+    setPlanilhaDriveTexto(id);
+    await salvarConfiguracao({ driveEscalaPlanilhaId: id });
   };
 
   const salvarClientIdDrive = async () => {
@@ -714,6 +722,33 @@ const Configuracoes = () => {
               <p>
                 Opcional. A escala sempre é salva ali, em vez da raiz do Drive de quem clicar. A
                 pasta precisa estar compartilhada com quem for usar o botão.
+              </p>
+            </div>
+
+            <div className="cfg-campo-texto">
+              <label htmlFor="planilha-drive">
+                <Icon name="planilha" size={14} /> Planilha de histórico da escala
+              </label>
+              <input
+                id="planilha-drive"
+                type="text"
+                placeholder="Criada sozinha no primeiro envio"
+                className="cfg-input"
+                value={planilhaDriveTexto}
+                onChange={(e) => setPlanilhaDriveTexto(e.target.value)}
+                onBlur={salvarPlanilhaDrive}
+                disabled={salvando}
+              />
+              <p>
+                Cada "Salvar no Drive" lança a semana numa aba própria dessa planilha (a mais recente
+                primeiro) e nunca apaga as semanas antigas.{" "}
+                {planilhaDriveTexto ? (
+                  <a href={linkPlanilhaDrive(planilhaDriveTexto)} target="_blank" rel="noreferrer">
+                    Abrir planilha
+                  </a>
+                ) : (
+                  "Fica em branco até o primeiro envio; para usar outra planilha, cole o link dela aqui."
+                )}
               </p>
             </div>
           </Secao>
