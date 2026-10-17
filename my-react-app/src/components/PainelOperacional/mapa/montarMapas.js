@@ -19,7 +19,11 @@ const limpo = (t) => {
 const det = (a, c, i) =>
   `${Number(a) || 0} / ${Number(c) || 0} / ${Number(i) || 0}`;
 
-const idiomaTag = (id) => (id && id !== "pt" ? String(id).toUpperCase() : "");
+// coluna Idioma: sigla; estrangeiro em negrito para chamar atenção
+const idiomaCel = (id) => {
+  const sigla = String(id || "pt").toUpperCase();
+  return { t: sigla, b: sigla !== "PT" };
+};
 
 const numero = (v) => {
   const n = Number(String(v ?? "").replace(/\D/g, ""));
@@ -30,7 +34,7 @@ const numero = (v) => {
 
 const porHoraEEscala = (a, b) =>
   (a.hora || "99:99").localeCompare(b.hora || "99:99") ||
-  numero(a.numero) - numero(b.numero) ||
+  numero(a.escala) - numero(b.escala) ||
   String(a.titulo).localeCompare(String(b.titulo), "pt-BR");
 
 const unicos = (lista) => [...new Set(lista.filter(Boolean))];
@@ -55,9 +59,10 @@ const resumoDe = (blocos, extras = []) => {
 export const COLUNAS_CHEGADAS = [
   { titulo: "Hora", largura: 56 },
   { titulo: "Reserva", largura: 82 },
-  { titulo: "Passageiro", largura: 200 },
+  { titulo: "Passageiro", largura: 185 },
+  { titulo: "Idioma", largura: 52 },
   { titulo: "ADT/CHD/INF", largura: 78 },
-  { titulo: "Hotel", largura: 185 },
+  { titulo: "Hotel", largura: 170 },
   { titulo: "Operadora", largura: 105 },
   { titulo: "Contato", largura: 122 },
   { titulo: "Obs." },
@@ -81,7 +86,8 @@ export const montarMapaChegadas = (voos = []) => {
         celulas: [
           { t: h, b: true },
           r.codigoReserva,
-          { t: r.cliente, b: true, tag: idiomaTag(r.idioma) },
+          { t: r.cliente, b: true },
+          idiomaCel(r.idioma),
           det(
             r.adultos ??
               Number(r.pax || 0) -
@@ -106,6 +112,7 @@ export const montarMapaChegadas = (voos = []) => {
       if (!grupos[chave]) {
         grupos[chave] = {
           numero: r.escalaId,
+          codigo: r.escalaCodigo,
           veiculo: limpo(r.veiculo) || "Sem veículo",
           motorista: limpo(r.motorista),
           guias: [],
@@ -125,17 +132,15 @@ export const montarMapaChegadas = (voos = []) => {
     );
     const guias = unicos(g.guias);
     return {
-      rotulo: "ESCALA",
-      numero: g.numero,
+      _fornecedor: g.motorista || "Sem motorista",
+      _id: `in_${g.numero}_${g.veiculo}`,
+      rotulo: "FORNECEDOR",
+      numero: g.motorista || "—",
+      escala: g.numero === "—" ? "" : g.codigo || g.numero,
       hora: linhas[0]?._hora || "",
       chips: unicos(linhas.map((l) => l._voo)).map((v) => `✈ ${v}`),
       titulo: g.veiculo,
-      detalhe: [
-        g.motorista && `Motorista: ${g.motorista}`,
-        guias.length && `Receptivo: ${guias.join(", ")}`,
-      ]
-        .filter(Boolean)
-        .join(" · "),
+      detalhe: guias.length ? `Receptivo: ${guias.join(", ")}` : "",
       pax: linhas.reduce((acc, l) => acc + l._pax, 0),
       reservas: linhas.length,
       secoes: [{ linhas: marcarSeparadores(linhas, (l) => l._voo) }],
@@ -156,7 +161,7 @@ export const montarMapaChegadas = (voos = []) => {
           guias: [],
           linhas: semEscala,
         },
-        { rotulo: "SEM ESCALA" },
+        { rotulo: "RESERVAS", numero: "Ainda sem escala" },
       ),
     );
   }
@@ -177,9 +182,10 @@ export const montarMapaChegadas = (voos = []) => {
 export const COLUNAS_OUTS = [
   { titulo: "Saída", largura: 56 },
   { titulo: "Reserva", largura: 82 },
-  { titulo: "Passageiro", largura: 195 },
+  { titulo: "Passageiro", largura: 180 },
+  { titulo: "Idioma", largura: 52 },
   { titulo: "ADT/CHD/INF", largura: 78 },
-  { titulo: "Hotel / trecho", largura: 215 },
+  { titulo: "Hotel / trecho", largura: 195 },
   { titulo: "Voo", largura: 92 },
   { titulo: "Contato", largura: 118 },
   { titulo: "Obs." },
@@ -187,7 +193,13 @@ export const COLUNAS_OUTS = [
 
 const codigoVoo = (texto = "") => limpo(String(texto || "").split("•")[0]);
 
-export const montarMapaOuts = (grupos = []) => {
+export const montarMapaOuts = (
+  grupos = [],
+  {
+    titulo = "MAPA DE SAÍDAS — OUT E TRANSFERS",
+    rodape = "Painel Operacional → OUT's e Transfers",
+  } = {},
+) => {
   const blocos = grupos
     .map((g) => {
       const linhas = (g.reservas || []).map((r) => {
@@ -201,7 +213,8 @@ export const montarMapaOuts = (grupos = []) => {
           celulas: [
             { t: hora(r.horarioHotel), b: true },
             r.reserva,
-            { t: r.cliente, b: true, tag: idiomaTag(r.idioma) },
+            { t: r.cliente, b: true },
+            idiomaCel(r.idioma),
             det(r.adultos, r.criancas, r.infantes),
             trecho,
             limpo(r.vooRetorno),
@@ -212,16 +225,18 @@ export const montarMapaOuts = (grupos = []) => {
         };
       });
       return {
-        rotulo: "ESCALA",
-        numero: g.escalaId,
+        _fornecedor: limpo(g.fornecedor) || "Sem motorista",
+        _id: `out_${g.id}`,
+        _tipo: g.tipoServico,
+        rotulo: "FORNECEDOR",
+        numero: limpo(g.fornecedor) || "—",
+        escala:
+          g.escalaCodigo ||
+          (/\d/.test(String(g.escalaId || "")) ? g.escalaId : ""),
         hora: hora(g.primeiroHorario),
         chips: unicos(linhas.map((l) => l._voo)).map((v) => `✈ ${v}`),
         titulo: limpo(g.veiculo) || "Fora de escala",
-        detalhe: [
-          limpo(g.fornecedor) && `Motorista: ${limpo(g.fornecedor)}`,
-          g.tipoServico,
-          limpo(g.modalidade),
-        ]
+        detalhe: [g.tipoServico, limpo(g.modalidade)]
           .filter(Boolean)
           .join(" · "),
         pax: Number(g.totalPax || 0),
@@ -235,14 +250,14 @@ export const montarMapaOuts = (grupos = []) => {
     })
     .sort(porHoraEEscala);
   return {
-    titulo: "MAPA DE SAÍDAS — OUT E TRANSFERS",
+    titulo,
     colunas: COLUNAS_OUTS,
     blocos,
     resumo: resumoDe(blocos, [
       ["Escalas", blocos.length],
       ["Voos", unicos(blocos.flatMap((b) => b.chips)).length],
     ]),
-    rodape: "Painel Operacional → OUT's e Transfers",
+    rodape,
   };
 };
 
@@ -250,9 +265,10 @@ export const montarMapaOuts = (grupos = []) => {
 export const COLUNAS_PASSEIOS = [
   { titulo: "Apresent.", largura: 62 },
   { titulo: "Reserva", largura: 82 },
-  { titulo: "Passageiro", largura: 200 },
+  { titulo: "Passageiro", largura: 185 },
+  { titulo: "Idioma", largura: 52 },
   { titulo: "ADT/CHD/INF", largura: 78 },
-  { titulo: "Hotel", largura: 195 },
+  { titulo: "Hotel", largura: 175 },
   { titulo: "Operadora", largura: 105 },
   { titulo: "Contato", largura: 118 },
   { titulo: "Obs." },
@@ -277,7 +293,8 @@ const linhasPasseio = (reservas = []) =>
       celulas: [
         { t: hora(r.horarioApresentacao), b: true },
         r.numeroReserva,
-        { t: r.nomePax, b: true, tag: idiomaTag(r.idioma) },
+        { t: r.nomePax, b: true },
+        idiomaCel(r.idioma),
         det(r.adultos, r.criancas, r.infantes),
         limpo(r.hotel),
         limpo(r.operadora),
@@ -316,8 +333,9 @@ export const montarMapaPasseios = (gruposGuias = []) => {
           apoio: {
             titulo: limpo(a.veiculo) || "Veículo de apoio",
             detalhe: [
-              limpo(a.motorista) && `Motorista: ${limpo(a.motorista)}`,
-              a.escalaId && `Escala ${a.escalaId}`,
+              limpo(a.motorista) && `Fornecedor: ${limpo(a.motorista)}`,
+              (a.escalaCodigo || a.escalaId) &&
+                `Escala ${a.escalaCodigo || a.escalaId}`,
               "busca nos hotéis e leva até o veículo principal",
             ]
               .filter(Boolean)
@@ -328,16 +346,18 @@ export const montarMapaPasseios = (gruposGuias = []) => {
         });
       });
       blocos.push({
+        _fornecedor: grupo.guia,
+        _id: `pas_${grupo.guia}_${p.passeio}`,
         rotulo: motoguia ? "MOTOGUIA" : "GUIA",
         numero: grupo.guia,
         hora: hora(p.primeiraHoraPasseio),
+        escala: principal?.escalaCodigo || principal?.escalaId || "",
         chips: [p.passeio],
         titulo: limpo(principal?.veiculo) || "Veículo não informado",
         detalhe: [
           limpo(principal?.motorista) &&
             !motoguia &&
-            `Motorista: ${limpo(principal.motorista)}`,
-          principal?.escalaId && `Escala ${principal.escalaId}`,
+            `Fornecedor: ${limpo(principal.motorista)}`,
           apoios.length &&
             `${apoios.length} ${apoios.length === 1 ? "carro de apoio" : "carros de apoio"}`,
           p.pontoDeApoio && `Ponto de apoio: ${p.pontoDeApoio}`,
@@ -365,4 +385,22 @@ export const montarMapaPasseios = (gruposGuias = []) => {
     ]),
     rodape: "Painel Operacional → Passeios",
   };
+};
+
+// Recorte do mapa (só alguns blocos), com os totais refeitos
+export const recortarMapa = (mapa, filtro) => {
+  const blocos = mapa.blocos.filter(filtro);
+  const ehPasseio =
+    blocos.some((b) => b.rotulo === "GUIA" || b.rotulo === "MOTOGUIA") ||
+    mapa.titulo.includes("PASSEIOS");
+  const extras = ehPasseio
+    ? [
+        ["Guias", unicos(blocos.map((b) => b.numero)).length],
+        ["Passeios", blocos.length],
+      ]
+    : [
+        ["Escalas", blocos.filter((b) => b.escala).length],
+        ["Voos", unicos(blocos.flatMap((b) => b.chips)).length],
+      ];
+  return { ...mapa, blocos, resumo: resumoDe(blocos, extras) };
 };

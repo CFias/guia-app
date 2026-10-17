@@ -36,8 +36,7 @@ import { usePhoenixStatus } from "../Shell/shellContext";
 import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
 import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 import PlacasDrawer from "./placas/PlacasDrawer";
-import { imprimirMapa } from "./mapa/mapaServicos";
-import { montarMapaChegadas, montarMapaOuts, montarMapaPasseios } from "./mapa/montarMapas";
+import MapaDrawer from "./mapa/MapaDrawer";
 import { extrairIdiomasDoItem } from "../../Services/Utils/idiomas";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 
@@ -633,6 +632,15 @@ const extrairPresentationHour = (item) =>
   item?.execution_date ||
   "";
 
+// Código da escala como aparece no Phoenix (coluna "Escala", ex.: RO-CPST-0596)
+const extrairCodigoEscala = (item) =>
+  String(
+    item?.roadmapService?.roadmap?.code ||
+      item?.auxRoadmapService?.roadmap?.code ||
+      item?.roadmap?.code ||
+      "",
+  ).trim();
+
 const extrairEscalaId = (item) =>
   item?.roadmapService?.roadmap?.id ||
   item?.auxRoadmapService?.roadmap?.id ||
@@ -1149,6 +1157,8 @@ export default function PainelOperacionalUnificado() {
   const [nomesPlacaOverride, setNomesPlacaOverride] = useState({});
   // painel das placas (modelos, pré-visualização e PDF): { modo, origem }
   const [placasAbertas, setPlacasAbertas] = useState(null);
+  // painel "Imprimir mapa": { chave, tipo }
+  const [mapaAberto, setMapaAberto] = useState(null);
 
   const carregando = loadingInicial || atualizando;
 
@@ -1365,6 +1375,7 @@ export default function PainelOperacionalUnificado() {
         criancas: extrairCriancas(item),
         infantes: extrairInfantes(item),
         escalaId: extrairEscalaId(item),
+        escalaCodigo: extrairCodigoEscala(item),
         motorista: extrairMotorista(item),
         veiculo: extrairVeiculoEscalado(item),
         observacao: extrairObservacao(item),
@@ -1581,6 +1592,7 @@ export default function PainelOperacionalUnificado() {
         mapa[grupoKey] = {
           id: grupoKey,
           escalaId,
+          escalaCodigo: extrairCodigoEscala(item),
           fornecedor,
           veiculo,
           modalidade,
@@ -1789,6 +1801,7 @@ export default function PainelOperacionalUnificado() {
           veiculo,
           fornecedor,
           escalaId: extrairEscalaId(item),
+          escalaCodigo: extrairCodigoEscala(item),
           motorista: extrairMotorista(item),
           reservas: [],
         };
@@ -2300,20 +2313,17 @@ export default function PainelOperacionalUnificado() {
   const abrirModelosDePlaca = () =>
     abrirPlacas("individual", "", [{ id: "exemplo", nome: "Maira Souza", hotel: "", idioma: "pt" }]);
 
-  // Mapa de serviços organizado por escala (Chegadas/OUT's) ou por guia
-  // (Passeios), com os filtros da aba aplicados
-  const imprimirMapaDaAba = () => {
-    const dia = diaDaSemana(dataSelecionada);
-    const subtitulo = `Luck Receptivo SSA · ${dia ? `${dia}, ` : ""}${formatarDataBr(dataSelecionada)} · por horário e ${
-      abaAtiva === ABAS.GUIAS ? "guia" : "número da escala"
-    }`;
-    const mapa =
-      abaAtiva === ABAS.CHEGADAS
-        ? montarMapaChegadas(voosFiltrados)
-        : abaAtiva === ABAS.OUTS
-          ? montarMapaOuts(gruposOutFiltrados)
-          : montarMapaPasseios(gruposGuiasFiltrados);
-    imprimirMapa({ ...mapa, subtitulo });
+  // "Imprimir mapa": abre o painel lateral para escolher o que imprimir
+  // (Chegadas, OUT, Transfer ou Passeios; fornecedor/guia; um serviço só).
+  // Busca no Phoenix as outras abas do dia, para tudo estar disponível.
+  const abrirMapa = () => {
+    Object.values(ABAS)
+      .filter((aba) => aba !== abaAtiva)
+      .forEach((aba) => carregarDados(aba, true));
+    setMapaAberto({
+      chave: Date.now(),
+      tipo: abaAtiva === ABAS.CHEGADAS ? "in" : abaAtiva === ABAS.OUTS ? "out" : "passeios",
+    });
   };
 
   // indicador "Phoenix · HH:MM" da topbar: chama o mesmo "Atualizar" da tela
@@ -2379,13 +2389,9 @@ export default function PainelOperacionalUnificado() {
             )}
             <Button
               icon="printer"
-              onClick={imprimirMapaDaAba}
+              onClick={abrirMapa}
               disabled={carregando}
-              title={
-                abaAtiva === ABAS.GUIAS
-                  ? "Imprime o mapa dos passeios, organizado por guia e horário"
-                  : "Imprime o mapa organizado por horário e número da escala"
-              }
+              title="Escolhe chegadas, OUT, transfer ou passeios, o fornecedor/guia e o horário, e imprime o mapa"
             >
               Imprimir mapa
             </Button>
@@ -3450,6 +3456,22 @@ export default function PainelOperacionalUnificado() {
       )}
 
       {/* ===== DRAWERS ===== */}
+      {mapaAberto && (
+        <MapaDrawer
+          key={mapaAberto.chave}
+          open
+          onClose={() => setMapaAberto(null)}
+          tipoInicial={mapaAberto.tipo}
+          voos={voos}
+          gruposOut={gruposOutBase}
+          gruposGuias={gruposGuiasBase}
+          carregando={carregando}
+          subtitulo={(() => {
+            const dia = diaDaSemana(dataSelecionada);
+            return `Luck Receptivo SSA · ${dia ? `${dia}, ` : ""}${formatarDataBr(dataSelecionada)}`;
+          })()}
+        />
+      )}
       {placasAbertas && (
         <PlacasDrawer
           key={placasAbertas.chave}

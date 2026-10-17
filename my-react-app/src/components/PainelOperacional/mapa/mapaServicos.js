@@ -32,7 +32,8 @@ const esc = (t) =>
 const celula = (c) => {
   if (c === null || c === undefined) return "<td></td>";
   const obj = typeof c === "object" ? c : { t: c };
-  const texto = obj.t === undefined || obj.t === null || obj.t === "-" ? "" : esc(obj.t);
+  const texto =
+    obj.t === undefined || obj.t === null || obj.t === "-" ? "" : esc(obj.t);
   let conteudo = obj.b ? `<b>${texto}</b>` : texto;
   if (obj.i && texto) conteudo = `<i>${conteudo}</i>`;
   if (obj.tag) conteudo += `<span class="idi">${esc(obj.tag)}</span>`;
@@ -50,12 +51,19 @@ html, body { margin: 0; background: #fff; color: #1f2328; font-family: Inter, "S
 .res { margin-left: auto; display: flex; gap: 18px; font-size: 11px; }
 .res div { text-align: right; } .res b { display: block; font-size: 17px; }
 .esc { margin-top: 9px; border: 1.2px solid #1f2328; border-radius: 4px; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-.h { display: grid; grid-template-columns: minmax(92px, 150px) auto 1fr auto; align-items: center; gap: 14px; background: #e9ecef; padding: 5px 10px; border-bottom: 1.2px solid #1f2328; }
-.n { font-size: 9.5px; color: #444; letter-spacing: .05em; } .n b { display: block; font-size: 15px; color: #111; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hv { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; } .hv .hr { font-size: 21px; font-weight: 800; }
-.chip { font-size: 13.5px; font-weight: 800; border: 1.5px solid #1f2328; border-radius: 4px; padding: 1px 7px; background: #fff; letter-spacing: .03em; white-space: nowrap; }
-.v { font-size: 12.5px; } .v b { font-size: 14px; } .v span { color: #444; }
-.p { font-size: 12px; white-space: nowrap; } .p b { font-size: 16px; }
+/* cabeçalho do bloco em colunas FIXAS: fornecedor (completo) | hora | voo/passeio | escala | pax */
+.h { display: grid; grid-template-columns: minmax(0, 1fr) 66px 200px 150px 118px; align-items: center; column-gap: 12px; background: #e9ecef; padding: 6px 10px; border-bottom: 1.2px solid #1f2328; }
+.c-hora { font-size: 21px; font-weight: 800; white-space: nowrap; }
+.esc-num { display: inline-block; border: 1.5px solid #1f2328; border-radius: 4px; padding: 1px 7px; background: #fff; color: #1f2328; max-width: 100%; }
+.esc-num small { display: block; font-size: 8px; letter-spacing: .08em; color: #555; }
+.esc-num b { display: block; font-size: 13px; letter-spacing: .01em; overflow-wrap: anywhere; }
+.esc-num.vazio b { color: #666; font-weight: 600; }
+.c-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 12.5px; font-weight: 800; border: 1.5px solid #1f2328; border-radius: 4px; padding: 1px 6px; background: #fff; letter-spacing: .02em; }
+.c-forn small { display: block; font-size: 8.5px; letter-spacing: .08em; color: #555; }
+.c-forn b { display: block; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+.c-forn span { display: block; font-size: 11px; color: #444; margin-top: 1px; }
+.p { font-size: 12px; white-space: nowrap; text-align: right; } .p b { font-size: 16px; }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 th { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #555; text-align: left; padding: 3px 8px; border-bottom: 1px solid #adb5bd; }
 td { font-size: 11px; padding: 4px 8px; border-bottom: 1px dotted #ced4da; vertical-align: top; overflow-wrap: anywhere; }
@@ -71,23 +79,39 @@ tr.sep td { border-top: 1.2px solid #868e96; }
 .rod { margin-top: 12px; display: flex; justify-content: space-between; font-size: 9.5px; color: #666; border-top: 1px solid #ced4da; padding-top: 4px; }
 `;
 
-export const montarHtmlMapa = ({ titulo, subtitulo, resumo = [], colunas = [], blocos = [], rodape = "" }) => {
+export const montarHtmlMapa = ({
+  titulo,
+  subtitulo,
+  resumo = [],
+  colunas = [],
+  blocos = [],
+  rodape = "",
+}) => {
   const cols =
     `<colgroup><col style="width:30px">` +
-    colunas.map((c) => `<col${c.largura ? ` style="width:${c.largura}px"` : ""}>`).join("") +
+    colunas
+      .map((c) => `<col${c.largura ? ` style="width:${c.largura}px"` : ""}>`)
+      .join("") +
     `</colgroup>`;
   const thead = `<thead><tr><th>✓</th>${colunas.map((c) => `<th>${esc(c.titulo)}</th>`).join("")}</tr></thead>`;
   const linhasHtml = (linhas = []) =>
     linhas
-      .map((l) => `<tr class="${l.sep ? "sep" : ""}"><td><span class="chk"></span></td>${l.celulas.map(celula).join("")}</tr>`)
+      .map(
+        (l) =>
+          `<tr class="${l.sep ? "sep" : ""}"><td><span class="chk"></span></td>${l.celulas.map(celula).join("")}</tr>`,
+      )
       .join("");
 
   const blocosHtml = blocos
     .map((b) => {
       let h = `<section class="esc"><div class="h">`;
-      h += `<div class="n">${esc(b.rotulo || "ESCALA")}<b>${esc(b.numero ?? "—")}</b></div>`;
-      h += `<div class="hv"><span class="hr">${esc(b.hora || "--:--")}</span>${(b.chips || []).map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
-      h += `<div class="v"><b>${esc(b.titulo || "")}</b>${b.detalhe ? ` <span>· ${esc(b.detalhe)}</span>` : ""}</div>`;
+      h += `<div class="c-forn"><small>${esc(b.rotulo || "FORNECEDOR")}</small><b>${esc(b.numero ?? "—")}</b>`;
+      h += `<span>${esc(b.titulo || "")}${b.detalhe ? ` · ${esc(b.detalhe)}` : ""}</span></div>`;
+      h += `<div class="c-hora">${esc(b.hora || "--:--")}</div>`;
+      h += `<div class="c-chips">${(b.chips || []).map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
+      h += b.escala
+        ? `<div><span class="esc-num"><small>ESCALA</small><b>${esc(b.escala)}</b></span></div>`
+        : `<div><span class="esc-num vazio"><small>ESCALA</small><b>sem escala</b></span></div>`;
       h += `<div class="p"><b>${b.pax ?? 0}</b> pax · ${b.reservas ?? 0} ${b.reservas === 1 ? "reserva" : "reservas"}</div></div>`;
       (b.secoes || []).forEach((s) => {
         if (s.apoio) {
@@ -110,7 +134,7 @@ export const montarHtmlMapa = ({ titulo, subtitulo, resumo = [], colunas = [], b
 <header class="topo"><img src="${logoLuck}" alt=""><div><b>${esc(titulo)}</b><span>${esc(subtitulo || "")}</span></div>
 <div class="res">${resumo.map(([l, v]) => `<div>${esc(l)}<b>${esc(v)}</b></div>`).join("")}</div></header>
 ${blocosHtml || '<p class="vazio">Nenhum serviço para imprimir com os filtros atuais.</p>'}
-<footer class="rod"><span>Impresso pelo FiaSystem · ${esc(rodape)} · ${impresso}</span><span>✓ conferido · <span class="idi" style="margin:0">EN</span> idioma da reserva</span></footer>
+<footer class="rod"><span>Impresso pelo FiaSystem · ${esc(rodape)} · ${impresso}</span><span>✓ conferido no embarque/desembarque</span></footer>
 </body></html>`;
 };
 
@@ -119,7 +143,8 @@ export const imprimirMapa = (dados) => {
   const html = montarHtmlMapa(dados);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();

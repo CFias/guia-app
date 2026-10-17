@@ -1,0 +1,115 @@
+/* Painel lateral "Imprimir mapa" */
+.mpd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mpd-carregando {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mpd-previa {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.mpd-previa__topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.mpd-previa__topo b {
+  color: var(--text);
+}
+
+.mpd-lista {
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.mpd-lista li {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface);
+}
+
+.mpd-lista li:last-child {
+  border-bottom: none;
+}
+
+.mpd-hora {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.mpd-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mpd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mpd-chip {
+  padding: 0 6px;
+  border: 1.5px solid var(--text);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mpd-sub {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mpd-pax {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.mpd-pax b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.mpd-vazio {
+  margin: 0;
+  padding: 18px 12px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
