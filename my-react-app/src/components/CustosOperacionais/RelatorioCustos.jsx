@@ -23,6 +23,7 @@ import {
 } from "../../Services/Services/custosCalculo";
 import { calcularDiasPelaTabela, carregarCustosPeriodo } from "../../Services/Services/custosRepository";
 import { baixarArquivo, dataBr, dataCurta, diaDaSemana, hojeIso, isoLocal, listarDatas, somarDias } from "./custosDatas";
+import { imprimirExecutivo } from "./relatorioExecutivo";
 
 const MAX_DIAS = 93;
 
@@ -270,6 +271,17 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
           <Button icon="download" onClick={exportar} disabled={!resumo?.linhas.length}>
             Exportar CSV
           </Button>
+          <span className="cst-exec" role="group" aria-label="Relatório executivo">
+            <span className="cst-exec__rot">
+              <Icon name="fileText" size={14} /> Executivo
+            </span>
+            <Button size="sm" onClick={() => imprimirExecutivo(resumo, { inicio, fim, nDias: datas.length, modo: "simples" })} disabled={!resumo?.linhas.length}>
+              Simples
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => imprimirExecutivo(resumo, { inicio, fim, nDias: datas.length, modo: "detalhado" })} disabled={!resumo?.linhas.length}>
+              Detalhado
+            </Button>
+          </span>
         </div>
       </div>
 
@@ -331,7 +343,11 @@ const RelatorioCustos = ({ config, pronto, vinculos, fornecedores }) => {
                 label: "Economia",
                 value: t ? formatarReais(t.economia + t.noShowEconomia, { semCentavos: true }) : "",
                 hint: t
-                  ? `casados ${formatarReais(t.economiaCasado, { semCentavos: true })} · negociado ${formatarReais(t.economiaNegociada, { semCentavos: true })}${t.noShowEconomia ? ` · no-show ${formatarReais(t.noShowEconomia, { semCentavos: true })}` : ""}`
+                  ? `casados ${formatarReais(t.economiaCasado, { semCentavos: true })} · negociado ${formatarReais(t.economiaNegociada, { semCentavos: true })}${t.noShowEconomia ? ` · no-show ${formatarReais(t.noShowEconomia, { semCentavos: true })}` : ""}${
+                      t.evitavel || t.evitavelRessalva
+                        ? ` · evitável ${formatarReais(t.evitavel, { semCentavos: true })}${t.evitavelRessalva ? ` (+${formatarReais(t.evitavelRessalva, { semCentavos: true })} com ressalva)` : ""}`
+                        : ""
+                    }`
                   : "",
                 icon: "trendingDown",
                 loading: carregando,

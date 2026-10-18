@@ -11,6 +11,7 @@ import CustoDia from "./CustoDia";
 import RelatorioCustos from "./RelatorioCustos";
 import TabelaTarifas from "./TabelaTarifas";
 import Tarifario from "./Tarifario";
+import TabelaMi from "./TabelaMi";
 import "./custos.css";
 
 /* =========================================================
@@ -20,6 +21,7 @@ import "./custos.css";
    - Relatórios: período, por fornecedor/tipo/guia/dia, economia
    - Tarifas: tabela por fornecedor, referência de guia e regra
      do serviço casado (settings/custos)
+   - Tabela MI: valor do guia por serviço × faixa de passageiros
    ========================================================= */
 
 const ABAS = [
@@ -27,6 +29,7 @@ const ABAS = [
   { value: "relatorios", label: "Relatórios", icon: "barChart" },
   { value: "tarifario", label: "Tarifário", icon: "fileText" },
   { value: "tarifas", label: "Tarifas", icon: "tag" },
+  { value: "mi", label: "Tabela MI", icon: "languages" },
 ];
 
 const CustosOperacionais = () => {
@@ -84,6 +87,7 @@ const CustosOperacionais = () => {
       {aba === "dia" && <CustoDia {...contexto} onCriarTarifa={criarTarifa} />}
       {aba === "relatorios" && <RelatorioCustos {...contexto} />}
       {aba === "tarifario" && <Tarifario {...contexto} />}
+      {aba === "mi" && <TabelaMi key={configCarregada ? "ok" : "carregando"} {...contexto} />}
       {aba === "tarifas" && (
         <TabelaTarifas {...contexto} prefill={prefillTarifa} onPrefillUsado={() => setPrefillTarifa(null)} />
       )}

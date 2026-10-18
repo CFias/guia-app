@@ -94,7 +94,7 @@ h2 { font-size: 12px; margin: 14px 0 6px; letter-spacing: .02em; }
 .turno ul { list-style: none; margin: 5px 0 0; padding: 0; }
 .turno li { padding: 2px 0; border-top: 1px dotted #ced4da; display: flex; justify-content: space-between; gap: 8px; }
 .turno li b { white-space: nowrap; }
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; font-size: inherit; }
 th { text-align: right; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: #57606a; padding: 3px 6px; border-bottom: 1.5px solid #1f2328; }
 th.e, td.e { text-align: left; }
 td { text-align: right; padding: 3px 6px; border-bottom: 1px solid #e1e4e8; font-variant-numeric: tabular-nums; }

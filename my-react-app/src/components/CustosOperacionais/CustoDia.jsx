@@ -20,6 +20,7 @@ import { useAuth } from "../../Context/AuthContext";
 import {
   NOME_CATEGORIA,
   NOME_TIPO,
+  alertasDoDia,
   calcularLinha,
   chaveTexto,
   consolidarServicos,
@@ -29,8 +30,10 @@ import {
   linhasParaCsv,
   linhasParaGravar,
   listaDeFornecedores,
+  mapaCapacidadePorVeiculo,
   mapaFornecedorPorVeiculo,
   recomendarTrocas,
+  resumoDoDia,
   retratoDaLinha,
   servicoDoRetrato,
 } from "../../Services/Services/custosCalculo";
@@ -39,6 +42,7 @@ import {
   excluirLinha,
   fixarCategoriaVeiculo,
   gravarLancamento,
+  gravarResumoDia,
   gravarRetratos,
   marcarStatusDia,
   ouvirCustosDia,
@@ -140,28 +144,28 @@ const CelulaGuia = ({ linha, onSalvar, onAbrir, adicionalIdioma }) => {
         )}
       </span>
       <span className="cst-guia-linha">
-        <CampoValor
-          key={`${linha.chave}-g-${linha.guiaValor ?? "x"}`}
-          valor={linha.guiaValor}
-          placeholder={
-            linha.guiaReferencia !== null
-              ? `ref. ${linha.guiaReferencia.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-              : "Valor pago"
-          }
-          destaque={linha.guiaStatus === "a-confirmar"}
-          ariaLabel={`Valor pago ao guia ${linha.guiaNome}`}
-          onSalvar={onSalvar}
+      <CampoValor
+        key={`${linha.chave}-g-${linha.guiaValor ?? "x"}`}
+        valor={linha.guiaValor}
+        placeholder={
+          linha.guiaReferencia !== null
+            ? `ref. ${linha.guiaReferencia.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            : "Valor pago"
+        }
+        destaque={linha.guiaStatus === "a-confirmar"}
+        ariaLabel={`Valor pago ao guia ${linha.guiaNome}`}
+        onSalvar={onSalvar}
+      />
+      {linha.guiaStatus === "a-confirmar" && linha.guiaReferencia !== null && (
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon="check"
+          title={`Confirmar ${formatarReais(linha.guiaReferencia)} (referência)`}
+          onClick={() => onSalvar(linha.guiaReferencia)}
         />
-        {linha.guiaStatus === "a-confirmar" && linha.guiaReferencia !== null && (
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon="check"
-            title={`Confirmar ${formatarReais(linha.guiaReferencia)} (referência)`}
-            onClick={() => onSalvar(linha.guiaReferencia)}
-          />
-        )}
+      )}
       </span>
     </div>
   );
@@ -224,6 +228,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   const [visao, setVisao] = useState(() => lerPreferencia(LS_VISAO, "lista"));
   const [destaqueVeiculo, setDestaqueVeiculo] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [todosAlertas, setTodosAlertas] = useState(false);
   const regioesEnviadas = useRef(new Set());
 
   /* ---------- Phoenix ---------- */
@@ -270,7 +275,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
 
   const pares = useMemo(() => detectarCasados(servicos, config.casado), [servicos, config.casado]);
   const apoios = useMemo(() => detectarApoios(servicos), [servicos]);
-  const ctx = useMemo(() => ({ fornecedorPorVeiculo, config, pares, apoios }), [fornecedorPorVeiculo, config, pares, apoios]);
+  // lugares de cada veículo (cadastro de fornecedores) — lotação e recomendador
+  const capacidades = useMemo(() => mapaCapacidadePorVeiculo(fornecedores), [fornecedores]);
+  const ctx = useMemo(
+    () => ({ fornecedorPorVeiculo, config, pares, apoios, capacidades }),
+    [fornecedorPorVeiculo, config, pares, apoios, capacidades],
+  );
 
   const linhas = useMemo(
     () => servicos.map((s) => calcularLinha(s, salvas[s.chave]?.manual, ctx)),
@@ -309,7 +319,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
     );
     if (!novas.size) return;
     novas.forEach((r) => regioesEnviadas.current.add(r));
-    registrarRegioes(Array.from(novas)).catch(() => { });
+    registrarRegioes(Array.from(novas)).catch(() => {});
   }, [pronto, phoenixOk, consolidado.servicos, config.regioesConhecidas]);
 
   // nomes de serviço do Phoenix viram sugestão na tarifa de parceiro
@@ -324,7 +334,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
     });
     if (!novos.size) return;
     novos.forEach((n) => nomesEnviados.current.add(n));
-    registrarServicosConhecidos(Array.from(novos).slice(0, 200)).catch(() => { });
+    registrarServicosConhecidos(Array.from(novos).slice(0, 200)).catch(() => {});
   }, [pronto, phoenixOk, phoenix.itens, config.servicosConhecidos]);
 
   /* ---------- lançamentos ---------- */
@@ -348,7 +358,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
         extras.categoria !== undefined
           ? { ...config, categoriasVeiculo: { ...config.categoriasVeiculo, [linha.veiculoKey]: extras.categoria } }
           : config;
-      const nova = calcularLinha(servicos.find((s) => s.chave === chave), manualAtual, { fornecedorPorVeiculo: fpv, config: cfg, pares, apoios });
+      const nova = calcularLinha(servicos.find((s) => s.chave === chave), manualAtual, { fornecedorPorVeiculo: fpv, config: cfg, pares, apoios, capacidades });
       await gravarLancamento(data, chave, patch, perfil, retratoDaLinha(nova));
       return true;
     } catch (e) {
@@ -404,11 +414,32 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   const economiaCasados = linhas.filter((l) => l.motivoEconomia === "casado").reduce((s, l) => s + l.economia, 0);
   // recomendador: trocas entre veículos que formam casado (pela tabela)
   const recomendacoes = useMemo(
-    () => (pronto ? recomendarTrocas(servicos, { fornecedorPorVeiculo, config, apoios }) : []),
-    [pronto, servicos, fornecedorPorVeiculo, config, apoios],
+    () => (pronto ? recomendarTrocas(servicos, { fornecedorPorVeiculo, config, apoios, capacidades }) : []),
+    [pronto, servicos, fornecedorPorVeiculo, config, apoios, capacidades],
   );
   const recPorServico = useMemo(() => new Map(recomendacoes.map((r) => [r.x.chave, r])), [recomendacoes]);
-  const economiaPossivel = recomendacoes.reduce((s, r) => s + r.economia, 0);
+  const economiaPossivel = recomendacoes.filter((r) => !r.restrita).reduce((s, r) => s + r.economia, 0);
+  const economiaRessalva = recomendacoes.filter((r) => r.restrita).reduce((s, r) => s + r.economia, 0);
+
+  // alertas da operação (lotação, reserva que não devia estar escalada,
+  // horário apertado no mesmo veículo)
+  const alertas = useMemo(() => alertasDoDia(linhas), [linhas]);
+  const alertasPorChave = useMemo(() => {
+    const m = new Map();
+    alertas.forEach((a) => m.set(a.chave, [...(m.get(a.chave) || []), a]));
+    return m;
+  }, [alertas]);
+
+  // grava o resumo do recomendador/alertas no dia (relatório executivo)
+  useEffect(() => {
+    if (!pronto || !phoenixOk || docDia === undefined || !linhas.length) return undefined;
+    const resumo = resumoDoDia(recomendacoes, alertas);
+    if (JSON.stringify(resumo) === JSON.stringify(docDia?.resumo || null)) return undefined;
+    const t = setTimeout(() => {
+      gravarResumoDia(data, resumo).catch((e) => console.error("Erro ao gravar o resumo do dia:", e));
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [pronto, phoenixOk, docDia, linhas.length, recomendacoes, alertas, data]);
 
   const trocarVisao = (v) => {
     setVisao(v);
@@ -439,11 +470,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
       if (filtro === "guia" && !(l.guiaNome || l.guiaStatus === "verificar")) return false;
       if (filtro === "recomendacao" && !recPorServico.has(l.chave)) return false;
       if (filtro === "noshow" && !l.noShow) return false;
+      if (filtro === "alertas" && !alertasPorChave.has(l.chave)) return false;
       if (fornecedorSel && (l.fornecedor || "__sem__") !== fornecedorSel) return false;
       if (termo && !textoBusca(l).includes(termo)) return false;
       return true;
     });
-  }, [linhas, filtro, fornecedorSel, busca, recPorServico]);
+  }, [linhas, filtro, fornecedorSel, busca, recPorServico, alertasPorChave]);
 
   const exportar = () => {
     baixarArquivo(linhasParaCsv(linhas.map((l) => ({ ...l, calc: l }))), `custos-${data}.csv`);
@@ -524,8 +556,8 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
             label: "Economia",
             value: formatarReais(totais.economia + totais.economiaNoShow, { semCentavos: true }),
             hint:
-              economiaPossivel > 0
-                ? `+ ${formatarReais(economiaPossivel, { semCentavos: true })} possível com ${recomendacoes.length} troca(s)`
+              economiaPossivel > 0 || economiaRessalva > 0
+                ? `+ ${formatarReais(economiaPossivel, { semCentavos: true })} possível${economiaRessalva > 0 ? ` (+ ${formatarReais(economiaRessalva, { semCentavos: true })} com ressalva)` : ""}`
                 : totais.economiaNoShow
                   ? `+ no-show: ${formatarReais(totais.economiaNoShow, { semCentavos: true })} a menos`
                   : "casados e valores abaixo da tabela",
@@ -544,6 +576,25 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
             loading: carregando,
           },
           {
+            key: "alertas",
+            label: "Alertas",
+            value: alertas.length,
+            hint: alertas.length
+              ? [
+                  alertas.filter((a) => a.codigo === "lotacao").length && `${alertas.filter((a) => a.codigo === "lotacao").length} lotação`,
+                  alertas.filter((a) => a.codigo === "nao-escalar").length && `${alertas.filter((a) => a.codigo === "nao-escalar").length} não escalar`,
+                  alertas.filter((a) => a.codigo === "horario").length && `${alertas.filter((a) => a.codigo === "horario").length} horário apertado`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "lotação, não escalar e horários",
+            icon: "alert",
+            tone: alertas.some((a) => a.gravidade === "alta") ? "alert" : alertas.length ? "warning" : undefined,
+            active: filtro === "alertas",
+            onClick: () => setFiltro(filtro === "alertas" ? "todos" : "alertas"),
+            loading: carregando,
+          },
+          {
             key: "guias",
             label: "Guias a confirmar",
             value: totais.guiaAConfirmar,
@@ -556,6 +607,40 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           },
         ]}
       />
+
+      {!carregando && alertas.length > 0 && (
+        <Card className="cst-card cst-alertas">
+          <CardHeader
+            icon="alert"
+            title={`Alertas da operação (${alertas.length})`}
+            subtitle="O que pode virar ocorrência: reserva que não devia estar escalada, mais passageiros que lugares no veículo e horários apertados no mesmo veículo."
+          />
+          <ul className="cst-alertas__lista">
+            {(todosAlertas ? alertas : alertas.slice(0, 4)).map((a, i) => (
+              <li key={`${a.chave}-${a.codigo}-${i}`} className={`is-${a.gravidade}`}>
+                <span className="cst-alertas__nivel" aria-label={a.gravidade === "alta" ? "Grave" : "Atenção"}>
+                  <Icon name="alert" size={14} />
+                </span>
+                <span className="cst-alertas__txt">
+                  <b>
+                    {a.hora} · {a.titulo}
+                  </b>
+                  <span>{a.texto}</span>
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setAberta(a.chave)}>
+                  Ver serviço
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {alertas.length > 4 && (
+            <button type="button" className="cst-alertas__mais" onClick={() => setTodosAlertas((v) => !v)}>
+              <Icon name={todosAlertas ? "chevronUp" : "chevronDown"} size={14} />
+              {todosAlertas ? "Mostrar só os principais" : `Ver todos os ${alertas.length} alertas`}
+            </button>
+          )}
+        </Card>
+      )}
 
       <div className="cst-grade">
         <Card className="cst-card cst-card--tabela">
@@ -572,6 +657,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                 { value: "guia", label: "Com guia", count: totais.comGuia },
                 ...(recomendacoes.length ? [{ value: "recomendacao", label: "Com recomendação", count: recomendacoes.length }] : []),
                 ...(totais.noShow ? [{ value: "noshow", label: "No-show", count: totais.noShow }] : []),
+                ...(alertas.length ? [{ value: "alertas", label: "Com alerta", count: alertasPorChave.size }] : []),
               ]}
             />
             <Field className="cst-filtros__forn">
@@ -655,6 +741,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                       )}
                       {l.apoio && <span className="cst-chip-apoio">Apoio · {l.trechos} trecho(s)</span>}
                       {l.noShow && <span className="cst-chip-noshow">No-show · paga {l.noShowPct}%</span>}
+                      {(alertasPorChave.get(l.chave) || []).map((a) => (
+                        <span key={a.codigo} className={`cst-chip-alerta is-${a.gravidade}`} title={a.texto}>
+                          <Icon name="alert" size={11} />
+                          {a.codigo === "lotacao" ? `Lotação ${l.pax}/${l.capacidade}` : a.codigo === "nao-escalar" ? "Não escalar" : "Horário apertado"}
+                        </span>
+                      ))}
                       {recPorServico.has(l.chave) && (
                         <button
                           type="button"
@@ -715,6 +807,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
               recomendacoes={recomendacoes}
               casadosHoje={Math.round(linhas.filter((l) => l.casado).length / 2)}
               economiaCasados={economiaCasados}
+              economiaRessalva={economiaRessalva}
               regras={config.casado}
               onAbrir={setAberta}
               onCopiar={copiar}

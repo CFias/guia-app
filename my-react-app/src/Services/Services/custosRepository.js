@@ -27,12 +27,16 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
+  alertasDoDia,
   calcularLinha,
   consolidarServicos,
   detectarApoios,
   detectarCasados,
+  mapaCapacidadePorVeiculo,
   mapaFornecedorPorVeiculo,
   normalizarConfigCustos,
+  recomendarTrocas,
+  resumoDoDia,
   retratoDaLinha,
 } from "./custosCalculo";
 
@@ -238,6 +242,14 @@ export const gravarLancamento = (data, chave, patch, usuario, retrato) => {
   );
 };
 
+// resumo do recomendador e dos alertas (para o relatório executivo)
+export const gravarResumoDia = (data, resumo) =>
+  setDoc(
+    REF_DIA(data),
+    { data, resumo, resumoEm: Timestamp.now() },
+    { merge: true },
+  );
+
 export const excluirLinha = (data, chave) =>
   setDoc(
     REF_DIA(data),
@@ -292,6 +304,7 @@ export const calcularDiasPelaTabela = async (
   aoProgredir,
 ) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
+  const capacidades = mapaCapacidadePorVeiculo(fornecedores);
   let feitos = 0;
   const falhas = [];
   await emLotes(datas, 3, async (data) => {
@@ -300,17 +313,23 @@ export const calcularDiasPelaTabela = async (
       const pares = detectarCasados(servicos, config.casado);
       const apoios = detectarApoios(servicos);
       const retratos = {};
-      servicos.forEach((s) => {
-        retratos[s.chave] = retratoDaLinha(
-          calcularLinha(s, {}, { fornecedorPorVeiculo, config, pares, apoios }),
-        );
+      const ctx = { fornecedorPorVeiculo, config, pares, apoios, capacidades };
+      const linhas = servicos.map((s) => calcularLinha(s, {}, ctx));
+      linhas.forEach((l) => {
+        retratos[l.chave] = retratoDaLinha(l);
       });
+      const resumo = resumoDoDia(
+        recomendarTrocas(servicos, ctx),
+        alertasDoDia(linhas),
+      );
       await setDoc(
         REF_DIA(data),
         {
           data,
           status: "rascunho",
           linhas: retratos,
+          resumo,
+          resumoEm: Timestamp.now(),
           sincronizadoEm: Timestamp.now(),
           calculadoPelaTabela: true,
         },

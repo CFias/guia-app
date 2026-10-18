@@ -8,6 +8,8 @@ import {
   NOME_TIPO,
   REGRAS_PADRAO,
   acharTarifaGuia,
+  acharValorMi,
+  textoFaixaMi,
   formatarReais,
   lerValorDigitado,
 } from "../../Services/Services/custosCalculo";
@@ -62,7 +64,11 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
   const podeNoShow = linha.tipo !== "PASSEIO";
   const pctNoShow = linha.tipo === "IN" ? regras.noShowIn : linha.tipo === "OUT" ? regras.noShowOut : regras.noShowTrf;
   const modalidadeEfetiva = modalidade === "auto" ? linha.guiaModalidadeAuto : modalidade;
-  const refBase = acharTarifaGuia(linha, linha.categoria, config?.tarifasGuia || [], modalidadeEfetiva === "mi" ? "mi" : "regular");
+  // Tabela MI: pela matriz serviço × faixa de passageiros; sem linha, a referência MI antiga
+  const mi = modalidadeEfetiva === "mi" ? acharValorMi(linha.servicoNome || linha.passeio, linha.pax, config?.tabelaMi) : null;
+  const refBase = mi
+    ? { valor: mi.valor }
+    : acharTarifaGuia(linha, linha.categoria, config?.tarifasGuia || [], modalidadeEfetiva === "mi" ? "mi" : "regular");
   const refGuia = refBase
     ? Math.round(refBase.valor * (modalidadeEfetiva === "idioma" ? 1 + regras.adicionalIdioma / 100 : 1) * 100) / 100
     : null;
@@ -110,8 +116,8 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
       : linha.cobranca && linha.cobranca !== "servico"
         ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} × ${linha.quantidade} ${linha.cobranca === "pax" ? "pax" : "reserva(s)"} = ${formatarReais(linha.tarifaCheia)}.`
         : linha.apoio
-          ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} por trecho × ${linha.trechos} = ${formatarReais(linha.tarifaCheia)}.`
-          : `Tabela: ${formatarReais(linha.tarifaCheia)}${linha.tarifaCasada !== null ? ` · casado ${formatarReais(linha.tarifaCasada)}` : ""}.`;
+        ? `Tabela: ${formatarReais(linha.tarifaUnitaria)} por trecho × ${linha.trechos} = ${formatarReais(linha.tarifaCheia)}.`
+        : `Tabela: ${formatarReais(linha.tarifaCheia)}${linha.tarifaCasada !== null ? ` · casado ${formatarReais(linha.tarifaCasada)}` : ""}.`;
 
   return (
     <Drawer
@@ -139,7 +145,35 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
           <Linha icone="user" rotulo="Guia no Phoenix">
             {linha.guiaPhoenix || "Nenhum"}
           </Linha>
+          {linha.capacidade && (
+            <Linha icone="users" rotulo="Lugares do veículo">
+              {linha.capacidade}{" "}
+              {linha.capacidadeFonte === "cadastro" ? "(cadastro do fornecedor)" : linha.capacidadeFonte === "nome" ? "(pelo nome do veículo)" : "(estimado pela categoria)"}
+            </Linha>
+          )}
         </div>
+
+        {(linha.alertas?.length > 0 || linha.restricoes?.length > 0) && (
+          <section className="cst-ficha__secao cst-ficha__alertas">
+            <h3>Atenção</h3>
+            {linha.alertas.map((a) => (
+              <p key={a.codigo} className={`cst-ficha__alerta is-${a.gravidade}`}>
+                <Icon name="alert" size={14} />
+                <span>
+                  <b>{a.titulo}.</b> {a.texto}
+                </span>
+              </p>
+            ))}
+            {linha.restricoes.map((r) => (
+              <p key={r.reserva} className="cst-ficha__alerta is-info">
+                <Icon name="info" size={14} />
+                <span>
+                  <b>Reserva {r.reserva} pede fornecedor/veículo específico:</b> “{r.texto}” — o recomendador não conta esta troca como certa.
+                </span>
+              </p>
+            ))}
+          </section>
+        )}
 
         <section className="cst-ficha__secao">
           <h3>Fornecedor</h3>
@@ -172,30 +206,30 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
         </section>
 
         {!ehParceiro && (
-          <section className="cst-ficha__secao">
-            <h3>Categoria do veículo</h3>
-            <div className="cst-opcoes">
-              {CATEGORIAS.map((c) => (
-                <button
-                  key={c.valor}
-                  type="button"
-                  className={`cst-opcao ${categoria === c.valor ? "is-ativa" : ""}`}
-                  aria-pressed={categoria === c.valor}
-                  onClick={() => setCategoria(c.valor)}
-                >
-                  {c.nome}
-                </button>
-              ))}
-            </div>
-            {categoria !== linha.categoriaAuto && categoria && (
-              <label className="cst-check">
-                <input type="checkbox" checked={fixarCategoria} onChange={(e) => setFixarCategoria(e.target.checked)} />
-                <span>
-                  Fixar <b>{NOME_CATEGORIA[categoria]}</b> para o veículo {linha.veiculo}
-                </span>
-              </label>
-            )}
-          </section>
+        <section className="cst-ficha__secao">
+          <h3>Categoria do veículo</h3>
+          <div className="cst-opcoes">
+            {CATEGORIAS.map((c) => (
+              <button
+                key={c.valor}
+                type="button"
+                className={`cst-opcao ${categoria === c.valor ? "is-ativa" : ""}`}
+                aria-pressed={categoria === c.valor}
+                onClick={() => setCategoria(c.valor)}
+              >
+                {c.nome}
+              </button>
+            ))}
+          </div>
+          {categoria !== linha.categoriaAuto && categoria && (
+            <label className="cst-check">
+              <input type="checkbox" checked={fixarCategoria} onChange={(e) => setFixarCategoria(e.target.checked)} />
+              <span>
+                Fixar <b>{NOME_CATEGORIA[categoria]}</b> para o veículo {linha.veiculo}
+              </span>
+            </label>
+          )}
+        </section>
         )}
 
         {ehPasseio && (
@@ -235,25 +269,25 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
         )}
 
         {!ehPasseio && !ehParceiro && (
-          <section className="cst-ficha__secao">
-            <h3>Serviço casado</h3>
-            <Segmented
-              size="sm"
-              ariaLabel="Serviço casado"
-              value={casado}
-              onChange={setCasado}
-              options={[
-                { value: "auto", label: `Automático (${linha.parCasado ? "sim" : "não"})` },
-                { value: "sim", label: "Casado" },
-                { value: "nao", label: "Não casado" },
-              ]}
-            />
-            <p className="cst-ajuda">
-              {linha.parCasado
-                ? "O sistema achou o par no mesmo veículo dentro do intervalo do casado."
-                : "Automático: IN e OUT da região do casado no mesmo veículo, dentro do intervalo configurado em Tarifas."}
-            </p>
-          </section>
+        <section className="cst-ficha__secao">
+          <h3>Serviço casado</h3>
+          <Segmented
+            size="sm"
+            ariaLabel="Serviço casado"
+            value={casado}
+            onChange={setCasado}
+            options={[
+              { value: "auto", label: `Automático (${linha.parCasado ? "sim" : "não"})` },
+              { value: "sim", label: "Casado" },
+              { value: "nao", label: "Não casado" },
+            ]}
+          />
+          <p className="cst-ajuda">
+            {linha.parCasado
+              ? "O sistema achou o par no mesmo veículo dentro do intervalo do casado."
+              : "Automático: IN e OUT da região do casado no mesmo veículo, dentro do intervalo configurado em Tarifas."}
+          </p>
+        </section>
         )}
 
         <section className="cst-ficha__secao">
@@ -355,7 +389,7 @@ const DetalheServico = ({ linha, manual = {}, fornecedores = [], config, onFecha
                 label="Valor pago ao guia (R$)"
                 hint={
                   refGuia !== null
-                    ? `Referência: ${formatarReais(refBase.valor)}${modalidadeEfetiva === "idioma" ? ` + ${regras.adicionalIdioma}% = ${formatarReais(refGuia)}` : ""}${modalidadeEfetiva === "mi" ? " (tabela MI)" : ""}. Digite o total pago.`
+                    ? `Referência: ${formatarReais(refBase.valor)}${modalidadeEfetiva === "idioma" ? ` + ${regras.adicionalIdioma}% = ${formatarReais(refGuia)}` : ""}${modalidadeEfetiva === "mi" ? (mi ? ` (Tabela MI · ${mi.linha.servico} · ${textoFaixaMi(mi.faixa)} pax)` : " (tabela MI)") : ""}. Digite o total pago.`
                     : modalidadeEfetiva === "mi"
                       ? "Sem referência na tabela MI — digite o valor negociado."
                       : "Valor negociado com o guia."
