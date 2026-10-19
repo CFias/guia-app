@@ -432,3 +432,52 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* nome na placa: letra, alinhamento, altura, escrita e linhas */
+.plc-nome-ajustes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.plc-nome-ajuste {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.plc-nome-ajuste>span {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.plc-nome-ajuste select {
+  width: 100%;
+  min-width: 0;
+}
+
+.plc-link {
+  align-self: flex-start;
+  margin-top: 4px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plc-sel__bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* busca dentro de coluna: o .ui-search do kit cresce na altura (flex-basis 240px) */
+.plc-sel .ui-search {
+  flex: none;
+}

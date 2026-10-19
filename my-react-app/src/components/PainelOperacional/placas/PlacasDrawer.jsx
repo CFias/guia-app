@@ -15,6 +15,8 @@ import {
   textoMensagem,
   useModelosEquipe,
 } from "./modelosPlaca";
+import AjustesNome, { AJUSTE_NOME_VAZIO, aplicarAjusteNome } from "./AjustesNome";
+import { LETRAS, useFontesPlaca } from "./fontesPlaca";
 import "./placas.css";
 
 /* Painel das placas de recepção (Chegadas).
@@ -72,7 +74,12 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   const varios = grupos.length > 1;
   const reservas = useMemo(() => grupos.flatMap((g) => g.reservas.map((r) => ({ ...r, voo: g.voo }))), [grupos]);
   const voo = varios ? "" : grupos[0]?.voo || "";
-  const modelo = acharModelo(prefs.modeloId, modelosEquipe);
+  // fontes próprias: redesenha quando cada uma termina de carregar
+  useFontesPlaca();
+  const modeloBase = acharModelo(prefs.modeloId, modelosEquipe);
+  const ajusteNome = { ...AJUSTE_NOME_VAZIO, ...(prefs.nome || {}) };
+  const modelo = aplicarAjusteNome(modeloBase, ajusteNome);
+  const temAjuste = Object.values(ajusteNome).some(Boolean);
 
   // ---------- individual ----------
   const placas = useMemo(
@@ -110,6 +117,7 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   );
   const opcoesColecao = {
     porPlaca: prefs.colecaoPorPlaca,
+    letra: prefs.colecaoLetra,
     separacao: prefs.colecaoSeparacao,
     tamanho: prefs.colecaoTamanho,
     escala: prefs.colecaoEscala,
@@ -239,6 +247,15 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
                   <b>{Math.round(prefs.colecaoEscala * 100)}%</b>
                 </div>
               )}
+              <Grupo label="Letra dos nomes">
+                <select className="ui-input" value={prefs.colecaoLetra || "forte"} onChange={(e) => atualizar({ colecaoLetra: e.target.value })}>
+                  {LETRAS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Grupo>
               <Grupo label="Separação entre os nomes">
                 <Segmented
                   size="sm"
@@ -327,6 +344,17 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
                   </div>
                 </div>
               </div>
+              <Grupo
+                label="Nome na placa"
+                hint={temAjuste ? "Vale só para esta impressão; o modelo continua igual." : "Começa como está no modelo. Mude aqui só para esta impressão."}
+              >
+                <AjustesNome valores={ajusteNome} doModelo={modeloBase} onChange={(p) => atualizar({ nome: { ...ajusteNome, ...p } })} />
+                {temAjuste && (
+                  <button type="button" className="plc-link" onClick={() => atualizar({ nome: { ...AJUSTE_NOME_VAZIO } })}>
+                    Voltar ao que está no modelo
+                  </button>
+                )}
+              </Grupo>
               <Grupo
                 label="Mensagem"
                 hint={

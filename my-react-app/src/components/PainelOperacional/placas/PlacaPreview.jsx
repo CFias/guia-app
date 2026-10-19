@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { ALTURA, LARGURA, carregarLogoPequeno, carregarTrevoCinza, svgArte, svgParaDataUrl } from "./artePlaca";
+import { FONTES_PLACA } from "./fontesPlaca";
 
 /* Pré-visualização da placa: desenha as mesmas "peças" que vão para o PDF
    (layoutPlaca.js) em cima da mesma camada de fundo (artePlaca.js). */
 
 const PT = 0.35278;
+// fonte do PDF → fonte da tela (as próprias são registradas por fontesPlaca.js)
 const FONTES = {
   helvetica: "Helvetica, Arial, sans-serif",
   times: '"Times New Roman", Times, serif',
+  courier: '"Courier New", Courier, monospace',
+  ...Object.fromEntries(Object.values(FONTES_PLACA).filter((f) => f.url).map((f) => [f.pdf, f.css])),
 };
 const rgb = (c) => (c ? `rgb(${c.join(",")})` : "none");
 

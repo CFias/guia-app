@@ -6,14 +6,20 @@ import Grupo from "./Grupo";
    para a impressão antes de abrir o painel das placas (modelo e PDF).
    - Privativas: só reservas de modalidade privativa ou executiva;
    - Todas: todas as reservas dos voos;
+   - Por operadora: as reservas de uma operadora; o guia escalado é um filtro
+     opcional (todas as placas da operadora ou só as do guia escolhido);
    - Uma reserva: busca e escolhe uma.
    Formato: individual (uma placa por reserva) ou em grupo (placa coleção,
    uma por voo). Os voos podem ser desmarcados um a um.
 
-   voos: [{ chave, voo, hora, reservas: [{ id, nome, hotel, idioma, codigo, modalidade, pax }] }]
+   voos: [{ chave, voo, hora, reservas: [{ id, nome, hotel, idioma, codigo, modalidade, pax, operadora, guia, escala }] }]
    onContinuar({ modo: "individual" | "colecao", lote: [{ voo, reservas }] }) */
 
 export const ehPrivativa = (r) => /PRIV|EXECUT/i.test(String(r?.modalidade || ""));
+
+const SEM_GUIA = "__sem_guia__";
+const nomeOperadora = (r) => String(r?.operadora || "").trim() || "Sem operadora";
+const chaveGuia = (r) => String(r?.guia || "").trim() || SEM_GUIA;
 
 const semAcento = (t = "") =>
   String(t)
@@ -27,14 +33,49 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   const [desmarcados, setDesmarcados] = useState({});
   const [busca, setBusca] = useState("");
   const [escolhida, setEscolhida] = useState(null); // `${chaveVoo}|${idReserva}`
+  const [operadora, setOperadora] = useState("");
+  const [guia, setGuia] = useState(""); // "" = todos os guias da operadora (opcional)
+  const [buscaOp, setBuscaOp] = useState("");
 
-  // reservas de cada voo conforme a escolha (privativas / todas)
+  // operadoras do dia, com quantas reservas cada uma tem
+  const operadoras = useMemo(() => {
+    const m = new Map();
+    voos.forEach((v) => v.reservas.forEach((r) => m.set(nomeOperadora(r), (m.get(nomeOperadora(r)) || 0) + 1)));
+    return [...m.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [voos]);
+  const operadorasVisiveis = useMemo(() => {
+    const t = semAcento(buscaOp.trim());
+    return t ? operadoras.filter((o) => semAcento(o.nome).includes(t)) : operadoras;
+  }, [operadoras, buscaOp]);
+
+  // guias escalados nas reservas da operadora escolhida (com a escala/veículo)
+  const guiasDaOperadora = useMemo(() => {
+    if (!operadora) return [];
+    const m = new Map();
+    voos.forEach((v) =>
+      v.reservas
+        .filter((r) => nomeOperadora(r) === operadora)
+        .forEach((r) => {
+          const k = chaveGuia(r);
+          const atual = m.get(k) || { chave: k, nome: k === SEM_GUIA ? "Sem guia escalado" : r.guia, n: 0, escalas: new Set() };
+          atual.n += 1;
+          if (r.escala) atual.escalas.add(r.escala);
+          m.set(k, atual);
+        }),
+    );
+    return [...m.values()].sort((a, b) => (a.chave === SEM_GUIA) - (b.chave === SEM_GUIA) || a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [voos, operadora]);
+
+  const filtroReserva = useMemo(() => {
+    if (quais === "privativas") return ehPrivativa;
+    if (quais === "operadora") return (r) => !!operadora && nomeOperadora(r) === operadora && (!guia || chaveGuia(r) === guia);
+    return () => true;
+  }, [quais, operadora, guia]);
+
+  // reservas de cada voo conforme a escolha (privativas / todas / operadora)
   const porVoo = useMemo(
-    () =>
-      voos
-        .map((v) => ({ ...v, reservas: quais === "privativas" ? v.reservas.filter(ehPrivativa) : v.reservas }))
-        .filter((v) => v.reservas.length),
-    [voos, quais],
+    () => voos.map((v) => ({ ...v, reservas: v.reservas.filter(filtroReserva) })).filter((v) => v.reservas.length),
+    [voos, filtroReserva],
   );
 
   const lote = porVoo.filter((v) => !desmarcados[v.chave]);
@@ -107,6 +148,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
             options={[
               { value: "privativas", label: "Privativas", count: totalPrivativas },
               { value: "todas", label: "Todas", count: totalTodas },
+              { value: "operadora", label: "Por operadora" },
               { value: "uma", label: "Uma reserva" },
             ]}
           />
@@ -141,6 +183,63 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
           </>
         ) : (
           <>
+            {quais === "operadora" && (
+              <>
+                <div className="plc-sel__bloco">
+                  <span className="ui-field__label">Operadora</span>
+                  {operadoras.length > 6 && (
+                    <SearchInput value={buscaOp} onChange={(e) => setBuscaOp(e.target.value)} placeholder="Buscar operadora" />
+                  )}
+                  <ul className="plc-sel__lista plc-sel__ops" role="radiogroup" aria-label="Operadora">
+                    {operadorasVisiveis.map((o) => (
+                      <li key={o.nome}>
+                        <label className={`plc-sel__res ${operadora === o.nome ? "is-on" : ""}`}>
+                          <input
+                            type="radio"
+                            name="operadora-placa"
+                            checked={operadora === o.nome}
+                            onChange={() => {
+                              setOperadora(o.nome);
+                              setGuia("");
+                              setDesmarcados({});
+                            }}
+                          />
+                          <span className="plc-sel__res-info">
+                            <b>{o.nome}</b>
+                          </span>
+                          <span className="plc-sel__tag">
+                            {o.n} {o.n === 1 ? "reserva" : "reservas"}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {operadora && (
+                  <Grupo
+                    label="Guia escalado (opcional)"
+                    hint={guia ? "Só as placas das reservas em que este guia está escalado." : "Todas as placas da operadora. Escolha um guia para imprimir só as dele."}
+                  >
+                    <select
+                      className="ui-input"
+                      value={guia}
+                      onChange={(e) => {
+                        setGuia(e.target.value);
+                        setDesmarcados({});
+                      }}
+                    >
+                      <option value="">Todos os guias ({guiasDaOperadora.reduce((n, g) => n + g.n, 0)} reservas)</option>
+                      {guiasDaOperadora.map((g) => (
+                        <option key={g.chave} value={g.chave}>
+                          {g.nome} · {g.n} {g.n === 1 ? "reserva" : "reservas"}
+                          {g.escalas.size ? ` · ${[...g.escalas].slice(0, 3).join(", ")}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </Grupo>
+                )}
+              </>
+            )}
             <Grupo
               label="Formato"
               hint={
@@ -176,7 +275,13 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
             </div>
             {porVoo.length === 0 ? (
               <p className="plc-sel__vazio">
-                {quais === "privativas" ? "Nenhuma reserva privativa nas chegadas da tela." : "Nenhuma chegada na tela."}
+                {quais === "privativas"
+                  ? "Nenhuma reserva privativa nas chegadas da tela."
+                  : quais === "operadora"
+                    ? operadora
+                      ? "Nenhuma reserva com essa escolha."
+                      : "Escolha a operadora."
+                    : "Nenhuma chegada na tela."}
               </p>
             ) : (
               <ul className="plc-sel__lista">

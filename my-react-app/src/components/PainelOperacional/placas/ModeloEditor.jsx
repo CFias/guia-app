@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { Button, Drawer, Field, Icon } from "../../ui";
 import PlacaPreview from "./PlacaPreview";
+import { FONTES_PLACA, useFontesPlaca } from "./fontesPlaca";
 import Grupo from "./Grupo";
 import { extrairTextoNomePlaca, layoutIndividual } from "./layoutPlaca";
 import {
+  ALINHAMENTOS,
+  ALTURAS_NOME,
+  CAIXAS,
   LETRAS,
+  QUEBRAS,
   desenhosDaBase,
   gruposProntos,
   modelosProntos,
@@ -55,6 +60,7 @@ const ModeloEditor = ({
   onSalvar,
   onExcluir,
 }) => {
+  useFontesPlaca(); // redesenha quando as letras próprias carregam
   const [modelo, setModelo] = useState(() => normalizarModelo({ ...inicial, nome: inicial?.nome || "" }));
   const [nomeDigitado, setNomeDigitado] = useState(inicial?.nome || "");
   const [exemplo, setExemplo] = useState(exemploVoo ? "voo" : "curto");
@@ -66,8 +72,8 @@ const ModeloEditor = ({
   const partirDe = (id) => {
     const base = [...modelosProntos(), ...modelosEquipe].find((m) => m.id === id);
     if (!base) return;
-    const { desenho, posicao, moldura, letra, traco, mensagem, trevo } = base;
-    mudar({ desenho, posicao, moldura, letra, traco, mensagem, trevo });
+    const { desenho, posicao, moldura, letra, alinhamento, alturaNome, caixa, quebra, traco, mensagem, trevo } = base;
+    mudar({ desenho, posicao, moldura, letra, alinhamento, alturaNome, caixa, quebra, traco, mensagem, trevo });
   };
 
   const ex =
@@ -197,7 +203,33 @@ const ModeloEditor = ({
             <Opcoes ariaLabel="Moldura" opcoes={MOLDURAS} valor={modelo.moldura} onChange={(v) => mudar({ moldura: v })} />
           </Grupo>
           <Grupo label="Letra do nome">
-            <Opcoes ariaLabel="Letra do nome" opcoes={LETRAS} valor={modelo.letra} onChange={(v) => mudar({ letra: v })} />
+            <div className="plc-chips" role="radiogroup" aria-label="Letra do nome">
+              {LETRAS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={modelo.letra === o.value}
+                  className={`plc-chip ${modelo.letra === o.value ? "is-on" : ""}`}
+                  style={{ fontFamily: FONTES_PLACA[o.value]?.css }}
+                  onClick={() => mudar({ letra: o.value })}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </Grupo>
+          <Grupo label="Alinhamento do nome">
+            <Opcoes ariaLabel="Alinhamento do nome" opcoes={ALINHAMENTOS} valor={modelo.alinhamento} onChange={(v) => mudar({ alinhamento: v })} />
+          </Grupo>
+          <Grupo label="Altura do nome">
+            <Opcoes ariaLabel="Altura do nome" opcoes={ALTURAS_NOME} valor={modelo.alturaNome} onChange={(v) => mudar({ alturaNome: v })} />
+          </Grupo>
+          <Grupo label="Escrita">
+            <Opcoes ariaLabel="Escrita do nome" opcoes={CAIXAS} valor={modelo.caixa} onChange={(v) => mudar({ caixa: v })} />
+          </Grupo>
+          <Grupo label="Linhas" hint={modelo.quebra === "duas" ? "O último sobrenome vai para a segunda linha." : modelo.quebra === "uma" ? "O nome nunca quebra; nomes longos ficam com letra menor." : "Quebra em duas linhas só quando a letra fica bem maior."}>
+            <Opcoes ariaLabel="Linhas do nome" opcoes={QUEBRAS} valor={modelo.quebra} onChange={(v) => mudar({ quebra: v })} />
           </Grupo>
           {modelo.desenho !== "nenhum" && (
             <Grupo label="Traço do desenho">

@@ -12,6 +12,7 @@ import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../../Services/Services/firebase";
 import { idPorRegiao } from "../../../Services/Services/regiaoAtiva";
 import { MODELOS_NORDESTE, temaDaRegiao } from "./temasRegiao";
+import { LETRAS } from "./fontesPlaca";
 
 // cada base tem os seus modelos (Salvador: settings/placas_modelos)
 const REF = () => doc(db, "settings", idPorRegiao("placas_modelos"));
@@ -80,9 +81,30 @@ export const MOLDURAS = [
   { value: "cantos", label: "Só cantos" },
 ];
 
-export const LETRAS = [
-  { value: "forte", label: "Forte" },
-  { value: "elegante", label: "Elegante (serifa)" },
+// letras do nome: fontesPlaca.js (Forte, Elegante, Moderna, Condensada…)
+export { LETRAS };
+
+// Como o nome fica na placa
+export const ALINHAMENTOS = [
+  { value: "centro", label: "Centralizado" },
+  { value: "esquerda", label: "À esquerda" },
+];
+
+export const ALTURAS_NOME = [
+  { value: "meio", label: "No meio" },
+  { value: "alto", label: "Mais em cima" },
+  { value: "baixo", label: "Mais embaixo" },
+];
+
+export const CAIXAS = [
+  { value: "maiusculas", label: "MAIÚSCULAS" },
+  { value: "nome", label: "Nome Próprio" },
+];
+
+export const QUEBRAS = [
+  { value: "auto", label: "Automático" },
+  { value: "uma", label: "Sempre 1 linha" },
+  { value: "duas", label: "Sobrenome embaixo" },
 ];
 
 export const TRACOS = [
@@ -105,6 +127,10 @@ export const MODELO_BASE = {
   posicao: "base",
   moldura: "nenhuma",
   letra: "forte",
+  alinhamento: "centro",
+  alturaNome: "meio",
+  caixa: "maiusculas",
+  quebra: "auto",
   traco: "leve",
   mensagem: "",
   trevo: 0.06,
@@ -145,6 +171,10 @@ export const normalizarModelo = (m = {}) => {
     posicao,
     moldura: valido(MOLDURAS, m.moldura, MODELO_BASE.moldura),
     letra: valido(LETRAS, m.letra, MODELO_BASE.letra),
+    alinhamento: valido(ALINHAMENTOS, m.alinhamento, MODELO_BASE.alinhamento),
+    alturaNome: valido(ALTURAS_NOME, m.alturaNome, MODELO_BASE.alturaNome),
+    caixa: valido(CAIXAS, m.caixa, MODELO_BASE.caixa),
+    quebra: valido(QUEBRAS, m.quebra, MODELO_BASE.quebra),
     traco: valido(TRACOS, m.traco, MODELO_BASE.traco),
     mensagem: String(m.mensagem || "").slice(0, 90),
     trevo: Number.isFinite(trevo) ? Math.min(0.2, Math.max(0, trevo)) : MODELO_BASE.trevo,
@@ -223,6 +253,9 @@ export const PREFS_PADRAO = {
   colecaoTamanho: "auto", // auto | manual
   colecaoEscala: 1, // 0.7 a 1.3 (manual)
   colecaoModeloId: "classico",
+  colecaoLetra: "forte",
+  // ajustes do nome só desta impressão ("" = o do modelo) — AjustesNome.jsx
+  nome: { letra: "", alinhamento: "", alturaNome: "", caixa: "", quebra: "" },
 };
 
 export const lerPrefsPlacas = () => {

@@ -4,11 +4,12 @@
 // uma lista de "peças". A mesma lista é desenhada no PDF (pdfPlaca.js) e na
 // pré-visualização (PlacaPreview.jsx) — por isso o que se vê é o que sai.
 // As larguras dos textos são medidas pelo próprio jsPDF, com as mesmas
-// fontes do PDF (Helvetica e Times).
+// fontes do PDF (Helvetica, Times, Courier e as próprias de fontesPlaca.js).
 
 import jsPDF from "jspdf";
 import { ALTURA, LARGURA, margensDoModelo, reservaInferior } from "./artePlaca";
 import { subtituloDoTema } from "./temasRegiao";
+import { fonteDoNome, registrarFontesNoPdf, versaoFontes } from "./fontesPlaca";
 
 const PT = 0.35278; // 1 pt em mm
 const ALTURA_MAIUSCULA = { helvetica: 0.718, times: 0.662 };
@@ -26,8 +27,14 @@ const COR = {
 };
 
 let medidor = null;
+let versaoNoMedidor = -1;
 const doc = () => {
   if (!medidor) medidor = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  // fontes próprias que terminaram de carregar entram no medidor
+  if (versaoNoMedidor !== versaoFontes()) {
+    registrarFontesNoPdf(medidor);
+    versaoNoMedidor = versaoFontes();
+  }
   return medidor;
 };
 
@@ -57,6 +64,15 @@ export const formatarDataPlaca = (dataIso = "") => {
 };
 
 const texto = (txt, x, y, opcoes) => ({ t: "texto", txt, x, y, ...opcoes });
+
+// "MARIA DE FATIMA" → "Maria de Fatima" (opção "Nome Próprio")
+const CONECTORES = ["de", "da", "do", "dos", "das", "e", "del", "van", "von", "di"];
+export const nomeProprio = (nome = "") =>
+  String(nome)
+    .toLowerCase()
+    .split(" ")
+    .map((p, i) => (i > 0 && CONECTORES.includes(p) ? p : p.replace(/(^|[-'])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())))
+    .join(" ");
 
 // maior tamanho (pt) com que o texto cabe na largura
 const tamanhoQueCabe = (txt, largura, { font, style, max, min = 10 }) => {
@@ -113,6 +129,12 @@ const dividirEmDuas = (nome) => {
   return melhor.linhas;
 };
 
+// "MARIA DE FATIMA SOUZA" → ["MARIA DE FATIMA", "SOUZA"]: o último nome embaixo
+const sobrenomeEmbaixo = (nome) => {
+  const p = nome.split(" ");
+  return p.length < 2 ? [nome] : [p.slice(0, -1).join(" "), p[p.length - 1]];
+};
+
 /* Placa individual.
    dados: { nome, voo, hotel, mensagem (texto pronto), data }
    opcoes: { mostrarVoo, mostrarHotel, mostrarRodape } */
@@ -125,8 +147,11 @@ export const layoutIndividual = (modelo, dados = {}, opcoes = {}) => {
     mostrarVoo: opcoes.mostrarVoo !== false,
   });
 
-  const fontNome = modelo.letra === "elegante" ? "times" : "helvetica";
-  const nome = String(dados.nome || "").trim() || "NOME NÃO INFORMADO";
+  const fonte = fonteDoNome(modelo.letra);
+  const fontNome = fonte.pdf;
+  const estiloNome = fonte.estilo;
+  const bruto = String(dados.nome || "").trim() || "NOME NÃO INFORMADO";
+  const nome = modelo.caixa === "nome" ? nomeProprio(bruto) : bruto.toUpperCase();
   const larguraUtil = LARGURA - margens.x * 2 - 14;
   const topo = yLinha + 4;
   const fundo = ALTURA - reservaInferior(modelo);
@@ -141,37 +166,45 @@ export const layoutIndividual = (modelo, dados = {}, opcoes = {}) => {
 
   // nome: uma linha com a maior letra possível; se ficar pequena demais,
   // quebra em duas linhas equilibradas
-  const capFator = ALTURA_MAIUSCULA[fontNome] * PT;
+  const capFator = (fonte.cap || ALTURA_MAIUSCULA.helvetica) * PT;
   const maxPorAltura = (alturaUtil - altMsg - altHotel - folgas) / capFator;
   const maxNome = Math.min(120, maxPorAltura);
   let linhas = [nome];
-  let tam = tamanhoQueCabe(nome, larguraUtil, { font: fontNome, style: "bold", max: maxNome, min: 18 });
-  if (tam < 58 && nome.includes(" ")) {
-    const duas = dividirEmDuas(nome);
-    const maior = duas.reduce((a, b) => (medirTexto(a, { font: fontNome, style: "bold", size: 10 }) >= medirTexto(b, { font: fontNome, style: "bold", size: 10 }) ? a : b));
-    const maxDuas = Math.min(96, (alturaUtil - altMsg - altHotel - folgas) / (capFator * 2.35));
-    const tamDuas = tamanhoQueCabe(maior, larguraUtil, { font: fontNome, style: "bold", max: maxDuas, min: 18 });
-    if (tamDuas > tam * 1.12) {
+  let tam = tamanhoQueCabe(nome, larguraUtil, { font: fontNome, style: estiloNome, max: maxNome, min: 18 });
+  // quebra: automática (duas linhas só se a letra crescer bem), sempre uma,
+  // ou o sobrenome sempre embaixo
+  const podeDuas = nome.includes(" ") && modelo.quebra !== "uma";
+  if (podeDuas && (modelo.quebra === "duas" || tam < 58)) {
+    const duas = modelo.quebra === "duas" ? sobrenomeEmbaixo(nome) : dividirEmDuas(nome);
+    const maior = duas.reduce((a, b) => (medirTexto(a, { font: fontNome, style: estiloNome, size: 10 }) >= medirTexto(b, { font: fontNome, style: estiloNome, size: 10 }) ? a : b));
+    const maxDuas = Math.min(96, (alturaUtil - altMsg - altHotel - folgas) / (capFator * (modelo.caixa === "nome" ? 2.55 : 2.35)));
+    const tamDuas = tamanhoQueCabe(maior, larguraUtil, { font: fontNome, style: estiloNome, max: maxDuas, min: 18 });
+    if (modelo.quebra === "duas" || tamDuas > tam * 1.12) {
       linhas = duas;
       tam = tamDuas;
     }
   }
   const capNome = tam * capFator;
-  const entreLinhas = capNome * 1.35;
+  // em "Nome Próprio" as letras com perna (g, j, p) pedem mais espaço entre as linhas
+  const entreLinhas = capNome * (modelo.caixa === "nome" ? 1.55 : 1.35);
   const altNome = capNome + (linhas.length - 1) * entreLinhas;
 
   const altBloco = altMsg + altNome + altHotel + folgas;
-  let y = topo + (alturaUtil - altBloco) / 2;
-  const cx = LARGURA / 2;
+  // altura do bloco: no meio, mais em cima ou mais embaixo da área livre
+  const sobra = Math.max(0, alturaUtil - altBloco);
+  let y = topo + (modelo.alturaNome === "alto" ? Math.min(sobra, 6) : modelo.alturaNome === "baixo" ? Math.max(0, sobra - 4) : sobra / 2);
+  const aEsquerda = modelo.alinhamento === "esquerda";
+  const cx = aEsquerda ? margens.x + 7 : LARGURA / 2;
+  const align = aEsquerda ? "left" : "center";
 
   if (msg) {
     y += altMsg;
-    pecas.push(texto(msg, cx, y, { font: "times", style: "italic", size: tamMsg, cor: COR.mensagem, align: "center" }));
+    pecas.push(texto(msg, cx, y, { font: "times", style: "italic", size: tamMsg, cor: COR.mensagem, align }));
     y += 7;
   }
   linhas.forEach((linha, i) => {
     const yl = y + capNome + i * entreLinhas;
-    pecas.push(texto(linha, cx, yl, { font: fontNome, style: "bold", size: tam, cor: COR.nome, align: "center" }));
+    pecas.push(texto(linha, cx, yl, { font: fontNome, style: estiloNome, size: tam, cor: COR.nome, align }));
   });
   y += altNome;
   if (hotel) {
@@ -179,8 +212,9 @@ export const layoutIndividual = (modelo, dados = {}, opcoes = {}) => {
     const tamHotel = 18;
     const txtHotel = hotel.length > 60 ? `${hotel.slice(0, 58)}…` : hotel;
     const w = Math.min(larguraUtil, medirTexto(txtHotel, { size: tamHotel }) + 12);
-    pecas.push({ t: "retangulo", x: cx - w / 2, y, w, h: altHotel, r: altHotel / 2, borda: COR.pilula, espessura: 0.3 });
-    pecas.push(texto(txtHotel, cx, y + altHotel / 2 + tamHotel * PT * 0.36, { font: "helvetica", style: "normal", size: tamHotel, cor: COR.hotel, align: "center" }));
+    const xPilula = aEsquerda ? cx : cx - w / 2;
+    pecas.push({ t: "retangulo", x: xPilula, y, w, h: altHotel, r: altHotel / 2, borda: COR.pilula, espessura: 0.3 });
+    pecas.push(texto(txtHotel, xPilula + w / 2, y + altHotel / 2 + tamHotel * PT * 0.36, { font: "helvetica", style: "normal", size: tamHotel, cor: COR.hotel, align: "center" }));
   }
 
   if (opcoes.mostrarRodape) pecas.push(...rodape({ margens, data: dados.data }));
@@ -219,11 +253,12 @@ export const layoutColecao = ({ nomes = [], numero = 1, total = 1 }, dados = {},
   const larguraFaixa = LARGURA - margens.x * 2;
   const larguraTexto = larguraFaixa - 16;
 
-  const capFator = ALTURA_MAIUSCULA.helvetica * PT;
+  const fonte = fonteDoNome(opcoes.letra || "forte");
+  const capFator = (fonte.cap || ALTURA_MAIUSCULA.helvetica) * PT;
   const maxPorAltura = (altLinha * 0.6) / capFator;
   const teto = maxPorAltura * 1.2; // limite do manual: a letra nunca encosta na faixa vizinha
   // quanto cada nome aguenta na largura
-  const cabe = nomes.map((n) => tamanhoQueCabe(n, larguraTexto, { font: "helvetica", style: "bold", max: teto, min: 14 }));
+  const cabe = nomes.map((n) => tamanhoQueCabe(n, larguraTexto, { font: fonte.pdf, style: fonte.estilo, max: teto, min: 14 }));
   // automático: a maior letra em que o nome mais longo da página cabe
   const auto = Math.min(maxPorAltura, ...(cabe.length ? cabe : [maxPorAltura]));
   const manual = opcoes.tamanho === "manual";
@@ -244,7 +279,7 @@ export const layoutColecao = ({ nomes = [], numero = 1, total = 1 }, dados = {},
     // no manual, um nome que não caberia na largura diminui só ele
     const tam = Math.min(alvo, cabe[i]);
     const yBase = y + altLinha / 2 + (tam * capFator) / 2;
-    pecas.push(texto(nome, LARGURA / 2, yBase, { font: "helvetica", style: "bold", size: tam, cor: COR.nome, align: "center" }));
+    pecas.push(texto(nome, LARGURA / 2, yBase, { font: fonte.pdf, style: fonte.estilo, size: tam, cor: COR.nome, align: "center" }));
   });
 
   pecas.push(

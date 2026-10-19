@@ -2332,6 +2332,10 @@ export default function PainelOperacionalUnificado() {
       codigo: r.codigoReserva,
       modalidade: r.modalidadeServico,
       pax: r.pax,
+      operadora: r.operadora && r.operadora !== "-" ? r.operadora : "",
+      guia: r.guia && r.guia !== "-" ? r.guia : "",
+      // escala do guia: "Escala 12" ou, sem código, o veículo
+      escala: r.escalaCodigo && r.escalaCodigo !== "-" ? `Escala ${r.escalaCodigo}` : r.veiculo && r.veiculo !== "-" && !/^sem /i.test(r.veiculo) ? r.veiculo : "",
     })),
   }));
 

@@ -13,8 +13,9 @@ import {
   svgArte,
 } from "./artePlaca";
 import { layoutColecao, layoutIndividual, paginarColecao } from "./layoutPlaca";
+import { carregarFontesPlaca, registrarFontesNoPdf } from "./fontesPlaca";
 
-const novoDoc = () => new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+const novoDoc = () => registrarFontesNoPdf(new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }));
 
 export const desenharPecas = (doc, pecas, { logo } = {}) => {
   pecas.forEach((p) => {
@@ -46,7 +47,7 @@ const nomeArquivo = (prefixo, txt) =>
   `${prefixo}-${String(txt || "placa").trim().replace(/[^\w-]+/g, "-").replace(/-+/g, "-")}.pdf`;
 
 const recursos = async (modelo, tipo) => {
-  const [logo, trevo] = await Promise.all([carregarLogoPequeno(), carregarTrevoCinza()]);
+  const [logo, trevo] = await Promise.all([carregarLogoPequeno(), carregarTrevoCinza(), carregarFontesPlaca()]);
   const fundo = await rasterizarArte(svgArte(modelo, { tipo, trevo }));
   return { logo, fundo };
 };
@@ -55,8 +56,8 @@ const recursos = async (modelo, tipo) => {
    opcoes: { mostrarVoo, mostrarHotel, mostrarRodape, data } */
 export const gerarPdfIndividuais = async ({ placas = [], modelo, opcoes = {}, arquivo }) => {
   if (!placas.length) return;
-  const doc = novoDoc();
   const { logo, fundo } = await recursos(modelo, "individual");
+  const doc = novoDoc();
   const alias = `fundo_${modelo.id || "modelo"}`;
   placas.forEach((dados, i) => {
     if (i > 0) doc.addPage();
@@ -74,8 +75,8 @@ export const gerarPdfColecao = async ({ voo, nomes = [], mensagem = "", paginas,
     paginas ||
     paginarColecao(nomes, opcoes.porPlaca).map((p, i, todas) => ({ voo, nomes: p, numero: i + 1, total: todas.length, mensagem }));
   if (!folhas.length) return;
-  const doc = novoDoc();
   const { logo, fundo } = await recursos({ trevo }, "colecao");
+  const doc = novoDoc();
   folhas.forEach((f, i) => {
     if (i > 0) doc.addPage();
     doc.addImage(fundo, "JPEG", 0, 0, LARGURA, ALTURA, "fundo_colecao", "FAST");
