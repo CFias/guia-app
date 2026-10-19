@@ -14,8 +14,11 @@ import { ehSede } from "../Services/Services/regiaoAtiva";
 const FotosGuiasProvider = ({ children }) => {
   const { role } = useAuth();
   const { regiao } = useRegiao();
-  // fotos e cadastro de guias são de Salvador: outras bases não leem
-  const ativo = role === "operacional" && ehSede(regiao);
+  // fotos e cadastro de guias são de Salvador: outras bases não leem.
+  // foraDaSede também esconde o que já tinha sido carregado antes da troca de
+  // base (senão um guia de outra base com o mesmo nome "herdava" a foto).
+  const foraDaSede = role === "operacional" && !ehSede(regiao);
+  const ativo = role === "operacional" && !foraDaSede;
   const [fotos, setFotos] = useState({});
   const [guias, setGuias] = useState([]);
   const pedidas = useRef(new Set());
@@ -82,6 +85,7 @@ const FotosGuiasProvider = ({ children }) => {
 
   const guiaPorNome = useCallback(
     (nome) => {
+      if (foraDaSede) return null;
       const k = chaveNomeGuia(nome);
       if (!k) return null;
       const exato = indice.porNome.get(k);
@@ -91,16 +95,17 @@ const FotosGuiasProvider = ({ children }) => {
       if (primeiro && (k.split(" ").length === 1 || chaveNomeGuia(primeiro.nome).startsWith(k))) return primeiro;
       return null;
     },
-    [indice],
+    [indice, foraDaSede],
   );
 
   const fotoDoGuia = useCallback(
     ({ id, nome } = {}) => {
+      if (foraDaSede) return "";
       if (id && fotos[id]) return fotos[id];
       const g = nome ? guiaPorNome(nome) : null;
       return (g && fotos[g.id]) || "";
     },
-    [fotos, guiaPorNome],
+    [fotos, guiaPorNome, foraDaSede],
   );
 
   const valor = useMemo(
