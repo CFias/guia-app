@@ -69,14 +69,55 @@
     bv-flutuar 5.5s ease-in-out infinite;
 }
 
-.bv-flutua.f0 { left: 7%; top: 28px; animation-delay: 0.15s, 0.15s; }
-.bv-flutua.f1 { left: 20%; top: 66px; animation-delay: 0.25s, 0.9s; transform: scale(0.85); }
-.bv-flutua.f2 { left: 33%; top: 18px; animation-delay: 0.35s, 1.6s; }
-.bv-flutua.f3 { left: 63%; top: 20px; animation-delay: 0.3s, 0.5s; }
-.bv-flutua.f4 { left: 68%; top: 72px; animation-delay: 0.4s, 1.2s; }
-.bv-flutua.f5 { left: 87%; top: 62px; animation-delay: 0.5s, 2s; }
-.bv-flutua.f6 { left: 48%; top: 74px; animation-delay: 0.45s, 2.4s; opacity: 0; }
-.bv-flutua.f7 { left: 4%; top: 84px; animation-delay: 0.55s, 1.8s; }
+.bv-flutua.f0 {
+  left: 7%;
+  top: 28px;
+  animation-delay: 0.15s, 0.15s;
+}
+
+.bv-flutua.f1 {
+  left: 20%;
+  top: 66px;
+  animation-delay: 0.25s, 0.9s;
+  transform: scale(0.85);
+}
+
+.bv-flutua.f2 {
+  left: 33%;
+  top: 18px;
+  animation-delay: 0.35s, 1.6s;
+}
+
+.bv-flutua.f3 {
+  left: 63%;
+  top: 20px;
+  animation-delay: 0.3s, 0.5s;
+}
+
+.bv-flutua.f4 {
+  left: 68%;
+  top: 72px;
+  animation-delay: 0.4s, 1.2s;
+}
+
+.bv-flutua.f5 {
+  left: 87%;
+  top: 62px;
+  animation-delay: 0.5s, 2s;
+}
+
+.bv-flutua.f6 {
+  left: 48%;
+  top: 74px;
+  animation-delay: 0.45s, 2.4s;
+  opacity: 0;
+}
+
+.bv-flutua.f7 {
+  left: 4%;
+  top: 84px;
+  animation-delay: 0.55s, 1.8s;
+}
 
 .bv-selo {
   position: absolute;
@@ -201,7 +242,7 @@
   border-color: var(--accent);
 }
 
-.bv-recursos li > span:last-child {
+.bv-recursos li>span:last-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -245,10 +286,21 @@
   color: #fff;
 }
 
-.bv-ic.ic-respostas { background: #0f6b63; }
-.bv-ic.ic-veiculos { background: #3f6fd1; }
-.bv-ic.ic-valores { background: #b07812; }
-.bv-ic.ic-extras { background: #8a5cc9; }
+.bv-ic.ic-respostas {
+  background: #0f6b63;
+}
+
+.bv-ic.ic-veiculos {
+  background: #3f6fd1;
+}
+
+.bv-ic.ic-valores {
+  background: #b07812;
+}
+
+.bv-ic.ic-extras {
+  background: #8a5cc9;
+}
 
 .bv-dica {
   display: flex;
@@ -317,45 +369,120 @@
 }
 
 /* ---------- animações ---------- */
-@keyframes bv-fundo-entra { from { opacity: 0; } to { opacity: 1; } }
-@keyframes bv-fundo-sai { to { opacity: 0; } }
+@keyframes bv-fundo-entra {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bv-fundo-sai {
+  to {
+    opacity: 0;
+  }
+}
 
 @keyframes bv-modal-entra {
-  from { opacity: 0; transform: translateY(26px) scale(0.94); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-@keyframes bv-modal-sai { to { opacity: 0; transform: translateY(12px) scale(0.97); } }
+@keyframes bv-modal-sai {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
 
 @keyframes bv-sobe {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-@keyframes bv-aparece { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bv-aparece {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 
 @keyframes bv-flutuar {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -8px; }
+
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -8px;
+  }
 }
 
 @keyframes bv-selo {
-  from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes bv-pulso {
-  0% { opacity: 0.9; transform: scale(0.9); }
-  100% { opacity: 0; transform: scale(1.35); }
+  0% {
+    opacity: 0.9;
+    transform: scale(0.9);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 @keyframes bv-aceno {
-  0%, 60%, 100% { transform: rotate(0); }
-  10%, 30% { transform: rotate(16deg); }
-  20%, 40% { transform: rotate(-8deg); }
+
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+
+  10%,
+  30% {
+    transform: rotate(16deg);
+  }
+
+  20%,
+  40% {
+    transform: rotate(-8deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .bv-fundo,
   .bv-modal,
   .bv-flutua,
@@ -398,4 +525,46 @@
   .bv-comecar {
     justify-content: center;
   }
+}
+
+/* Boas-vindas das bases: passos numerados */
+.bv-ic {
+  position: relative;
+}
+
+.bv-ic.ic-passo-painel {
+  background: #0f6b63;
+}
+
+.bv-ic.ic-passo-placas {
+  background: #3f6fd1;
+}
+
+.bv-ic.ic-passo-mapa {
+  background: #b07812;
+}
+
+.bv-ic.ic-passo-previa {
+  background: #8a5cc9;
+}
+
+.bv-ic.ic-passo-turnos {
+  background: #c2410c;
+}
+
+.bv-num {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid var(--surface, #fff);
+  background: var(--text, #1b1a19);
+  color: var(--surface, #fff);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
 }

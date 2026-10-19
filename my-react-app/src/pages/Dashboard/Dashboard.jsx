@@ -5,6 +5,7 @@ import "./styles.css";
 import logo from "../../assets/clover.png";
 import { useAuth } from "../../Context/AuthContext";
 import BoasVindasComercial from "../../components/BoasVindas/BoasVindasComercial";
+import BoasVindasBase from "../../components/BoasVindas/BoasVindasBase";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS, ROLES } from "../../Context/permissions";
 import { areaDaRota, ehGerencia, podeArea, rotaForaDaRegiao } from "../../Context/acessos";
@@ -132,7 +133,9 @@ const Dashboard = ({ loading }) => {
     if (rotaForaDaRegiao(pathname, nova) || (area && !podeArea(perfil, area.chave, nova))) navigate("/");
   };
 
-  const nomeSistema = `Operacional ${regiao.sigla || "SSA"}`;
+  const nomeSistema = "Operacional Luck";
+  // com outras bases cadastradas, a base em uso aparece embaixo do nome
+  const legendaSistema = todas.length > 1 || !naSede ? `Base ${regiao.nome}` : "Gestão de serviços";
 
   const grupos = useMemo(
     () =>
@@ -222,7 +225,7 @@ const Dashboard = ({ loading }) => {
 
               <div className="sidebar-brand">
                 <strong>{nomeSistema}</strong>
-                <span>{naSede ? "Gestão de serviços" : `Base ${regiao.nome}`}</span>
+                <span>{legendaSistema}</span>
               </div>
             </NavLink>
 
@@ -407,6 +410,7 @@ const Dashboard = ({ loading }) => {
             )}
           </main>
           {role === "comercial" && <BoasVindasComercial />}
+          {veOperacao && !naSede && !carregandoRegiao && !indisponivel && <BoasVindasBase />}
         </div>
       </div>
     </ShellContext.Provider>

@@ -129,8 +129,8 @@ const Login = () => {
             <img src={logo} alt="" />
           </span>
           <span>
-            <strong>Operacional SSA</strong>
-            <small>Luck Receptivo · Salvador, Bahia</small>
+            <strong>Operacional Luck</strong>
+            <small>Luck Receptivo · Nordeste</small>
           </span>
         </header>
 
@@ -172,7 +172,7 @@ const Login = () => {
 
         <form className="login-form" onSubmit={entrar} noValidate>
           <span className="login-form__logo-mobile">
-            <img src={logo} alt="Operacional SSA" />
+            <img src={logo} alt="Operacional Luck" />
           </span>
 
           <div className="login-form__titulo">

@@ -6,23 +6,11 @@
 // selecionados na tela.
 
 export const TIPOS_REL = ["IN", "OUT", "TRF", "PASSEIO", "APOIO"];
-export const ROTULO_TIPO = {
-  IN: "IN",
-  OUT: "OUT",
-  TRF: "Transfer",
-  PASSEIO: "Passeio",
-  APOIO: "Apoio",
-};
+export const ROTULO_TIPO = { IN: "IN", OUT: "OUT", TRF: "Transfer", PASSEIO: "Passeio", APOIO: "Apoio" };
 
 // cores por tipo (mesma ordem sempre). Texto nunca usa essas cores: a
 // legenda traz o nome e o número ao lado do quadradinho.
-const COR_TIPO = {
-  IN: "#0f6b63",
-  OUT: "#3f6fd1",
-  TRF: "#c98a1b",
-  PASSEIO: "#8a5cc9",
-  APOIO: "#c4566d",
-};
+const COR_TIPO = { IN: "#0f6b63", OUT: "#3f6fd1", TRF: "#c98a1b", PASSEIO: "#8a5cc9", APOIO: "#c4566d" };
 const COR_UNICA = "#0f6b63";
 const TINTA = "#1d2322";
 const TINTA_2 = "#4d5856";
@@ -46,19 +34,14 @@ const dataCurta = (iso = "") => {
 const escalaLimpa = (max) => {
   if (max <= 0) return 4;
   const pot = 10 ** Math.floor(Math.log10(max));
-  const passo =
-    [1, 2, 2.5, 5, 10].map((m) => m * pot).find((p) => max / p <= 4) ||
-    pot * 10;
+  const passo = [1, 2, 2.5, 5, 10].map((m) => m * pot).find((p) => max / p <= 4) || pot * 10;
   return Math.ceil(max / passo) * passo;
 };
 
 /* ---------------- gráficos ---------------- */
 
 // Colunas por dia (uma série). Valor em cima de cada coluna quando cabe.
-export const svgColunasDias = (
-  porDia = [],
-  { largura = 520, altura = 170 } = {},
-) => {
+export const svgColunasDias = (porDia = [], { largura = 520, altura = 170 } = {}) => {
   if (!porDia.length) return "";
   const margemE = 30;
   const margemB = 20;
@@ -110,10 +93,7 @@ export const htmlDivisaoTipos = (porTipo = {}) => {
   const total = TIPOS_REL.reduce((a, t) => a + (porTipo[t] || 0), 0);
   if (!total) return '<p class="vazio">Sem serviços.</p>';
   const segmentos = TIPOS_REL.filter((t) => porTipo[t])
-    .map(
-      (t) =>
-        `<span style="flex:${porTipo[t]};background:${COR_TIPO[t]}"></span>`,
-    )
+    .map((t) => `<span style="flex:${porTipo[t]};background:${COR_TIPO[t]}"></span>`)
     .join("");
   const legenda = TIPOS_REL.map(
     (t) =>
@@ -130,10 +110,7 @@ export const htmlBarrasEmpilhadas = (linhas = [], { limite = 15 } = {}) => {
   const max = Math.max(...linhas.map((l) => l.total), 1);
   const itens = linhas.slice(0, limite).map((l) => {
     const segs = TIPOS_REL.filter((t) => l[t])
-      .map(
-        (t) =>
-          `<span style="width:${(l[t] / max) * 100}%;background:${COR_TIPO[t]}" title="${ROTULO_TIPO[t]}: ${l[t]}"></span>`,
-      )
+      .map((t) => `<span style="width:${(l[t] / max) * 100}%;background:${COR_TIPO[t]}" title="${ROTULO_TIPO[t]}: ${l[t]}"></span>`)
       .join("");
     return `<div class="hb">
       <div class="hb-nome">${esc(l.nome)}${l.etiqueta ? ` <em>${esc(l.etiqueta)}</em>` : ""}${l.sub ? `<small>${esc(l.sub)}</small>` : ""}</div>
@@ -141,13 +118,9 @@ export const htmlBarrasEmpilhadas = (linhas = [], { limite = 15 } = {}) => {
       <div class="hb-total">${num(l.total)}</div>
     </div>`;
   });
-  const resto =
-    linhas.length > limite
-      ? `<p class="sub">+ ${linhas.length - limite} na tabela abaixo</p>`
-      : "";
+  const resto = linhas.length > limite ? `<p class="sub">+ ${linhas.length - limite} na tabela abaixo</p>` : "";
   const legenda = `<ul class="legenda legenda--linha">${TIPOS_REL.map(
-    (t) =>
-      `<li><i style="background:${COR_TIPO[t]}"></i>${ROTULO_TIPO[t]}</li>`,
+    (t) => `<li><i style="background:${COR_TIPO[t]}"></i>${ROTULO_TIPO[t]}</li>`,
   ).join("")}</ul>`;
   return `${legenda}<div class="hbs">${itens.join("")}</div>${resto}`;
 };
@@ -171,10 +144,7 @@ export const htmlBarrasSimples = (linhas = []) => {
 
 // Tabela enxuta: cada linha com os números por tipo, total, % e uma
 // barrinha com a divisão por tipo. Última linha = total geral.
-export const htmlTabelaMinimalista = (
-  linhas = [],
-  { rotuloLinha = "Fornecedor", mostrarSub = true } = {},
-) => {
+export const htmlTabelaMinimalista = (linhas = [], { rotuloLinha = "Fornecedor", mostrarSub = true } = {}) => {
   const tot = TIPOS_REL.reduce((a, t) => ({ ...a, [t]: 0 }), { total: 0 });
   linhas.forEach((l) => {
     TIPOS_REL.forEach((t) => {
@@ -184,30 +154,20 @@ export const htmlTabelaMinimalista = (
   });
   const max = Math.max(...linhas.map((l) => l.total), 1);
   const barra = (l) =>
-    `<div class="mb" style="width:${(l.total / max) * 100}%">${TIPOS_REL.filter(
-      (t) => l[t],
-    )
-      .map(
-        (t) => `<span style="flex:${l[t]};background:${COR_TIPO[t]}"></span>`,
-      )
+    `<div class="mb" style="width:${(l.total / max) * 100}%">${TIPOS_REL.filter((t) => l[t])
+      .map((t) => `<span style="flex:${l[t]};background:${COR_TIPO[t]}"></span>`)
       .join("")}</div>`;
   const tipos = TIPOS_REL.filter((t) => tot[t] > 0 || t !== "APOIO");
   return `<table class="minima">
     <thead><tr><th class="num">#</th><th>${esc(rotuloLinha)}</th>${tipos
-      .map(
-        (t) =>
-          `<th class="num"><i class="pt" style="background:${COR_TIPO[t]}"></i>${ROTULO_TIPO[t]}</th>`,
-      )
-      .join(
-        "",
-      )}<th class="num">Total</th><th class="num">%</th><th class="col-barra">Divisão</th></tr></thead>
+      .map((t) => `<th class="num"><i class="pt" style="background:${COR_TIPO[t]}"></i>${ROTULO_TIPO[t]}</th>`)
+      .join("")}<th class="num">Total</th><th class="num">%</th><th class="col-barra">Divisão</th></tr></thead>
     <tbody>${linhas
       .map(
         (l, i) => `<tr>
         <td class="num pos">${i + 1}º</td>
-        <td><strong>${esc(l.nome)}</strong>${l.etiqueta ? ` <em class="et">${esc(l.etiqueta)}</em>` : ""}${
-          mostrarSub && l.sub ? `<div class="mini">${esc(l.sub)}</div>` : ""
-        }</td>
+        <td><strong>${esc(l.nome)}</strong>${l.etiqueta ? ` <em class="et">${esc(l.etiqueta)}</em>` : ""}${mostrarSub && l.sub ? `<div class="mini">${esc(l.sub)}</div>` : ""
+          }</td>
         ${tipos.map((t) => `<td class="num${l[t] ? "" : " zero"}">${num(l[t] || 0)}</td>`).join("")}
         <td class="num"><strong>${num(l.total)}</strong></td>
         <td class="num">${tot.total ? ((l.total / tot.total) * 100).toFixed(1).replace(".", ",") : "0"}%</td>
@@ -217,9 +177,7 @@ export const htmlTabelaMinimalista = (
       .join("")}</tbody>
     <tfoot><tr><td></td><td><strong>Total</strong></td>${tipos
       .map((t) => `<td class="num"><strong>${num(tot[t])}</strong></td>`)
-      .join(
-        "",
-      )}<td class="num"><strong>${num(tot.total)}</strong></td><td class="num">100%</td><td></td></tr></tfoot>
+      .join("")}<td class="num"><strong>${num(tot.total)}</strong></td><td class="num">100%</td><td></td></tr></tfoot>
   </table>`;
 };
 
@@ -233,8 +191,7 @@ export const TAMANHOS_FONTE_RELATORIO = [
   { id: "maior", nome: "Fonte muito grande", escala: 1.3 },
 ];
 
-export const escalaDaFonte = (id) =>
-  TAMANHOS_FONTE_RELATORIO.find((t) => t.id === id)?.escala || 1;
+export const escalaDaFonte = (id) => TAMANHOS_FONTE_RELATORIO.find((t) => t.id === id)?.escala || 1;
 
 const arred = (n) => Math.round(n * 100) / 100;
 
@@ -243,22 +200,16 @@ const escalarFontes = (html, escala) => {
   const escalaGrafico = 1 + (escala - 1) * 0.6;
   return html
     .replace(/<style>[\s\S]*?<\/style>/, (css) => {
-      const maior = css.replace(
-        /font-size:\s*([\d.]+)px/g,
-        (_, n) => `font-size: ${arred(Number(n) * escala)}px`,
-      );
+      const maior = css.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${arred(Number(n) * escala)}px`);
       // fonte grande: a barra de divisão cede espaço para o nome do fornecedor
       return escala > 1
         ? maior.replace(
-            "</style>",
-            `  table.minima .col-barra { width: ${escala > 1.2 ? 12 : 16}%; }\n  table.minima td, table.minima th { padding: 6px 5px; }\n</style>`,
-          )
+          "</style>",
+          `  table.minima .col-barra { width: ${escala > 1.2 ? 12 : 16}%; }\n  table.minima td, table.minima th { padding: 6px 5px; }\n</style>`,
+        )
         : maior;
     })
-    .replace(
-      /font-size="([\d.]+)"/g,
-      (_, n) => `font-size="${arred(Number(n) * escalaGrafico)}"`,
-    );
+    .replace(/font-size="([\d.]+)"/g, (_, n) => `font-size="${arred(Number(n) * escalaGrafico)}"`);
 };
 
 export const documentoRelatorio = ({ escalaFonte = 1, ...opcoes }) =>
@@ -348,7 +299,7 @@ const montarDocumento = ({
 <body>
   <header>
     <div>
-      <div class="marca">Operacional SSA · Serviços por fornecedor</div>
+      <div class="marca">Operacional Luck · Serviços por fornecedor</div>
       <h1>${esc(titulo)}</h1>
       ${subtitulo ? `<div class="subtitulo">${esc(subtitulo)}</div>` : ""}
     </div>
@@ -363,5 +314,4 @@ const montarDocumento = ({
   <script>window.onload = function () { setTimeout(function () { window.print(); }, 150); };</script>
 </body></html>`;
 
-export const tagTipo = (tipo) =>
-  `<span class="tag" style="background:${COR_TIPO[tipo] || TINTA_3}">${esc(ROTULO_TIPO[tipo] || tipo)}</span>`;
+export const tagTipo = (tipo) => `<span class="tag" style="background:${COR_TIPO[tipo] || TINTA_3}">${esc(ROTULO_TIPO[tipo] || tipo)}</span>`;

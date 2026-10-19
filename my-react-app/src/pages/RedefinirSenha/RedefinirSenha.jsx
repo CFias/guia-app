@@ -149,7 +149,7 @@ const RedefinirSenha = () => {
     <div className="auth-fullscreen">
       <form className="auth-card" onSubmit={redefinir} noValidate>
         <div className="auth-brand">
-          <img src={logo} alt="Operacional SSA" />
+          <img src={logo} alt="Operacional Luck" />
           <strong>Nova senha</strong>
           <span>
             Defina a nova senha de acesso de{" "}

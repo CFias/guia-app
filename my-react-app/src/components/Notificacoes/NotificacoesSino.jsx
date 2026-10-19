@@ -164,7 +164,7 @@ const NotificacoesSino = () => {
   const itensVisiveis = itens.slice(0, qtdVisivel);
   const restantes = itens.length - itensVisiveis.length;
 
-  // Contador no título da aba: "(2) Painel Operacional · Operacional SSA".
+  // Contador no título da aba: "(2) Painel Operacional · Operacional Luck".
   // O resto do título muda com a página (tituloAba.js), então aqui só se
   // mexe no prefixo "(n) " — nunca se restaura um título antigo.
   useEffect(() => {

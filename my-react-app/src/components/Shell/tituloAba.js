@@ -1,6 +1,6 @@
-/* Título da aba do navegador: "Página · Operacional SSA".
+/* Título da aba do navegador: "Página · Operacional Luck".
    Mantém o contador de notificações "(3) " que o sino coloca na frente. */
-export const NOME_APP = "Operacional SSA";
+export const NOME_APP = "Operacional Luck";
 
 export const definirTituloAba = (pagina) => {
   if (typeof document === "undefined") return;

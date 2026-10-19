@@ -233,3 +233,8 @@
     width: 100%;
   }
 }
+
+.reg-card__acoes {
+  display: inline-flex;
+  gap: 4px;
+}

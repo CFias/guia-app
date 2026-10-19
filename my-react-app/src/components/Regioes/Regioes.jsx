@@ -9,6 +9,7 @@ import { SEDE, TELAS_REGIONAIS, normalizarLinkPhoenix } from "../../Services/Ser
 import { idDaSigla, normalizarRegiao, salvarRegioes, testarPhoenix, validarRegioes } from "../../Services/Services/regioesRepository";
 import { listarContas } from "../../Services/Services/acessosRepository";
 import { OPCOES_TEMA, TEMAS, acharTemaPorNome } from "../PainelOperacional/placas/temasRegiao";
+import BoasVindasBase from "../BoasVindas/BoasVindasBase";
 import "./regioes.css";
 
 /* =========================================================
@@ -34,6 +35,7 @@ const Regioes = () => {
   const [erros, setErros] = useState([]);
   const [testes, setTestes] = useState({}); // índice → { carregando, ok, texto }
   const [contas, setContas] = useState([]);
+  const [previaBoasVindas, setPreviaBoasVindas] = useState(null); // região da prévia
 
   // o rascunho começa do que está salvo (e acompanha enquanto não há edição)
   const regioesSalvas = useRef([]);
@@ -246,9 +248,14 @@ const Regioes = () => {
                 <input type="checkbox" checked={r.ativa} onChange={(e) => mudar(i, "ativa", e.target.checked)} />
                 Base ativa
               </label>
-              <Button size="sm" variant="ghost" icon="trash" onClick={() => remover(i)}>
-                Remover
-              </Button>
+              <span className="reg-card__acoes">
+                <Button size="sm" variant="ghost" icon="eye" onClick={() => setPreviaBoasVindas(normalizarRegiao(r))} title="Como a conta desta base é recebida nas 2 primeiras entradas">
+                  Ver boas-vindas
+                </Button>
+                <Button size="sm" variant="ghost" icon="trash" onClick={() => remover(i)}>
+                  Remover
+                </Button>
+              </span>
             </div>
           </Card>
         );
@@ -279,6 +286,8 @@ const Regioes = () => {
           Salvar regiões
         </Button>
       </div>
+
+      {previaBoasVindas && <BoasVindasBase previa regiaoPrevia={previaBoasVindas} onFechar={() => setPreviaBoasVindas(null)} />}
 
       <p className="reg-nota">
         <Icon name="info" size={13} /> Para colocar uma pessoa numa base, edite a conta em <Link to="/usuarios">Cadastros → Usuários</Link>. A gerência

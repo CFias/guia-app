@@ -302,8 +302,8 @@ const GerenciarUsuarios = () => {
     }
 
     if (criado) {
-      const sigla = form.role === ROLES.OPERACIONAL ? regiaoPorId(form.regiao)?.sigla || SEDE.sigla : SEDE.sigla;
-      setCredenciais({ nome, email, senha: form.senha, sigla });
+      const base = form.role === ROLES.OPERACIONAL ? regiaoPorId(form.regiao)?.nome || SEDE.nome : SEDE.nome;
+      setCredenciais({ nome, email, senha: form.senha, base });
       setForm({ ...FORM_VAZIO, senha: gerarSenha() });
       await carregar();
     }
@@ -312,7 +312,7 @@ const GerenciarUsuarios = () => {
   const copiarCredenciais = async () => {
     if (!credenciais) return;
     const texto =
-      `Acesso ao Operacional ${credenciais.sigla || SEDE.sigla}\n` +
+      `Acesso ao Operacional Luck · base ${credenciais.base || SEDE.nome}\n` +
       `Endereço: ${window.location.origin}/login\n` +
       `E-mail: ${credenciais.email}\n` +
       `Senha temporária: ${credenciais.senha}`;
