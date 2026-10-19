@@ -335,6 +335,13 @@
   border-color: var(--accent);
 }
 
+.usuarios-badge.regiao {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent 60%);
+  letter-spacing: 0.04em;
+}
+
 .usuarios-badge.restrito {
   color: var(--text-2);
   border-style: dashed;
@@ -431,4 +438,92 @@
   width: 100%;
   justify-content: center;
   margin-top: 4px;
+}
+
+/* busca e filtro das contas */
+.usuarios-total {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+  color: var(--text-3);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.usuarios-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+
+.usuarios-filtros .ui-seg {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.usuarios-lista li.usuarios-grupo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.usuarios-lista li.usuarios-grupo:first-child {
+  padding-top: 0;
+}
+
+.usuarios-limpar {
+  border: 0;
+  background: none;
+  color: var(--accent-text, var(--accent));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.usuarios-busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--u-border, var(--border));
+  border-radius: var(--u-radius-md, 10px);
+  background: var(--raised, var(--surface));
+  color: var(--text-3);
+}
+
+.usuarios-busca:focus-within {
+  border-color: var(--accent-text, var(--accent));
+}
+
+.usuarios-busca input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.usuarios-busca button {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 4px;
 }

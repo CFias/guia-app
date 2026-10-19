@@ -10,8 +10,10 @@
 import logoLuck from "../../../assets/clover.png";
 import { DESENHOS_SVG } from "./desenhosSvg";
 import { DESENHOS_NORDESTE, azulejo } from "./desenhosNordeste";
+import { DESENHOS_REGIOES } from "./desenhosRegioes";
+import { temaDaRegiao } from "./temasRegiao";
 
-const TODOS_DESENHOS = { ...DESENHOS_SVG, ...DESENHOS_NORDESTE };
+const TODOS_DESENHOS = { ...DESENHOS_SVG, ...DESENHOS_NORDESTE, ...DESENHOS_REGIOES };
 
 export const LARGURA = 297;
 export const ALTURA = 210;
@@ -22,8 +24,7 @@ const COR_FITA_TEXTO = { leve: "#a9afb5", "bem-leve": "#ced2d6" };
 // margens que dependem do modelo (usadas também pelo layout do texto)
 export const margensDoModelo = (modelo = {}) => {
   const temMoldura = modelo.moldura && modelo.moldura !== "nenhuma";
-  const fitasLaterais =
-    modelo.desenho === "fitinhas" && modelo.posicao === "laterais";
+  const fitasLaterais = modelo.desenho === "fitinhas" && modelo.posicao === "laterais";
   return {
     temMoldura,
     x: fitasLaterais ? 32 : temMoldura ? 17 : 14,
@@ -37,72 +38,45 @@ export const reservaInferior = (modelo = {}) => {
   const { base } = margensDoModelo(modelo);
   const d = modelo.desenho;
   if (!d || d === "nenhum") return base + 8;
-  if (d === "fitinhas")
-    return modelo.posicao === "laterais" ? base + 8 : base + 48;
+  if (d === "fitinhas") return modelo.posicao === "laterais" ? base + 8 : base + 48;
   if (d === "azulejos") return base + 44;
   if (TODOS_DESENHOS[d]?.faixa) return base + 54;
-  if (modelo.posicao === "base")
-    return base + (d === "orla" ? 64 : d === "pelourinho" ? 56 : 62);
+  if (modelo.posicao === "base") return base + (d === "orla" ? 64 : d === "pelourinho" ? 56 : 62);
   return base + 56; // canto: o nome sobe um pouco para não encostar no desenho
 };
 
 const esc = (t = "") =>
-  String(t)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ---------- fitinhas ----------
 // A fita é o contorno de uma faixa que acompanha uma curva, com largura que
 // "torce" de leve e a ponta em V. Preenchida de branco (ou cinza bem claro)
 // para as fitas da frente esconderem as de trás.
-export const TEXTOS_FITA = ["LUCK", "DESDE 1960", "SALVADOR", "BEM-VINDOS"];
+// a cidade da fita é a da base em uso
+export const textosFita = () => ["LUCK", "DESDE 1960", temaDaRegiao().cidade.toUpperCase(), "BEM-VINDOS"];
 
 const ponto = (s, t) => {
   const [p0, p1, p2, p3] = s;
   const u = 1 - t;
   return [
-    u * u * u * p0[0] +
-      3 * u * u * t * p1[0] +
-      3 * u * t * t * p2[0] +
-      t * t * t * p3[0],
-    u * u * u * p0[1] +
-      3 * u * u * t * p1[1] +
-      3 * u * t * t * p2[1] +
-      t * t * t * p3[1],
+    u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+    u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
   ];
 };
 
 const amostrar = (segmentos, porSegmento = 32) => {
   const pts = [];
   segmentos.forEach((s, i) => {
-    for (let k = i === 0 ? 0 : 1; k <= porSegmento; k += 1)
-      pts.push(ponto(s, k / porSegmento));
+    for (let k = i === 0 ? 0 : 1; k <= porSegmento; k += 1) pts.push(ponto(s, k / porSegmento));
   });
   return pts;
 };
 
-const polilinha = (pts) =>
-  pts
-    .map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(2)} ${p[1].toFixed(2)}`)
-    .join(" ");
+const polilinha = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(" ");
 
 let contadorFita = 0;
 
-const fita = ({
-  pts,
-  largura,
-  torcao = 2,
-  texto = "",
-  tamanhoTexto,
-  cor,
-  corTexto,
-  espessura,
-  fundo = "#ffffff",
-  inicioTexto = "8%",
-  pontaInicio = false,
-}) => {
+const fita = ({ pts, largura, torcao = 2, texto = "", tamanhoTexto, cor, corTexto, espessura, fundo = "#ffffff", inicioTexto = "8%", pontaInicio = false }) => {
   const n = pts.length;
   const ladoA = [];
   const ladoB = [];
@@ -115,18 +89,14 @@ const fita = ({
     dx /= m;
     dy /= m;
     const t = i / (n - 1);
-    const meia =
-      (largura / 2) * (0.74 + 0.26 * Math.abs(Math.cos(t * Math.PI * torcao)));
+    const meia = (largura / 2) * (0.74 + 0.26 * Math.abs(Math.cos(t * Math.PI * torcao)));
     ladoA.push([p[0] - dy * meia, p[1] + dx * meia]);
     ladoB.push([p[0] + dy * meia, p[1] - dx * meia]);
   });
   const ponta = (a, b) => {
     const dir = [a[0] - b[0], a[1] - b[1]];
     const md = Math.hypot(dir[0], dir[1]) || 1;
-    return [
-      a[0] - (dir[0] / md) * largura * 0.55,
-      a[1] - (dir[1] / md) * largura * 0.55,
-    ];
+    return [a[0] - (dir[0] / md) * largura * 0.55, a[1] - (dir[1] / md) * largura * 0.55];
   };
   const vFim = ponta(pts[n - 1], pts[n - 2]);
   const contorno = pontaInicio
@@ -151,6 +121,7 @@ const CINZA_FITA = "#eef0f2";
 // gradil da igreja na base, com muitas fitas amarradas: uma ponta longa ao
 // vento (com o texto) e uma ponta curta caída para baixo
 const fitasNaBase = ({ margens, cor, corTexto }) => {
+  const TEXTOS_FITA = textosFita();
   const y = ALTURA - margens.base - 11;
   const x0 = margens.x - 4;
   const x1 = LARGURA - margens.x + 4;
@@ -178,12 +149,7 @@ const fitasNaBase = ({ margens, cor, corTexto }) => {
     const c2 = [x + c * 0.32, y - h * 0.62 + onda];
     const seg1 = [[x, y], [x + c * 0.18, y - h * 0.08], c2, meio];
     const refl = [2 * meio[0] - c2[0], 2 * meio[1] - c2[1]];
-    const seg2 = [
-      meio,
-      refl,
-      [x + c * 0.88, y - h * 0.8 - onda],
-      [x + c, y - h],
-    ];
+    const seg2 = [meio, refl, [x + c * 0.88, y - h * 0.8 - onda], [x + c, y - h]];
     longas.push({
       pts: amostrar([seg1, seg2]),
       largura: 6.4,
@@ -195,17 +161,7 @@ const fitasNaBase = ({ margens, cor, corTexto }) => {
     // ponta curta caída, para o gradil ficar mais cheio
     const q = 9 + (i % 3) * 3;
     caidas.push({
-      pts: amostrar(
-        [
-          [
-            [x, y + 1],
-            [x - 2, y + q * 0.4],
-            [x + 3, y + q * 0.7],
-            [x - 1.5, y + q],
-          ],
-        ],
-        14,
-      ),
+      pts: amostrar([[[x, y + 1], [x - 2, y + q * 0.4], [x + 3, y + q * 0.7], [x - 1.5, y + q]]], 14),
       largura: 5,
       torcao: 0.8,
       fundo: i % 3 === 1 ? "#ffffff" : CINZA_FITA,
@@ -233,59 +189,28 @@ const fitasNasLaterais = ({ cor, corTexto }) => {
     }
     return pts;
   };
-  const texto =
-    "LUCK  ·  DESDE 1960  ·  SALVADOR  ·  BEM-VINDOS  ·  LUCK  ·  DESDE 1960";
-  const comum = {
-    largura: 7.5,
-    torcao: 4,
-    tamanhoTexto: 2.7,
-    cor,
-    corTexto,
-    espessura: 0.4,
-    pontaInicio: true,
-  };
+  const cidade = temaDaRegiao().cidade.toUpperCase();
+  const texto = `LUCK  ·  DESDE 1960  ·  ${cidade}  ·  BEM-VINDOS  ·  LUCK  ·  DESDE 1960`;
+  const comum = { largura: 7.5, torcao: 4, tamanhoTexto: 2.7, cor, corTexto, espessura: 0.4, pontaInicio: true };
   let s = "";
   [16, LARGURA - 16].forEach((xc, lado) => {
     const tras = trança(xc, Math.PI);
     const frente = trança(xc, 0);
     const ordem = lado ? [frente, tras] : [tras, frente];
-    s += fita({
-      ...comum,
-      pts: ordem[0],
-      fundo: CINZA_FITA,
-      texto: "",
-      inicioTexto: "0%",
-    });
-    s += fita({
-      ...comum,
-      pts: ordem[1],
-      fundo: "#ffffff",
-      texto,
-      inicioTexto: "3%",
-    });
+    s += fita({ ...comum, pts: ordem[0], fundo: CINZA_FITA, texto: "", inicioTexto: "0%" });
+    s += fita({ ...comum, pts: ordem[1], fundo: "#ffffff", texto, inicioTexto: "3%" });
   });
   return s;
 };
 
 // ---------- desenhos de prédios ----------
-const desenhoEm = ({
-  chave,
-  x,
-  y,
-  w,
-  h,
-  espelhar = false,
-  cor,
-  alinhamento = "xMidYMax meet",
-}) => {
+const desenhoEm = ({ chave, x, y, w, h, espelhar = false, cor, alinhamento = "xMidYMax meet" }) => {
   const d = TODOS_DESENHOS[chave];
   if (!d) return "";
   const svg =
     `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${d.viewBox}" preserveAspectRatio="${alinhamento}" ` +
-    `fill="none" stroke="${cor}" stroke-width="${d.traco}" stroke-linecap="round" stroke-linejoin="round">${d.corpo}</svg>`;
-  return espelhar
-    ? `<g transform="translate(${2 * x + w} 0) scale(-1 1)">${svg}</g>`
-    : svg;
+    `fill="none" stroke="${cor}" stroke-width="${d.traco}" stroke-linecap="round" stroke-linejoin="round">${d.corpo.replaceAll("{cor}", cor)}</svg>`;
+  return espelhar ? `<g transform="translate(${2 * x + w} 0) scale(-1 1)">${svg}</g>` : svg;
 };
 
 const azulejosNosCantos = (margens, cor) => {
@@ -293,14 +218,7 @@ const azulejosNosCantos = (margens, cor) => {
   const y = ALTURA - margens.base - 2 - l;
   const xe = margens.x - 4;
   const xd = LARGURA - margens.x + 4 - l;
-  const cantos = [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [0, -1],
-    [1, -1],
-    [0, -2],
-  ];
+  const cantos = [[0, 0], [1, 0], [2, 0], [0, -1], [1, -1], [0, -2]];
   let s = "";
   cantos.forEach(([c, r]) => {
     s += azulejo(xe + c * l, y + r * l, l);
@@ -316,70 +234,31 @@ const desenho = (modelo, margens, cor) => {
   if (TODOS_DESENHOS[chave]?.faixa) {
     const w = LARGURA - margens.x * 2 + 8;
     const h = w * 0.18;
-    return desenhoEm({
-      chave,
-      x: margens.x - 4,
-      y: fundo - h + 1,
-      w,
-      h,
-      cor,
-      alinhamento: "xMidYMax meet",
-    });
+    return desenhoEm({ chave, x: margens.x - 4, y: fundo - h + 1, w, h, cor, alinhamento: "xMidYMax meet" });
   }
   if (chave === "pelourinho") {
     const h = 60;
-    return desenhoEm({
-      chave,
-      x: margens.temMoldura ? 9 : 0,
-      y: fundo - h + 3,
-      w: LARGURA - (margens.temMoldura ? 18 : 0),
-      h,
-      cor,
-      alinhamento: "xMidYMax slice",
-    });
+    return desenhoEm({ chave, x: margens.temMoldura ? 9 : 0, y: fundo - h + 3, w: LARGURA - (margens.temMoldura ? 18 : 0), h, cor, alinhamento: "xMidYMax slice" });
   }
   if (chave === "orla") {
     const h = 74;
-    return desenhoEm({
-      chave,
-      x: margens.x,
-      y: fundo - h + 4,
-      w: LARGURA - margens.x * 2,
-      h,
-      cor,
-    });
+    return desenhoEm({ chave, x: margens.x, y: fundo - h + 4, w: LARGURA - margens.x * 2, h, cor });
   }
   const w = modelo.posicao === "base" ? 100 : 94;
   const h = w * (300 / 420);
   if (modelo.posicao === "base") {
-    return desenhoEm({
-      chave,
-      x: (LARGURA - w) / 2,
-      y: fundo - h + 3,
-      w,
-      h,
-      cor,
-    });
+    return desenhoEm({ chave, x: (LARGURA - w) / 2, y: fundo - h + 3, w, h, cor });
   }
   const esquerda = modelo.posicao === "esquerda";
   const x = esquerda ? margens.x - 6 : LARGURA - margens.x - w + 6;
-  return desenhoEm({
-    chave,
-    x,
-    y: fundo - h + 3,
-    w,
-    h,
-    cor,
-    espelhar: esquerda,
-  });
+  return desenhoEm({ chave, x, y: fundo - h + 3, w, h, cor, espelhar: esquerda });
 };
 
 const moldura = (tipo, cor) => {
   const i = 7;
   const w = LARGURA - i * 2;
   const h = ALTURA - i * 2;
-  if (tipo === "fina")
-    return `<rect x="${i}" y="${i}" width="${w}" height="${h}" rx="1.5" fill="none" stroke="${cor}" stroke-width="0.45"/>`;
+  if (tipo === "fina") return `<rect x="${i}" y="${i}" width="${w}" height="${h}" rx="1.5" fill="none" stroke="${cor}" stroke-width="0.45"/>`;
   if (tipo === "dupla")
     return (
       `<rect x="${i}" y="${i}" width="${w}" height="${h}" rx="1.5" fill="none" stroke="${cor}" stroke-width="0.5"/>` +
@@ -411,9 +290,7 @@ export const carregarTrevoCinza = () => {
           const dados = ctx.getImageData(0, 0, lado, lado);
           const p = dados.data;
           for (let k = 0; k < p.length; k += 4) {
-            const l = Math.round(
-              p[k] * 0.3 + p[k + 1] * 0.59 + p[k + 2] * 0.11,
-            );
+            const l = Math.round(p[k] * 0.3 + p[k + 1] * 0.59 + p[k + 2] * 0.11);
             p[k] = l;
             p[k + 1] = l;
             p[k + 2] = l;
@@ -457,10 +334,7 @@ export const carregarLogoPequeno = () => {
 
 /* SVG completo da camada de fundo. tipo "colecao" usa só trevo (o espaço
    é todo dos nomes). trevo: data URL do trevo cinza (carregarTrevoCinza). */
-export const svgArte = (
-  modelo = {},
-  { tipo = "individual", trevo = "" } = {},
-) => {
+export const svgArte = (modelo = {}, { tipo = "individual", trevo = "" } = {}) => {
   contadorFita = 0;
   const margens = margensDoModelo(tipo === "colecao" ? {} : modelo);
   const cor = COR_TRACO[modelo.traco] || COR_TRACO.leve;
@@ -476,10 +350,7 @@ export const svgArte = (
   if (tipo !== "colecao") {
     corpo += moldura(modelo.moldura, cor);
     if (modelo.desenho === "fitinhas") {
-      corpo +=
-        modelo.posicao === "laterais"
-          ? fitasNasLaterais({ cor, corTexto })
-          : fitasNaBase({ margens, cor, corTexto });
+      corpo += modelo.posicao === "laterais" ? fitasNasLaterais({ cor, corTexto }) : fitasNaBase({ margens, cor, corTexto });
     } else if (modelo.desenho && modelo.desenho !== "nenhum") {
       corpo += desenho(modelo, margens, cor);
     }
@@ -492,8 +363,7 @@ export const svgArte = (
   );
 };
 
-export const svgParaDataUrl = (svg) =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+export const svgParaDataUrl = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 // SVG → JPEG (fundo branco) para o PDF. Guarda as últimas conversões.
 const cacheRaster = new Map();
@@ -516,13 +386,11 @@ export const rasterizarArte = (svg, { dpi = 200 } = {}) => {
         reject(e);
       }
     };
-    img.onerror = () =>
-      reject(new Error("Não foi possível desenhar o fundo da placa."));
+    img.onerror = () => reject(new Error("Não foi possível desenhar o fundo da placa."));
     img.src = svgParaDataUrl(svg);
   });
   cacheRaster.set(chave, promessa);
-  if (cacheRaster.size > 12)
-    cacheRaster.delete(cacheRaster.keys().next().value);
+  if (cacheRaster.size > 12) cacheRaster.delete(cacheRaster.keys().next().value);
   promessa.catch(() => cacheRaster.delete(chave));
   return promessa;
 };

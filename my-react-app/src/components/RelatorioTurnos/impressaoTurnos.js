@@ -7,6 +7,7 @@
 
 import * as XLSX from "xlsx";
 import logoLuck from "../../assets/clover.png";
+import { regiaoAtual } from "../../Services/Services/regiaoAtiva";
 import { minimoPositivo, nivelCalor } from "./calor";
 import {
   DIAS_SEMANA_CURTO,
@@ -29,42 +30,12 @@ const esc = (t) =>
     .replace(/"/g, "&quot;");
 
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
-const MESES = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
+const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 // mesma escala de cor da tela (laranja), em tons fixos para impressão
-const CALOR = [
-  "#f6f8fa",
-  "#fde4cf",
-  "#fbc597",
-  "#f79d5c",
-  "#e8590c",
-  "#a63c06",
-];
-const TEXTO_CALOR = [
-  "#8c959f",
-  "#1f2328",
-  "#1f2328",
-  "#1f2328",
-  "#ffffff",
-  "#ffffff",
-];
+const CALOR = ["#f6f8fa", "#fde4cf", "#fbc597", "#f79d5c", "#e8590c", "#a63c06"];
+const TEXTO_CALOR = ["#8c959f", "#1f2328", "#1f2328", "#1f2328", "#ffffff", "#ffffff"];
 
-export const textoPico = (s) =>
-  s
-    ? `${s.pax} em ${DIAS_SEMANA_CURTO[diaDaSemana(s.data)].toLowerCase()} ${dataCurta(s.data)}`
-    : "—";
+export const textoPico = (s) => (s ? `${s.pax} em ${DIAS_SEMANA_CURTO[diaDaSemana(s.data)].toLowerCase()} ${dataCurta(s.data)}` : "—");
 
 const CSS = `
 @page { size: A4 portrait; margin: 11mm 11mm 13mm; }
@@ -144,8 +115,7 @@ const equipeHtml = (t) =>
   t.colaboradores
     .map(
       (c) =>
-        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${
-          c.dias?.length ? `, ${esc(textoDias(c.dias))}` : ""
+        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${c.dias?.length ? `, ${esc(textoDias(c.dias))}` : ""
         }${c.inicio && c.fim ? `, ${horaTexto(c.inicio)}–${horaTexto(c.fim)}` : ""}`,
     )
     .join(" · ") || "Sem colaboradores";
@@ -160,9 +130,7 @@ const calendarioHtml = (calendario) => {
       const [a, m] = mes.split("-").map(Number);
       const vazios = (new Date(a, m - 1, 1, 12).getDay() + 6) % 7;
       const ultimo = new Date(a, m, 0, 12).getDate();
-      let cel = ORDEM_SEMANA.map(
-        (w) => `<span class="ds">${DIAS_SEMANA_CURTO[w]}</span>`,
-      ).join("");
+      let cel = ORDEM_SEMANA.map((w) => `<span class="ds">${DIAS_SEMANA_CURTO[w]}</span>`).join("");
       cel += "<span></span>".repeat(vazios);
       for (let dia = 1; dia <= ultimo; dia += 1) {
         const iso = `${mes}-${String(dia).padStart(2, "0")}`;
@@ -177,10 +145,7 @@ const calendarioHtml = (calendario) => {
       return `<div class="mes"><h4>${MESES[m - 1]} ${a}</h4><div class="cal">${cel}</div></div>`;
     })
     .join("");
-  const top = [...calendario]
-    .sort((a, b) => b.pax - a.pax)
-    .slice(0, 3)
-    .filter((d) => d.pax > 0);
+  const top = [...calendario].sort((a, b) => b.pax - a.pax).slice(0, 3).filter((d) => d.pax > 0);
   return `<div class="meses">${blocos}</div>
 <div class="leg">Menos ${CALOR.map((c) => `<i style="background:${c}"></i>`).join("")} Mais <span>(${min > 0 && min < max ? `de ${num(min, 0)} a ` : "até "}${num(max, 0)} pessoas no dia)</span></div>
 ${top.length ? `<p class="top">Dias de maior demanda: ${top.map((d) => `<b>${DIAS_SEMANA_CURTO[diaDaSemana(d.data)].toLowerCase()} ${dataCurta(d.data)}</b> (${d.pax})`).join(" · ")}</p>` : ""}`;
@@ -231,19 +196,14 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
       const vals = ORDEM_SEMANA.map((w) => t.semana[w]);
       const max = Math.max(...vals.filter((v) => v !== null));
       return `<tr><td class="e"><span class="dot" style="--c:${t.cor}"></span>${esc(t.nome)}${t.apoio ? " (apoio)" : ""}</td>${vals
-        .map(
-          (v) =>
-            `<td class="${v !== null && v === max && v > 0 ? "max" : ""}">${v === null ? "—" : num(v)}</td>`,
-        )
+        .map((v) => `<td class="${v !== null && v === max && v > 0 ? "max" : ""}">${v === null ? "—" : num(v)}</td>`)
         .join("")}</tr>`;
     })
     .join("");
 
   const colabs = r.colaboradores
     .map(
-      (
-        c,
-      ) => `<tr><td class="e"><b>${esc(c.nome)}</b>${c.obs ? ` <span style="color:#57606a">· ${esc(c.obs)}</span>` : ""}</td>
+      (c) => `<tr><td class="e"><b>${esc(c.nome)}</b>${c.obs ? ` <span style="color:#57606a">· ${esc(c.obs)}</span>` : ""}</td>
 <td class="e"><span class="papel ${c.papel}">${esc(PAPEIS.find((p) => p.id === c.papel)?.curto)}</span></td>
 <td class="e"><span class="dot" style="--c:${c.cor}"></span>${esc(c.turnoNome)}</td>
 <td class="e">${horaTexto(c.janela.inicio)}–${horaTexto(c.janela.fim)}</td>
@@ -253,15 +213,12 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
     .join("");
 
   const horas = r.porHora
-    .map(
-      (v, h) =>
-        `<div style="--c:${corDaHora(h, r.turnos)};height:${Math.max(1, (v / maxHora) * 100)}%">${v >= maxHora * 0.12 ? `<span>${num(v, 0)}</span>` : ""}</div>`,
-    )
+    .map((v, h) => `<div style="--c:${corDaHora(h, r.turnos)};height:${Math.max(1, (v / maxHora) * 100)}%">${v >= maxHora * 0.12 ? `<span>${num(v, 0)}</span>` : ""}</div>`)
     .join("");
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Demanda por turno ${esc(dataBr(r.inicio))} a ${esc(dataBr(r.fim))}</title><style>${CSS}</style></head><body>
 <header class="topo"><img src="${logoLuck}" alt=""><div><h1>Demanda por turno</h1><p>${esc(r.tituloServicos)} · ${esc(dataBr(r.inicio))} a ${esc(dataBr(r.fim))} (${r.nDias} dias)</p></div>
-<div class="gerado">Luck Receptivo Salvador<br>Gerado em ${esc(gerado)}</div></header>
+<div class="gerado">Luck Receptivo ${esc(regiaoAtual().nome)}<br>Gerado em ${esc(gerado)}</div></header>
 
 <div class="kpis">
 <div class="kpi"><span>${esc(r.rotuloPessoas)}</span><b>${r.totalPax.toLocaleString("pt-BR")}</b><small>${r.totalReservas.toLocaleString("pt-BR")} reservas</small></div>
@@ -269,16 +226,12 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
 <div class="kpi"><span>Turno mais movimentado</span><b>${esc(maisMov?.nome || "—")}</b><small>${maisMov ? `${num(maisMov.mediaPax)} pessoas por turno` : ""}</small></div>
 <div class="kpi"><span>Na troca de turno</span><b>${num(r.troca.mediaPax)}</b><small>pessoas por dia, nos dois turnos</small></div>
 </div>
-${
-  Object.keys(r.porTipo).length > 1
-    ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
-        .map(
-          ([k, v]) =>
-            `${esc(nomeTipo(k))} <b>${v.pax.toLocaleString("pt-BR")}</b>`,
-        )
+${Object.keys(r.porTipo).length > 1
+      ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
+        .map(([k, v]) => `${esc(nomeTipo(k))} <b>${v.pax.toLocaleString("pt-BR")}</b>`)
         .join(" · ")}</p>`
-    : ""
-}
+      : ""
+    }
 
 <h2>Média por turno</h2>
 <div class="turnos">${cards}</div>
@@ -286,11 +239,10 @@ ${
 <div class="blk">
 <h2>Colaboradores</h2>
 <table><thead><tr><th class="e">Colaborador</th><th class="e">Papel</th><th class="e">Turno</th><th class="e">Horário</th><th class="e">Dias</th><th>Média/dia</th><th>Total</th></tr></thead><tbody>${colabs}</tbody></table>
-${
-  r.folguistas.length
-    ? `<p class="top"><b>Folguista${r.folguistas.length > 1 ? "s" : ""}:</b> ${esc(r.folguistas.map((f) => f.nome + (f.obs ? ` (${f.obs})` : "")).join(", "))} — cobre as folgas.</p>`
-    : ""
-}
+${r.folguistas.length
+      ? `<p class="top"><b>Folguista${r.folguistas.length > 1 ? "s" : ""}:</b> ${esc(r.folguistas.map((f) => f.nome + (f.obs ? ` (${f.obs})` : "")).join(", "))} — cobre as folgas.</p>`
+      : ""
+    }
 </div>
 
 <div class="blk">
@@ -315,11 +267,8 @@ ${semanaHoraHtml(r.semanaHora)}
 </div>
 
 <div class="notas blk">
-<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${
-    r.pelaApresentacao
-      ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)`
-      : ""
-  }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Por colaborador principal" divide a demanda do turno pelos colaboradores de função principal escalados no dia; quem está em sinergia não divide a conta.</p>
+<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${r.pelaApresentacao ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)` : ""
+    }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Por colaborador principal" divide a demanda do turno pelos colaboradores de função principal escalados no dia; quem está em sinergia não divide a conta.</p>
 </div>
 </body></html>`;
 };
@@ -329,8 +278,7 @@ export const imprimirRelatorioTurnos = (r) => {
   const html = montarHtmlRelatorioTurnos(r);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();
@@ -356,35 +304,16 @@ export const imprimirRelatorioTurnos = (r) => {
 export const baixarExcelTurnos = (r) => {
   if (!r) return;
   const resumo = [
-    [
-      `Demanda por turno · ${r.tituloServicos} · ${dataBr(r.inicio)} a ${dataBr(r.fim)} (${r.nDias} dias)`,
-    ],
+    [`Demanda por turno · ${r.tituloServicos} · ${dataBr(r.inicio)} a ${dataBr(r.fim)} (${r.nDias} dias)`],
     [],
-    [
-      "TURNO",
-      "HORÁRIO",
-      "TIPO",
-      "EQUIPE",
-      "MÉDIA PESSOAS",
-      "POR COLABORADOR PRINCIPAL",
-      "MÉDIA RESERVAS",
-      `MÉDIA ${r.grupo.toUpperCase()}`,
-      "PESSOAS/HORA",
-      "TOTAL",
-      "DIA MAIS CHEIO",
-      "DIA MAIS VAZIO",
-    ],
+    ["TURNO", "HORÁRIO", "TIPO", "EQUIPE", "MÉDIA PESSOAS", "POR COLABORADOR PRINCIPAL", "MÉDIA RESERVAS", `MÉDIA ${r.grupo.toUpperCase()}`, "PESSOAS/HORA", "TOTAL", "DIA MAIS CHEIO", "DIA MAIS VAZIO"],
     ...r.turnos.map((t) => [
       t.nome,
       `${t.inicio} às ${t.fim}`,
       t.apoio ? "Janela de apoio" : "Turno",
-      t.colaboradores
-        .map((c) => `${c.nome}${c.papel === "sinergia" ? " (sinergia)" : ""}`)
-        .join(", "),
+      t.colaboradores.map((c) => `${c.nome}${c.papel === "sinergia" ? " (sinergia)" : ""}`).join(", "),
       Number(t.mediaPax.toFixed(1)),
-      t.porPrincipal === null || t.apoio
-        ? ""
-        : Number(t.porPrincipal.toFixed(1)),
+      t.porPrincipal === null || t.apoio ? "" : Number(t.porPrincipal.toFixed(1)),
       Number(t.mediaReservas.toFixed(1)),
       Number(t.mediaGrupos.toFixed(1)),
       Number(t.paxPorHora.toFixed(1)),
@@ -395,29 +324,14 @@ export const baixarExcelTurnos = (r) => {
     [],
     [r.rotuloPessoas, r.totalPax],
     ["Média por dia", Number(r.mediaPaxDia.toFixed(1))],
-    [
-      "Na troca de turno (média/dia, conta nos dois turnos)",
-      Number(r.troca.mediaPax.toFixed(1)),
-    ],
+    ["Na troca de turno (média/dia, conta nos dois turnos)", Number(r.troca.mediaPax.toFixed(1))],
     ...Object.entries(r.porTipo).map(([k, v]) => [nomeTipo(k), v.pax]),
   ];
   const abaResumo = XLSX.utils.aoa_to_sheet(resumo);
-  abaResumo["!cols"] = [20, 14, 14, 36, 14, 22, 14, 14, 12, 10, 20, 20].map(
-    (wch) => ({ wch }),
-  );
+  abaResumo["!cols"] = [20, 14, 14, 36, 14, 22, 14, 14, 12, 10, 20, 20].map((wch) => ({ wch }));
 
   const colabs = [
-    [
-      "COLABORADOR",
-      "PAPEL",
-      "OBSERVAÇÃO",
-      "TURNO",
-      "HORÁRIO",
-      "DIAS",
-      "DIAS NO PERÍODO",
-      "MÉDIA PESSOAS/DIA",
-      "TOTAL",
-    ],
+    ["COLABORADOR", "PAPEL", "OBSERVAÇÃO", "TURNO", "HORÁRIO", "DIAS", "DIAS NO PERÍODO", "MÉDIA PESSOAS/DIA", "TOTAL"],
     ...r.colaboradores.map((c) => [
       c.nome,
       PAPEIS.find((p) => p.id === c.papel)?.nome,
@@ -429,31 +343,13 @@ export const baixarExcelTurnos = (r) => {
       Number(c.mediaPax.toFixed(1)),
       c.totalPax,
     ]),
-    ...r.folguistas.map((f) => [
-      f.nome,
-      "Folguista",
-      f.obs,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    ]),
+    ...r.folguistas.map((f) => [f.nome, "Folguista", f.obs, "", "", "", "", "", ""]),
   ];
   const abaColabs = XLSX.utils.aoa_to_sheet(colabs);
-  abaColabs["!cols"] = [18, 18, 24, 20, 12, 16, 14, 16, 10].map((wch) => ({
-    wch,
-  }));
+  abaColabs["!cols"] = [18, 18, 24, 20, 12, 16, 14, 16, 10].map((wch) => ({ wch }));
 
   const porDia = [
-    [
-      "DATA",
-      "DIA",
-      "PESSOAS NO DIA",
-      "RESERVAS NO DIA",
-      ...r.turnos.map((t) => `${t.nome.toUpperCase()} (${t.inicio}–${t.fim})`),
-    ],
+    ["DATA", "DIA", "PESSOAS NO DIA", "RESERVAS NO DIA", ...r.turnos.map((t) => `${t.nome.toUpperCase()} (${t.inicio}–${t.fim})`)],
     ...r.calendario.map((d, i) => [
       dataBr(d.data),
       DIAS_SEMANA_LONGO[diaDaSemana(d.data)],
@@ -463,9 +359,7 @@ export const baixarExcelTurnos = (r) => {
     ]),
   ];
   const abaDias = XLSX.utils.aoa_to_sheet(porDia);
-  abaDias["!cols"] = [12, 10, 14, 14, ...r.turnos.map(() => 22)].map((wch) => ({
-    wch,
-  }));
+  abaDias["!cols"] = [12, 10, 14, 14, ...r.turnos.map(() => 22)].map((wch) => ({ wch }));
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, abaResumo, "Resumo");

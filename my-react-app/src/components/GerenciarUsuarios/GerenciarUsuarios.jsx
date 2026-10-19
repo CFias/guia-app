@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { getApps, initializeApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
@@ -24,8 +24,11 @@ import {
   ROLE_LABELS,
 } from "../../Context/permissions";
 import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
+import { useRegiao } from "../../Context/regiaoContext";
+import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
+import { Segmented } from "../ui";
 import "./styles.css";
 
 /* ---------------------------------------------------------
@@ -64,13 +67,51 @@ const mensagemErroAuth = (code) => {
   }
 };
 
+const semAcento = (t = "") =>
+  String(t)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const ROTULO_GRUPO = {
+  gerencia: "Gerência",
+  [ROLES.OPERACIONAL]: ROLE_LABELS[ROLES.OPERACIONAL],
+  [ROLES.COMERCIAL]: ROLE_LABELS[ROLES.COMERCIAL],
+  [ROLES.GUIA]: ROLE_LABELS[ROLES.GUIA],
+  desativadas: "Desativadas",
+};
+
+// Filtro por grupo: gerência, operacional, comercial, guia ou desativadas
+const grupoDaConta = (u) =>
+  u.ativo === false ? "desativadas" : u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role;
+const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.COMERCIAL]: 2, [ROLES.GUIA]: 3, desativadas: 4 };
+
 const FORM_VAZIO = {
   nome: "",
   email: "",
   senha: "",
   role: ROLES.GUIA,
   guideId: "",
+  regiao: ID_SEDE,
 };
+
+/* Campo "Base" (região) das contas do Operacional — só a gerência escolhe.
+   Salvador é a sede (tudo); as outras bases vêm de Gestão → Regiões. */
+const CampoRegiao = ({ value, onChange, opcoes, disabled }) => (
+  <label className="usuarios-field">
+    <span>Base (região)</span>
+    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+      {opcoes.map((r) => (
+        <option key={r.id} value={r.id}>
+          {r.nome} ({r.sigla}){r.id === ID_SEDE ? " · sede, todas as telas" : r.ativa ? "" : " · desativada"}
+        </option>
+      ))}
+    </select>
+    <small className="usuarios-hint">
+      A conta só vê os dados do Phoenix dessa base e as telas liberadas para ela. <Link to="/regioes">Ver regiões</Link>
+    </small>
+  </label>
+);
 
 const GerenciarUsuarios = () => {
   const { user: usuarioLogado, perfil } = useAuth();
@@ -79,6 +120,11 @@ const GerenciarUsuarios = () => {
   const souGerencia = ehGerencia(perfil);
   const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA];
   const podeEditar = (u) => souGerencia || (u.role !== ROLES.OPERACIONAL && !u.gerencia);
+
+  const { regioes } = useRegiao();
+  const opcoesRegiao = useMemo(() => [SEDE, ...regioes], [regioes]);
+  const mostrarRegiao = souGerencia && regioes.length > 0;
+  const regiaoPorId = (id) => opcoesRegiao.find((r) => r.id === (id || ID_SEDE));
 
   const [usuarios, setUsuarios] = useState([]);
   const [guias, setGuias] = useState([]);
@@ -95,6 +141,8 @@ const GerenciarUsuarios = () => {
 
   const [editando, setEditando] = useState(null);
   const [filtroRole, setFiltroRole] = useState("todos");
+  const [filtroBase, setFiltroBase] = useState("todas");
+  const [busca, setBusca] = useState("");
 
   // Lista cresce aos poucos ("carregar mais") em vez de mostrar tudo de uma
   // vez. Volta ao tamanho inicial sempre que o filtro muda.
@@ -138,17 +186,43 @@ const GerenciarUsuarios = () => {
     return mapa;
   }, [usuarios]);
 
+  const passaBusca = useCallback(
+    (u) => {
+      const t = semAcento(busca.trim());
+      if (!t) return true;
+      return semAcento(`${u.nome} ${u.email} ${u.guideName || ""}`).includes(t);
+    },
+    [busca],
+  );
+  const passaBase = useCallback(
+    (u) => filtroBase === "todas" || (u.role === ROLES.OPERACIONAL && (u.regiao || ID_SEDE) === filtroBase),
+    [filtroBase],
+  );
+  // contagem de cada grupo já com a busca e a base aplicadas
+  const contagem = useMemo(() => {
+    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, desativadas: 0 };
+    usuarios.filter((u) => passaBusca(u) && passaBase(u)).forEach((u) => {
+      c.todos += 1;
+      c[grupoDaConta(u)] = (c[grupoDaConta(u)] || 0) + 1;
+    });
+    return c;
+  }, [usuarios, passaBusca, passaBase]);
+
   const usuariosFiltrados = useMemo(
     () =>
-      filtroRole === "todos"
-        ? usuarios
-        : usuarios.filter((u) => u.role === filtroRole),
-    [usuarios, filtroRole],
+      usuarios
+        .filter((u) => passaBusca(u) && passaBase(u))
+        .filter((u) => filtroRole === "todos" || grupoDaConta(u) === filtroRole)
+        .sort(
+          (a, b) =>
+            ORDEM_GRUPO[grupoDaConta(a)] - ORDEM_GRUPO[grupoDaConta(b)] || (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+        ),
+    [usuarios, filtroRole, passaBusca, passaBase],
   );
 
   useEffect(() => {
     setQtdVisivel(ITENS_POR_PAGINA);
-  }, [filtroRole]);
+  }, [filtroRole, busca, filtroBase]);
 
   const usuariosVisiveis = usuariosFiltrados.slice(0, qtdVisivel);
   const restantes = usuariosFiltrados.length - usuariosVisiveis.length;
@@ -206,6 +280,9 @@ const GerenciarUsuarios = () => {
         ...(form.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : {}),
+        ...(souGerencia && form.role === ROLES.OPERACIONAL && form.regiao && form.regiao !== ID_SEDE
+          ? { regiao: form.regiao }
+          : {}),
         createdAt: Timestamp.now(),
         createdBy: usuarioLogado.uid,
       });
@@ -216,16 +293,17 @@ const GerenciarUsuarios = () => {
 
       // Se a conta de login chegou a ser criada mas o perfil não foi salvo,
       // desfaz — senão sobra uma conta "órfã" que bloqueia o e-mail.
-      if (cred?.user) await deleteUser(cred.user).catch(() => {});
+      if (cred?.user) await deleteUser(cred.user).catch(() => { });
 
       setMsg({ tipo: "erro", texto: mensagemErroAuth(err.code) });
     } finally {
-      await signOut(secondaryAuth).catch(() => {});
+      await signOut(secondaryAuth).catch(() => { });
       setSalvando(false);
     }
 
     if (criado) {
-      setCredenciais({ nome, email, senha: form.senha });
+      const sigla = form.role === ROLES.OPERACIONAL ? regiaoPorId(form.regiao)?.sigla || SEDE.sigla : SEDE.sigla;
+      setCredenciais({ nome, email, senha: form.senha, sigla });
       setForm({ ...FORM_VAZIO, senha: gerarSenha() });
       await carregar();
     }
@@ -234,7 +312,7 @@ const GerenciarUsuarios = () => {
   const copiarCredenciais = async () => {
     if (!credenciais) return;
     const texto =
-      `Acesso ao Operacional SSA\n` +
+      `Acesso ao Operacional ${credenciais.sigla || SEDE.sigla}\n` +
       `Endereço: ${window.location.origin}/login\n` +
       `E-mail: ${credenciais.email}\n` +
       `Senha temporária: ${credenciais.senha}`;
@@ -264,6 +342,10 @@ const GerenciarUsuarios = () => {
         ...(dados.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : { guideId: deleteField(), guideName: deleteField() }),
+        // base: só a gerência mexe (a regra do banco não deixa os demais)
+        ...(souGerencia
+          ? { regiao: dados.role === ROLES.OPERACIONAL && dados.regiao && dados.regiao !== ID_SEDE ? dados.regiao : deleteField() }
+          : {}),
         updatedAt: Timestamp.now(),
       });
 
@@ -413,6 +495,15 @@ const GerenciarUsuarios = () => {
             </div>
           </div>
 
+          {mostrarRegiao && form.role === ROLES.OPERACIONAL && (
+            <CampoRegiao
+              value={form.regiao}
+              onChange={(v) => setCampo("regiao", v)}
+              opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa)}
+              disabled={salvando}
+            />
+          )}
+
           {form.role === ROLES.GUIA && (
             <label className="usuarios-field">
               <span>Guia vinculado</span>
@@ -448,84 +539,145 @@ const GerenciarUsuarios = () => {
         {/* ============ LISTA ============ */}
         <div className="usuarios-card">
           <div className="usuarios-lista-topo">
-            <h3>Contas cadastradas</h3>
-            <select
+            <h3>
+              Contas cadastradas <span className="usuarios-total">{usuarios.length}</span>
+            </h3>
+            {mostrarRegiao && (
+              <select value={filtroBase} onChange={(e) => setFiltroBase(e.target.value)} aria-label="Filtrar por base">
+                <option value="todas">Todas as bases</option>
+                {opcoesRegiao.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    Base {r.nome}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="usuarios-filtros">
+            <label className="usuarios-busca">
+              <Icon name="search" size={15} />
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou guia"
+                aria-label="Buscar conta"
+              />
+              {busca && (
+                <button type="button" onClick={() => setBusca("")} aria-label="Limpar busca" title="Limpar busca">
+                  <Icon name="x" size={14} />
+                </button>
+              )}
+            </label>
+            <Segmented
+              size="sm"
               value={filtroRole}
-              onChange={(e) => setFiltroRole(e.target.value)}
-              aria-label="Filtrar por nível"
-            >
-              <option value="todos">Todos os níveis</option>
-              {Object.values(ROLES).map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
+              onChange={setFiltroRole}
+              ariaLabel="Filtrar por nível"
+              options={[
+                { value: "todos", label: "Todos", count: contagem.todos },
+                { value: "gerencia", label: "Gerência", count: contagem.gerencia },
+                { value: ROLES.OPERACIONAL, label: ROLE_LABELS[ROLES.OPERACIONAL], count: contagem[ROLES.OPERACIONAL] },
+                { value: ROLES.COMERCIAL, label: ROLE_LABELS[ROLES.COMERCIAL], count: contagem[ROLES.COMERCIAL] },
+                { value: ROLES.GUIA, label: ROLE_LABELS[ROLES.GUIA], count: contagem[ROLES.GUIA] },
+                { value: "desativadas", label: "Desativadas", count: contagem.desativadas },
+              ]}
+            />
           </div>
 
           {loading ? (
             <p className="usuarios-vazio">Carregando...</p>
           ) : usuariosFiltrados.length === 0 ? (
-            <p className="usuarios-vazio">Nenhuma conta por aqui.</p>
+            <p className="usuarios-vazio">
+              {busca.trim() ? `Nenhuma conta com “${busca.trim()}”.` : "Nenhuma conta por aqui."}
+              {(busca.trim() || filtroRole !== "todos" || filtroBase !== "todas") && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="usuarios-limpar"
+                    onClick={() => {
+                      setBusca("");
+                      setFiltroRole("todos");
+                      setFiltroBase("todas");
+                    }}
+                  >
+                    Limpar filtros
+                  </button>
+                </>
+              )}
+            </p>
           ) : (
             <ul className="usuarios-lista">
-              {usuariosVisiveis.map((u) => (
-                <li key={u.id} className={u.ativo === false ? "inativo" : ""}>
-                  <div className="usuarios-item-info">
-                    <strong>
-                      {u.nome}
-                      {u.id === usuarioLogado.uid && (
-                        <span className="usuarios-voce"> (você)</span>
+              {usuariosVisiveis.map((u, i) => (
+                <Fragment key={u.id}>
+                  {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
+                    <li className="usuarios-grupo" aria-hidden="true">
+                      {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
+                    </li>
+                  )}
+                  <li className={u.ativo === false ? "inativo" : ""}>
+                    <div className="usuarios-item-info">
+                      <strong>
+                        {u.nome}
+                        {u.id === usuarioLogado.uid && (
+                          <span className="usuarios-voce"> (você)</span>
+                        )}
+                      </strong>
+                      <span>{u.email}</span>
+                      {u.role === ROLES.GUIA && (
+                        <span className="usuarios-vinculo">
+                          Guia: {u.guideName || "—"}
+                        </span>
                       )}
-                    </strong>
-                    <span>{u.email}</span>
-                    {u.role === ROLES.GUIA && (
-                      <span className="usuarios-vinculo">
-                        Guia: {u.guideName || "—"}
-                      </span>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="usuarios-item-tags">
-                    <span className={`usuarios-badge role-${u.role}`}>
-                      {ROLE_LABELS[u.role] || u.role}
-                    </span>
-                    {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
-                      <span className="usuarios-badge gerencia">Gerência</span>
-                    )}
-                    {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
-                      <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
-                        {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                    <div className="usuarios-item-tags">
+                      <span className={`usuarios-badge role-${u.role}`}>
+                        {ROLE_LABELS[u.role] || u.role}
                       </span>
-                    )}
-                    {u.ativo === false && (
-                      <span className="usuarios-badge desativado">Desativado</span>
-                    )}
-                  </div>
+                      {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
+                        <span className="usuarios-badge gerencia">Gerência</span>
+                      )}
+                      {u.role === ROLES.OPERACIONAL && u.regiao && u.regiao !== ID_SEDE && (
+                        <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
+                          {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
+                        </span>
+                      )}
+                      {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
+                        <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
+                          {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                        </span>
+                      )}
+                      {u.ativo === false && (
+                        <span className="usuarios-badge desativado">Desativado</span>
+                      )}
+                    </div>
 
-                  <div className="usuarios-item-acoes">
-                    <button
-                      type="button"
-                      className="usuarios-icon-btn"
-                      title="Enviar link de nova senha"
-                      onClick={() => enviarRedefinicao(u)}
-                    >
-                      <Icon name="key" size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="usuarios-icon-btn"
-                      title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
-                      disabled={!podeEditar(u)}
-                      onClick={() => {
-                        setMsg(null);
-                        setEditando(u);
-                      }}
-                    >
-                      <Icon name="pencil" size={16} />
-                    </button>
-                  </div>
-                </li>
+                    <div className="usuarios-item-acoes">
+                      <button
+                        type="button"
+                        className="usuarios-icon-btn"
+                        title="Enviar link de nova senha"
+                        onClick={() => enviarRedefinicao(u)}
+                      >
+                        <Icon name="key" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="usuarios-icon-btn"
+                        title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
+                        disabled={!podeEditar(u)}
+                        onClick={() => {
+                          setMsg(null);
+                          setEditando(u);
+                        }}
+                      >
+                        <Icon name="pencil" size={16} />
+                      </button>
+                    </div>
+                  </li>
+                </Fragment>
               ))}
             </ul>
           )}
@@ -552,6 +704,7 @@ const GerenciarUsuarios = () => {
           guiasVinculados={guiasVinculados}
           ehVoce={editando.id === usuarioLogado.uid}
           rolesPermitidos={rolesPermitidos}
+          opcoesRegiao={mostrarRegiao ? opcoesRegiao : null}
           onFechar={() => setEditando(null)}
           onSalvar={async (dados) => {
             const ok = await salvarEdicao(dados);
@@ -569,6 +722,7 @@ const EditarUsuarioModal = ({
   guiasVinculados,
   ehVoce,
   rolesPermitidos = Object.values(ROLES),
+  opcoesRegiao = null,
   onFechar,
   onSalvar,
 }) => {
@@ -578,6 +732,7 @@ const EditarUsuarioModal = ({
     role: usuario.role || ROLES.GUIA,
     ativo: usuario.ativo !== false,
     guideId: usuario.guideId || "",
+    regiao: usuario.regiao || ID_SEDE,
   });
   const [salvando, setSalvando] = useState(false);
 
@@ -627,6 +782,15 @@ const EditarUsuarioModal = ({
             ))}
           </select>
         </label>
+
+        {opcoesRegiao && dados.role === ROLES.OPERACIONAL && !usuario.gerencia && (
+          <CampoRegiao
+            value={dados.regiao}
+            onChange={(v) => set("regiao", v)}
+            opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa || r.id === dados.regiao)}
+            disabled={ehVoce}
+          />
+        )}
 
         {dados.role === ROLES.GUIA && (
           <label className="usuarios-field">

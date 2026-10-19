@@ -4,10 +4,9 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import "./styles.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
 const API_AEROPORTO = "https://guia-app.onrender.com";
-const PHOENIX_RESERVE_SERVICE_URL =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const PHOENIX_EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -36,7 +35,7 @@ const montarUrlPhoenixReserveService = (date, tipo = null) => {
     params.append("service_type[]", String(tipo));
   }
 
-  return `${PHOENIX_RESERVE_SERVICE_URL}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -231,9 +230,9 @@ const extractScaleIdFromItem = (item = {}) =>
 const extractScaleCodeFromItem = (item = {}) =>
   String(
     item?.roadmapService?.roadmap?.code ||
-      item?.auxRoadmapService?.roadmap?.code ||
-      item?.roadmap?.code ||
-      "",
+    item?.auxRoadmapService?.roadmap?.code ||
+    item?.roadmap?.code ||
+    "",
   ).trim();
 
 const extractVehicleFromItem = (item = {}) =>
@@ -330,10 +329,10 @@ const extractScaleIdFromReserveService = (reserveService = {}, roadmap = {}) =>
 const extractScaleCodeFromReserveService = (reserveService = {}, roadmap = {}) =>
   String(
     reserveService?.roadmapService?.roadmap?.code ||
-      reserveService?.auxRoadmapService?.roadmap?.code ||
-      reserveService?.roadmap?.code ||
-      roadmap?.code ||
-      "",
+    reserveService?.auxRoadmapService?.roadmap?.code ||
+    reserveService?.roadmap?.code ||
+    roadmap?.code ||
+    "",
   ).trim();
 
 const extractVehicleFromReserveService = (reserveService = {}, roadmap = {}) =>
@@ -684,16 +683,16 @@ const extrairCodigoEscalaRobusto = (roadmap = {}, reserveService = {}) => {
 const extrairEscalaLabel = (roadmap = {}, reserveService = {}) =>
   String(
     roadmap?.code ||
-      roadmap?.roadmap_code ||
-      reserveService?.roadmap?.code ||
-      reserveService?.roadmap_code ||
-      reserveService?.scale_code ||
-      reserveService?.reserve?.scale_code ||
-      reserveService?.serviceOrder?.roadmap_code ||
-      reserveService?.service_order?.roadmap_code ||
-      roadmap?.id ||
-      reserveService?.roadmap_id ||
-      "ESCALA-SEM-ID",
+    roadmap?.roadmap_code ||
+    reserveService?.roadmap?.code ||
+    reserveService?.roadmap_code ||
+    reserveService?.scale_code ||
+    reserveService?.reserve?.scale_code ||
+    reserveService?.serviceOrder?.roadmap_code ||
+    reserveService?.service_order?.roadmap_code ||
+    roadmap?.id ||
+    reserveService?.roadmap_id ||
+    "ESCALA-SEM-ID",
   ).trim();
 
 const extrairVeiculoIdentidade = (roadmap = {}) => {
@@ -830,15 +829,15 @@ const extrairContatoReserva = (reserveService = {}) =>
 const extrairHoraPrincipalReserva = (reserveService = {}) =>
   formatHour(
     reserveService?.presentation_hour ||
-      reserveService?.presentation_hour_end ||
-      reserveService?.schedule?.presentation_hour ||
-      reserveService?.schedule?.presentation_hour_end ||
-      reserveService?.fly_hour ||
-      reserveService?.our_schedule ||
-      reserveService?.reserve?.flight?.scheduled_time ||
-      reserveService?.reserve?.flight?.arrival_time ||
-      reserveService?.reserve?.flight?.departure_time ||
-      "",
+    reserveService?.presentation_hour_end ||
+    reserveService?.schedule?.presentation_hour ||
+    reserveService?.schedule?.presentation_hour_end ||
+    reserveService?.fly_hour ||
+    reserveService?.our_schedule ||
+    reserveService?.reserve?.flight?.scheduled_time ||
+    reserveService?.reserve?.flight?.arrival_time ||
+    reserveService?.reserve?.flight?.departure_time ||
+    "",
   );
 
 const sortReservasPorHorario = (reservas = []) =>
@@ -1130,7 +1129,7 @@ const buildDiagnostico = ({
     detalhes.push(`Capacidade compatível no veículo: ${totalPax}/${capacidade}.`);
   }
 
-   if (!reservas.length) {
+  if (!reservas.length) {
     alertas.push("Bloco operacional sem reservas vinculadas.");
   } else {
     detalhes.push(
@@ -1328,10 +1327,10 @@ function ListaServicosEscalados({
             {lista.length} serviço(s)
           </span>
         </div>
-       <p>
-  Conferência consolidada por veículo escalado + número da escala, mantendo
-  as reservas agrupadas no mesmo bloco operacional.
-</p>
+        <p>
+          Conferência consolidada por veículo escalado + número da escala, mantendo
+          as reservas agrupadas no mesmo bloco operacional.
+        </p>
       </div>
 
       {!lista.length ? (
@@ -1619,59 +1618,59 @@ export default function RoboConferenteOperacional() {
     arrivals: [],
     departures: [],
   });
- const [servicosPhoenix, setServicosPhoenix] = useState([]);
+  const [servicosPhoenix, setServicosPhoenix] = useState([]);
 
-const carregar = useCallback(async () => {
-  try {
-    setLoading(true);
-    setErro("");
+  const carregar = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErro("");
 
-    const [respPhoenix, respArrivals, respDepartures] = await Promise.all([
-      fetch(montarUrlPhoenixReserveService(dataSelecionada), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }),
-      fetch(`${API_AEROPORTO}/api/aeroporto/arrivals`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }),
-      fetch(`${API_AEROPORTO}/api/aeroporto/departures`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }),
-    ]);
+      const [respPhoenix, respArrivals, respDepartures] = await Promise.all([
+        fetch(montarUrlPhoenixReserveService(dataSelecionada), {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        }),
+        fetch(`${API_AEROPORTO}/api/aeroporto/arrivals`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        }),
+        fetch(`${API_AEROPORTO}/api/aeroporto/departures`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        }),
+      ]);
 
-    if (!respPhoenix.ok) {
-      const txt = await respPhoenix.text().catch(() => "");
-      throw new Error(`Falha ao consultar Phoenix. ${txt}`);
+      if (!respPhoenix.ok) {
+        const txt = await respPhoenix.text().catch(() => "");
+        throw new Error(`Falha ao consultar Phoenix. ${txt}`);
+      }
+
+      if (!respArrivals.ok || !respDepartures.ok) {
+        throw new Error("Falha ao consultar dados do aeroporto.");
+      }
+
+      const jsonPhoenix = await respPhoenix.json();
+      const jsonArrivals = await respArrivals.json();
+      const jsonDepartures = await respDepartures.json();
+
+      const listaServicos = extrairListaResposta(jsonPhoenix);
+
+      setServicosPhoenix(listaServicos);
+      setAirportData({
+        arrivals: normalizeAirportPayload(jsonArrivals?.data || []),
+        departures: normalizeAirportPayload(jsonDepartures?.data || []),
+      });
+
+      setResultadoPorServico({});
+      setIndiceAtualRobo(-1);
+      setRoboRodando(false);
+    } catch (error) {
+      console.error("Erro ao carregar conferente:", error);
+      setErro(error.message || "Não foi possível carregar os dados do robô.");
+    } finally {
+      setLoading(false);
     }
-
-    if (!respArrivals.ok || !respDepartures.ok) {
-      throw new Error("Falha ao consultar dados do aeroporto.");
-    }
-
-    const jsonPhoenix = await respPhoenix.json();
-    const jsonArrivals = await respArrivals.json();
-    const jsonDepartures = await respDepartures.json();
-
-    const listaServicos = extrairListaResposta(jsonPhoenix);
-
-    setServicosPhoenix(listaServicos);
-    setAirportData({
-      arrivals: normalizeAirportPayload(jsonArrivals?.data || []),
-      departures: normalizeAirportPayload(jsonDepartures?.data || []),
-    });
-
-    setResultadoPorServico({});
-    setIndiceAtualRobo(-1);
-    setRoboRodando(false);
-  } catch (error) {
-    console.error("Erro ao carregar conferente:", error);
-    setErro(error.message || "Não foi possível carregar os dados do robô.");
-  } finally {
-    setLoading(false);
-  }
-}, [dataSelecionada]);
+  }, [dataSelecionada]);
 
   useEffect(() => {
     carregar();
@@ -1712,10 +1711,10 @@ const carregar = useCallback(async () => {
     [airportData.departures],
   );
 
-const servicosAgrupados = useMemo(
-  () => buildGroupedServices(servicosPhoenix),
-  [servicosPhoenix],
-);
+  const servicosAgrupados = useMemo(
+    () => buildGroupedServices(servicosPhoenix),
+    [servicosPhoenix],
+  );
 
   const servicosBase = useMemo(() => {
     return servicosAgrupados.map((item, index) => ({

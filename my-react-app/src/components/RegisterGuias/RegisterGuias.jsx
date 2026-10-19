@@ -1,442 +1,688 @@
-import { useEffect, useRef, useState } from "react";
-import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  collection,
+  addDoc,
+  Timestamp,
+  getDocs,
+  doc,
+  updateDoc,
+  setDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
-import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
-import GuiaAvatar from "../ui/GuiaAvatar";
-import { prepararFotoGuia, salvarFotoGuia } from "../../Services/Utils/fotoGuia";
+import { datasDoPeriodo } from "../../Services/Services/servicosPhoenix";
+import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
-const CadastroGuia = () => {
+const diasSemana = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
+];
+
+
+const EXPAND =
+  "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
+
+// Todos os passeios do Phoenix entram no cadastro (e no Mapa de afinidade).
+// O que não deve receber guia é decidido em Configurações → Escala
+// ("Serviços fora da escala"), não mais por uma lista no código.
+
+const MAPA_NOMES_CANONICOS = {
+  "city tour historico e panoramico": "CITY TOUR HISTORICO E PANORAMICO",
+  "city tour historico panoramico": "CITY TOUR HISTORICO E PANORAMICO",
+  "tour de ilhas frades e itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+  "ilhas frades + itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+  "ilhas frades itaparica": "TOUR DE ILHAS - FRADES E ITAPARICA",
+  "volta frades com itaparica": "VOLTA FRADES COM ITAPARICA",
+  "city tour panoramico": "CITY TOUR PANORAMICO",
+  "city tour historico": "CITY TOUR HISTORICO",
+};
+
+const normalizarTexto = (texto = "") =>
+  String(texto)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[|]/g, " ")
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const obterNomeCanonico = (nome = "") => {
+  const normalizado = normalizarTexto(nome);
+  return MAPA_NOMES_CANONICOS[normalizado] || String(nome).trim().toUpperCase();
+};
+
+const obterDiaSemanaPt = (dataIso) => {
+  const [ano, mes, dia] = dataIso.split("-").map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  const indice = data.getDay();
+
+  const mapa = {
+    0: "Domingo",
+    1: "Segunda",
+    2: "Terça",
+    3: "Quarta",
+    4: "Quinta",
+    5: "Sexta",
+    6: "Sábado",
+  };
+
+  return mapa[indice];
+};
+
+const ordenarFrequencia = (lista = []) => {
+  return [...lista].sort(
+    (a, b) => diasSemana.indexOf(a) - diasSemana.indexOf(b),
+  );
+};
+
+const montarUrlApi = (date) => {
+  const params = new URLSearchParams();
+  params.append("execution_date", date);
+  params.append("expand", EXPAND);
+  params.append("service_type[]", "3");
+  return `${phoenixReserveService()}?${params.toString()}`;
+};
+
+const extrairListaRespostaBruta = (json) => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.results)) return json.results;
+  return [];
+};
+
+// sem as reservas com CLD / cancelado / não escalar / dispensado na observação
+const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
+
+const extrairNomePasseio = (item) =>
+  item?.service?.name ||
+  item?.service?.nome ||
+  item?.reserveService?.service?.name ||
+  item?.name ||
+  "";
+
+const extrairServiceIdExterno = (item) =>
+  Number(item?.service_id || item?.service?.id || 0) || null;
+
+const CadastroPasseio = () => {
   const [nome, setNome] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-
-  const [idiomasSelecionados, setIdiomasSelecionados] = useState([]);
-  const [idiomasDisponiveis, setIdiomasDisponiveis] = useState([]);
-
-  const [passeiosSelecionados, setPasseiosSelecionados] = useState([]);
-  const [passeiosDisponiveis, setPasseiosDisponiveis] = useState([]);
-
-  const [diferencial, setDiferencial] = useState("");
-  const [motoguia, setMotoguia] = useState(false);
-
-  const [dropdownIdiomasOpen, setDropdownIdiomasOpen] = useState(false);
-  const [dropdownPasseiosOpen, setDropdownPasseiosOpen] = useState(false);
+  const [descricao, setDescricao] = useState("");
+  const [frequencia, setFrequencia] = useState([]);
+  const [externalServiceId, setExternalServiceId] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [importandoApi, setImportandoApi] = useState(false);
+  const [excluindoId, setExcluindoId] = useState(null);
 
-  // foto de perfil (opcional): preparada ao escolher, gravada depois do cadastro
-  const [foto, setFoto] = useState("");
-  const [erroFoto, setErroFoto] = useState("");
-  const inputFotoRef = useRef(null);
+  const [passeios, setPasseios] = useState([]);
+  const [editandoId, setEditandoId] = useState(null);
 
-  const escolherFoto = async (arquivo) => {
-    if (!arquivo) return;
-    setErroFoto("");
+  useEffect(() => {
+    carregarPasseios(true);
+  }, []);
+
+  const carregarPasseios = async (isInitial = false) => {
     try {
-      setFoto(await prepararFotoGuia(arquivo));
-    } catch (e) {
-      setErroFoto(e?.message?.startsWith("Escolha") ? e.message : "Não foi possível ler a imagem.");
+      if (isInitial) setLoadingInicial(true);
+
+      const snap = await getDocs(collection(db, "services"));
+      const lista = snap.docs
+        .map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        .sort((a, b) =>
+          (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+            sensitivity: "base",
+          }),
+        );
+
+      setPasseios(lista);
+    } catch (err) {
+      console.error("Erro ao carregar passeios:", err);
     } finally {
-      if (inputFotoRef.current) inputFotoRef.current.value = "";
+      if (isInitial) setLoadingInicial(false);
     }
   };
 
-  useEffect(() => {
-    const carregarDados = async () => {
-      try {
-        setLoadingInicial(true);
-
-        const langs = await getLanguages();
-        setIdiomasDisponiveis(langs);
-
-        const snapshot = await getDocs(collection(db, "services"));
-        const services = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          nome: doc.data().nome,
-        }));
-        setPasseiosDisponiveis(services);
-      } catch (error) {
-        console.error("Erro ao carregar dados do cadastro:", error);
-      } finally {
-        setLoadingInicial(false);
-      }
-    };
-
-    carregarDados();
-  }, []);
-
-  const adicionarIdioma = (idioma) => {
-    if (idiomasSelecionados.find((i) => i.id === idioma.id)) return;
-    setIdiomasSelecionados([...idiomasSelecionados, idioma]);
-    setDropdownIdiomasOpen(false);
+  const adicionarDia = (dia) => {
+    if (frequencia.includes(dia)) return;
+    setFrequencia(ordenarFrequencia([...frequencia, dia]));
+    setDropdownOpen(false);
   };
 
-  const removerIdioma = (id) => {
-    setIdiomasSelecionados(idiomasSelecionados.filter((i) => i.id !== id));
+  const removerDia = (dia) => {
+    setFrequencia(frequencia.filter((d) => d !== dia));
   };
 
-  const adicionarPasseio = (passeio) => {
-    if (passeiosSelecionados.find((p) => p.id === passeio.id)) return;
-    setPasseiosSelecionados([...passeiosSelecionados, passeio]);
-    setDropdownPasseiosOpen(false);
+  const limparFormulario = () => {
+    setNome("");
+    setDescricao("");
+    setFrequencia([]);
+    setExternalServiceId("");
+    setEditandoId(null);
+    setDropdownOpen(false);
   };
 
-  const removerPasseio = (id) => {
-    setPasseiosSelecionados(passeiosSelecionados.filter((p) => p.id !== id));
+  const editarPasseio = (p) => {
+    setEditandoId(p.id);
+    setNome(p.nome || "");
+    setDescricao(p.descricao || "");
+    setFrequencia(ordenarFrequencia(p.frequencia || []));
+    setExternalServiceId(p.externalServiceId || "");
+    setDropdownOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const formatarTelefone = (valor) => {
-    const numeros = valor.replace(/\D/g, "").slice(0, 11);
-
-    if (numeros.length <= 2) return numeros;
-    if (numeros.length <= 7)
-      return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
-    if (numeros.length <= 11)
-      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
-
-    return valor;
-  };
-
-  const salvarGuia = async (e) => {
+  const salvarPasseio = async (e) => {
     e.preventDefault();
 
-    if (!nome || !whatsapp) {
-      alert("Nome e WhatsApp são obrigatórios");
+    if (!nome) {
+      alert("Nome do passeio é obrigatório");
       return;
     }
 
     try {
       setSalvando(true);
 
-      const novoGuia = await addDoc(collection(db, "guides"), {
-        nome,
-        whatsapp,
-        idiomas: idiomasSelecionados.map((i) => i.label),
-        passeios: passeiosSelecionados,
-        motoguia,
-        diferencial,
-        ativo: true,
-        createdAt: Timestamp.now(),
-      });
+      const payload = {
+        nome: obterNomeCanonico(nome),
+        descricao,
+        frequencia: ordenarFrequencia(frequencia),
+        externalName: obterNomeCanonico(nome),
+        externalServiceId: externalServiceId ? Number(externalServiceId) : null,
+      };
 
-      if (foto) {
-        try {
-          await salvarFotoGuia(novoGuia.id, foto);
-        } catch (e) {
-          console.error("Erro ao salvar a foto do guia:", e);
-          alert("Guia cadastrado, mas a foto não foi salva. Adicione pela Lista de Guias.");
-        }
+      if (editandoId) {
+        await updateDoc(doc(db, "services", editandoId), {
+          ...payload,
+          updatedAt: Timestamp.now(),
+        });
+
+        alert("Passeio atualizado com sucesso!");
+      } else {
+        await addDoc(collection(db, "services"), {
+          ...payload,
+          origem: "manual",
+          ativo: true,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        });
+
+        alert("Passeio cadastrado com sucesso!");
       }
 
-      alert("Guia cadastrado com sucesso!");
-
-      setFoto("");
-
-      setNome("");
-      setWhatsapp("");
-      setIdiomasSelecionados([]);
-      setPasseiosSelecionados([]);
-      setMotoguia(false);
-      setDiferencial("");
-      setDropdownIdiomasOpen(false);
-      setDropdownPasseiosOpen(false);
+      limparFormulario();
+      await carregarPasseios();
     } catch (error) {
       console.error(error);
-      alert("Erro ao cadastrar guia");
+      alert("Erro ao salvar passeio");
     } finally {
       setSalvando(false);
     }
   };
 
-  const bloqueado = salvando || loadingInicial;
+  const excluirPasseio = async (passeio) => {
+    if (!passeio?.id) return;
+
+    const confirmar = window.confirm(
+      `Deseja realmente apagar o passeio "${passeio.nome}"?`,
+    );
+
+    if (!confirmar) return;
+
+    try {
+      setExcluindoId(passeio.id);
+
+      await deleteDoc(doc(db, "services", passeio.id));
+
+      if (editandoId === passeio.id) {
+        limparFormulario();
+      }
+
+      await carregarPasseios();
+      alert("Passeio apagado com sucesso!");
+    } catch (err) {
+      console.error("Erro ao apagar passeio:", err);
+      alert("Erro ao apagar passeio");
+    } finally {
+      setExcluindoId(null);
+    }
+  };
+
+  const importarPasseiosDaApi = async () => {
+    try {
+      setImportandoApi(true);
+
+      // histórico (4 semanas) + próximas 2 semanas: pega também passeio que
+      // não acontece todo mês e o que já está vendido para a semana que vem
+      const datas = datasDoPeriodo(28, 14);
+      const snap = await getDocs(collection(db, "services"));
+
+      const servicesExistentes = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      const mapaPorExternalId = {};
+      const mapaPorNome = {};
+
+      servicesExistentes.forEach((s) => {
+        if (s.externalServiceId !== null && s.externalServiceId !== undefined) {
+          mapaPorExternalId[String(s.externalServiceId)] = s;
+        }
+
+        const nomeNormalizado = normalizarTexto(s.externalName || s.nome || "");
+        if (nomeNormalizado) {
+          mapaPorNome[nomeNormalizado] = s;
+        }
+      });
+
+      const encontrados = new Map();
+
+      for (const data of datas) {
+        try {
+          const response = await fetch(montarUrlApi(data), {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            console.error(`Erro ao buscar API em ${data}: ${response.status}`);
+            continue;
+          }
+
+          const json = await response.json();
+          const lista = extrairListaResposta(json);
+
+          lista.forEach((item) => {
+            const nomeApi = extrairNomePasseio(item);
+            const externalId = extrairServiceIdExterno(item);
+
+            if (!nomeApi) return;
+
+            const nomeCanonico = obterNomeCanonico(nomeApi);
+
+            const diaSemanaApi = obterDiaSemanaPt(data);
+
+            const chave = externalId
+              ? `id_${externalId}`
+              : `nome_${normalizarTexto(nomeCanonico)}`;
+
+            if (!encontrados.has(chave)) {
+              encontrados.set(chave, {
+                nome: nomeCanonico,
+                descricao: "",
+                frequenciaSet: new Set(),
+                externalName: nomeCanonico,
+                externalServiceId: externalId || null,
+                origem: "api",
+                ativo: true,
+              });
+            }
+
+            encontrados.get(chave).frequenciaSet.add(diaSemanaApi);
+          });
+        } catch (err) {
+          console.error(`Erro ao processar API na data ${data}:`, err);
+        }
+      }
+
+      let inseridos = 0;
+      let atualizados = 0;
+
+      for (const servico of encontrados.values()) {
+        const frequenciaCalculada = ordenarFrequencia(
+          Array.from(servico.frequenciaSet || []),
+        );
+
+        const externalKey = servico.externalServiceId
+          ? String(servico.externalServiceId)
+          : null;
+
+        const nomeKey = normalizarTexto(
+          servico.externalName || servico.nome || "",
+        );
+
+        const existente =
+          (externalKey && mapaPorExternalId[externalKey]) ||
+          mapaPorNome[nomeKey] ||
+          null;
+
+        if (existente) {
+          await setDoc(
+            doc(db, "services", existente.id),
+            {
+              nome: existente.nome || servico.nome,
+              externalName: servico.externalName,
+              externalServiceId: servico.externalServiceId,
+              frequencia: frequenciaCalculada,
+              origem: existente.origem || servico.origem || "api",
+              ativo: existente.ativo ?? true,
+              updatedAt: Timestamp.now(),
+            },
+            { merge: true },
+          );
+
+          atualizados++;
+        } else {
+          await addDoc(collection(db, "services"), {
+            nome: servico.nome,
+            descricao: servico.descricao || "",
+            frequencia: frequenciaCalculada,
+            externalName: servico.externalName,
+            externalServiceId: servico.externalServiceId,
+            origem: servico.origem || "api",
+            ativo: servico.ativo ?? true,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+
+          inseridos++;
+        }
+      }
+
+      await carregarPasseios();
+
+      alert(
+        `Importação concluída!\n\nNovos passeios: ${inseridos}\nAtualizados: ${atualizados}`,
+      );
+    } catch (err) {
+      console.error("Erro ao importar passeios da API:", err);
+      alert("Erro ao importar passeios da API");
+    } finally {
+      setImportandoApi(false);
+    }
+  };
+
+  const bloqueado = salvando || importandoApi || loadingInicial;
 
   return (
-    <div className="cadastro-guia-page">
-      <div className="cadastro-guia-header">
+    <div className="cadastro-passeio-page">
+      <div className="cadastro-passeio-header">
         <div>
-          <h2 className="cadastro-guia-title">
-            Cadastrar Guia Turístico <Icon name="idCard" size={16} />
+          <h2 className="cadastro-passeio-title">
+            {editandoId
+              ? "Editar Passeio / Serviço"
+              : "Cadastrar Passeio / Serviço"}{" "}
+            <Icon name="listCheck" size={16} />
           </h2>
-          <p className="cadastro-guia-subtitle">
-            Cadastre guias, defina idiomas, serviços aptos e diferenciais
-            operacionais em uma estrutura mais organizada e profissional.
+          <p className="cadastro-passeio-subtitle">
+            Cadastre manualmente os serviços, defina frequência operacional e
+            importe dados automaticamente do Phoenix.
           </p>
         </div>
       </div>
 
-      <div className="cadastro-guia-layout">
-        <section className="cadastro-guia-grid">
-          <div className="cadastro-guia-card cadastro-guia-card-large">
-            <div className="cadastro-guia-card-header">
-              <div className="cadastro-guia-card-title-row">
-                <h3>Informações do guia</h3>
-                <span className="cadastro-guia-badge">Cadastro</span>
+      <div className="cadastro-passeio-layout">
+        <section className="cadastro-passeio-grid">
+          <div className="cadastro-passeio-card cadastro-passeio-card-large">
+            <div className="cadastro-passeio-card-header">
+              <div className="cadastro-passeio-card-title-row">
+                <h3>Dados do passeio</h3>
+                <span className="cadastro-passeio-badge">
+                  {editandoId ? "Edição" : "Cadastro"}
+                </span>
               </div>
               <p>
-                Preencha os dados principais do profissional e configure suas
-                características operacionais.
+                Preencha as informações principais do serviço e organize os dias
+                em que ele acontece.
               </p>
             </div>
 
             {loadingInicial ? (
               <CardSkeleton variant="filters" />
             ) : (
-              <form className="cadastro-guia-form" onSubmit={salvarGuia}>
-                <div className="cadastro-guia-foto">
-                  <button
-                    type="button"
-                    className="cadastro-guia-foto__botao"
-                    onClick={() => inputFotoRef.current?.click()}
-                    disabled={bloqueado}
-                    title={foto ? "Trocar foto" : "Adicionar foto"}
-                  >
-                    <GuiaAvatar nome={nome || "?"} foto={foto} soFoto semLink tamanho={64} />
-                    <span className="cadastro-guia-foto__camera" aria-hidden="true">
-                      <Icon name="image" size={13} />
-                    </span>
-                  </button>
-                  <div>
-                    <strong>Foto do perfil</strong>
-                    <small>Opcional. Aparece junto do nome do guia nas telas do sistema.</small>
-                    <div className="cadastro-guia-foto__acoes">
-                      <button type="button" onClick={() => inputFotoRef.current?.click()} disabled={bloqueado}>
-                        {foto ? "Trocar foto" : "Adicionar foto"}
-                      </button>
-                      {foto && (
-                        <button type="button" className="is-sec" onClick={() => setFoto("")} disabled={bloqueado}>
-                          Remover
-                        </button>
-                      )}
-                    </div>
-                    {erroFoto && <small className="cadastro-guia-foto__erro">{erroFoto}</small>}
-                  </div>
-                  <input
-                    ref={inputFotoRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) => escolherFoto(e.target.files?.[0])}
-                  />
-                </div>
-
-                <div className="cadastro-guia-form-grid">
-                  <div className="cadastro-guia-field">
-                    <label htmlFor="guia-nome">
-                      Nome do guia{" "}
+              <form className="cadastro-passeio-form" onSubmit={salvarPasseio}>
+                <div className="cadastro-passeio-form-grid">
+                  <div className="cadastro-passeio-field">
+                    <label htmlFor="nome-passeio">
+                      Nome do passeio{" "}
                       <Icon name="pencil" size={16} />
                     </label>
                     <input
-                      id="guia-nome"
+                      id="nome-passeio"
                       type="text"
-                      placeholder="Digite o nome do guia"
+                      placeholder="Digite o nome do passeio"
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       disabled={bloqueado}
                     />
                   </div>
 
-                  <div className="cadastro-guia-field">
-                    <label htmlFor="guia-whatsapp">
-                      WhatsApp <Icon name="message" size={16} />
+                  <div className="cadastro-passeio-field">
+                    <label htmlFor="external-id">
+                      ID externo <Icon name="info" size={16} />
                     </label>
                     <input
-                      id="guia-whatsapp"
-                      type="text"
-                      placeholder="Informe o WhatsApp"
-                      value={formatarTelefone(whatsapp)}
-                      onChange={(e) => setWhatsapp(e.target.value)}
-                      maxLength={15}
+                      id="external-id"
+                      type="number"
+                      placeholder="Informe o ID do serviço no Phoenix"
+                      value={externalServiceId}
+                      onChange={(e) => setExternalServiceId(e.target.value)}
                       disabled={bloqueado}
                     />
                   </div>
                 </div>
 
-                <div className="cadastro-guia-form-grid">
-                  <div className="cadastro-guia-field">
-                    <label>
-                      Idiomas <Icon name="languages" size={16} />
-                    </label>
-
-                    <div className="cadastro-guia-dropdown">
-                      <div
-                        className="cadastro-guia-dropdown-header"
-                        onClick={() =>
-                          !bloqueado &&
-                          setDropdownIdiomasOpen(!dropdownIdiomasOpen)
-                        }
-                      >
-                        <span>Selecionar idiomas</span>
-                        <span className="cadastro-guia-dropdown-arrow">▾</span>
-                      </div>
-
-                      {dropdownIdiomasOpen && !bloqueado && (
-                        <div className="cadastro-guia-dropdown-menu">
-                          {idiomasDisponiveis.map((idioma) => (
-                            <div
-                              key={idioma.id}
-                              className="cadastro-guia-dropdown-item"
-                              onClick={() => adicionarIdioma(idioma)}
-                            >
-                              {idioma.label}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="cadastro-guia-tags">
-                      {idiomasSelecionados.map((idioma) => (
-                        <div className="cadastro-guia-tag" key={idioma.id}>
-                          {idioma.label}
-                          <span onClick={() => !bloqueado && removerIdioma(idioma.id)}>
-                            ×
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="cadastro-guia-field">
-                    <label>
-                      Passeios aptos <Icon name="ticket" size={16} />
-                    </label>
-
-                    <div className="cadastro-guia-dropdown">
-                      <div
-                        className="cadastro-guia-dropdown-header"
-                        onClick={() =>
-                          !bloqueado &&
-                          setDropdownPasseiosOpen(!dropdownPasseiosOpen)
-                        }
-                      >
-                        <span>Selecionar passeios</span>
-                        <span className="cadastro-guia-dropdown-arrow">▾</span>
-                      </div>
-
-                      {dropdownPasseiosOpen && !bloqueado && (
-                        <div className="cadastro-guia-dropdown-menu">
-                          {passeiosDisponiveis.map((passeio) => (
-                            <div
-                              key={passeio.id}
-                              className="cadastro-guia-dropdown-item"
-                              onClick={() => adicionarPasseio(passeio)}
-                            >
-                              {passeio.nome}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="cadastro-guia-tags">
-                      {passeiosSelecionados.map((passeio) => (
-                        <div
-                          className="cadastro-guia-tag cadastro-guia-tag-service"
-                          key={passeio.id}
-                        >
-                          {passeio.nome}
-                          <span onClick={() => !bloqueado && removerPasseio(passeio.id)}>
-                            ×
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="cadastro-guia-options-row">
-                  <button
-                    type="button"
-                    className={`cadastro-guia-switch ${motoguia ? "active" : ""}`}
-                    onClick={() => setMotoguia(!motoguia)}
-                    aria-pressed={motoguia}
-                    disabled={bloqueado}
-                  >
-                    <span className="cadastro-guia-switch-track">
-                      <span className="cadastro-guia-switch-thumb" />
-                    </span>
-                    <span className="cadastro-guia-switch-label">
-                      Atua como Motoguia <Icon name="truck" size={16} />
-                    </span>
-                  </button>
-                </div>
-
-                <div className="cadastro-guia-field">
-                  <label htmlFor="guia-diferencial">
-                    Diferencial do guia <Icon name="star" size={16} />
+                <div className="cadastro-passeio-field">
+                  <label htmlFor="descricao-passeio">
+                    Descrição do passeio <Icon name="info" size={16} />
                   </label>
                   <textarea
-                    id="guia-diferencial"
-                    placeholder="Informe pontos fortes, características ou diferenciais importantes"
-                    value={diferencial}
-                    onChange={(e) => setDiferencial(e.target.value)}
+                    id="descricao-passeio"
+                    placeholder="Descreva o passeio ou observações importantes"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
                     disabled={bloqueado}
                   />
                 </div>
 
-                <div className="cadastro-guia-actions">
+                <div className="cadastro-passeio-field">
+                  <label>
+                    Frequência do passeio{" "}
+                    <Icon name="calendar" size={16} />
+                  </label>
+
+                  <div className="cadastro-passeio-dropdown">
+                    <div
+                      className="cadastro-passeio-dropdown-header"
+                      onClick={() => !bloqueado && setDropdownOpen(!dropdownOpen)}
+                    >
+                      <span>Selecionar dias da semana</span>
+                      <span className="cadastro-passeio-dropdown-arrow">▾</span>
+                    </div>
+
+                    {dropdownOpen && !bloqueado && (
+                      <div className="cadastro-passeio-dropdown-list">
+                        {diasSemana.map((dia) => (
+                          <div
+                            key={dia}
+                            className="cadastro-passeio-dropdown-item"
+                            onClick={() => adicionarDia(dia)}
+                          >
+                            {dia}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cadastro-passeio-tags">
+                    {frequencia.map((dia) => (
+                      <div className="cadastro-passeio-tag" key={dia}>
+                        {dia}
+                        <span onClick={() => !bloqueado && removerDia(dia)}>
+                          ×
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="cadastro-passeio-actions">
                   <button
                     type="submit"
-                    disabled={salvando}
-                    className={`cadastro-guia-btn-primary ${salvando ? "is-saving" : ""}`}
+                    className={`cadastro-passeio-btn-primary ${salvando ? "is-saving" : ""
+                      }`}
+                    disabled={salvando || importandoApi}
                   >
                     <Icon name="save" size={16} />
-                    {salvando ? "Salvando..." : "Cadastrar guia"}
+                    {salvando
+                      ? "Salvando..."
+                      : editandoId
+                        ? "Salvar alterações"
+                        : "Cadastrar passeio"}
                   </button>
+
+                  {editandoId && (
+                    <button
+                      type="button"
+                      className="cadastro-passeio-btn-secondary"
+                      onClick={limparFormulario}
+                      disabled={bloqueado}
+                    >
+                      Cancelar edição
+                    </button>
+                  )}
                 </div>
               </form>
             )}
           </div>
 
-          <div className="cadastro-guia-card">
-            <div className="cadastro-guia-card-header">
-              <div className="cadastro-guia-card-title-row">
-                <h3>Resumo do cadastro</h3>
-                <span className="cadastro-guia-badge">Preview</span>
+          <div className="cadastro-passeio-card">
+            <div className="cadastro-passeio-card-header">
+              <div className="cadastro-passeio-card-title-row">
+                <h3>Importação automática</h3>
+                <span className="cadastro-passeio-badge">Phoenix</span>
               </div>
               <p>
-                Confira rapidamente como os dados do guia estão sendo montados
-                antes de salvar.
+                Busca os passeios dos próximos 30 dias e ajusta a frequência com
+                base na ocorrência real de cada serviço.
               </p>
             </div>
 
             {loadingInicial ? (
-              <CardSkeleton variant="list" rows={4} />
+              <CardSkeleton variant="list" rows={3} />
             ) : (
-              <div className="cadastro-guia-preview">
-                <div className="cadastro-guia-preview-item">
-                  <span className="cadastro-guia-preview-label">Nome</span>
-                  <strong className="cadastro-guia-preview-value">
-                    {nome || "Não informado"}
-                  </strong>
+              <div className="cadastro-passeio-import-box">
+                <div className="cadastro-passeio-import-icon">
+                  <Icon name="refresh" size={16} />
                 </div>
 
-                <div className="cadastro-guia-preview-item">
-                  <span className="cadastro-guia-preview-label">WhatsApp</span>
-                  <strong className="cadastro-guia-preview-value">
-                    {formatarTelefone(whatsapp) || "Não informado"}
-                  </strong>
-                </div>
-
-                <div className="cadastro-guia-preview-item">
-                  <span className="cadastro-guia-preview-label">Idiomas</span>
-                  <strong className="cadastro-guia-preview-value">
-                    {idiomasSelecionados.length > 0
-                      ? idiomasSelecionados.map((i) => i.label).join(", ")
-                      : "Nenhum selecionado"}
-                  </strong>
-                </div>
-
-                <div className="cadastro-guia-preview-item">
-                  <span className="cadastro-guia-preview-label">Motoguia</span>
-                  <strong className="cadastro-guia-preview-value">
-                    {motoguia ? "Sim" : "Não"}
-                  </strong>
-                </div>
+                <button
+                  type="button"
+                  className={`cadastro-passeio-btn-soft ${importandoApi ? "is-syncing" : ""
+                    }`}
+                  onClick={importarPasseiosDaApi}
+                  disabled={importandoApi || salvando}
+                >
+                  <Icon name="download" size={16} />
+                  {importandoApi ? "Importando..." : "Puxar dados do Phoenix"}
+                </button>
               </div>
+            )}
+          </div>
+
+          <div className="cadastro-passeio-card cadastro-passeio-card-full">
+            <div className="cadastro-passeio-card-header">
+              <div className="cadastro-passeio-card-title-row">
+                <h3>Passeios cadastrados</h3>
+                <span className="cadastro-passeio-badge">
+                  {loadingInicial ? "..." : `${passeios.length} item(ns)`}
+                </span>
+              </div>
+              <p>
+                Visualize os serviços cadastrados, consulte a frequência e faça
+                ajustes sempre que necessário.
+              </p>
+            </div>
+
+            {loadingInicial ? (
+              <CardSkeleton variant="list" rows={6} />
+            ) : passeios.length === 0 ? (
+              <div className="cadastro-passeio-empty">
+                Nenhum passeio cadastrado.
+              </div>
+            ) : (
+              <ul className="cadastro-passeio-list">
+                {passeios.map((p) => (
+                  <li
+                    key={p.id}
+                    className={`cadastro-passeio-item ${excluindoId === p.id ? "is-removing" : ""
+                      }`}
+                  >
+                    <div className="cadastro-passeio-item-info">
+                      <strong className="cadastro-passeio-item-name">
+                        {p.nome}
+                      </strong>
+
+                      {p.descricao ? (
+                        <p className="cadastro-passeio-item-desc">
+                          {p.descricao}
+                        </p>
+                      ) : (
+                        <p className="cadastro-passeio-item-desc is-empty">
+                          Sem descrição cadastrada.
+                        </p>
+                      )}
+
+                      <div className="cadastro-passeio-meta">
+                        <span>
+                          <strong>ID externo:</strong>{" "}
+                          {p.externalServiceId || "-"}
+                        </span>
+                        <span>
+                          <strong>Origem:</strong> {p.origem || "manual"}
+                        </span>
+                      </div>
+
+                      <div className="cadastro-passeio-frequency">
+                        {(p.frequencia || []).map((dia) => (
+                          <span key={dia} className="cadastro-passeio-day-tag">
+                            {dia}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="cadastro-passeio-item-actions">
+                      <button
+                        type="button"
+                        className="cadastro-passeio-btn-edit"
+                        onClick={() => editarPasseio(p)}
+                        disabled={bloqueado || !!excluindoId}
+                      >
+                        <Icon name="pencil" size={16} />
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="cadastro-passeio-btn-delete"
+                        onClick={() => excluirPasseio(p)}
+                        disabled={bloqueado || !!excluindoId}
+                      >
+                        <Icon name="trash" size={16} />
+                        Apagar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </section>
@@ -445,4 +691,4 @@ const CadastroGuia = () => {
   );
 };
 
-export default CadastroGuia;
+export default CadastroPasseio;

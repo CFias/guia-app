@@ -4,9 +4,10 @@ import PlacaPreview from "./PlacaPreview";
 import Grupo from "./Grupo";
 import { extrairTextoNomePlaca, layoutIndividual } from "./layoutPlaca";
 import {
-  DESENHOS,
   LETRAS,
-  MODELOS_PRONTOS,
+  desenhosDaBase,
+  gruposProntos,
+  modelosProntos,
   MOLDURAS,
   POSICOES,
   TRACOS,
@@ -63,7 +64,7 @@ const ModeloEditor = ({
   const mudar = (parcial) => setModelo((atual) => normalizarModelo({ ...atual, ...parcial }));
 
   const partirDe = (id) => {
-    const base = [...MODELOS_PRONTOS, ...modelosEquipe].find((m) => m.id === id);
+    const base = [...modelosProntos(), ...modelosEquipe].find((m) => m.id === id);
     if (!base) return;
     const { desenho, posicao, moldura, letra, traco, mensagem, trevo } = base;
     mudar({ desenho, posicao, moldura, letra, traco, mensagem, trevo });
@@ -159,13 +160,15 @@ const ModeloEditor = ({
           <Field label="Começar a partir de">
             <select className="ui-input" value="" onChange={(e) => partirDe(e.target.value)}>
               <option value="">Escolha um modelo para copiar…</option>
-              <optgroup label="Prontos">
-                {MODELOS_PRONTOS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nome}
-                  </option>
-                ))}
-              </optgroup>
+              {gruposProntos().map((g) => (
+                <optgroup key={g.titulo} label={`Prontos · ${g.titulo}`}>
+                  {g.modelos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
               {modelosEquipe.length > 0 && (
                 <optgroup label="Da equipe">
                   {modelosEquipe.map((m) => (
@@ -178,7 +181,7 @@ const ModeloEditor = ({
             </select>
           </Field>
           <Grupo label="Desenho">
-            <Opcoes ariaLabel="Desenho" opcoes={DESENHOS} valor={modelo.desenho} onChange={(v) => mudar({ desenho: v })} />
+            <Opcoes ariaLabel="Desenho" opcoes={desenhosDaBase(undefined, modelo.desenho)} valor={modelo.desenho} onChange={(v) => mudar({ desenho: v })} />
           </Grupo>
           {posicoes.length > 1 && (
             <Grupo label="Onde fica o desenho">
@@ -214,7 +217,7 @@ const ModeloEditor = ({
               value={modelo.mensagem}
               maxLength={90}
               onChange={(e) => setModelo((atual) => ({ ...atual, mensagem: e.target.value }))}
-              placeholder="Ex.: Seja bem-vindo(a) à Bahia, {primeiro nome}!"
+              placeholder="Ex.: Seja bem-vindo(a), {primeiro nome}!"
             />
           </Field>
           <Grupo label="Trevo da Luck ao fundo">

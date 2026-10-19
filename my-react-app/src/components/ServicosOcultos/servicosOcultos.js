@@ -9,8 +9,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import { ehSede, idPorRegiao } from "../../Services/Services/regiaoAtiva";
 
-const REF = () => doc(db, "settings", "servicos_lista_dia");
+// cada base tem a sua lista (Salvador: settings/servicos_lista_dia)
+const REF = () => doc(db, "settings", idPorRegiao("servicos_lista_dia"));
 
 // Usado enquanto ninguém salvou a configuração (a lista que era fixa no código)
 export const OCULTOS_PADRAO = [
@@ -35,7 +37,9 @@ export const chaveServico = (nome = "") =>
 
 // { ocultos: Set(chaves), lista: [nomes], carregado, salvar(nomes) }
 export const useServicosOcultos = () => {
-  const [lista, setLista] = useState(OCULTOS_PADRAO);
+  // a lista padrão tem nomes de serviços de Salvador; outras bases começam vazias
+  const padrao = ehSede() ? OCULTOS_PADRAO : [];
+  const [lista, setLista] = useState(padrao);
   const [carregado, setCarregado] = useState(false);
 
   useEffect(
@@ -44,7 +48,7 @@ export const useServicosOcultos = () => {
         REF(),
         (snap) => {
           const salvos = snap.exists() ? snap.data()?.ocultos : null;
-          setLista(Array.isArray(salvos) ? salvos.filter(Boolean) : OCULTOS_PADRAO);
+          setLista(Array.isArray(salvos) ? salvos.filter(Boolean) : ehSede() ? OCULTOS_PADRAO : []);
           setCarregado(true);
         },
         (e) => {

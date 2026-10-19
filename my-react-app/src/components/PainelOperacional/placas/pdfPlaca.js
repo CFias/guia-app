@@ -66,20 +66,24 @@ export const gerarPdfIndividuais = async ({ placas = [], modelo, opcoes = {}, ar
   doc.save(arquivo || nomeArquivo("placas", placas.length === 1 ? placas[0].nome : placas[0].voo));
 };
 
-/* nomes: [texto] já ordenados; opcoes da coleção (ver layoutColecao) */
-export const gerarPdfColecao = async ({ voo, nomes = [], mensagem = "", opcoes = {}, trevo = 0.06, arquivo }) => {
-  if (!nomes.length) return;
+/* nomes: [texto] já ordenados; opcoes da coleção (ver layoutColecao).
+   Vários voos de uma vez: paginas = [{ voo, nomes, numero, total, mensagem }]
+   (cada voo começa numa folha nova, com a numeração dele). */
+export const gerarPdfColecao = async ({ voo, nomes = [], mensagem = "", paginas, opcoes = {}, trevo = 0.06, arquivo }) => {
+  const folhas =
+    paginas ||
+    paginarColecao(nomes, opcoes.porPlaca).map((p, i, todas) => ({ voo, nomes: p, numero: i + 1, total: todas.length, mensagem }));
+  if (!folhas.length) return;
   const doc = novoDoc();
   const { logo, fundo } = await recursos({ trevo }, "colecao");
-  const paginas = paginarColecao(nomes, opcoes.porPlaca);
-  paginas.forEach((pagina, i) => {
+  folhas.forEach((f, i) => {
     if (i > 0) doc.addPage();
     doc.addImage(fundo, "JPEG", 0, 0, LARGURA, ALTURA, "fundo_colecao", "FAST");
     desenharPecas(
       doc,
-      layoutColecao({ nomes: pagina, numero: i + 1, total: paginas.length }, { voo, mensagem, data: opcoes.data }, opcoes),
+      layoutColecao({ nomes: f.nomes, numero: f.numero, total: f.total }, { voo: f.voo, mensagem: f.mensagem, data: opcoes.data }, opcoes),
       { logo },
     );
   });
-  doc.save(arquivo || nomeArquivo("placa-colecao", voo));
+  doc.save(arquivo || nomeArquivo("placa-colecao", folhas[0].voo));
 };

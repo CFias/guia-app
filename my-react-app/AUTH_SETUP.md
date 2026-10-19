@@ -97,3 +97,33 @@ usuários, turnos e equipe (Demanda por turno) e a própria configuração de
 acessos. Quem não é da gerência só cria/edita contas do Comercial e dos Guias.
 Dados que várias telas usam (serviços, guias, escala, fornecedores) continuam
 liberados para todo o Operacional — senão as telas liberadas quebrariam.
+
+## 9. Regiões (outras bases Luck)
+
+Salvador é a **sede**: tudo funciona como sempre. Outras bases (Recife, Natal…)
+usam só algumas telas, com os dados do **Phoenix delas**. Cada base tem um
+Phoenix no mesmo padrão, mudando só o nome depois de `driver`:
+`https://driversalvador.phoenix.comeialabs.com`, `https://driverrecife.phoenix.comeialabs.com`…
+
+1. Publique as regras novas: `firebase deploy --only firestore:rules`.
+2. Com uma conta da gerência, abra **Gestão → Regiões** (`/regioes`) →
+   **Adicionar base**: nome, sigla e o Phoenix (basta digitar `recife`, ou colar
+   qualquer link do endpoint) → **Testar** → marque as telas → **Salvar regiões**.
+3. Em **Cadastros → Usuários e acessos**, crie ou edite a conta do Operacional e
+   escolha a **Base (região)**. A pessoa passa a ver só aquela base.
+4. A gerência troca de base pelo seletor no topo da tela (fica salvo no navegador).
+
+Telas que uma base pode usar: Painel Operacional (chegadas, saídas, transfers,
+resumo, mapa e placas), Prévia de serviços, Planilha operacional e Demanda por
+turno. O que é de Salvador (cadastros, guias, escala, custos, Central de
+Informações, fornecedores, notificações, painel do aeroporto e Conferência de
+voos) fica fechado para as outras bases — também no banco.
+
+Cada base tem a própria configuração, gravada com o sufixo da base:
+`settings/turnos_equipe__rec`, `settings/placas_modelos__rec`,
+`settings/servicos_lista_dia__rec`; o monitoramento de OUT leva o campo `regiao`.
+Salvador continua nos documentos de sempre (nada a migrar).
+
+Desativar ou remover uma base deixa as contas dela sem acesso até a gerência
+trocar a região dessas contas. Marcar uma conta de outra base como **Gerência**
+faz dela gerência geral (vê Salvador e todas as bases).

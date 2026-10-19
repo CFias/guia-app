@@ -6,6 +6,7 @@ import "./components/ui/ui.css";
 import App from "./App";
 import { ThemeProvider } from "./Context/ThemeContext";
 import { AuthProvider } from "./Context/AuthContext";
+import RegiaoProvider from "./Context/RegiaoProvider";
 import { PreferenciasUIProvider } from "./Context/PreferenciasUI";
 import ToastProvider from "./components/ui/ToastProvider";
 import "./uiStates.css";
@@ -17,11 +18,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <PreferenciasUIProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </PreferenciasUIProvider>
+          <RegiaoProvider>
+            <PreferenciasUIProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </PreferenciasUIProvider>
+          </RegiaoProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

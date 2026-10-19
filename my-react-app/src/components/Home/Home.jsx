@@ -55,6 +55,7 @@ import {
   siglaDoIdioma,
 } from "../../Services/Utils/idiomas";
 import { observacaoExclui, semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
 // Modalidade do Phoenix → "Regular" / "Privativo" (outro texto passa como veio)
 const categoriaDoModo = (modo = "") => {
@@ -100,8 +101,6 @@ const DIAS = [
   "Domingo",
 ];
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,reserve.pdvPayment,reserve.pdvPayment.user,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
@@ -244,7 +243,7 @@ const montarUrlApi = (date) => {
   params.append("expand", EXPAND);
   params.append("service_type[]", "3");
   params.append("service_type[]", "4");
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -377,10 +376,10 @@ const aguardandoConfirmacao = (item) =>
 const extrairClienteReserva = (item) =>
   String(
     item?.reserve?.customer?.name ||
-      item?.customer?.name ||
-      item?.reserve?.holder_name ||
-      item?.passenger_name ||
-      "",
+    item?.customer?.name ||
+    item?.reserve?.holder_name ||
+    item?.passenger_name ||
+    "",
   ).trim();
 
 const extrairHotelReserva = (item) => {
@@ -880,7 +879,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -889,11 +888,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -958,13 +957,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -1028,7 +1027,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                  normalizarTexto(guia.nome || ""),
+                normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -1058,11 +1057,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-          distribuicaoGuias.reduce(
-            (acc, guia) => acc + Number(guia.percentualUso || 0),
-            0,
-          ) / distribuicaoGuias.length,
-        )
+        distribuicaoGuias.reduce(
+          (acc, guia) => acc + Number(guia.percentualUso || 0),
+          0,
+        ) / distribuicaoGuias.length,
+      )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1114,8 +1113,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {

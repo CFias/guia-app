@@ -8,6 +8,7 @@
 
 import jsPDF from "jspdf";
 import { ALTURA, LARGURA, margensDoModelo, reservaInferior } from "./artePlaca";
+import { subtituloDoTema } from "./temasRegiao";
 
 const PT = 0.35278; // 1 pt em mm
 const ALTURA_MAIUSCULA = { helvetica: 0.718, times: 0.662 };
@@ -120,7 +121,7 @@ export const layoutIndividual = (modelo, dados = {}, opcoes = {}) => {
   const { pecas, yLinha } = cabecalho({
     margens,
     voo: dados.voo,
-    subtitulo: "Salvador · Bahia",
+    subtitulo: subtituloDoTema(),
     mostrarVoo: opcoes.mostrarVoo !== false,
   });
 
@@ -203,7 +204,7 @@ export const layoutColecao = ({ nomes = [], numero = 1, total = 1 }, dados = {},
   const { pecas, yLinha } = cabecalho({
     margens,
     voo: dados.voo,
-    subtitulo: dados.mensagem || "Salvador · Bahia",
+    subtitulo: dados.mensagem || subtituloDoTema(),
     subtituloItalico: !!dados.mensagem,
     mostrarVoo: opcoes.mostrarVoo !== false,
   });

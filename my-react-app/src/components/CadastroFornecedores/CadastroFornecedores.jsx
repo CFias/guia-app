@@ -15,9 +15,8 @@ import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -37,7 +36,7 @@ const montarUrlApi = (date) => {
   params.append("execution_date", date);
   params.append("expand", EXPAND);
   SERVICE_TYPES.forEach((type) => params.append("service_type[]", type));
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -95,8 +94,8 @@ const normalizarVeiculoParaObjeto = (veiculo) => {
     nome: veiculo?.nome || "",
     capacidade:
       veiculo?.capacidade !== undefined &&
-      veiculo?.capacidade !== null &&
-      veiculo?.capacidade !== ""
+        veiculo?.capacidade !== null &&
+        veiculo?.capacidade !== ""
         ? String(veiculo.capacidade)
         : "",
   };
@@ -107,9 +106,9 @@ const atualizarCapacidadeVeiculo = (id, capacidade) => {
     lista.map((veiculo) =>
       veiculo.id === id
         ? {
-            ...veiculo,
-            capacidade: capacidade.replace(/\D/g, ""),
-          }
+          ...veiculo,
+          capacidade: capacidade.replace(/\D/g, ""),
+        }
         : veiculo,
     );
 };
@@ -182,9 +181,9 @@ const CadastroFornecedores = () => {
       const nomesExistentesNosFornecedores = fornecedores.flatMap((f) =>
         Array.isArray(f.veiculos)
           ? f.veiculos
-              .map((v) => (typeof v === "string" ? v : v?.nome || ""))
-              .map((nome) => String(nome || "").trim())
-              .filter(Boolean)
+            .map((v) => (typeof v === "string" ? v : v?.nome || ""))
+            .map((nome) => String(nome || "").trim())
+            .filter(Boolean)
           : [],
       );
 
@@ -295,8 +294,8 @@ const CadastroFornecedores = () => {
           nome: v.nome,
           capacidade:
             v.capacidade !== undefined &&
-            v.capacidade !== null &&
-            String(v.capacidade).trim() !== ""
+              v.capacidade !== null &&
+              String(v.capacidade).trim() !== ""
               ? Number(v.capacidade)
               : null,
         })),
@@ -341,8 +340,8 @@ const CadastroFornecedores = () => {
       const telefoneFornecedor = String(f.whatsapp || "");
       const veiculosTexto = Array.isArray(f.veiculos)
         ? f.veiculos
-            .map((v) => (typeof v === "string" ? v : v?.nome || ""))
-            .join(" ")
+          .map((v) => (typeof v === "string" ? v : v?.nome || ""))
+          .join(" ")
         : "";
 
       return (
@@ -355,10 +354,10 @@ const CadastroFornecedores = () => {
 
   const previewVeiculos = veiculosSelecionados.length
     ? veiculosSelecionados
-        .map(
-          (v) => `${v.nome}${v.capacidade ? ` (${v.capacidade} lugares)` : ""}`,
-        )
-        .join(", ")
+      .map(
+        (v) => `${v.nome}${v.capacidade ? ` (${v.capacidade} lugares)` : ""}`,
+      )
+      .join(", ")
     : "Nenhum selecionado";
 
   const bloqueado = salvando || loadingInicial;
@@ -471,9 +470,8 @@ const CadastroFornecedores = () => {
 
                   <div className="cadastro-fornecedor-dropdown">
                     <div
-                      className={`cadastro-fornecedor-dropdown-header ${
-                        dropdownVeiculosOpen ? "open" : ""
-                      }`}
+                      className={`cadastro-fornecedor-dropdown-header ${dropdownVeiculosOpen ? "open" : ""
+                        }`}
                       onClick={() =>
                         !bloqueado &&
                         !sincronizandoVeiculos &&
@@ -505,9 +503,8 @@ const CadastroFornecedores = () => {
                             return (
                               <div
                                 key={veiculo.id}
-                                className={`cadastro-fornecedor-dropdown-item ${
-                                  selecionado ? "selected" : ""
-                                }`}
+                                className={`cadastro-fornecedor-dropdown-item ${selecionado ? "selected" : ""
+                                  }`}
                                 onClick={() => adicionarVeiculo(veiculo)}
                               >
                                 {veiculo.nome}
@@ -647,9 +644,8 @@ const CadastroFornecedores = () => {
                   <button
                     type="submit"
                     disabled={salvando}
-                    className={`cadastro-fornecedor-btn-primary ${
-                      salvando ? "is-saving" : ""
-                    }`}
+                    className={`cadastro-fornecedor-btn-primary ${salvando ? "is-saving" : ""
+                      }`}
                   >
                     <Icon name="save" size={16} />
                     {salvando
@@ -773,13 +769,13 @@ const CadastroFornecedores = () => {
                 {fornecedoresFiltrados.map((fornecedor) => {
                   const veiculos = Array.isArray(fornecedor.veiculos)
                     ? fornecedor.veiculos.map((v) =>
-                        typeof v === "string"
-                          ? { nome: v, capacidade: null }
-                          : {
-                              nome: v?.nome || "",
-                              capacidade: v?.capacidade ?? null,
-                            },
-                      )
+                      typeof v === "string"
+                        ? { nome: v, capacidade: null }
+                        : {
+                          nome: v?.nome || "",
+                          capacidade: v?.capacidade ?? null,
+                        },
+                    )
                     : [];
 
                   return (
@@ -797,9 +793,8 @@ const CadastroFornecedores = () => {
 
                         <div className="cadastro-fornecedor-item-badges">
                           <span
-                            className={`cadastro-fornecedor-status ${
-                              fornecedor.ativo === false ? "inativo" : "ativo"
-                            }`}
+                            className={`cadastro-fornecedor-status ${fornecedor.ativo === false ? "inativo" : "ativo"
+                              }`}
                           >
                             {fornecedor.ativo === false ? "Inativo" : "Ativo"}
                           </span>
@@ -844,9 +839,8 @@ const CadastroFornecedores = () => {
 
                         <button
                           type="button"
-                          className={`cadastro-fornecedor-btn-secondary ${
-                            fornecedor.ativo === false ? "success" : "warning"
-                          }`}
+                          className={`cadastro-fornecedor-btn-secondary ${fornecedor.ativo === false ? "success" : "warning"
+                            }`}
                           onClick={() => alternarStatusFornecedor(fornecedor)}
                         >
                           {fornecedor.ativo === false ? (

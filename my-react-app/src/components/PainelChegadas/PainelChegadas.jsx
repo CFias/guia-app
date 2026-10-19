@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import Icon from "../ui/Icon";
 import "./styles.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -49,7 +48,7 @@ const montarUrlApi = (date) => {
   params.append("execution_date", date);
   params.append("expand", EXPAND);
   params.append("service_type[]", "1");
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {

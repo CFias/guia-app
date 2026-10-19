@@ -26,6 +26,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { phoenixReserveService } from "./regiaoAtiva";
 import {
   alertasDoDia,
   calcularLinha,
@@ -40,8 +41,6 @@ import {
   retratoDaLinha,
 } from "./custosCalculo";
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
 
@@ -56,13 +55,12 @@ const urlPhoenix = (data, tipos) => {
   p.append("execution_date", data);
   p.append("expand", EXPAND);
   tipos.forEach((t) => p.append("service_type[]", t));
-  return `${API_BASE}?${p.toString()}`;
+  return `${phoenixReserveService()}?${p.toString()}`;
 };
 
 const lista = (json) => {
   if (Array.isArray(json)) return json;
-  for (const c of [json?.data, json?.results, json?.rows, json?.items])
-    if (Array.isArray(c)) return c;
+  for (const c of [json?.data, json?.results, json?.rows, json?.items]) if (Array.isArray(c)) return c;
   return [];
 };
 
@@ -87,17 +85,12 @@ export const buscarItensDoDia = async (data) => {
 
 // Transfers e passeios do dia, já um por escala (e os serviços de parceiro
 // reconhecidos pelas tarifas)
-export const buscarServicosDoDia = async (data, tarifas = []) =>
-  consolidarServicos(await buscarItensDoDia(data), data, tarifas);
+export const buscarServicosDoDia = async (data, tarifas = []) => consolidarServicos(await buscarItensDoDia(data), data, tarifas);
 
 // nomes de serviço vistos no Phoenix (sugestão no cadastro de tarifa de parceiro)
 export const registrarServicosConhecidos = (nomes = []) =>
   nomes.length
-    ? setDoc(
-        REF_CONFIG(),
-        { servicosConhecidos: arrayUnion(...nomes) },
-        { merge: true },
-      )
+    ? setDoc(REF_CONFIG(), { servicosConhecidos: arrayUnion(...nomes) }, { merge: true })
     : Promise.resolve();
 
 /* ---------------- configuração ---------------- */
@@ -105,11 +98,7 @@ export const registrarServicosConhecidos = (nomes = []) =>
 export const ouvirConfigCustos = (aoMudar, aoErro) =>
   onSnapshot(
     REF_CONFIG(),
-    (snap) =>
-      aoMudar(
-        normalizarConfigCustos(snap.exists() ? snap.data() : {}),
-        snap.exists(),
-      ),
+    (snap) => aoMudar(normalizarConfigCustos(snap.exists() ? snap.data() : {}), snap.exists()),
     (e) => {
       console.error("Erro ao ler settings/custos:", e);
       aoErro?.(e);
@@ -118,29 +107,18 @@ export const ouvirConfigCustos = (aoMudar, aoErro) =>
   );
 
 export const salvarConfigCustos = (patch) =>
-  setDoc(
-    REF_CONFIG(),
-    { ...patch, atualizadoEm: Timestamp.now() },
-    { merge: true },
-  );
+  setDoc(REF_CONFIG(), { ...patch, atualizadoEm: Timestamp.now() }, { merge: true });
 
 export const fixarCategoriaVeiculo = (veiculoKey, categoria) =>
   setDoc(
     REF_CONFIG(),
-    {
-      categoriasVeiculo: { [veiculoKey]: categoria || deleteField() },
-      atualizadoEm: Timestamp.now(),
-    },
+    { categoriasVeiculo: { [veiculoKey]: categoria || deleteField() }, atualizadoEm: Timestamp.now() },
     { merge: true },
   );
 
 export const registrarRegioes = (regioes = []) =>
   regioes.length
-    ? setDoc(
-        REF_CONFIG(),
-        { regioesConhecidas: arrayUnion(...regioes) },
-        { merge: true },
-      )
+    ? setDoc(REF_CONFIG(), { regioesConhecidas: arrayUnion(...regioes) }, { merge: true })
     : Promise.resolve();
 
 /* ---------------- fornecedores e vínculos ---------------- */
@@ -155,18 +133,11 @@ export const ouvirVinculos = (aoMudar) =>
     },
   );
 
-export const salvarVinculoVeiculo = (
-  veiculoKey,
-  { fornecedor, veiculoNome = "", placa = "" },
-) =>
+export const salvarVinculoVeiculo = (veiculoKey, { fornecedor, veiculoNome = "", placa = "" }) =>
   setDoc(
     REF_VINCULOS(),
     {
-      vinculos: {
-        [veiculoKey]: fornecedor
-          ? { fornecedor, veiculoNome, placa }
-          : deleteField(),
-      },
+      vinculos: { [veiculoKey]: fornecedor ? { fornecedor, veiculoNome, placa } : deleteField() },
       updatedAt: Timestamp.now(),
     },
     { merge: true },
@@ -215,11 +186,7 @@ export const gravarRetratos = (data, retratos = {}, removidas = []) => {
     linhas[chave] = { removido: true };
   });
   if (!Object.keys(linhas).length) return Promise.resolve();
-  return setDoc(
-    REF_DIA(data),
-    { data, linhas, sincronizadoEm: Timestamp.now() },
-    { merge: true },
-  );
+  return setDoc(REF_DIA(data), { data, linhas, sincronizadoEm: Timestamp.now() }, { merge: true });
 };
 
 // patch: campos de `manual`; null/"" apaga o campo (volta ao automático)
@@ -244,18 +211,10 @@ export const gravarLancamento = (data, chave, patch, usuario, retrato) => {
 
 // resumo do recomendador e dos alertas (para o relatório executivo)
 export const gravarResumoDia = (data, resumo) =>
-  setDoc(
-    REF_DIA(data),
-    { data, resumo, resumoEm: Timestamp.now() },
-    { merge: true },
-  );
+  setDoc(REF_DIA(data), { data, resumo, resumoEm: Timestamp.now() }, { merge: true });
 
 export const excluirLinha = (data, chave) =>
-  setDoc(
-    REF_DIA(data),
-    { linhas: { [chave]: deleteField() } },
-    { merge: true },
-  );
+  setDoc(REF_DIA(data), { linhas: { [chave]: deleteField() } }, { merge: true });
 
 export const marcarStatusDia = (data, status, usuario) =>
   setDoc(
@@ -281,9 +240,7 @@ const emLotes = async (itens, tamanho, fn) => {
       res[atual] = await fn(itens[atual], atual);
     }
   };
-  await Promise.all(
-    Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador),
-  );
+  await Promise.all(Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador));
   return res;
 };
 
@@ -298,11 +255,7 @@ export const carregarCustosPeriodo = async (datas = []) =>
 // Dias sem lançamento: busca no Phoenix e grava o retrato pela tabela
 // (rascunho), para o relatório não ficar com buraco. Não sobrescreve nada
 // lançado à mão (só cria o que não existe).
-export const calcularDiasPelaTabela = async (
-  datas,
-  { config, vinculos, fornecedores },
-  aoProgredir,
-) => {
+export const calcularDiasPelaTabela = async (datas, { config, vinculos, fornecedores }, aoProgredir) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
   const capacidades = mapaCapacidadePorVeiculo(fornecedores);
   let feitos = 0;
@@ -318,21 +271,10 @@ export const calcularDiasPelaTabela = async (
       linhas.forEach((l) => {
         retratos[l.chave] = retratoDaLinha(l);
       });
-      const resumo = resumoDoDia(
-        recomendarTrocas(servicos, ctx),
-        alertasDoDia(linhas),
-      );
+      const resumo = resumoDoDia(recomendarTrocas(servicos, ctx), alertasDoDia(linhas));
       await setDoc(
         REF_DIA(data),
-        {
-          data,
-          status: "rascunho",
-          linhas: retratos,
-          resumo,
-          resumoEm: Timestamp.now(),
-          sincronizadoEm: Timestamp.now(),
-          calculadoPelaTabela: true,
-        },
+        { data, status: "rascunho", linhas: retratos, resumo, resumoEm: Timestamp.now(), sincronizadoEm: Timestamp.now(), calculadoPelaTabela: true },
         { merge: true },
       );
     } catch (e) {

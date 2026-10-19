@@ -1,7 +1,7 @@
 // modelosPlaca.js
 //
 // Modelos das placas de recepção (Painel Operacional → Chegadas).
-// - Modelos prontos: ficam no código (MODELOS_PRONTOS).
+// - Modelos prontos: ficam no código, por base (temasRegiao.js → modelosProntos()).
 // - Modelos da equipe: criados no próprio painel, salvos em
 //   settings/placas_modelos = { modelos: [...], atualizadoEm }.
 // - O que cada computador escolheu por último (modelo, mensagem, opções da
@@ -10,8 +10,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../../Services/Services/firebase";
+import { idPorRegiao } from "../../../Services/Services/regiaoAtiva";
+import { MODELOS_NORDESTE, temaDaRegiao } from "./temasRegiao";
 
-const REF = () => doc(db, "settings", "placas_modelos");
+// cada base tem os seus modelos (Salvador: settings/placas_modelos)
+const REF = () => doc(db, "settings", idPorRegiao("placas_modelos"));
 
 export const DESENHOS = [
   { value: "nenhum", label: "Nenhum" },
@@ -29,17 +32,38 @@ export const DESENHOS = [
   { value: "azulejos", label: "Azulejos" },
   { value: "saojoao", label: "São João" },
   { value: "carnaval", label: "Carnaval" },
+  // Nordeste (todas as bases)
+  { value: "praia", label: "Praia" },
+  { value: "voudeluck", label: "#VouDeLuck" },
+  { value: "sertao", label: "Sertão (mandacaru)" },
+  // Natal
+  { value: "reismagos", label: "Forte dos Reis Magos" },
+  { value: "morrocareca", label: "Morro do Careca" },
+  { value: "cajueiro", label: "Cajueiro de Pirangi" },
+  // Recife / Olinda / Porto de Galinhas
+  { value: "frevo", label: "Frevo" },
+  { value: "olinda", label: "Olinda" },
+  { value: "portogalinhas", label: "Porto de Galinhas" },
+  // Maceió
+  { value: "pajucara", label: "Piscinas de Pajuçara" },
+  { value: "gunga", label: "Praia do Gunga" },
+  // Fortaleza / Jericoacoara
+  { value: "ponteingleses", label: "Ponte dos Ingleses" },
+  { value: "pedrafurada", label: "Pedra Furada" },
+  // João Pessoa
+  { value: "cabobranco", label: "Farol do Cabo Branco" },
+  { value: "jacare", label: "Pôr do sol do Jacaré" },
+  // Aracaju
+  { value: "caranguejo", label: "Caranguejo" },
+  { value: "xingo", label: "Cânion do Xingó" },
+  // Porto Seguro
+  { value: "caravela", label: "Caravela" },
 ];
 
 // desenhos em faixa (base) ou fixos — não escolhem posição
 const SO_BASE = [
-  "pelourinho",
-  "orla",
-  "jangada",
-  "cordel",
-  "azulejos",
-  "saojoao",
-  "carnaval",
+  "pelourinho", "orla", "jangada", "cordel", "azulejos", "saojoao", "carnaval",
+  "praia", "voudeluck", "olinda", "gunga", "ponteingleses", "xingo",
 ];
 
 export const POSICOES = [
@@ -86,131 +110,44 @@ export const MODELO_BASE = {
   trevo: 0.06,
 };
 
-export const MODELOS_PRONTOS = [
-  { id: "classico", nome: "Clássico", desenho: "nenhum" },
-  { id: "farol", nome: "Farol da Barra", desenho: "farol", posicao: "direita" },
-  {
-    id: "bonfim",
-    nome: "Senhor do Bonfim",
-    desenho: "bonfim",
-    posicao: "direita",
-  },
-  {
-    id: "pelourinho",
-    nome: "Pelourinho",
-    desenho: "pelourinho",
-    posicao: "base",
-  },
-  { id: "orla", nome: "Orla", desenho: "orla", posicao: "base" },
-  {
-    id: "fitinhas",
-    nome: "Fitinhas do Bonfim",
-    desenho: "fitinhas",
-    posicao: "base",
-    novo: true,
-  },
-  {
-    id: "moldura_fitas",
-    nome: "Moldura de fitas",
-    desenho: "fitinhas",
-    posicao: "laterais",
-    novo: true,
-  },
-  {
-    id: "capoeira",
-    nome: "Capoeira",
-    desenho: "berimbau",
-    posicao: "direita",
-    novo: true,
-  },
-  {
-    id: "baiana",
-    nome: "Baiana",
-    desenho: "baiana",
-    posicao: "direita",
-    novo: true,
-  },
-  {
-    id: "elevador",
-    nome: "Elevador Lacerda",
-    desenho: "elevador",
-    posicao: "direita",
-    novo: true,
-  },
-  {
-    id: "praia_do_forte",
-    nome: "Praia do Forte",
-    desenho: "tartaruga",
-    posicao: "direita",
-    novo: true,
-  },
-  {
-    id: "jangada",
-    nome: "Jangada",
-    desenho: "jangada",
-    posicao: "base",
-    novo: true,
-  },
-  {
-    id: "cordel",
-    nome: "Cordel",
-    desenho: "cordel",
-    posicao: "base",
-    moldura: "fina",
-    novo: true,
-  },
-  {
-    id: "azulejos",
-    nome: "Azulejos",
-    desenho: "azulejos",
-    posicao: "base",
-    novo: true,
-  },
-  {
-    id: "sao_joao",
-    nome: "São João",
-    desenho: "saojoao",
-    posicao: "base",
-    novo: true,
-    epoca: "Junho",
-  },
-  {
-    id: "carnaval",
-    nome: "Carnaval",
-    desenho: "carnaval",
-    posicao: "base",
-    novo: true,
-    epoca: "Fev/Mar",
-  },
-].map((m) => ({ ...MODELO_BASE, ...m, pronto: true }));
+// Modelos prontos da base em uso (temasRegiao.js): os pontos turísticos da
+// base e, para todas, os do Nordeste. O Clássico (sem desenho) abre a lista.
+const CLASSICO = { id: "classico", nome: "Clássico", desenho: "nenhum" };
+const completar = (lista) => lista.map((m) => ({ ...MODELO_BASE, ...m, pronto: true }));
 
-const valido = (lista, v, padrao) =>
-  lista.some((o) => o.value === v) ? v : padrao;
+export const gruposProntos = (tema = temaDaRegiao()) => [
+  { titulo: tema.cidade, modelos: completar([CLASSICO, ...tema.modelos]) },
+  { titulo: "Nordeste", modelos: completar(MODELOS_NORDESTE) },
+];
+
+export const modelosProntos = (tema) => gruposProntos(tema).flatMap((g) => g.modelos);
+
+// desenhos oferecidos no criador de modelos: os da base + Nordeste (e o
+// desenho atual do modelo, se veio de outra base)
+export const desenhosDaBase = (tema = temaDaRegiao(), atual = "") => {
+  const usados = new Set(["nenhum", atual, ...modelosProntos(tema).map((m) => m.desenho)]);
+  return DESENHOS.filter((d) => usados.has(d.value));
+};
+
+const valido = (lista, v, padrao) => (lista.some((o) => o.value === v) ? v : padrao);
 
 // Garante um modelo completo e coerente (vale para o que vem do Firestore)
 export const normalizarModelo = (m = {}) => {
   const desenho = valido(DESENHOS, m.desenho, MODELO_BASE.desenho);
   const aceitas = posicoesDoDesenho(desenho);
-  const posicao = aceitas.includes(m.posicao)
-    ? m.posicao
-    : aceitas[0] || "base";
+  const posicao = aceitas.includes(m.posicao) ? m.posicao : aceitas[0] || "base";
   const trevo = Number(m.trevo);
   return {
     ...MODELO_BASE,
     ...m,
-    nome:
-      String(m.nome || "")
-        .trim()
-        .slice(0, 40) || "Sem nome",
+    nome: String(m.nome || "").trim().slice(0, 40) || "Sem nome",
     desenho,
     posicao,
     moldura: valido(MOLDURAS, m.moldura, MODELO_BASE.moldura),
     letra: valido(LETRAS, m.letra, MODELO_BASE.letra),
     traco: valido(TRACOS, m.traco, MODELO_BASE.traco),
     mensagem: String(m.mensagem || "").slice(0, 90),
-    trevo: Number.isFinite(trevo)
-      ? Math.min(0.2, Math.max(0, trevo))
-      : MODELO_BASE.trevo,
+    trevo: Number.isFinite(trevo) ? Math.min(0.2, Math.max(0, trevo)) : MODELO_BASE.trevo,
   };
 };
 
@@ -218,20 +155,24 @@ export const novoIdModelo = () =>
   `mod_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
 // ---------- mensagem de boas-vindas pelo idioma ----------
-// jp/cn usam inglês: a fonte padrão do PDF não tem esses caracteres.
-const MENSAGENS = {
-  pt: ["Seja bem-vindo(a) a Salvador!", "Sejam bem-vindos a Salvador!"],
-  en: ["Welcome to Salvador!", "Welcome to Salvador!"],
-  es: ["¡Bienvenido(a) a Salvador!", "¡Bienvenidos a Salvador!"],
-  fr: ["Bienvenue à Salvador !", "Bienvenue à Salvador !"],
-  it: ["Benvenuto/a a Salvador!", "Benvenuti a Salvador!"],
-  de: ["Willkommen in Salvador!", "Willkommen in Salvador!"],
+// Com a cidade da base em uso. jp/cn usam inglês: a fonte padrão do PDF não
+// tem esses caracteres.
+const mensagens = (tema) => {
+  const c = tema.cidade;
+  const a = tema.preposicao || "a";
+  return {
+    pt: [`Seja bem-vindo(a) ${a} ${c}!`, `Sejam bem-vindos ${a} ${c}!`],
+    en: [`Welcome to ${c}!`, `Welcome to ${c}!`],
+    es: [`¡Bienvenido(a) a ${c}!`, `¡Bienvenidos a ${c}!`],
+    fr: [`Bienvenue à ${c} !`, `Bienvenue à ${c} !`],
+    it: [`Benvenuto/a a ${c}!`, `Benvenuti a ${c}!`],
+    de: [`Willkommen in ${c}!`, `Willkommen in ${c}!`],
+  };
 };
 
-export const mensagemDoIdioma = (idioma, { plural = false } = {}) => {
-  const par =
-    MENSAGENS[idioma] ||
-    (idioma && idioma !== "pt" ? MENSAGENS.en : MENSAGENS.pt);
+export const mensagemDoIdioma = (idioma, { plural = false, tema = temaDaRegiao() } = {}) => {
+  const M = mensagens(tema);
+  const par = M[idioma] || (idioma && idioma !== "pt" ? M.en : M.pt);
   return plural ? par[1] : par[0];
 };
 
@@ -242,29 +183,17 @@ export const idiomaDaMaioria = (idiomas = []) => {
     const id = i || "pt";
     conta[id] = (conta[id] || 0) + 1;
   });
-  const ordem = Object.entries(conta).sort(
-    (a, b) => b[1] - a[1] || (a[0] === "pt" ? -1 : 1),
-  );
+  const ordem = Object.entries(conta).sort((a, b) => b[1] - a[1] || (a[0] === "pt" ? -1 : 1));
   return ordem[0]?.[0] || "pt";
 };
 
 const primeiroNome = (nome = "") => {
-  const p =
-    String(nome || "")
-      .trim()
-      .split(/\s+/)[0] || "";
+  const p = String(nome || "").trim().split(/\s+/)[0] || "";
   return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : "";
 };
 
 // modo: "auto" (pelo idioma) | "modelo" (texto do modelo; vazio → auto) | "nenhuma"
-export const textoMensagem = ({
-  modo = "auto",
-  modelo,
-  idioma,
-  nome,
-  hotel,
-  plural = false,
-}) => {
+export const textoMensagem = ({ modo = "auto", modelo, idioma, nome, hotel, plural = false }) => {
   if (modo === "nenhuma") return "";
   const propria = String(modelo?.mensagem || "").trim();
   if (modo === "modelo" && propria) {
@@ -299,10 +228,7 @@ export const PREFS_PADRAO = {
 export const lerPrefsPlacas = () => {
   try {
     const salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS) || "null");
-    return {
-      ...PREFS_PADRAO,
-      ...(salvo && typeof salvo === "object" ? salvo : {}),
-    };
+    return { ...PREFS_PADRAO, ...(salvo && typeof salvo === "object" ? salvo : {}) };
   } catch {
     return { ...PREFS_PADRAO };
   }
@@ -329,9 +255,7 @@ export const useModelosEquipe = () => {
           const lista = snap.exists() ? snap.data()?.modelos : null;
           setModelos(
             Array.isArray(lista)
-              ? lista
-                  .filter((m) => m && m.id)
-                  .map((m) => ({ ...normalizarModelo(m), id: m.id }))
+              ? lista.filter((m) => m && m.id).map((m) => ({ ...normalizarModelo(m), id: m.id }))
               : [],
           );
           setCarregado(true);
@@ -382,7 +306,7 @@ export const useModelosEquipe = () => {
   return { modelos, carregado, salvarModelo, removerModelo };
 };
 
-export const acharModelo = (id, modelosEquipe = []) =>
-  MODELOS_PRONTOS.find((m) => m.id === id) ||
-  modelosEquipe.find((m) => m.id === id) ||
-  MODELOS_PRONTOS[0];
+export const acharModelo = (id, modelosEquipe = []) => {
+  const prontos = modelosProntos();
+  return prontos.find((m) => m.id === id) || modelosEquipe.find((m) => m.id === id) || prontos[0];
+};

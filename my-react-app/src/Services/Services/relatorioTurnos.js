@@ -24,8 +24,9 @@
 //   mais no fim do período por isso.
 
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { ehSede, idPorRegiao, phoenixReserveService } from "./regiaoAtiva";
 import { db } from "./firebase";
-import { API_BASE, EXPAND } from "./plannerUtils";
+import { EXPAND } from "./plannerUtils";
 import { extrairListaResposta } from "./plannerApi";
 
 // ---------------------------------------------------------------------
@@ -33,31 +34,12 @@ import { extrairListaResposta } from "./plannerApi";
 // ---------------------------------------------------------------------
 export const TIPOS_SERVICO = [
   { id: "in", nome: "Chegadas", curto: "IN", serviceType: "1", grupo: "Voos" },
-  {
-    id: "out",
-    nome: "Saídas (OUT)",
-    curto: "OUT",
-    serviceType: "2",
-    grupo: "Voos",
-  },
-  {
-    id: "transfer",
-    nome: "Transfers entre hotéis",
-    curto: "Transfer",
-    serviceType: "4",
-    grupo: "Serviços",
-  },
-  {
-    id: "passeio",
-    nome: "Passeios",
-    curto: "Passeios",
-    serviceType: "3",
-    grupo: "Serviços",
-  },
+  { id: "out", nome: "Saídas (OUT)", curto: "OUT", serviceType: "2", grupo: "Voos" },
+  { id: "transfer", nome: "Transfers entre hotéis", curto: "Transfer", serviceType: "4", grupo: "Serviços" },
+  { id: "passeio", nome: "Passeios", curto: "Passeios", serviceType: "3", grupo: "Serviços" },
 ];
 
-export const nomeTipo = (id) =>
-  TIPOS_SERVICO.find((t) => t.id === id)?.nome || id;
+export const nomeTipo = (id) => TIPOS_SERVICO.find((t) => t.id === id)?.nome || id;
 
 // ---------------------------------------------------------------------
 // Configuração de turnos e equipe
@@ -67,39 +49,14 @@ export const PAPEIS = [
   { id: "sinergia", nome: "Suporte (sinergia)", curto: "Sinergia" },
 ];
 
-export const CORES_TURNO = [
-  "#2563eb",
-  "#d97706",
-  "#7c3aed",
-  "#0d9488",
-  "#db2777",
-  "#65a30d",
-];
+export const CORES_TURNO = ["#2563eb", "#d97706", "#7c3aed", "#0d9488", "#db2777", "#65a30d"];
 
-export const DIAS_SEMANA_CURTO = [
-  "Dom",
-  "Seg",
-  "Ter",
-  "Qua",
-  "Qui",
-  "Sex",
-  "Sáb",
-];
-export const DIAS_SEMANA_LONGO = [
-  "Domingo",
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-];
+export const DIAS_SEMANA_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+export const DIAS_SEMANA_LONGO = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 export const TODOS_OS_DIAS = [0, 1, 2, 3, 4, 5, 6];
 
 export const novoId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID().slice(0, 8)
-    : Math.random().toString(36).slice(2, 10);
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
 
 export const CONFIG_PADRAO = {
   turnos: [
@@ -109,17 +66,7 @@ export const CONFIG_PADRAO = {
       inicio: "06:20",
       fim: "14:40",
       cor: CORES_TURNO[0],
-      colaboradores: [
-        {
-          id: "edson",
-          nome: "Edson",
-          papel: "principal",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "",
-        },
-      ],
+      colaboradores: [{ id: "edson", nome: "Edson", papel: "principal", dias: [], inicio: "", fim: "", obs: "" }],
     },
     {
       id: "tarde",
@@ -128,24 +75,8 @@ export const CONFIG_PADRAO = {
       fim: "22:00",
       cor: CORES_TURNO[1],
       colaboradores: [
-        {
-          id: "emerson",
-          nome: "Emerson",
-          papel: "principal",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "",
-        },
-        {
-          id: "ariana",
-          nome: "Ariana",
-          papel: "principal",
-          dias: [2, 3, 4, 5],
-          inicio: "13:00",
-          fim: "17:00",
-          obs: "Jovem Aprendiz",
-        },
+        { id: "emerson", nome: "Emerson", papel: "principal", dias: [], inicio: "", fim: "", obs: "" },
+        { id: "ariana", nome: "Ariana", papel: "principal", dias: [2, 3, 4, 5], inicio: "13:00", fim: "17:00", obs: "Jovem Aprendiz" },
       ],
     },
     {
@@ -154,17 +85,7 @@ export const CONFIG_PADRAO = {
       inicio: "22:00",
       fim: "06:20",
       cor: CORES_TURNO[2],
-      colaboradores: [
-        {
-          id: "ingra",
-          nome: "Ingra",
-          papel: "principal",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "",
-        },
-      ],
+      colaboradores: [{ id: "ingra", nome: "Ingra", papel: "principal", dias: [], inicio: "", fim: "", obs: "" }],
     },
     {
       id: "suporte",
@@ -173,33 +94,9 @@ export const CONFIG_PADRAO = {
       fim: "17:00",
       cor: CORES_TURNO[3],
       colaboradores: [
-        {
-          id: "nathalia",
-          nome: "Nathalia",
-          papel: "sinergia",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "Sempre que necessário",
-        },
-        {
-          id: "luanaf",
-          nome: "Luana Fabiana",
-          papel: "sinergia",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "Sempre que necessário",
-        },
-        {
-          id: "tharcisio",
-          nome: "Tharcisio",
-          papel: "sinergia",
-          dias: [],
-          inicio: "",
-          fim: "",
-          obs: "Sempre que necessário",
-        },
+        { id: "nathalia", nome: "Nathalia", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
+        { id: "luanaf", nome: "Luana Fabiana", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
+        { id: "tharcisio", nome: "Tharcisio", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
       ],
     },
   ],
@@ -227,9 +124,7 @@ export const normalizarConfig = (bruto) => {
             id: String(c.id || novoId()),
             nome: String(c.nome).trim(),
             papel: c.papel === "sinergia" ? "sinergia" : "principal",
-            dias: Array.isArray(c.dias)
-              ? c.dias.map(Number).filter((d) => d >= 0 && d <= 6)
-              : [],
+            dias: Array.isArray(c.dias) ? c.dias.map(Number).filter((d) => d >= 0 && d <= 6) : [],
             inicio: horaValida(c.inicio) ? c.inicio : "",
             fim: horaValida(c.fim) ? c.fim : "",
             obs: String(c.obs || "").trim(),
@@ -237,11 +132,7 @@ export const normalizarConfig = (bruto) => {
       })),
     folguistas: (Array.isArray(base.folguistas) ? base.folguistas : [])
       .filter((f) => f && String(f.nome || "").trim())
-      .map((f) => ({
-        id: String(f.id || novoId()),
-        nome: String(f.nome).trim(),
-        obs: String(f.obs || "").trim(),
-      })),
+      .map((f) => ({ id: String(f.id || novoId()), nome: String(f.nome).trim(), obs: String(f.obs || "").trim() })),
   };
 };
 
@@ -252,28 +143,31 @@ export const validarConfig = (config) => {
   config.turnos.forEach((t, i) => {
     const nome = t.nome?.trim() || `Turno ${i + 1}`;
     if (!t.nome?.trim()) erros.push(`O turno ${i + 1} está sem nome.`);
-    if (!horaValida(t.inicio) || !horaValida(t.fim))
-      erros.push(`${nome}: horário inválido.`);
+    if (!horaValida(t.inicio) || !horaValida(t.fim)) erros.push(`${nome}: horário inválido.`);
     else if (t.inicio === t.fim) erros.push(`${nome}: início e fim iguais.`);
     t.colaboradores.forEach((c) => {
       if (!c.nome?.trim()) erros.push(`${nome}: tem colaborador sem nome.`);
       if ((c.inicio || c.fim) && !(horaValida(c.inicio) && horaValida(c.fim))) {
-        erros.push(
-          `${nome}: horário próprio de ${c.nome || "colaborador"} incompleto.`,
-        );
+        erros.push(`${nome}: horário próprio de ${c.nome || "colaborador"} incompleto.`);
       }
     });
   });
   return erros;
 };
 
-const REF_CONFIG = () => doc(db, "settings", "turnos_equipe");
+// Cada base tem a sua equipe: Salvador em settings/turnos_equipe, as outras
+// em settings/turnos_equipe__<id> (regiaoAtiva.js → idPorRegiao).
+const REF_CONFIG = () => doc(db, "settings", idPorRegiao("turnos_equipe"));
+
+// Base nova começa com os mesmos horários, sem ninguém na equipe.
+export const configPadraoDaRegiao = () =>
+  ehSede()
+    ? CONFIG_PADRAO
+    : { turnos: CONFIG_PADRAO.turnos.map((t) => ({ ...t, colaboradores: [] })), folguistas: [] };
 
 export const carregarConfigTurnos = async () => {
   const snap = await getDoc(REF_CONFIG());
-  return snap.exists()
-    ? normalizarConfig(snap.data())
-    : normalizarConfig(CONFIG_PADRAO);
+  return normalizarConfig(snap.exists() ? snap.data() : configPadraoDaRegiao());
 };
 
 export const salvarConfigTurnos = async (config) => {
@@ -345,16 +239,11 @@ export const textoDias = (dias = []) => {
   const seq = [...dias].sort((a, b) => a - b);
   const consecutivo = seq.every((d, i) => i === 0 || d === seq[i - 1] + 1);
   const curto = seq.map((d) => DIAS_SEMANA_CURTO[d].toLowerCase());
-  return consecutivo && seq.length > 2
-    ? `${curto[0]} a ${curto[curto.length - 1]}`
-    : curto.join(", ");
+  return consecutivo && seq.length > 2 ? `${curto[0]} a ${curto[curto.length - 1]}` : curto.join(", ");
 };
 
 export const num = (v, casas = 1) =>
-  Number(v || 0).toLocaleString("pt-BR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: casas,
-  });
+  Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: casas });
 
 // ---------------------------------------------------------------------
 // Leitura dos serviços do Phoenix
@@ -370,52 +259,39 @@ const hora = (valor) => {
 const horaDoVooInformada = (item) => {
   const h = hora(
     item?.fly_hour ||
-      item?.reserve?.flight_time ||
-      item?.reserve?.flight?.scheduled_time ||
-      item?.reserve?.arrival_flight_time ||
-      item?.flight_time ||
-      item?.flight?.scheduled_time,
+    item?.reserve?.flight_time ||
+    item?.reserve?.flight?.scheduled_time ||
+    item?.reserve?.arrival_flight_time ||
+    item?.flight_time ||
+    item?.flight?.scheduled_time,
   );
   return h && h !== "00:00" ? h : "";
 };
 
 const horaApresentacao = (item) =>
-  hora(
-    item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      "",
-  );
+  hora(item?.presentation_hour || item?.presentation_hour_end || item?.schedule?.presentation_hour || "");
 
 const numeroVoo = (item) =>
   String(
     item?.schedule?.name ||
-      item?.reserve?.flight_code ||
-      item?.reserve?.flight?.code ||
-      item?.reserve?.arrival_flight_code ||
-      item?.flight_code ||
-      item?.flight?.code ||
-      "",
+    item?.reserve?.flight_code ||
+    item?.reserve?.flight?.code ||
+    item?.reserve?.arrival_flight_code ||
+    item?.flight_code ||
+    item?.flight?.code ||
+    "",
   )
     .trim()
     .toUpperCase();
 
 const nomeServico = (item) =>
-  String(
-    item?.service?.name ||
-      item?.service_name ||
-      item?.serviceName ||
-      item?.name ||
-      "Serviço",
-  )
+  String(item?.service?.name || item?.service_name || item?.serviceName || item?.name || "Serviço")
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
 
 const paxDoItem = (item) =>
-  Number(item?.is_adult_count || 0) +
-  Number(item?.is_child_count || 0) +
-  Number(item?.is_baby_count || item?.is_infant_count || 0);
+  Number(item?.is_adult_count || 0) + Number(item?.is_child_count || 0) + Number(item?.is_baby_count || item?.is_infant_count || 0);
 
 export const lerRegistro = (item, dataExecucao, tipo) => {
   const horaVoo = tipo === "in" ? horaDoVooInformada(item) : "";
@@ -444,21 +320,13 @@ const urlServico = (data, serviceType) => {
   p.append("execution_date", data);
   p.append("expand", EXPAND);
   p.append("service_type[]", serviceType);
-  return `${API_BASE}?${p.toString()}`;
+  return `${phoenixReserveService()}?${p.toString()}`;
 };
 
 // Busca os tipos escolhidos em todas as datas (+1 dia no fim).
-export const buscarServicosPeriodo = async (
-  inicio,
-  fim,
-  tipos,
-  onProgresso,
-  paralelo = 4,
-) => {
+export const buscarServicosPeriodo = async (inicio, fim, tipos, onProgresso, paralelo = 4) => {
   const datas = listarDatas(inicio, somarDias(fim, 1));
-  const tarefas = datas.flatMap((data) =>
-    tipos.map((tipo) => ({ data, tipo })),
-  );
+  const tarefas = datas.flatMap((data) => tipos.map((tipo) => ({ data, tipo })));
   const registros = [];
   const falhas = new Set();
   let erros = 0;
@@ -471,9 +339,7 @@ export const buscarServicosPeriodo = async (
       proxima += 1;
       const st = TIPOS_SERVICO.find((t) => t.id === tipo)?.serviceType;
       try {
-        const r = await fetch(urlServico(data, st), {
-          headers: { Accept: "application/json" },
-        });
+        const r = await fetch(urlServico(data, st), { headers: { Accept: "application/json" } });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         extrairListaResposta(await r.json()).forEach((item) => {
           const reg = lerRegistro(item, data, tipo);
@@ -489,9 +355,7 @@ export const buscarServicosPeriodo = async (
     }
   };
 
-  await Promise.all(
-    Array.from({ length: Math.min(paralelo, tarefas.length) }, trabalhar),
-  );
+  await Promise.all(Array.from({ length: Math.min(paralelo, tarefas.length) }, trabalhar));
   if (tarefas.length && erros === tarefas.length) {
     throw new Error("O Phoenix não respondeu em nenhuma data.");
   }
@@ -505,23 +369,16 @@ const passaMeiaNoite = (t) => paraMinutos(t.fim) < paraMinutos(t.inicio);
 
 // Dia em que começa o turno (ou a janela) que atendeu o registro
 const diaDoTurno = (reg, janela) =>
-  passaMeiaNoite(janela) && reg.min < paraMinutos(janela.fim)
-    ? somarDias(reg.data, -1)
-    : reg.data;
+  passaMeiaNoite(janela) && reg.min < paraMinutos(janela.fim) ? somarDias(reg.data, -1) : reg.data;
 
 const media = (n, d) => (d ? n / d : 0);
 
-export const ehApoio = (turno) =>
-  !turno.colaboradores.some((c) => c.papel === "principal");
+export const ehApoio = (turno) => !turno.colaboradores.some((c) => c.papel === "principal");
 
 // janela de trabalho de um colaborador (a dele ou a do turno)
-export const janelaDo = (c, turno) =>
-  c.inicio && c.fim
-    ? { inicio: c.inicio, fim: c.fim }
-    : { inicio: turno.inicio, fim: turno.fim };
+export const janelaDo = (c, turno) => (c.inicio && c.fim ? { inicio: c.inicio, fim: c.fim } : { inicio: turno.inicio, fim: turno.fim });
 
-const trabalhaNoDia = (c, diaSemana) =>
-  !c.dias?.length || c.dias.includes(diaSemana);
+const trabalhaNoDia = (c, diaSemana) => !c.dias?.length || c.dias.includes(diaSemana);
 
 export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
   const turnos = config.turnos;
@@ -530,33 +387,16 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
   const nDias = dias.length;
   const vazio = () => ({ pax: 0, reservas: 0, grupos: new Set() });
 
-  const porTurnoDia = Object.fromEntries(
-    turnos.map((t) => [
-      t.id,
-      Object.fromEntries(dias.map((d) => [d, vazio()])),
-    ]),
-  );
+  const porTurnoDia = Object.fromEntries(turnos.map((t) => [t.id, Object.fromEntries(dias.map((d) => [d, vazio()]))]));
   const porDia = Object.fromEntries(
-    dias.map((d) => [
-      d,
-      {
-        pax: 0,
-        reservas: 0,
-        porTipo: {},
-        porHora: Array(24).fill(0),
-        porTurno: {},
-        registros: [],
-      },
-    ]),
+    dias.map((d) => [d, { pax: 0, reservas: 0, porTipo: {}, porHora: Array(24).fill(0), porTurno: {}, registros: [] }]),
   );
   const porHora = Array(24).fill(0);
   const semanaHora = Array.from({ length: 7 }, () => Array(24).fill(0));
   const porTipo = {};
   const colabs = [];
   turnos.forEach((t) =>
-    t.colaboradores.forEach((c) =>
-      colabs.push({ c, t, janela: janelaDo(c, t), pax: 0 }),
-    ),
+    t.colaboradores.forEach((c) => colabs.push({ c, t, janela: janelaDo(c, t), pax: 0 })),
   );
   let troca = 0;
   let pelaApresentacao = 0;
@@ -612,29 +452,14 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
     const serie = dias.map((d) => {
       const a = porTurnoDia[t.id][d];
       const w = diaDaSemana(d);
-      const principaisNoDia = t.colaboradores.filter(
-        (c) => c.papel === "principal" && trabalhaNoDia(c, w),
-      ).length;
-      return {
-        data: d,
-        pax: a.pax,
-        reservas: a.reservas,
-        grupos: a.grupos.size,
-        principais: principaisNoDia,
-      };
+      const principaisNoDia = t.colaboradores.filter((c) => c.papel === "principal" && trabalhaNoDia(c, w)).length;
+      return { data: d, pax: a.pax, reservas: a.reservas, grupos: a.grupos.size, principais: principaisNoDia };
     });
-    const soma = serie.reduce(
-      (acc, s) => ({
-        pax: acc.pax + s.pax,
-        reservas: acc.reservas + s.reservas,
-        grupos: acc.grupos + s.grupos,
-      }),
-      {
-        pax: 0,
-        reservas: 0,
-        grupos: 0,
-      },
-    );
+    const soma = serie.reduce((acc, s) => ({ pax: acc.pax + s.pax, reservas: acc.reservas + s.reservas, grupos: acc.grupos + s.grupos }), {
+      pax: 0,
+      reservas: 0,
+      grupos: 0,
+    });
     const ordenada = [...serie].sort((a, b) => b.pax - a.pax);
     const horas = duracaoMin(t.inicio, t.fim) / 60;
     const semana = Array.from({ length: 7 }, () => ({ pax: 0, n: 0 }));
@@ -654,10 +479,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
       mediaReservas: media(soma.reservas, nDias),
       mediaGrupos: media(soma.grupos, nDias),
       paxPorHora: media(media(soma.pax, nDias), horas),
-      porPrincipal: comPrincipal.length
-        ? comPrincipal.reduce((a, s) => a + s.pax / s.principais, 0) /
-          comPrincipal.length
-        : null,
+      porPrincipal: comPrincipal.length ? comPrincipal.reduce((a, s) => a + s.pax / s.principais, 0) / comPrincipal.length : null,
       horas,
       maior: ordenada[0] || null,
       menor: ordenada[ordenada.length - 1] || null,
@@ -667,9 +489,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
   });
 
   const colaboradores = colabs.map((x) => {
-    const diasTrab = dias.filter((d) =>
-      trabalhaNoDia(x.c, diaDaSemana(d)),
-    ).length;
+    const diasTrab = dias.filter((d) => trabalhaNoDia(x.c, diaDaSemana(d))).length;
     return {
       id: x.c.id,
       nome: x.c.nome,
@@ -703,9 +523,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
     folguistas: config.folguistas,
     troca: { pax: troca, mediaPax: media(troca, nDias) },
     porHora: porHora.map((p) => media(p, nDias)),
-    semanaHora: semanaHora.map((linha, w) =>
-      linha.map((p) => (ocorrencias[w] ? p / ocorrencias[w] : null)),
-    ),
+    semanaHora: semanaHora.map((linha, w) => linha.map((p) => (ocorrencias[w] ? p / ocorrencias[w] : null))),
     calendario,
   };
 };
@@ -719,13 +537,7 @@ export const detalharDia = (relatorio, data) => {
     dia.registros.forEach((r) => {
       const k = chave(r);
       if (!k) return;
-      const a = m.get(k) || {
-        nome: k,
-        pax: 0,
-        reservas: 0,
-        tipo: r.tipo,
-        hora: r.hora,
-      };
+      const a = m.get(k) || { nome: k, pax: 0, reservas: 0, tipo: r.tipo, hora: r.hora };
       a.pax += r.pax;
       a.reservas += 1;
       if (r.hora < a.hora) a.hora = r.hora;
@@ -737,13 +549,6 @@ export const detalharDia = (relatorio, data) => {
     ...dia,
     servicos: agrupar((r) => r.servico),
     voos: agrupar((r) => (r.voo ? `${r.voo}` : "")),
-    turnos: relatorio.turnos.map((t) => ({
-      id: t.id,
-      nome: t.nome,
-      cor: t.cor,
-      inicio: t.inicio,
-      fim: t.fim,
-      pax: dia.porTurno[t.id] || 0,
-    })),
+    turnos: relatorio.turnos.map((t) => ({ id: t.id, nome: t.nome, cor: t.cor, inicio: t.inicio, fim: t.fim, pax: dia.porTurno[t.id] || 0 })),
   };
 };

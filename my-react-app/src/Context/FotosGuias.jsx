@@ -3,6 +3,8 @@ import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../Services/Services/firebase";
 import { useAuth } from "./AuthContext";
 import { FotosGuiasContext, chaveNomeGuia } from "./fotosGuiasContext";
+import { useRegiao } from "./regiaoContext";
+import { ehSede } from "../Services/Services/regiaoAtiva";
 
 /* Provider das fotos dos guias. Montado no layout (pages/Dashboard).
    - operacional: ouve guide_fotos e guides e resolve id/nome → foto;
@@ -11,7 +13,9 @@ import { FotosGuiasContext, chaveNomeGuia } from "./fotosGuiasContext";
      perfil (a Lista de Guias é do operacional). */
 const FotosGuiasProvider = ({ children }) => {
   const { role } = useAuth();
-  const ativo = role === "operacional";
+  const { regiao } = useRegiao();
+  // fotos e cadastro de guias são de Salvador: outras bases não leem
+  const ativo = role === "operacional" && ehSede(regiao);
   const [fotos, setFotos] = useState({});
   const [guias, setGuias] = useState([]);
   const pedidas = useRef(new Set());

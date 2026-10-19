@@ -430,3 +430,23 @@
     padding: 12px var(--space-4);
   }
 }
+
+/* base (região) da conta */
+.acs-chip--base {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  letter-spacing: 0.04em;
+}
+
+.acs-conta .acs-chip--base {
+  margin-left: auto;
+}
+
+.acs-conta .acs-chip--base+.acs-chip {
+  margin-left: 4px;
+}
+
+.acs-telas li.is-fora-base {
+  opacity: 0.6;
+}

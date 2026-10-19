@@ -15,6 +15,7 @@
    ========================================================= */
 
 import { ROLES } from "./permissions";
+import { ROTAS_SO_SEDE, ehSede, regiaoAtual } from "../Services/Services/regiaoAtiva";
 
 export const GRUPOS_ACESSO = [
   {
@@ -107,22 +108,40 @@ export const ROTA_ACESSOS = "/acessos";
 
 export const ehGerencia = (perfil) => !!perfil && perfil.ativo === true && perfil.role === ROLES.OPERACIONAL && perfil.gerencia === true;
 
+// Telas que a gerência continua vendo quando troca para outra base
+// (cuidar das contas é da gerência, em qualquer base).
+const GERENCIA_EM_QUALQUER_BASE = ["usuarios"];
+
+// A tela existe na base (região) em uso? Salvador tem todas; as outras bases
+// só as marcadas em Gestão → Regiões (Services/Services/regiaoAtiva.js).
+export const telaNaRegiao = (chave, regiao = regiaoAtual()) =>
+  ehSede(regiao) || (Array.isArray(regiao?.telas) && regiao.telas.includes(chave));
+
 // A conta pode abrir a tela? (só faz sentido para o Operacional)
-export const podeArea = (perfil, chave) => {
+export const podeArea = (perfil, chave, regiao = regiaoAtual()) => {
   if (!perfil || perfil.role !== ROLES.OPERACIONAL) return false;
-  if (ehGerencia(perfil)) return true;
+  const gerencia = ehGerencia(perfil);
+  if (!telaNaRegiao(chave, regiao) && !(gerencia && GERENCIA_EM_QUALQUER_BASE.includes(chave))) return false;
+  if (gerencia) return true;
   return perfil.acessos?.[chave] !== false;
 };
 
+const limparCaminho = (pathname) => (pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname);
+
 export const areaDaRota = (pathname) => {
-  const caminho = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  const caminho = limparCaminho(pathname);
   return AREAS.find((a) => a.rotas.includes(caminho)) || null;
 };
 
+// Rota que depende de algo só de Salvador (ex.: painel do aeroporto de SSA)
+export const rotaForaDaRegiao = (pathname, regiao = regiaoAtual()) =>
+  !ehSede(regiao) && ROTAS_SO_SEDE.includes(limparCaminho(pathname));
+
 // Primeira tela liberada (para onde a pessoa vai quando abre algo bloqueado)
-export const rotaInicial = (perfil) => {
-  const area = AREAS.find((a) => a.rotas.length && podeArea(perfil, a.chave));
-  return area ? area.rotas[0] : "/sobre";
+export const rotaInicial = (perfil, regiao = regiaoAtual()) => {
+  const area = AREAS.find((a) => a.rotas.length && podeArea(perfil, a.chave, regiao));
+  if (!area) return "/sobre";
+  return area.rotas.find((r) => !rotaForaDaRegiao(r, regiao)) || "/sobre";
 };
 
 export const contarBloqueadas = (acessos = {}) => AREAS.filter((a) => acessos?.[a.chave] === false).length;

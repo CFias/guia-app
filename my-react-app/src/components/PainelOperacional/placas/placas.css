@@ -10,6 +10,7 @@
   .plc {
     grid-template-columns: 1fr;
   }
+
   .plc-previa {
     order: -1;
     position: static;
@@ -189,15 +190,15 @@
   transition: transform 0.15s;
 }
 
-.plc-switch input:checked + i {
+.plc-switch input:checked+i {
   background: var(--accent);
 }
 
-.plc-switch input:checked + i::after {
+.plc-switch input:checked+i::after {
   transform: translateX(14px);
 }
 
-.plc-switch input:focus-visible + i {
+.plc-switch input:focus-visible+i {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -319,4 +320,115 @@
   background: var(--raised);
   color: var(--accent-text);
   font-size: 0.95em;
+}
+
+/* Imprimir placas: escolha das reservas */
+.plc-sel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plc-sel__nota {
+  margin: -6px 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.plc-sel__vazio {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--text-3);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+.plc-sel__voos-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.plc-sel__voos-topo button {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.plc-sel__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plc-sel__voo,
+.plc-sel__res {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.plc-sel__voo.is-on,
+.plc-sel__res.is-on {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.plc-sel__voo input,
+.plc-sel__res input {
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.plc-sel__voo-hora {
+  flex: none;
+  min-width: 44px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.plc-sel__res-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.plc-sel__res-info b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-md);
+}
+
+.plc-sel__res-info small {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plc-sel__tag {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
 }

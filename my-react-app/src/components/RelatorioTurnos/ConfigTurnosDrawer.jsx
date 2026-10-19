@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Drawer, Icon } from "../ui";
 import {
-  CONFIG_PADRAO,
+  configPadraoDaRegiao,
   CORES_TURNO,
   DIAS_SEMANA_CURTO,
   PAPEIS,
@@ -9,6 +9,7 @@ import {
   novoId,
   validarConfig,
 } from "../../Services/Services/relatorioTurnos";
+import { ehSede } from "../../Services/Services/regiaoAtiva";
 
 /* Painel "Turnos e equipe": cria/edita os turnos (nome, horário, cor) e os
    colaboradores de cada um — papel no setor (função principal ou suporte em
@@ -248,7 +249,7 @@ const ConfigTurnosDrawer = ({ open, config, onClose, onSalvar }) => {
         <button
           type="button"
           className="rtc-restaurar"
-          onClick={() => window.confirm("Voltar para a escala padrão (Edson, Emerson, Ariana, Ingra, suporte e folguista)?") && setRascunho(normalizarConfig(CONFIG_PADRAO))}
+          onClick={() => window.confirm(ehSede() ? "Voltar para a escala padrão (Edson, Emerson, Ariana, Ingra, suporte e folguista)?" : "Voltar para os turnos padrão, sem ninguém na equipe?") && setRascunho(normalizarConfig(configPadraoDaRegiao()))}
         >
           Restaurar a escala padrão
         </button>

@@ -1,0 +1,235 @@
+/* Regiões (bases Luck) */
+.reg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 920px;
+}
+
+.reg-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.reg-card.is-inativa {
+  opacity: 0.72;
+}
+
+.reg-card__topo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.reg-card__topo h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.reg-card__topo p {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.reg-sigla {
+  display: inline-grid;
+  place-items: center;
+  min-width: 52px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft, color-mix(in srgb, var(--accent) 14%, transparent));
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.reg-card--sede .reg-sigla {
+  background: var(--accent);
+  color: #fff;
+}
+
+.reg-contas {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.reg-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  word-break: break-all;
+}
+
+.reg-campos {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 110px minmax(260px, 2.2fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.reg-input-sigla {
+  text-transform: uppercase;
+}
+
+.reg-tema {
+  max-width: 360px;
+}
+
+.reg-link-linha {
+  display: flex;
+  gap: 8px;
+}
+
+.reg-link-linha .ui-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.reg-teste {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.reg-teste.is-ok {
+  color: var(--success, #1f7a4d);
+}
+
+.reg-teste.is-erro {
+  color: var(--alert);
+}
+
+.reg-telas h4 {
+  margin: 0 0 6px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.reg-telas ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reg-tela {
+  display: flex;
+  gap: 8px;
+  height: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.reg-tela.is-on {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.reg-tela input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.reg-tela b {
+  display: block;
+  font-size: var(--fs-md);
+}
+
+.reg-tela small {
+  display: block;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+
+.reg-card__rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--divider);
+}
+
+.reg-ativa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.reg-ativa input {
+  accent-color: var(--accent);
+}
+
+.reg-erros {
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--alert) 40%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--alert);
+  font-size: var(--fs-sm);
+}
+
+.reg-erros p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.reg-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.reg-rodape>span {
+  margin-right: auto;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.reg-nota {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 720px) {
+  .reg-campos {
+    grid-template-columns: 1fr 100px;
+  }
+
+  .reg-campos> :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .reg-card__topo {
+    flex-wrap: wrap;
+  }
+
+  .reg-contas {
+    margin-left: 0;
+    width: 100%;
+  }
+}

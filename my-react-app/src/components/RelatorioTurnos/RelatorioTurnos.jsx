@@ -14,7 +14,7 @@ import {
   isoLocal,
   listarDatas,
   normalizarConfig,
-  CONFIG_PADRAO,
+  configPadraoDaRegiao,
   nomeTipo,
   num,
   salvarConfigTurnos,
@@ -287,7 +287,7 @@ const RelatorioTurnos = () => {
       .then((c) => vivo && setConfig(c))
       .catch((e) => {
         console.error(e);
-        if (vivo) setConfig(normalizarConfig(CONFIG_PADRAO));
+        if (vivo) setConfig(normalizarConfig(configPadraoDaRegiao()));
       });
     return () => {
       vivo = false;

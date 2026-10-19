@@ -36,9 +36,11 @@ import { usePhoenixStatus } from "../Shell/shellContext";
 import ConfigServicosDrawer from "../ServicosOcultos/ConfigServicosDrawer";
 import { useServicosOcultos } from "../ServicosOcultos/servicosOcultos";
 import PlacasDrawer from "./placas/PlacasDrawer";
+import SelecaoPlacasDrawer from "./placas/SelecaoPlacasDrawer";
 import MapaDrawer from "./mapa/MapaDrawer";
 import { extrairIdiomasDoItem } from "../../Services/Utils/idiomas";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { ehSede, idPorRegiao, phoenixReserveService, regiaoAtual } from "../../Services/Services/regiaoAtiva";
 
 // status do voo → tom e ícone (atrasado/cancelado em --alert)
 // ícones da linha de OUT/Transfer (só apresentação)
@@ -75,8 +77,6 @@ const tomStatusVoo = (statusKey) => {
   }
 };
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 /* ---------------------------------------------------------
    Painel de chegadas do aeroporto de Salvador (mesmo backend
@@ -190,7 +190,7 @@ const montarUrlApi = (date, serviceType = null) => {
     params.append("service_type[]", String(serviceType));
   }
 
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -313,10 +313,10 @@ const linhasVeiculoModalidade = (grupo) => {
   return [`🚐 ${[veiculo && `*${veiculo}*`, modalidade].filter(Boolean).join(" · ")}`];
 };
 
-const rodapeMonitoramento = [
+const rodapeMonitoramento = () => [
   "📍 Por favor, envie a *localização em tempo real*.",
   "",
-  "_Equipe de Monitoramento · Luck SSA_",
+  `_Equipe de Monitoramento · Luck ${regiaoAtual().sigla}_`,
 ];
 
 // OUT: hotel → aeroporto
@@ -353,7 +353,7 @@ const montarTextoOut = (grupo, blocos) => {
     );
   }
 
-  linhas.push("", ...rodapeMonitoramento);
+  linhas.push("", ...rodapeMonitoramento());
   return juntarLinhas(linhas);
 };
 
@@ -385,7 +385,7 @@ const montarTextoTransfer = (grupo, blocos) => {
     linhas.push(...linhasPassageirosScript(trecho.reservas));
   });
 
-  linhas.push(SEPARADOR, "", ...rodapeMonitoramento);
+  linhas.push(SEPARADOR, "", ...rodapeMonitoramento());
   return juntarLinhas(linhas);
 };
 
@@ -427,21 +427,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -636,9 +636,9 @@ const extrairPresentationHour = (item) =>
 const extrairCodigoEscala = (item) =>
   String(
     item?.roadmapService?.roadmap?.code ||
-      item?.auxRoadmapService?.roadmap?.code ||
-      item?.roadmap?.code ||
-      "",
+    item?.auxRoadmapService?.roadmap?.code ||
+    item?.roadmap?.code ||
+    "",
   ).trim();
 
 const extrairEscalaId = (item) =>
@@ -724,11 +724,11 @@ const semMeiaNoite = (valor) => (formatarHora(valor) === "00:00" ? "" : valor ||
 const extrairHorarioPrevistoVoo = (item) =>
   semMeiaNoite(
     item?.fly_hour ||
-      item?.reserve?.flight_time ||
-      item?.reserve?.flight?.scheduled_time ||
-      item?.reserve?.arrival_flight_time ||
-      item?.flight_time ||
-      item?.flight?.scheduled_time,
+    item?.reserve?.flight_time ||
+    item?.reserve?.flight?.scheduled_time ||
+    item?.reserve?.arrival_flight_time ||
+    item?.flight_time ||
+    item?.flight?.scheduled_time,
   ) ||
   extrairHorarioServico(item) ||
   "";
@@ -1022,12 +1022,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -1063,10 +1063,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1157,6 +1157,8 @@ export default function PainelOperacionalUnificado() {
   const [nomesPlacaOverride, setNomesPlacaOverride] = useState({});
   // painel das placas (modelos, pré-visualização e PDF): { modo, origem }
   const [placasAbertas, setPlacasAbertas] = useState(null);
+  // "Imprimir placas": escolha das reservas (privativas, todas ou uma)
+  const [selecaoPlacasAberta, setSelecaoPlacasAberta] = useState(false);
   // painel "Imprimir mapa": { chave, tipo }
   const [mapaAberto, setMapaAberto] = useState(null);
 
@@ -1252,10 +1254,15 @@ export default function PainelOperacionalUnificado() {
   useEffect(() => {
     if (!dataSelecionada) return undefined;
 
-    const q = query(
-      collection(db, "painel_out_monitoramento"),
-      where("data", "==", dataSelecionada),
-    );
+    // Outras bases gravam com o campo `regiao` (e só leem os delas — regra
+    // do banco); Salvador continua lendo como sempre e ignora o das outras.
+    const q = ehSede()
+      ? query(collection(db, "painel_out_monitoramento"), where("data", "==", dataSelecionada))
+      : query(
+        collection(db, "painel_out_monitoramento"),
+        where("data", "==", dataSelecionada),
+        where("regiao", "==", regiaoAtual().id),
+      );
 
     const unsubscribe = onSnapshot(
       q,
@@ -1263,6 +1270,7 @@ export default function PainelOperacionalUnificado() {
         const mapa = {};
         snap.forEach((docSnap) => {
           const dados = docSnap.data();
+          if (ehSede() && dados?.regiao) return;
           if (dados?.grupoId) {
             mapa[dados.grupoId] = !!dados.monitorado;
           }
@@ -1284,7 +1292,8 @@ export default function PainelOperacionalUnificado() {
   const ehHoje = dataSelecionada === getHojeIso();
 
   const carregarAeroporto = useCallback(async () => {
-    if (!ehHoje) {
+    // painel do aeroporto é o de Salvador: outras bases não consultam
+    if (!ehHoje || !regiaoAtual().aeroporto) {
       setChegadasAeroporto([]);
       setAeroporto({ carregando: false, erro: "", atualizadoEm: null });
       return;
@@ -1422,12 +1431,12 @@ export default function PainelOperacionalUnificado() {
       const situacao = situacaoAeroporto(noAeroporto?.status);
       const voo = noAeroporto
         ? {
-            ...vooPhoenix,
-            horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
-            cancelado: vooPhoenix.cancelado || situacao.cancelado,
-            pousado: vooPhoenix.pousado || situacao.pousado,
-            aeroporto: noAeroporto,
-          }
+          ...vooPhoenix,
+          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+          cancelado: vooPhoenix.cancelado || situacao.cancelado,
+          pousado: vooPhoenix.pousado || situacao.pousado,
+          aeroporto: noAeroporto,
+        }
         : vooPhoenix;
 
       const calculoStatus = calcularStatusVooPorHorario({
@@ -1716,7 +1725,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2102,8 +2111,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2162,7 +2171,7 @@ export default function PainelOperacionalUnificado() {
     );
     linhas.push("");
     linhas.push("Pontos de apoio informados! 🍀");
-    linhas.push("_Operacional · Luck SSA_");
+    linhas.push(`_Operacional · Luck ${regiaoAtual().sigla}_`);
 
     return juntarLinhas(linhas);
   };
@@ -2197,11 +2206,12 @@ export default function PainelOperacionalUnificado() {
         doc(
           db,
           "painel_out_monitoramento",
-          montarChaveMonitoramento(dataSelecionada, grupoId),
+          idPorRegiao(montarChaveMonitoramento(dataSelecionada, grupoId)),
         ),
         {
           data: dataSelecionada,
           grupoId,
+          ...(ehSede() ? {} : { regiao: regiaoAtual().id }),
           monitorado,
           atualizadoEm: Timestamp.now(),
         },
@@ -2309,6 +2319,31 @@ export default function PainelOperacionalUnificado() {
     abrirPlacas("colecao", voo.voo, reservasDaPlaca(voo));
   };
 
+  // "Imprimir placas": voos da tela (respeita os filtros) com as reservas
+  const voosParaPlacas = voosFiltrados.map((v, i) => ({
+    chave: `${v.voo || "sem-voo"}_${i}`,
+    voo: v.voo,
+    hora: horaDoVoo(v),
+    reservas: (v.reservas || []).map((r) => ({
+      id: r.id,
+      nome: obterNomePlaca(r),
+      hotel: r.destino,
+      idioma: r.idioma,
+      codigo: r.codigoReserva,
+      modalidade: r.modalidadeServico,
+      pax: r.pax,
+    })),
+  }));
+
+  const imprimirPlacasSelecionadas = ({ modo, lote }) => {
+    setSelecaoPlacasAberta(false);
+    setPlacasAbertas({
+      modo,
+      chave: `lote_${modo}_${Date.now()}`,
+      origem: lote.length === 1 ? { voo: lote[0].voo, reservas: lote[0].reservas } : { lote },
+    });
+  };
+
   // menu "Modelos de placa": abre com um nome de exemplo
   const abrirModelosDePlaca = () =>
     abrirPlacas("individual", "", [{ id: "exemplo", nome: "Maira Souza", hotel: "", idioma: "pt" }]);
@@ -2385,6 +2420,16 @@ export default function PainelOperacionalUnificado() {
             {abaAtiva === ABAS.CHEGADAS && (
               <Button icon="plus" onClick={abrirPopupNovaPlaca}>
                 Nova placa personalizada
+              </Button>
+            )}
+            {abaAtiva === ABAS.CHEGADAS && (
+              <Button
+                icon="idCard"
+                onClick={() => setSelecaoPlacasAberta(true)}
+                disabled={carregando || !voosFiltrados.length}
+                title="Placas das privativas, de todas as reservas ou de uma só — individual ou em grupo por voo"
+              >
+                Imprimir placas
               </Button>
             )}
             <Button
@@ -2560,7 +2605,7 @@ export default function PainelOperacionalUnificado() {
           )}
           {abaAtiva === ABAS.CHEGADAS && (
             <span className="painel-op-aeroporto">
-              {!ehHoje ? (
+              {!regiaoAtual().aeroporto ? null : !ehHoje ? (
                 "Status do aeroporto: só para hoje"
               ) : aeroporto.carregando ? (
                 <>
@@ -2662,10 +2707,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) , icon: "planeLanding" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) , icon: "ticket" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) , icon: "truck" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) , icon: "users" },
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos), icon: "planeLanding" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas), icon: "ticket" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos), icon: "truck" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax), icon: "users" },
               {
                 key: "alterados",
                 label: "Voos alterados",
@@ -2743,9 +2788,8 @@ export default function PainelOperacionalUnificado() {
                           return (
                             <>
                               <span
-                                className={`ui-cell-sub tabular painel-op-fonte ${
-                                  voo.horariosPhoenixDivergentes ? "is-alerta" : ""
-                                }`}
+                                className={`ui-cell-sub tabular painel-op-fonte ${voo.horariosPhoenixDivergentes ? "is-alerta" : ""
+                                  }`}
                                 title={
                                   voo.horariosPhoenixDivergentes
                                     ? "As reservas deste voo têm horários diferentes no Phoenix"
@@ -2923,9 +2967,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -2989,9 +3032,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -3033,12 +3075,12 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) , icon: "grid" },
-              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) , icon: "planeTakeoff" },
-              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) , icon: "navigation" },
-              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) , icon: "users" },
-              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) , icon: "building" },
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length), icon: "grid" },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs), icon: "planeTakeoff" },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers), icon: "navigation" },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax), icon: "users" },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis), icon: "building" },
               {
                 key: "monitorados",
                 label: "Monitorados",
@@ -3290,10 +3332,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) , icon: "idCard" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) , icon: "truck" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) , icon: "users" },
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias), icon: "idCard" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos), icon: "truck" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax), icon: "users" },
             ]}
           />
 
@@ -3468,8 +3510,16 @@ export default function PainelOperacionalUnificado() {
           carregando={carregando}
           subtitulo={(() => {
             const dia = diaDaSemana(dataSelecionada);
-            return `Luck Receptivo SSA · ${dia ? `${dia}, ` : ""}${formatarDataBr(dataSelecionada)}`;
+            return `Luck Receptivo ${regiaoAtual().sigla} · ${dia ? `${dia}, ` : ""}${formatarDataBr(dataSelecionada)}`;
           })()}
+        />
+      )}
+      {selecaoPlacasAberta && (
+        <SelecaoPlacasDrawer
+          open
+          voos={voosParaPlacas}
+          onClose={() => setSelecaoPlacasAberta(false)}
+          onContinuar={imprimirPlacasSelecionadas}
         />
       )}
       {placasAbertas && (

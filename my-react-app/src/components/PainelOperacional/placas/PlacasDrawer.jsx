@@ -6,7 +6,7 @@ import ModeloEditor from "./ModeloEditor";
 import { extrairTextoNomePlaca, layoutColecao, layoutIndividual, paginarColecao } from "./layoutPlaca";
 import { gerarPdfColecao, gerarPdfIndividuais } from "./pdfPlaca";
 import {
-  MODELOS_PRONTOS,
+  gruposProntos,
   acharModelo,
   idiomaDaMaioria,
   lerPrefsPlacas,
@@ -21,7 +21,8 @@ import "./placas.css";
    - modo "individual": uma placa por reserva, com modelos (prontos e da
      equipe), mensagem pelo idioma e criador de modelos com pré-visualização;
    - modo "colecao": os nomes do voo, no máximo 5 por placa, um por faixa.
-   origem: { voo, reservas: [{ id, nome, hotel, idioma }] } */
+   origem: { voo, reservas: [{ id, nome, hotel, idioma }] }
+        ou vários voos: { lote: [{ voo, reservas }] } (Imprimir placas) */
 
 const Interruptor = ({ checked, onChange, children }) => (
   <label className="plc-switch">
@@ -62,8 +63,15 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
       return novo;
     });
 
-  const reservas = useMemo(() => origem?.reservas || [], [origem]);
-  const voo = origem?.voo || "";
+  // origem: um voo ({ voo, reservas }) ou vários de uma vez ({ lote: [{ voo, reservas }] },
+  // vindo de "Imprimir placas")
+  const grupos = useMemo(
+    () => (Array.isArray(origem?.lote) ? origem.lote : [{ voo: origem?.voo || "", reservas: origem?.reservas || [] }]).filter((g) => g.reservas?.length),
+    [origem],
+  );
+  const varios = grupos.length > 1;
+  const reservas = useMemo(() => grupos.flatMap((g) => g.reservas.map((r) => ({ ...r, voo: g.voo }))), [grupos]);
+  const voo = varios ? "" : grupos[0]?.voo || "";
   const modelo = acharModelo(prefs.modeloId, modelosEquipe);
 
   // ---------- individual ----------
@@ -73,12 +81,12 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
         const hotel = limparHotel(r.hotel);
         return {
           nome: extrairTextoNomePlaca(r.nome),
-          voo,
+          voo: r.voo,
           hotel,
           mensagem: textoMensagem({ modo: prefs.mensagem, modelo, idioma: r.idioma, nome: r.nome, hotel }),
         };
       }),
-    [reservas, voo, prefs.mensagem, modelo],
+    [reservas, prefs.mensagem, modelo],
   );
   const opcoesIndividual = {
     mostrarVoo: prefs.mostrarVoo,
@@ -87,17 +95,19 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     data,
   };
 
-  // ---------- coleção ----------
-  const nomesColecao = useMemo(() => {
-    const lista = reservas.map((r) => extrairTextoNomePlaca(r.nome));
-    return prefs.colecaoOrdem === "az" ? [...lista].sort((a, b) => a.localeCompare(b, "pt-BR")) : lista;
-  }, [reservas, prefs.colecaoOrdem]);
+  // ---------- coleção (cada voo nas suas próprias folhas) ----------
   const paginasColecao = useMemo(
-    () => paginarColecao(nomesColecao, prefs.colecaoPorPlaca),
-    [nomesColecao, prefs.colecaoPorPlaca],
+    () =>
+      grupos.flatMap((g) => {
+        const lista = g.reservas.map((r) => extrairTextoNomePlaca(r.nome));
+        const nomes = prefs.colecaoOrdem === "az" ? [...lista].sort((a, b) => a.localeCompare(b, "pt-BR")) : lista;
+        const mensagem =
+          prefs.mensagem === "nenhuma" ? "" : mensagemDoIdioma(idiomaDaMaioria(g.reservas.map((r) => r.idioma)), { plural: true });
+        const pags = paginarColecao(nomes, prefs.colecaoPorPlaca);
+        return pags.map((p, i) => ({ voo: g.voo, nomes: p, numero: i + 1, total: pags.length, mensagem }));
+      }),
+    [grupos, prefs.colecaoOrdem, prefs.colecaoPorPlaca, prefs.mensagem],
   );
-  const mensagemColecao =
-    prefs.mensagem === "nenhuma" ? "" : mensagemDoIdioma(idiomaDaMaioria(reservas.map((r) => r.idioma)), { plural: true });
   const opcoesColecao = {
     porPlaca: prefs.colecaoPorPlaca,
     separacao: prefs.colecaoSeparacao,
@@ -115,8 +125,9 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   const pecas = (() => {
     if (!total) return [];
     if (ehColecao) {
-      const nomes = paginasColecao[atual] || [];
-      return layoutColecao({ nomes, numero: atual + 1, total: paginasColecao.length }, { voo, mensagem: mensagemColecao, data }, opcoesColecao);
+      const pg = paginasColecao[atual];
+      if (!pg) return [];
+      return layoutColecao({ nomes: pg.nomes, numero: pg.numero, total: pg.total }, { voo: pg.voo, mensagem: pg.mensagem, data }, opcoesColecao);
     }
     return layoutIndividual(modelo, { ...placas[atual], data }, opcoesIndividual);
   })();
@@ -125,9 +136,9 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     setGerando(true);
     try {
       if (ehColecao) {
-        await gerarPdfColecao({ voo, nomes: nomesColecao, mensagem: mensagemColecao, opcoes: opcoesColecao });
+        await gerarPdfColecao({ paginas: paginasColecao, opcoes: opcoesColecao, arquivo: varios ? `placas-colecao-${data || "dia"}.pdf` : undefined, voo });
       } else {
-        await gerarPdfIndividuais({ placas, modelo, opcoes: opcoesIndividual });
+        await gerarPdfIndividuais({ placas, modelo, opcoes: opcoesIndividual, arquivo: varios ? `placas-${data || "dia"}.pdf` : undefined });
       }
     } catch (e) {
       console.error("Erro ao gerar PDF das placas:", e);
@@ -153,7 +164,7 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
         inicial={editor.modelo}
         editando={editor.editando}
         modelosEquipe={modelosEquipe}
-        exemploVoo={exemploReserva ? { ...exemploReserva, voo } : null}
+        exemploVoo={exemploReserva ? { ...exemploReserva, voo: exemploReserva.voo || voo } : null}
         opcoes={opcoesIndividual}
         onVoltar={() => setEditor(null)}
         onSalvar={async (m, usar) => {
@@ -170,10 +181,14 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     );
   }
 
-  const titulo = ehColecao ? "Placa coleção" : reservas.length === 1 && !voo ? "Placa avulsa" : "Placas individuais";
-  const subtitulo = voo
-    ? `Voo ${voo} · ${reservas.length} ${reservas.length === 1 ? "nome" : "nomes"}${ehColecao ? ` · ${total} ${total === 1 ? "placa" : "placas"}` : ""}`
-    : "Escolha o modelo e gere o PDF.";
+  const titulo = ehColecao ? (varios ? "Placas coleção por voo" : "Placa coleção") : reservas.length === 1 && !voo ? "Placa avulsa" : "Placas individuais";
+  const nNomes = `${reservas.length} ${reservas.length === 1 ? "nome" : "nomes"}`;
+  const nPlacas = ehColecao ? ` · ${total} ${total === 1 ? "placa" : "placas"}` : "";
+  const subtitulo = varios
+    ? `${grupos.length} voos · ${nNomes}${nPlacas}`
+    : voo
+      ? `Voo ${voo} · ${nNomes}${nPlacas}`
+      : "Escolha o modelo e gere o PDF.";
 
   return (
     <Drawer
@@ -280,14 +295,16 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
             </>
           ) : (
             <>
-              <div className="plc-secao">
-                <span className="plc-rotulo">Modelos prontos</span>
-                <div className="plc-modelos">
-                  {MODELOS_PRONTOS.map((m) => (
-                    <Miniatura key={m.id} modelo={m} ativo={modelo.id === m.id} onClick={() => atualizar({ modeloId: m.id })} />
-                  ))}
+              {gruposProntos().map((g) => (
+                <div className="plc-secao" key={g.titulo}>
+                  <span className="plc-rotulo">{g.titulo === "Nordeste" ? "Nordeste (todas as bases)" : `Modelos de ${g.titulo}`}</span>
+                  <div className="plc-modelos">
+                    {g.modelos.map((m) => (
+                      <Miniatura key={m.id} modelo={m} ativo={modelo.id === m.id} onClick={() => atualizar({ modeloId: m.id })} />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ))}
               <div className="plc-secao">
                 <span className="plc-rotulo">Modelos da equipe</span>
                 <div className="plc-modelos">
@@ -365,6 +382,13 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
             <PlacaPreview modelo={ehColecao ? { trevo: 0.06 } : modelo} tipo={ehColecao ? "colecao" : "individual"} pecas={pecas} className="plc-previa__placa" />
           ) : (
             <p className="plc-vazio">Nenhum nome neste voo.</p>
+          )}
+          {varios && total > 0 && (
+            <p className="plc-legenda">
+              {ehColecao
+                ? `Voo ${paginasColecao[atual]?.voo || "—"} · folha ${paginasColecao[atual]?.numero} de ${paginasColecao[atual]?.total}`
+                : `Voo ${reservas[atual]?.voo || "—"}`}
+            </p>
           )}
           {!ehColecao && placas[atual] && (
             <p className="plc-legenda">

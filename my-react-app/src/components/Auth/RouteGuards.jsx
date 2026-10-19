@@ -2,7 +2,8 @@ import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
 import { HOME_BY_ROLE, ROLES } from "../../Context/permissions";
-import { areaDaRota, podeArea, rotaInicial } from "../../Context/acessos";
+import { areaDaRota, podeArea, rotaForaDaRegiao, rotaInicial, telaNaRegiao } from "../../Context/acessos";
+import { useRegiao } from "../../Context/regiaoContext";
 import "./styles.css";
 
 export const TelaCarregando = () => (
@@ -75,24 +76,38 @@ export const RedirectHome = () => {
    deles já decide). */
 export const RequireArea = () => {
   const { perfil, role, loading } = useAuth();
+  const { regiao } = useRegiao();
   const location = useLocation();
 
   if (loading) return <TelaCarregando />;
   if (role !== ROLES.OPERACIONAL) return <Outlet />;
 
   const area = areaDaRota(location.pathname);
-  if (!area || podeArea(perfil, area.chave)) return <Outlet />;
+  const foraDaRegiao = rotaForaDaRegiao(location.pathname, regiao);
+  if (!foraDaRegiao && (!area || podeArea(perfil, area.chave, regiao))) return <Outlet />;
 
-  if (location.pathname === "/") return <Navigate to={rotaInicial(perfil)} replace />;
+  if (location.pathname === "/") return <Navigate to={rotaInicial(perfil, regiao)} replace />;
+
+  // a tela existe, mas não nesta base (região)
+  const naoNaBase = foraDaRegiao || (area && !telaNaRegiao(area.chave, regiao));
 
   return (
     <div className="auth-sem-permissao">
       <Icon name="lock" size={22} />
-      <h2>Você não tem acesso a esta tela</h2>
+      <h2>{naoNaBase ? "Tela não disponível nesta base" : "Você não tem acesso a esta tela"}</h2>
       <p>
-        <b>{area.label}</b> não está liberada para a sua conta. Se precisar, peça à gerência para liberar em Controle de acessos.
+        {naoNaBase ? (
+          <>
+            <b>{area?.label || "Esta tela"}</b> usa dados próprios de Salvador e não está liberada para a base{" "}
+            <b>{regiao.nome}</b>. A gerência libera as telas de cada base em Gestão → Regiões.
+          </>
+        ) : (
+          <>
+            <b>{area.label}</b> não está liberada para a sua conta. Se precisar, peça à gerência para liberar em Controle de acessos.
+          </>
+        )}
       </p>
-      <Link className="auth-btn-secondary" to={rotaInicial(perfil)}>
+      <Link className="auth-btn-secondary" to={rotaInicial(perfil, regiao)}>
         Ir para uma tela liberada
       </Link>
     </div>

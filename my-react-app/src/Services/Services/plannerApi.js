@@ -1,7 +1,6 @@
 // plannerApi.js
 
 import {
-  API_BASE,
   EXPAND,
   ehServicoDisp,
   obterNomeCanonico,
@@ -23,16 +22,14 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
+import { phoenixReserveService } from "./regiaoAtiva";
 import {
   acumularIdiomas,
   extrairIdiomasDoItem,
   listarCamposParecidosComIdioma,
   listarIdiomasExigidos,
 } from "../Utils/idiomas";
-import {
-  exigeConfirmacao,
-  situacaoConfirmacao,
-} from "../Utils/confirmacaoPasseio";
+import { exigeConfirmacao, situacaoConfirmacao } from "../Utils/confirmacaoPasseio";
 import { semReservasExcluidas } from "../Utils/reservasExcluidas";
 
 const extrairListaRespostaBruta = (json) => {
@@ -58,8 +55,7 @@ const extrairListaRespostaBruta = (json) => {
 };
 
 // sem as reservas com CLD / cancelado / não escalar / dispensado na observação
-export const extrairListaResposta = (json) =>
-  semReservasExcluidas(extrairListaRespostaBruta(json));
+export const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -218,7 +214,7 @@ export const montarUrlApi = (date) => {
   params.append("service_type[]", "3");
   params.append("service_type[]", "4");
 
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 export const encontrarServiceCatalogo = (
@@ -231,13 +227,13 @@ export const encontrarServiceCatalogo = (
     typeof normalizarTextoFn === "function"
       ? normalizarTextoFn
       : (texto) =>
-          String(texto || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^\w\s-]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .toLowerCase();
+        String(texto || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^\w\s-]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
 
   const services = Array.isArray(listaServices) ? listaServices : [];
 
@@ -389,7 +385,7 @@ const avisarSeNaoHouverIdioma = (lista, totalDetectados) => {
 
   console.info(
     `[Idioma] Nenhum idioma reconhecido nos ${lista.length} itens do Phoenix. ` +
-      "Campos com nome parecido no 1º item:",
+    "Campos com nome parecido no 1º item:",
     listarCamposParecidosComIdioma(lista[0]),
     "| Chaves do 1º item:",
     Object.keys(lista[0] || {}),
@@ -439,11 +435,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
         if (!nomeFinal) return;
         if (deveIgnorarServico(nomeFinal)) return;
         // Praia do Forte 4h: só escala reserva confirmada (observação ou vendedor)
-        if (
-          exigeConfirmacao(nomeFinal) &&
-          !situacaoConfirmacao(item).confirmada
-        )
-          return;
+        if (exigeConfirmacao(nomeFinal) && !situacaoConfirmacao(item).confirmada) return;
 
         const chave = montarChaveImportacao({
           date: dataServico,

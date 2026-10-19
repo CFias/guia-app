@@ -19,6 +19,14 @@ rules_version = '2';
 //    comercial   → só a Central de Dúvidas (faq_itens)
 //    guia        → própria disponibilidade (dentro da janela configurável), próprios idiomas e própria foto
 //  Conta sem documento em `users`, ou com ativo != true → nada.
+//
+//  REGIÕES (bases Luck) — users/{uid}.regiao (sem o campo = 'ssa'):
+//    Salvador ('ssa') é a sede e tem tudo acima. Conta do Operacional de
+//    OUTRA base só lê/grava o que é da base dela: os documentos de
+//    configuração com o sufixo da base (settings/turnos_equipe__nat…), o
+//    monitoramento de OUT marcado com a região dela e a lista de regiões.
+//    Cadastros, escala, custos etc. (dados de Salvador) ficam fechados.
+//    A gerência é da sede: vê tudo e cadastra as bases (settings/regioes).
 // =========================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -54,13 +62,40 @@ service cloud.firestore {
         && (meuPerfil().get('gerencia', false) == true
             || meuPerfil().get('acessos', {}).get(area, true) != false);
     }
+    // ---------- Regiões (bases Luck) ----------
+    function minhaRegiao() { return meuPerfil().get('regiao', 'ssa'); }
+    // Salvador (sede) ou gerência: segue as regras de sempre
+    function daSede() {
+      return isOperacional()
+        && (meuPerfil().get('gerencia', false) == true || minhaRegiao() == 'ssa');
+    }
+    // documento de configuração da base: <nome>__<regiao>
+    function docDaMinhaBase(id) {
+      return id.matches('.+__' + minhaRegiao());
+    }
+    // o que uma conta de OUTRA base pode ler / gravar
+    function regionalLe(col, id) {
+      return isOperacional() && !daSede() && (
+        (col == 'settings' && (docDaMinhaBase(id) || id == 'regioes'))
+        || (col == 'painel_out_monitoramento' && resource.data.regiao == minhaRegiao())
+      );
+    }
+    function regionalGrava(col, id) {
+      return isOperacional() && !daSede() && (
+        (col == 'settings' && docDaMinhaBase(id)
+          && (!id.matches('turnos_equipe__.*') || podeArea('demandaTurnos')))
+        || (col == 'painel_out_monitoramento' && docDaMinhaBase(id)
+          && request.resource.data.regiao == minhaRegiao())
+      );
+    }
+
     function caminhoControle() {
       return /databases/$(database)/documents/settings/acessos;
     }
 
     // Coleções / documentos que pertencem a UMA tela só
     function podeLerColecao(col, id) {
-      return isOperacional() && col != 'users' && (
+      return regionalLe(col, id) || daSede() && col != 'users' && (
         (col == 'custos_dia' && podeArea('custos'))
         || (col == 'settings' && id == 'custos'
             && (podeArea('custos') || podeArea('servicosFornecedor')))
@@ -71,14 +106,14 @@ service cloud.firestore {
       );
     }
     function podeGravarColecao(col, id) {
-      return isOperacional() && col != 'users' && (
+      return regionalGrava(col, id) || daSede() && col != 'users' && (
         (col == 'custos_dia' && podeArea('custos'))
         || (col == 'settings' && id == 'custos' && podeArea('custos'))
-        || (col == 'settings' && id == 'turnos_equipe' && podeArea('demandaTurnos'))
-        || (col == 'settings' && id == 'acessos' && isGerencia())
+        || (col == 'settings' && (id == 'turnos_equipe' || id.matches('turnos_equipe__.*')) && podeArea('demandaTurnos'))
+        || (col == 'settings' && id in ['acessos', 'regioes'] && isGerencia())
         || ((col == 'faq_itens' || col == 'arquivos') && podeArea('centralInformacoes'))
         || (!(col in ['custos_dia', 'faq_itens', 'arquivos'])
-            && !(col == 'settings' && id in ['custos', 'turnos_equipe', 'acessos']))
+            && !(col == 'settings' && (id in ['custos', 'turnos_equipe', 'acessos', 'regioes'] || id.matches('turnos_equipe__.*'))))
       );
     }
     function isComercial()   { return roleIs('comercial'); }
@@ -134,20 +169,20 @@ service cloud.firestore {
       // Operacional com a tela "Usuários" liberada: lista as contas e cuida
       // SÓ das contas do Comercial e dos Guias. Não cria nem altera conta do
       // Operacional/gerência e não mexe em gerência nem em acessos.
-      allow read: if podeArea('usuarios');
-      allow create: if podeArea('usuarios')
+      allow read: if podeArea('usuarios') && daSede();
+      allow create: if podeArea('usuarios') && daSede()
         && request.resource.data.role in ['comercial', 'guia']
         && request.resource.data.keys().hasOnly([
              'nome', 'email', 'role', 'ativo', 'guideId', 'guideName',
              'createdAt', 'createdBy'
            ]);
-      allow update: if podeArea('usuarios')
+      allow update: if podeArea('usuarios') && daSede()
         && resource.data.role in ['comercial', 'guia']
         && resource.data.get('gerencia', false) != true
         && request.resource.data.role in ['comercial', 'guia']
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName', 'updatedAt']);
-      allow delete: if podeArea('usuarios')
+      allow delete: if podeArea('usuarios') && daSede()
         && resource.data.role in ['comercial', 'guia'];
       // Ativação do controle de acessos (UMA vez): quem ativa vira gerência,
       // no mesmo lote em que cria settings/acessos. Depois que ele existe,
@@ -177,7 +212,9 @@ service cloud.firestore {
     // Exceção: settings/custos (tarifas dos fornecedores e referência de
     // valor dos guias) é só do operacional — cai na regra geral.
     match /settings/{settingId} {
-      allow read: if ativo() && settingId != 'custos';
+      // conta de outra base: só a lista de regiões e os documentos da base dela
+      allow read: if ativo() && settingId != 'custos'
+        && (!isOperacional() || daSede() || settingId in ['regioes', 'acessos'] || docDaMinhaBase(settingId));
       // settings/acessos nasce junto com a primeira gerência (ver users)
       allow create: if settingId == 'acessos' && isOperacional()
         && getAfter(perfilPath()).data.get('gerencia', false) == true;
@@ -261,7 +298,7 @@ service cloud.firestore {
       allow read: if isComercial();
       // única escrita permitida: os contadores de uso (visualização / cópia)
       // — também para o Operacional na tela "Ver como o comercial"
-      allow update: if (isComercial() || podeArea('verComercial'))
+      allow update: if (isComercial() || (podeArea('verComercial') && daSede()))
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['contadorVisualizacoes', 'contadorCopias']);
     }

@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { Button, Card, EmptyState, Icon, PageHeader, SearchInput, useToast } from "../ui";
 import { useAuth } from "../../Context/AuthContext";
 import { ROLES, ROLE_LABELS } from "../../Context/permissions";
-import { AREAS, GRUPOS_ACESSO, contarBloqueadas, ehGerencia } from "../../Context/acessos";
+import { AREAS, GRUPOS_ACESSO, contarBloqueadas, ehGerencia, telaNaRegiao } from "../../Context/acessos";
+import { useRegiao } from "../../Context/regiaoContext";
+import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
 import { ativarControle, controleAtivado, listarContas, salvarAcessosConta } from "../../Services/Services/acessosRepository";
 import "./acessos.css";
 
@@ -58,6 +60,12 @@ const ControleAcessos = () => {
   const { user, perfil, role } = useAuth();
   const { mostrarToast } = useToast();
   const souGerencia = ehGerencia(perfil);
+  const { regioes } = useRegiao();
+  // base (região) da conta: fora de Salvador só existem as telas liberadas para a base
+  const baseDaConta = (c) => {
+    if (!c?.regiao || c.regiao === ID_SEDE || c.gerencia === true) return SEDE;
+    return regioes.find((r) => r.id === c.regiao) || { id: c.regiao, nome: c.regiao.toUpperCase(), sigla: c.regiao.toUpperCase(), telas: [] };
+  };
 
   const [ativo, setAtivo] = useState(null); // null = carregando
   const [contas, setContas] = useState([]);
@@ -220,6 +228,11 @@ const ControleAcessos = () => {
                             </b>
                             <span>{c.email}</span>
                           </span>
+                          {c.role === ROLES.OPERACIONAL && baseDaConta(c).id !== ID_SEDE && (
+                            <span className="acs-chip acs-chip--base" title={`Base ${baseDaConta(c).nome}`}>
+                              {baseDaConta(c).sigla}
+                            </span>
+                          )}
                           {c.ativo === false ? (
                             <span className="acs-chip">desativada</span>
                           ) : nivelDaConta(c) === "gerencia" ? (
@@ -249,6 +262,7 @@ const ControleAcessos = () => {
                   <h2>{selecionada.nome}</h2>
                   <p>
                     {selecionada.email} · {rotuloNivel(nivelDaConta(selecionada))}
+                    {baseDaConta(selecionada).id !== ID_SEDE ? ` · base ${baseDaConta(selecionada).nome}` : ""}
                     {selecionada.ativo === false ? " · conta desativada" : ""}
                   </p>
                   {selecionada.acessosAtualizadoEm && (
@@ -319,7 +333,20 @@ const ControleAcessos = () => {
                         <h4>{g.titulo}</h4>
                         <ul>
                           {g.areas.map((a) => {
-                            const pode = rascunho.gerencia || rascunho.acessos[a.chave] !== false;
+                            const base = baseDaConta({ ...selecionada, gerencia: rascunho.gerencia });
+                            const naBase = telaNaRegiao(a.chave, base);
+                            const pode = rascunho.gerencia || (naBase && rascunho.acessos[a.chave] !== false);
+                            if (!naBase) {
+                              return (
+                                <li key={a.chave} className="is-bloq is-fora-base">
+                                  <span className="acs-tela">
+                                    <b>{a.label}</b>
+                                    <small>Não existe na base {base.nome} (usa dados de Salvador). Libere em Gestão → Regiões, se for o caso.</small>
+                                  </span>
+                                  <span className="acs-chip">fora da base</span>
+                                </li>
+                              );
+                            }
                             return (
                               <li key={a.chave} className={pode ? "" : "is-bloq"}>
                                 <span className="acs-tela">

@@ -13,8 +13,6 @@ export const DIAS = [
   "Domingo",
 ];
 
-export const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 export const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,reserve.pdvPayment,reserve.pdvPayment.user,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
@@ -207,8 +205,7 @@ const extrairListaRespostaBruta = (json) => {
 };
 
 // sem as reservas com CLD / cancelado / não escalar / dispensado na observação
-export const extrairListaResposta = (json) =>
-  semReservasExcluidas(extrairListaRespostaBruta(json));
+export const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -365,20 +362,12 @@ export const montarNomeServicoExibicao = (item) => {
   return responsavel ? `${nomeBase} - ${responsavel}` : nomeBase;
 };
 
-export const montarChaveImportacao = ({
-  date,
-  externalServiceId,
-  serviceName,
-}) =>
+export const montarChaveImportacao = ({ date, externalServiceId, serviceName }) =>
   `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
     serviceName || "",
   )}`;
 
-export const montarChaveApiServico = ({
-  date,
-  externalServiceId,
-  serviceName,
-}) =>
+export const montarChaveApiServico = ({ date, externalServiceId, serviceName }) =>
   `${date}_${Number(externalServiceId || 0)}_${normalizarTexto(
     serviceName || "",
   )}`;
@@ -545,7 +534,9 @@ export const getTextoStatusServico = (item) => {
     return "Privativo";
   }
 
-  return Number(item?.passengers || 0) >= 8 ? "Grupo Formado" : "Formar Grupo";
+  return Number(item?.passengers || 0) >= 8
+    ? "Grupo Formado"
+    : "Formar Grupo";
 };
 
 export const getClasseStatusServico = (item) => {
@@ -554,7 +545,7 @@ export const getClasseStatusServico = (item) => {
   }
 
   if (ehServicoDisp(item?.serviceName || "")) {
-    return "status-privativo";
+    return "status-privativo";s
   }
 
   return Number(item?.passengers || 0) >= 8

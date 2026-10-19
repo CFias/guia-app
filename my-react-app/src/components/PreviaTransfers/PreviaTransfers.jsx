@@ -23,9 +23,8 @@ import { db } from "../../Services/Services/firebase";
 import "./styles.css";
 import "./previa.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { ehSede, phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -206,7 +205,7 @@ const montarUrlApi = (date, serviceTypes = []) => {
   params.append("execution_date", date);
   params.append("expand", EXPAND);
   serviceTypes.forEach((type) => params.append("service_type[]", type));
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -578,6 +577,8 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
   }, [ordemManualVeiculos]);
 
   useEffect(() => {
+    // fornecedores cadastrados são de Salvador: outras bases ficam sem a lista
+    if (!ehSede()) return undefined;
     const q = query(collection(db, "providers"), where("ativo", "==", true));
 
     const unsub = onSnapshot(
@@ -1107,7 +1108,7 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
                       const arrastando =
                         draggingVehicle &&
                         normalizarNomeVeiculo(draggingVehicle) ===
-                          normalizarNomeVeiculo(grupo.veiculo);
+                        normalizarNomeVeiculo(grupo.veiculo);
 
                       return (
                         <div

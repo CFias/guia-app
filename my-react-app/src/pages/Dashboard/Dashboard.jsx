@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import "./styles.css";
 
 import logo from "../../assets/clover.png";
@@ -7,7 +7,9 @@ import { useAuth } from "../../Context/AuthContext";
 import BoasVindasComercial from "../../components/BoasVindas/BoasVindasComercial";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS, ROLES } from "../../Context/permissions";
-import { ehGerencia, podeArea } from "../../Context/acessos";
+import { areaDaRota, ehGerencia, podeArea, rotaForaDaRegiao } from "../../Context/acessos";
+import { useRegiao } from "../../Context/regiaoContext";
+import { ehSede } from "../../Services/Services/regiaoAtiva";
 import { usePreferenciasUI } from "../../Context/preferenciasUIContext";
 import Icon from "../../components/ui/Icon";
 import {
@@ -56,7 +58,10 @@ const itemAtivo = (item, pathname) => {
 const Dashboard = ({ loading }) => {
   const { perfil, role, logout } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { sidebarRecolhida, setSidebarRecolhida } = usePreferenciasUI();
+  const { regiao, todas, podeTrocar, trocarRegiao, carregando: carregandoRegiao, indisponivel } = useRegiao();
+  const naSede = ehSede(regiao);
 
   // Celular / tablet: o menu vira uma gaveta que abre pelo botão ☰.
   const [menuAberto, setMenuAberto] = useState(false);
@@ -102,20 +107,32 @@ const Dashboard = ({ loading }) => {
       if (item.somenteGerencia) return ehGerencia(perfil);
       if (!item.chave) return true;
       const chaves = Array.isArray(item.chave) ? item.chave : [item.chave];
-      return chaves.some((c) => podeArea(perfil, c));
+      return chaves.some((c) => podeArea(perfil, c, regiao));
     },
-    [role, perfil],
+    [role, perfil, regiao],
   );
 
   // item com várias telas (Cadastros): abre na primeira liberada
   const ajustarRota = useCallback(
     (item) => {
       if (!item.rotaPorChave || role !== ROLES.OPERACIONAL) return item;
-      const chave = (Array.isArray(item.chave) ? item.chave : [item.chave]).find((c) => podeArea(perfil, c));
+      const chave = (Array.isArray(item.chave) ? item.chave : [item.chave]).find((c) => podeArea(perfil, c, regiao));
       return chave ? { ...item, to: item.rotaPorChave[chave] } : item;
     },
-    [role, perfil],
+    [role, perfil, regiao],
   );
+
+  // Gerência trocando de base: fica na tela se ela existe na nova base;
+  // senão vai para a primeira tela liberada.
+  const aoTrocarRegiao = (id) => {
+    const nova = todas.find((r) => r.id === id);
+    if (!nova || nova.id === regiao.id) return;
+    trocarRegiao(id);
+    const area = areaDaRota(pathname);
+    if (rotaForaDaRegiao(pathname, nova) || (area && !podeArea(perfil, area.chave, nova))) navigate("/");
+  };
+
+  const nomeSistema = `Operacional ${regiao.sigla || "SSA"}`;
 
   const grupos = useMemo(
     () =>
@@ -197,15 +214,15 @@ const Dashboard = ({ loading }) => {
             <NavLink
               to={veOperacao ? "/" : "/faqcomercial"}
               className="sidebar-brand-wrap"
-              title={recolhido ? "Operacional SSA" : undefined}
+              title={recolhido ? nomeSistema : undefined}
             >
               <div className="sidebar-logo-box">
-                <img src={logo} alt="Operacional SSA" />
+                <img src={logo} alt={nomeSistema} />
               </div>
 
               <div className="sidebar-brand">
-                <strong>Operacional SSA</strong>
-                <span>Gestão de serviços</span>
+                <strong>{nomeSistema}</strong>
+                <span>{naSede ? "Gestão de serviços" : `Base ${regiao.nome}`}</span>
               </div>
             </NavLink>
 
@@ -303,11 +320,29 @@ const Dashboard = ({ loading }) => {
                   <strong className="app-breadcrumb__pagina">{migalhas[1]}</strong>
                 </>
               ) : (
-                <strong className="app-breadcrumb__pagina">Operacional SSA</strong>
+                <strong className="app-breadcrumb__pagina">{nomeSistema}</strong>
               )}
             </nav>
 
             <div className="app-topbar__right">
+              {veOperacao && podeTrocar && todas.length > 1 ? (
+                <label className={`app-regiao ${naSede ? "" : "fora-da-sede"}`} title="Base em uso: de qual Phoenix vêm os dados">
+                  <Icon name="mapPin" size={15} />
+                  <select value={regiao.id} onChange={(e) => aoTrocarRegiao(e.target.value)} aria-label="Base em uso">
+                    {todas.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.nome} ({r.sigla})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : veOperacao && !naSede ? (
+                <span className="app-regiao fora-da-sede" title="Base em uso">
+                  <Icon name="mapPin" size={15} />
+                  {regiao.nome}
+                </span>
+              ) : null}
+
               <span className="app-topbar__data">
                 <Icon name="calendar" size={15} />
                 {formatarDataTopo(hoje)}
@@ -335,7 +370,7 @@ const Dashboard = ({ loading }) => {
               )}
 
               {/* Notificações em tempo real (só operacional) */}
-              {veOperacao && (
+              {veOperacao && naSede && (
                 <div className="dashboard-bell">
                   <NotificacoesSino />
                 </div>
@@ -349,9 +384,27 @@ const Dashboard = ({ loading }) => {
                 <div className="spinner" />
               </div>
             )}
-            <FotosGuiasProvider>
-              <Outlet />
-            </FotosGuiasProvider>
+            {veOperacao && carregandoRegiao ? (
+              <div className="loading-overlay">
+                <div className="spinner" />
+              </div>
+            ) : veOperacao && indisponivel ? (
+              <div className="auth-sem-permissao">
+                <Icon name="mapPin" size={22} />
+                <h2>Base não disponível</h2>
+                <p>
+                  A sua conta é de uma base que foi desativada ou ainda não foi configurada. Fale com a gerência
+                  (Gestão → Regiões).
+                </p>
+              </div>
+            ) : (
+              <FotosGuiasProvider>
+                {/* key: trocar de base remonta a tela e refaz as buscas no Phoenix certo */}
+                <Fragment key={regiao.id}>
+                  <Outlet />
+                </Fragment>
+              </FotosGuiasProvider>
+            )}
           </main>
           {role === "comercial" && <BoasVindasComercial />}
         </div>
