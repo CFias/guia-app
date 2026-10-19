@@ -82,7 +82,11 @@ export const gerarPdfColecao = async ({ voo, nomes = [], mensagem = "", paginas,
     doc.addImage(fundo, "JPEG", 0, 0, LARGURA, ALTURA, "fundo_colecao", "FAST");
     desenharPecas(
       doc,
-      layoutColecao({ nomes: f.nomes, numero: f.numero, total: f.total }, { voo: f.voo, mensagem: f.mensagem, data: opcoes.data }, opcoes),
+      layoutColecao(
+        { nomes: f.nomes, numero: f.numero, total: f.total },
+        { voo: f.voo, mensagem: f.mensagem, data: opcoes.data },
+        { ...opcoes, nomesReferencia: f.referencia || folhas.filter((x) => x.voo === f.voo).flatMap((x) => x.nomes) },
+      ),
       { logo },
     );
   });

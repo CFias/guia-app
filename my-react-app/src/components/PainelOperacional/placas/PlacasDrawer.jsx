@@ -111,7 +111,8 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
         const mensagem =
           prefs.mensagem === "nenhuma" ? "" : mensagemDoIdioma(idiomaDaMaioria(g.reservas.map((r) => r.idioma)), { plural: true });
         const pags = paginarColecao(nomes, prefs.colecaoPorPlaca);
-        return pags.map((p, i) => ({ voo: g.voo, nomes: p, numero: i + 1, total: pags.length, mensagem }));
+        // todos os nomes do voo: a letra sai do mesmo tamanho em todas as folhas
+        return pags.map((p, i) => ({ voo: g.voo, nomes: p, numero: i + 1, total: pags.length, mensagem, referencia: nomes }));
       }),
     [grupos, prefs.colecaoOrdem, prefs.colecaoPorPlaca, prefs.mensagem],
   );
@@ -135,7 +136,11 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     if (ehColecao) {
       const pg = paginasColecao[atual];
       if (!pg) return [];
-      return layoutColecao({ nomes: pg.nomes, numero: pg.numero, total: pg.total }, { voo: pg.voo, mensagem: pg.mensagem, data }, opcoesColecao);
+      return layoutColecao(
+        { nomes: pg.nomes, numero: pg.numero, total: pg.total },
+        { voo: pg.voo, mensagem: pg.mensagem, data },
+        { ...opcoesColecao, nomesReferencia: pg.referencia },
+      );
     }
     return layoutIndividual(modelo, { ...placas[atual], data }, opcoesIndividual);
   })();
@@ -220,7 +225,7 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
         <div className="plc-opcoes">
           {ehColecao ? (
             <>
-              <Grupo label="Tamanho do nome" hint={prefs.colecaoTamanho === "auto" ? "A maior letra em que o nome mais longo da placa cabe na largura." : "Aumenta ou diminui a letra de todas as placas do voo. Um nome que não caberia diminui só ele."}>
+              <Grupo label="Tamanho do nome" hint={prefs.colecaoTamanho === "auto" ? "Todos os nomes do voo do mesmo tamanho: a maior letra em que o nome mais longo cabe." : "Aumenta ou diminui a letra de todas as placas do voo, sempre do mesmo tamanho para todos os nomes (até onde o nome mais longo cabe)."}>
                 <Segmented
                   size="sm"
                   value={prefs.colecaoTamanho}

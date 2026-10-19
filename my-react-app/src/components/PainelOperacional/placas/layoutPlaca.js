@@ -255,15 +255,24 @@ export const layoutColecao = ({ nomes = [], numero = 1, total = 1 }, dados = {},
 
   const fonte = fonteDoNome(opcoes.letra || "forte");
   const capFator = (fonte.cap || ALTURA_MAIUSCULA.helvetica) * PT;
-  const maxPorAltura = (altLinha * 0.6) / capFator;
+  // Tamanho PADRÃO: todos os nomes do voo (todas as folhas dele) saem com a
+  // mesma letra. A conta usa o nome mais longo do voo e a altura de uma
+  // folha cheia — a última folha, com menos nomes, não fica com letra maior.
+  const referencia = Array.isArray(opcoes.nomesReferencia) && opcoes.nomesReferencia.length ? opcoes.nomesReferencia : nomes;
+  const porFolha = Math.max(linhas, Math.min(5, Number(opcoes.porPlaca) || linhas));
+  const altLinhaRef = (fundo - topo - gap * (porFolha - 1)) / porFolha;
+  const maxPorAltura = (altLinhaRef * 0.6) / capFator;
   const teto = maxPorAltura * 1.2; // limite do manual: a letra nunca encosta na faixa vizinha
-  // quanto cada nome aguenta na largura
-  const cabe = nomes.map((n) => tamanhoQueCabe(n, larguraTexto, { font: fonte.pdf, style: fonte.estilo, max: teto, min: 14 }));
-  // automático: a maior letra em que o nome mais longo da página cabe
-  const auto = Math.min(maxPorAltura, ...(cabe.length ? cabe : [maxPorAltura]));
+  // quanto o nome mais longo do voo aguenta na largura
+  const cabeTodos = Math.min(
+    teto,
+    ...referencia.map((n) => tamanhoQueCabe(n, larguraTexto, { font: fonte.pdf, style: fonte.estilo, max: teto, min: 14 })),
+  );
   const manual = opcoes.tamanho === "manual";
   const escala = manual ? Math.min(1.3, Math.max(0.7, Number(opcoes.escala) || 1)) : 1;
-  const alvo = Math.min(teto, auto * escala);
+  // automático: a maior letra em que o nome mais longo cabe; manual: aumenta
+  // ou diminui, sem passar do que o nome mais longo aguenta
+  const tamPadrao = Math.min(cabeTodos, Math.min(maxPorAltura, cabeTodos) * escala);
 
   nomes.forEach((nome, i) => {
     const y = topo + i * (altLinha + gap);
@@ -276,8 +285,7 @@ export const layoutColecao = ({ nomes = [], numero = 1, total = 1 }, dados = {},
     if (separacao === "linha" && i > 0) {
       pecas.push({ t: "linha", x1: xa, y1: y, x2: xa + larguraFaixa, y2: y, w: 0.6, cor: COR.separador });
     }
-    // no manual, um nome que não caberia na largura diminui só ele
-    const tam = Math.min(alvo, cabe[i]);
+    const tam = tamPadrao;
     const yBase = y + altLinha / 2 + (tam * capFator) / 2;
     pecas.push(texto(nome, LARGURA / 2, yBase, { font: fonte.pdf, style: fonte.estilo, size: tam, cor: COR.nome, align: "center" }));
   });
