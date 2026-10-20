@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../Services/Services/firebase";
+import { getDocs } from "firebase/firestore";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
 import FotoRapidaGuia from "./FotoRapidaGuia";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
+import "./styles.css";
 import "./guias.css";
 import {
   Button,
@@ -19,6 +19,7 @@ import {
   TableHead,
   TableRow,
 } from "../ui";
+import { colBase } from "../../Services/Services/dadosBase";
 
 const ListaGuias = () => {
   const [guias, setGuias] = useState([]);
@@ -60,7 +61,7 @@ const ListaGuias = () => {
     try {
       setLoading(true);
 
-      const snap = await getDocs(collection(db, "guides"));
+      const snap = await getDocs(colBase("guides"));
       const data = snap.docs
         .map((docSnap) => ({
           id: docSnap.id,

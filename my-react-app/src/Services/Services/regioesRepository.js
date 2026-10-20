@@ -6,11 +6,11 @@
 
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
-import { ID_SEDE, SEDE, TELAS_REGIONAIS, normalizarLinkPhoenix, phoenixReserveService } from "./regiaoAtiva";
+import { ID_SEDE, SEDE, TELAS_PRONTAS, normalizarLinkPhoenix, phoenixReserveService } from "./regiaoAtiva";
 
 const REF = () => doc(db, "settings", "regioes");
 
-const CHAVES_TELAS = TELAS_REGIONAIS.map((t) => t.chave);
+const CHAVES_TELAS = TELAS_PRONTAS.map((t) => t.chave);
 
 // "Natal" → "nat"; "João Pessoa" → "jpa" se a sigla vier; senão das letras do nome
 export const idDaSigla = (sigla = "", nome = "") => {

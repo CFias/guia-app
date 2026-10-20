@@ -1,21 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  collection,
   addDoc,
   getDocs,
   Timestamp,
-  doc,
   updateDoc,
   onSnapshot,
   query,
   orderBy,
 } from "firebase/firestore";
-import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { colBase, docBase } from "../../Services/Services/dadosBase";
 
 
 const EXPAND =
@@ -136,7 +134,7 @@ const CadastroFornecedores = () => {
   const [dataOperacional, setDataOperacional] = useState(getHojeIso());
 
   useEffect(() => {
-    const q = query(collection(db, "providers"), orderBy("createdAt", "desc"));
+    const q = query(colBase("providers"), orderBy("createdAt", "desc"));
 
     const unsub = onSnapshot(
       q,
@@ -303,9 +301,9 @@ const CadastroFornecedores = () => {
       };
 
       if (fornecedorEditandoId) {
-        await updateDoc(doc(db, "providers", fornecedorEditandoId), payload);
+        await updateDoc(docBase("providers", fornecedorEditandoId), payload);
       } else {
-        await addDoc(collection(db, "providers"), {
+        await addDoc(colBase("providers"), {
           ...payload,
           createdAt: Timestamp.now(),
         });
@@ -321,7 +319,7 @@ const CadastroFornecedores = () => {
 
   const alternarStatusFornecedor = async (fornecedor) => {
     try {
-      await updateDoc(doc(db, "providers", fornecedor.id), {
+      await updateDoc(docBase("providers", fornecedor.id), {
         ativo: fornecedor.ativo === false ? true : false,
         updatedAt: Timestamp.now(),
       });

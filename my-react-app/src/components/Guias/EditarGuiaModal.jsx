@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  collection,
-  doc,
   getDocs,
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../../Services/Services/firebase";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
+import "./styles.css";
 import "./guias.css";
 import { Bandeira, Drawer, Field, Icon } from "../ui";
 import FotoGuiaEditor from "./FotoGuiaEditor";
+import { colBase, docBase } from "../../Services/Services/dadosBase";
 
 const LABEL_NIVEL = (valor) => {
   if (valor === 0) return "Não opera";
@@ -78,8 +77,8 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
 
         const [langs, snapServices, snapMapa] = await Promise.all([
           getLanguages(),
-          getDocs(collection(db, "services")),
-          getDoc(doc(db, "guide_tour_levels", guia.id)),
+          getDocs(colBase("services")),
+          getDoc(docBase("guide_tour_levels", guia.id)),
         ]);
 
         setIdiomasDisponiveis(langs.map((l) => l.label));
@@ -157,7 +156,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     try {
       setLoadingSalvar(true);
 
-      await updateDoc(doc(db, "guides", guia.id), {
+      await updateDoc(docBase("guides", guia.id), {
         nome,
         whatsapp: String(whatsapp).replace(/\D/g, ""),
         nivelPrioridade,

@@ -5,7 +5,7 @@ import { useAuth } from "../../Context/AuthContext";
 import { ROLES } from "../../Context/permissions";
 import { ehGerencia } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
-import { SEDE, TELAS_REGIONAIS, normalizarLinkPhoenix } from "../../Services/Services/regiaoAtiva";
+import { SEDE, TELAS_PRONTAS, TELAS_REGIONAIS, normalizarLinkPhoenix } from "../../Services/Services/regiaoAtiva";
 import { idDaSigla, normalizarRegiao, salvarRegioes, testarPhoenix, validarRegioes } from "../../Services/Services/regioesRepository";
 import { listarContas } from "../../Services/Services/acessosRepository";
 import { OPCOES_TEMA, TEMAS, acharTemaPorNome } from "../PainelOperacional/placas/temasRegiao";
@@ -20,7 +20,15 @@ import "./regioes.css";
    A região de cada conta é escolhida em Cadastros → Usuários.
    ========================================================= */
 
-const NOVA = () => ({ id: "", nome: "", sigla: "", phoenix: "", telas: TELAS_REGIONAIS.map((t) => t.chave), ativa: true, nova: true });
+const NOVA = () => ({ id: "", nome: "", sigla: "", phoenix: "", telas: TELAS_PRONTAS.map((t) => t.chave), ativa: true, nova: true });
+
+// telas agrupadas como no menu
+const GRUPOS_TELAS = TELAS_REGIONAIS.reduce((acc, t) => {
+  const g = acc.find((x) => x.titulo === t.grupo);
+  if (g) g.telas.push(t);
+  else acc.push({ titulo: t.grupo, telas: [t] });
+  return acc;
+}, []);
 
 const igual = (a, b) => JSON.stringify(a.map(normalizarRegiao)) === JSON.stringify(b.map(normalizarRegiao));
 
@@ -227,20 +235,47 @@ const Regioes = () => {
             </Field>
 
             <div className="reg-telas">
-              <h4>Telas que a base usa</h4>
-              <ul>
-                {TELAS_REGIONAIS.map((t) => (
-                  <li key={t.chave}>
-                    <label className={`reg-tela ${r.telas.includes(t.chave) ? "is-on" : ""}`}>
-                      <input type="checkbox" checked={r.telas.includes(t.chave)} onChange={() => alternarTela(i, t.chave)} />
-                      <span>
-                        <b>{t.label}</b>
-                        <small>{t.detalhe}</small>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+              <div className="reg-telas__topo">
+                <h4>Telas visíveis para a base</h4>
+                <span>
+                  <button type="button" onClick={() => mudar(i, "telas", TELAS_PRONTAS.map((t) => t.chave))}>
+                    Marcar todas
+                  </button>
+                  <button type="button" onClick={() => mudar(i, "telas", [])}>
+                    Desmarcar
+                  </button>
+                </span>
+              </div>
+              <p className="reg-telas__ajuda">
+                Cada base usa o Phoenix dela e os próprios cadastros (guias, passeios, fornecedores), que começam vazios. Dentro da base, cada
+                conta ainda pode ter telas bloqueadas em Controle de acessos.
+              </p>
+              {GRUPOS_TELAS.map((g) => (
+                <div key={g.titulo} className="reg-telas__grupo">
+                  <h5>{g.titulo}</h5>
+                  <ul>
+                    {g.telas.map((t) => (
+                      <li key={t.chave}>
+                        <label className={`reg-tela ${r.telas.includes(t.chave) ? "is-on" : ""} ${t.pronta ? "" : "is-breve"}`}>
+                          <input
+                            type="checkbox"
+                            checked={t.pronta && r.telas.includes(t.chave)}
+                            disabled={!t.pronta}
+                            onChange={() => alternarTela(i, t.chave)}
+                          />
+                          <span>
+                            <b>
+                              {t.label}
+                              {!t.pronta && <em className="reg-breve">Em breve</em>}
+                            </b>
+                            <small>{t.detalhe}</small>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
 
             <div className="reg-card__rodape">

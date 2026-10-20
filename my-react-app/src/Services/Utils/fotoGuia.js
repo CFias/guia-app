@@ -5,8 +5,8 @@
 // Storage, como as fotos da Central. Um documento por guia, separado do
 // cadastro, para a lista de guias não carregar as fotos junto.
 
-import { deleteDoc, doc, setDoc, Timestamp } from "firebase/firestore";
-import { db } from "../Services/firebase";
+import { deleteDoc, setDoc, Timestamp } from "firebase/firestore";
+import { docBase } from "../Services/dadosBase";
 
 const LADO = 640; // nítida também na foto ampliada
 
@@ -48,6 +48,6 @@ export const prepararFotoGuia = async (arquivo) => {
 };
 
 export const salvarFotoGuia = (guideId, foto) =>
-  setDoc(doc(db, "guide_fotos", guideId), { guideId, foto, atualizadoEm: Timestamp.now() });
+  setDoc(docBase("guide_fotos", guideId), { guideId, foto, atualizadoEm: Timestamp.now() });
 
-export const removerFotoGuia = (guideId) => deleteDoc(doc(db, "guide_fotos", guideId));
+export const removerFotoGuia = (guideId) => deleteDoc(docBase("guide_fotos", guideId));

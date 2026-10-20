@@ -32,6 +32,10 @@ rules_version = '2';
 //    monitoramento de OUT marcado com a região dela e a lista de regiões.
 //    Cadastros, escala, custos etc. (dados de Salvador) ficam fechados.
 //    A gerência é da sede: vê tudo e cadastra as bases (settings/regioes).
+//    CADASTROS POR BASE: as telas liberadas para a base usam as coleções
+//    com o sufixo dela (guides__nat, services__nat…) — cada base tem os
+//    próprios guias, passeios, disponibilidade e escala; a conta da base lê
+//    e grava só as coleções com o sufixo da própria base.
 // =========================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -78,16 +82,23 @@ service cloud.firestore {
     function docDaMinhaBase(id) {
       return id.matches('.+__' + minhaRegiao());
     }
+    // cadastros próprios de cada base: a mesma coleção de Salvador com o
+    // sufixo da base (guides__nat, services__nat, weekly_services__nat…)
+    function colecaoDaMinhaBase(col) {
+      return col.matches('.+__' + minhaRegiao());
+    }
     // o que uma conta de OUTRA base pode ler / gravar
     function regionalLe(col, id) {
       return isOperacional() && !daSede() && (
-        (col == 'settings' && (docDaMinhaBase(id) || id == 'regioes'))
+        colecaoDaMinhaBase(col)
+        || (col == 'settings' && (docDaMinhaBase(id) || id == 'regioes'))
         || (col == 'painel_out_monitoramento' && resource.data.regiao == minhaRegiao())
       );
     }
     function regionalGrava(col, id) {
       return isOperacional() && !daSede() && (
-        (col == 'settings' && docDaMinhaBase(id)
+        colecaoDaMinhaBase(col)
+        || (col == 'settings' && docDaMinhaBase(id)
           && (!id.matches('turnos_equipe__.*') || podeArea('demandaTurnos')))
         || (col == 'painel_out_monitoramento' && docDaMinhaBase(id)
           && request.resource.data.regiao == minhaRegiao())
@@ -99,9 +110,6 @@ service cloud.firestore {
       return ativo() && (isGerencia() || meuPerfil().get('verBalanco', false) == true);
     }
 
-    function caminhoControle() {
-      return /databases/$(database)/documents/settings/acessos;
-    }
 
     // Coleções / documentos que pertencem a UMA tela só
     function podeLerColecao(col, id) {
@@ -208,15 +216,9 @@ service cloud.firestore {
              .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName', 'updatedAt']);
       allow delete: if podeArea('usuarios') && daSede()
         && resource.data.role in ['comercial', 'guia'];
-      // Ativação do controle de acessos (UMA vez): quem ativa vira gerência,
-      // no mesmo lote em que cria settings/acessos. Depois que ele existe,
-      // só a gerência promove outras contas.
-      allow update: if isOperacional() && request.auth.uid == uid
-        && !exists(caminhoControle())
-        && existsAfter(caminhoControle())
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['gerencia', 'gerenciaDesde'])
-        && request.resource.data.gerencia == true;
+      // NINGUÉM se promove a gerência: o campo `gerencia` só muda pela
+      // própria gerência (regra acima). A primeira gerência é definida pelo
+      // administrador direto no console do Firebase.
     }
 
     // ---------- Guia: só o próprio documento de disponibilidade ----------
@@ -239,9 +241,7 @@ service cloud.firestore {
       // conta de outra base: só a lista de regiões e os documentos da base dela
       allow read: if ativo() && settingId != 'custos'
         && (!isOperacional() || daSede() || settingId in ['regioes', 'acessos'] || docDaMinhaBase(settingId));
-      // settings/acessos nasce junto com a primeira gerência (ver users)
-      allow create: if settingId == 'acessos' && isOperacional()
-        && getAfter(perfilPath()).data.get('gerencia', false) == true;
+      // settings/acessos: só a gerência grava (regra geral, lá embaixo)
     }
 
     // ---------- Guia: lê (sem alterar) o próprio perfil e o catálogo ----------

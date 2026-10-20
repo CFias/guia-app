@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { getDocs, query, where } from "firebase/firestore";
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,7 +13,6 @@ import {
   Bar,
   Line,
 } from "recharts";
-import { db } from "../../Services/Services/firebase";
 import "./home.css";
 import {
   Button,
@@ -56,6 +55,10 @@ import {
 } from "../../Services/Utils/idiomas";
 import { observacaoExclui, semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { colBase } from "../../Services/Services/dadosBase";
+import { useAuth } from "../../Context/AuthContext";
+import { useRegiao } from "../../Context/regiaoContext";
+import { podeArea } from "../../Context/acessos";
 
 // Modalidade do Phoenix → "Regular" / "Privativo" (outro texto passa como veio)
 const categoriaDoModo = (modo = "") => {
@@ -477,6 +480,10 @@ const tooltipStyle = {
 
 const Home = () => {
   const navigate = useNavigate();
+  const { perfil } = useAuth();
+  const { regiao } = useRegiao();
+  // a escala só abre se a tela Gerar Escala estiver liberada (conta e base)
+  const podeAbrirEscala = podeArea(perfil, "gerarEscala", regiao);
 
   const [loading, setLoading] = useState(true);
   const [atualizandoApi, setAtualizandoApi] = useState(false);
@@ -778,13 +785,14 @@ const Home = () => {
           fetch(`https://bible-api.com/${referencia}?translation=almeida`).catch(
             () => null,
           ),
-          getDocs(collection(db, "guides")),
-          getDocs(collection(db, "services")),
-          getDocs(collection(db, "guide_availability")),
-          getDocs(collection(db, "guide_tour_levels")),
+          // cadastros da base em uso (Salvador: os de sempre; outra base: os dela)
+          getDocs(colBase("guides")),
+          getDocs(colBase("services")),
+          getDocs(colBase("guide_availability")),
+          getDocs(colBase("guide_tour_levels")),
           getDocs(
             query(
-              collection(db, "weekly_services"),
+              colBase("weekly_services"),
               where("date", ">=", inicioSemana),
               where("date", "<=", fimSemana),
             ),
@@ -1816,9 +1824,11 @@ Operacional - Luck Receptivo
         description={`Semana de ${semana[0]?.label} a ${semana[6]?.label} · demanda real do Phoenix cruzada com a escala do sistema`}
         actions={
           <>
-            <Button icon="sparkles" onClick={() => navigate("/passeios")}>
-              Abrir escala da semana
-            </Button>
+            {podeAbrirEscala && (
+              <Button icon="sparkles" onClick={() => navigate("/passeios")}>
+                Abrir escala da semana
+              </Button>
+            )}
             <Button
               variant="primary"
               icon="refresh"

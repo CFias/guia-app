@@ -238,3 +238,68 @@
   display: inline-flex;
   gap: 4px;
 }
+
+/* telas visíveis por base, agrupadas como no menu */
+.reg-telas__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reg-telas__topo h4 {
+  margin: 0;
+}
+
+.reg-telas__topo button {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reg-telas__ajuda {
+  margin: 4px 0 8px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.reg-telas__grupo+.reg-telas__grupo {
+  margin-top: 10px;
+}
+
+.reg-telas__grupo h5 {
+  margin: 0 0 6px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reg-tela.is-breve {
+  cursor: default;
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.reg-breve {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.reg-tela {
+  box-sizing: border-box;
+  align-items: flex-start;
+}

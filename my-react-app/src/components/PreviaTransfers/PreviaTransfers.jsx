@@ -18,12 +18,12 @@ import {
   pararClique,
 } from "../ui";
 import { usePhoenixStatus } from "../Shell/shellContext";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "../../Services/Services/firebase";
+import { onSnapshot, query, where } from "firebase/firestore";
 import "./styles.css";
 import "./previa.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
-import { ehSede, phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { colBase } from "../../Services/Services/dadosBase";
 
 
 const EXPAND =
@@ -577,9 +577,8 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
   }, [ordemManualVeiculos]);
 
   useEffect(() => {
-    // fornecedores cadastrados são de Salvador: outras bases ficam sem a lista
-    if (!ehSede()) return undefined;
-    const q = query(collection(db, "providers"), where("ativo", "==", true));
+    // fornecedores cadastrados da base em uso (cada base tem os seus)
+    const q = query(colBase("providers"), where("ativo", "==", true));
 
     const unsub = onSnapshot(
       q,

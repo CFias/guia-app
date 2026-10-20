@@ -6,7 +6,7 @@ import { ROLES, ROLE_LABELS } from "../../Context/permissions";
 import { AREAS, GRUPOS_ACESSO, contarBloqueadas, ehGerencia, telaNaRegiao } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
-import { ativarControle, controleAtivado, listarContas, salvarAcessosConta } from "../../Services/Services/acessosRepository";
+import { controleAtivado, listarContas, salvarAcessosConta } from "../../Services/Services/acessosRepository";
 import "./acessos.css";
 
 /* =========================================================
@@ -36,25 +36,6 @@ const PodeNaoPode = ({ valor, onChange, disabled, rotulo }) => (
   </div>
 );
 
-const Ativacao = ({ onAtivar, ativando }) => (
-  <Card className="acs-ativar">
-    <div className="acs-ativar__icone">
-      <Icon name="shield" size={22} />
-    </div>
-    <h2>Ativar o controle de acessos</h2>
-    <p>
-      Hoje toda conta do Operacional vê todas as telas. Ao ativar, <b>você passa a ser da gerência</b>: vê tudo e decide, conta por conta, quais telas cada
-      pessoa pode abrir. Depois, marque as outras pessoas da gerência (ex.: coordenação e gerente geral).
-    </p>
-    <p className="acs-ativar__nota">
-      Isso só pode ser feito uma vez — depois de ativado, só a gerência promove outras contas. Nada muda para quem já usa o sistema até a gerência bloquear
-      alguma tela.
-    </p>
-    <Button variant="primary" icon="shield" onClick={onAtivar} loading={ativando}>
-      Ativar e me tornar gerência
-    </Button>
-  </Card>
-);
 
 const ControleAcessos = () => {
   const { user, perfil, role } = useAuth();
@@ -75,7 +56,6 @@ const ControleAcessos = () => {
   const [selId, setSelId] = useState(null);
   const [rascunho, setRascunho] = useState(null); // { gerencia, acessos }
   const [salvando, setSalvando] = useState(false);
-  const [ativando, setAtivando] = useState(false);
 
   const carregar = useCallback(async () => {
     setErro("");
@@ -151,35 +131,20 @@ const ControleAcessos = () => {
     }
   };
 
-  const ativar = async () => {
-    if (!window.confirm("Ativar o controle de acessos e tornar a sua conta da gerência?")) return;
-    setAtivando(true);
-    try {
-      await ativarControle({ uid: user.uid, nome: perfil?.nome });
-      mostrarToast("Controle de acessos ativado — você é da gerência");
-    } catch (e) {
-      console.error(e);
-      mostrarToast("Não foi possível ativar. Talvez outra pessoa já tenha ativado — recarregue a página.");
-    } finally {
-      setAtivando(false);
-      carregar();
-    }
-  };
-
   // ---------- quem não é da gerência ----------
   if (role !== ROLES.OPERACIONAL) return null;
   if (!souGerencia) {
     return (
       <div className="acs ui-page">
         <PageHeader title="Controle de acessos" description="Quais telas cada conta do Operacional pode abrir." />
+        {/* Ninguém vira gerência por aqui: quem define a gerência é outra conta
+            da gerência (nesta tela) ou o administrador, no Firebase. */}
         {carregando || ativo === null ? (
           <EmptyState icon="loader" title="Carregando…" />
-        ) : ativo ? (
+        ) : (
           <EmptyState icon="lock" title="Só a gerência mexe nos acessos">
             Peça a alguém da gerência se precisar liberar ou bloquear uma tela.
           </EmptyState>
-        ) : (
-          <Ativacao onAtivar={ativar} ativando={ativando} />
         )}
         {erro && <p className="acs-erro">{erro}</p>}
       </div>

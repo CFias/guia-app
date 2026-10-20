@@ -1,20 +1,19 @@
 import { useEffect, useState } from "react";
 import {
-  collection,
   addDoc,
   Timestamp,
   getDocs,
-  doc,
   updateDoc,
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "../../Services/Services/firebase";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
 import "./styles.css";
 import Icon from "../ui/Icon";
 import { datasDoPeriodo } from "../../Services/Services/servicosPhoenix";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { colBase, docBase } from "../../Services/Services/dadosBase";
 
 const diasSemana = [
   "Segunda",
@@ -26,8 +25,6 @@ const diasSemana = [
   "Domingo",
 ];
 
-const API_BASE =
-  "https://driversalvador.phoenix.comeialabs.com/scale/reserve-service";
 
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,reserve.partner,reserve.customer,additionalReserveServices,additionalReserveServices.additional,additionalReserveServices.provider,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle,reserve.pdvPayment.user";
@@ -91,7 +88,7 @@ const montarUrlApi = (date) => {
   params.append("execution_date", date);
   params.append("expand", EXPAND);
   params.append("service_type[]", "3");
-  return `${API_BASE}?${params.toString()}`;
+  return `${phoenixReserveService()}?${params.toString()}`;
 };
 
 const extrairListaRespostaBruta = (json) => {
@@ -137,7 +134,7 @@ const CadastroPasseio = () => {
     try {
       if (isInitial) setLoadingInicial(true);
 
-      const snap = await getDocs(collection(db, "services"));
+      const snap = await getDocs(colBase("services"));
       const lista = snap.docs
         .map((d) => ({
           id: d.id,
@@ -206,14 +203,14 @@ const CadastroPasseio = () => {
       };
 
       if (editandoId) {
-        await updateDoc(doc(db, "services", editandoId), {
+        await updateDoc(docBase("services", editandoId), {
           ...payload,
           updatedAt: Timestamp.now(),
         });
 
         alert("Passeio atualizado com sucesso!");
       } else {
-        await addDoc(collection(db, "services"), {
+        await addDoc(colBase("services"), {
           ...payload,
           origem: "manual",
           ativo: true,
@@ -246,7 +243,7 @@ const CadastroPasseio = () => {
     try {
       setExcluindoId(passeio.id);
 
-      await deleteDoc(doc(db, "services", passeio.id));
+      await deleteDoc(docBase("services", passeio.id));
 
       if (editandoId === passeio.id) {
         limparFormulario();
@@ -269,7 +266,7 @@ const CadastroPasseio = () => {
       // histórico (4 semanas) + próximas 2 semanas: pega também passeio que
       // não acontece todo mês e o que já está vendido para a semana que vem
       const datas = datasDoPeriodo(28, 14);
-      const snap = await getDocs(collection(db, "services"));
+      const snap = await getDocs(colBase("services"));
 
       const servicesExistentes = snap.docs.map((d) => ({
         id: d.id,
@@ -365,7 +362,7 @@ const CadastroPasseio = () => {
 
         if (existente) {
           await setDoc(
-            doc(db, "services", existente.id),
+            docBase("services", existente.id),
             {
               nome: existente.nome || servico.nome,
               externalName: servico.externalName,
@@ -380,7 +377,7 @@ const CadastroPasseio = () => {
 
           atualizados++;
         } else {
-          await addDoc(collection(db, "services"), {
+          await addDoc(colBase("services"), {
             nome: servico.nome,
             descricao: servico.descricao || "",
             frequencia: frequenciaCalculada,
