@@ -14,11 +14,11 @@ import {
   mensagemDoIdioma,
   salvarPrefsPlacas,
   textoMensagem,
-  TRACOS,
   useModelosEquipe,
 } from "./modelosPlaca";
 import AjustesNome, { AJUSTE_NOME_VAZIO, aplicarAjusteNome } from "./AjustesNome";
 import { LETRAS, useFontesPlaca } from "./fontesPlaca";
+import { OPACIDADE_TRACO } from "./artePlaca";
 import ConferenciaNomes from "./ConferenciaNomes";
 import { nomeEditado, tratarNomePlaca } from "./nomesPlaca";
 import "./placas.css";
@@ -51,6 +51,27 @@ const Miniatura = ({ modelo, ativo, onClick, onEditar }) => (
       </button>
     )}
   </div>
+);
+
+// controle deslizante com o valor em % ao lado
+const Faixa = ({ rotulo, min, max, passo, valor, onChange, desativado = false, dica }) => (
+  <label className={`plc-faixa-campo ${desativado ? "is-off" : ""}`}>
+    <span>
+      {rotulo}
+      <b>{Math.round(valor * 100)}%</b>
+    </span>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={passo}
+      value={valor}
+      disabled={desativado}
+      onChange={(e) => onChange(Number(e.target.value))}
+      aria-label={rotulo}
+    />
+    {dica && <small>{dica}</small>}
+  </label>
 );
 
 const limparHotel = (h = "") => (/não informado/i.test(h) ? "" : String(h || "").trim());
@@ -101,13 +122,21 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   useFontesPlaca();
   const modeloBase = acharModelo(prefs.modeloId, modelosEquipe);
   const ajusteNome = { ...AJUSTE_NOME_VAZIO, ...(prefs.nome || {}) };
-  // fundo só desta impressão: intensidade do desenho e do trevo ("" / null = do modelo)
-  const ajusteFundo = { traco: "", trevo: null, ...(prefs.fundo || {}) };
-  const aplicarFundo = (m) => ({
-    ...m,
-    ...(ajusteFundo.traco ? { traco: ajusteFundo.traco } : {}),
-    ...(ajusteFundo.trevo !== null && ajusteFundo.trevo !== undefined ? { trevo: ajusteFundo.trevo } : {}),
-  });
+  // Ajuste da placa individual (também a de voo com uma reserva na coleção):
+  // Automático = tamanho do nome automático e fundo como está no modelo;
+  // Manual = tamanho do nome, intensidade do desenho, logo ao fundo (trevo)
+  // e logo do cabeçalho escolhidos aqui (null = o do modelo). Só esta impressão.
+  const ajusteManual = prefs.individualTamanho === "manual";
+  const ajusteFundo = { desenho: null, trevo: null, logo: null, ...(prefs.fundo || {}) };
+  const definido = (v) => v !== null && v !== undefined && v !== "";
+  const aplicarFundo = (m) =>
+    ajusteManual
+      ? {
+          ...m,
+          ...(definido(ajusteFundo.desenho) ? { opacidadeDesenho: Number(ajusteFundo.desenho) } : {}),
+          ...(definido(ajusteFundo.trevo) ? { trevo: Number(ajusteFundo.trevo) } : {}),
+        }
+      : m;
   const modelo = aplicarFundo(aplicarAjusteNome(modeloBase, ajusteNome));
   const temAjuste = Object.values(ajusteNome).some(Boolean);
 
@@ -133,6 +162,7 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     mostrarVeiculo: prefs.mostrarVeiculo,
     tamanhoNome: prefs.individualTamanho,
     escalaNome: prefs.individualEscala,
+    opacidadeLogo: ajusteManual && definido(ajusteFundo.logo) ? Number(ajusteFundo.logo) : null,
     data,
   };
 
@@ -142,7 +172,8 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   const unicaComDesenho = prefs.unicaIndividual !== false;
   const prontos = modelosProntos();
   const modeloUnicoPadrao = prontos.find((m) => m.desenho && m.desenho !== "nenhum") || prontos[0];
-  const modeloUnico = aplicarFundo(acharModelo(prefs.modeloUnicoId || modeloUnicoPadrao.id, modelosEquipe));
+  const modeloUnicoBase = acharModelo(prefs.modeloUnicoId || modeloUnicoPadrao.id, modelosEquipe);
+  const modeloUnico = aplicarFundo(aplicarAjusteNome(modeloUnicoBase, ajusteNome));
   const voosDeUma = grupos.filter((g) => g.reservas.length === 1).length;
   const paginasColecao = useMemo(
     () =>
@@ -329,6 +360,75 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
     );
   }
 
+  // "Nome na placa" + "Ajuste da placa" (automático/manual) da placa individual
+  const renderAjustes = (base) => {
+    const semDesenho = !base.desenho || base.desenho === "nenhum";
+    const valorDesenho = definido(ajusteFundo.desenho) ? Number(ajusteFundo.desenho) : OPACIDADE_TRACO[base.traco] ?? OPACIDADE_TRACO.leve;
+    const valorTrevo = definido(ajusteFundo.trevo) ? Number(ajusteFundo.trevo) : Number(base.trevo ?? 0.06);
+    const valorLogo = definido(ajusteFundo.logo) ? Number(ajusteFundo.logo) : 1;
+    const mexido = definido(ajusteFundo.desenho) || definido(ajusteFundo.trevo) || definido(ajusteFundo.logo) || (prefs.individualEscala ?? 1) !== 1;
+    const mudarFundo = (campo, v) => atualizar({ fundo: { ...ajusteFundo, [campo]: v } });
+    return (
+      <>
+        <Grupo
+          label="Nome na placa"
+          hint={temAjuste ? "Vale só para esta impressão; o modelo continua igual." : "Começa como está no modelo. Mude aqui só para esta impressão."}
+        >
+          <AjustesNome valores={ajusteNome} doModelo={base} onChange={(p) => atualizar({ nome: { ...ajusteNome, ...p } })} />
+          {temAjuste && (
+            <button type="button" className="plc-link" onClick={() => atualizar({ nome: { ...AJUSTE_NOME_VAZIO } })}>
+              Voltar ao que está no modelo
+            </button>
+          )}
+        </Grupo>
+        <Grupo
+          label="Ajuste da placa"
+          hint={
+            ajusteManual
+              ? "Tamanho do nome, desenho e logo do seu jeito. Vale só para esta impressão."
+              : "Nome no maior tamanho que cabe; desenho e logo como estão no modelo."
+          }
+        >
+          <Segmented
+            size="sm"
+            value={ajusteManual ? "manual" : "auto"}
+            onChange={(v) => atualizar({ individualTamanho: v })}
+            options={[
+              { value: "auto", label: "Automático" },
+              { value: "manual", label: "Manual" },
+            ]}
+          />
+        </Grupo>
+        {ajusteManual && (
+          <div className="plc-manual">
+            <Faixa rotulo="Tamanho do nome" min={0.6} max={1.3} passo={0.05} valor={prefs.individualEscala ?? 1} onChange={(v) => atualizar({ individualEscala: v })} />
+            <Faixa
+              rotulo="Desenho"
+              min={0.1}
+              max={1}
+              passo={0.05}
+              valor={valorDesenho}
+              onChange={(v) => mudarFundo("desenho", v)}
+              desativado={semDesenho}
+              dica={semDesenho ? "Este modelo não tem desenho." : undefined}
+            />
+            <Faixa rotulo="Logo ao fundo (trevo)" min={0} max={0.25} passo={0.01} valor={valorTrevo} onChange={(v) => mudarFundo("trevo", v)} />
+            <Faixa rotulo="Logo do cabeçalho" min={0.1} max={1} passo={0.05} valor={valorLogo} onChange={(v) => mudarFundo("logo", v)} />
+            {mexido && (
+              <button
+                type="button"
+                className="plc-link"
+                onClick={() => atualizar({ individualEscala: 1, fundo: { desenho: null, trevo: null, logo: null } })}
+              >
+                Voltar ao que está no modelo
+              </button>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
+
   const titulo = ehColecao ? (varios ? "Placas coleção por voo" : "Placa coleção") : reservas.length === 1 && !voo ? "Placa avulsa" : "Placas individuais";
   const nNomes = `${reservas.length} ${reservas.length === 1 ? "nome" : "nomes"}`;
   const nPlacas = ehColecao ? ` · ${total} ${total === 1 ? "placa" : "placas"}` : "";
@@ -375,46 +475,67 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
           />
           {ehColecao ? (
             <>
+              {voosDeUma > 0 && (
+                <div className="plc-abas" role="tablist" aria-label="Tipo de placa">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!naUnica}
+                    className={!naUnica ? "is-on" : ""}
+                    onClick={() => naUnica && setPagina(Math.max(0, paginasColecao.findIndex((x) => grupos[x.grupo]?.reservas.length !== 1)))}
+                    disabled={voosDeUma === grupos.length}
+                  >
+                    Folhas coleção
+                    <small>{grupos.length - voosDeUma} {grupos.length - voosDeUma === 1 ? "voo" : "voos"}</small>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={naUnica}
+                    className={naUnica ? "is-on" : ""}
+                    onClick={() => !naUnica && setPagina(Math.max(0, paginasColecao.findIndex((x) => grupos[x.grupo]?.reservas.length === 1)))}
+                  >
+                    Voos com 1 reserva
+                    <small>{voosDeUma} {voosDeUma === 1 ? "voo" : "voos"} · com desenho</small>
+                  </button>
+                </div>
+              )}
               {naUnica ? (
-                <Grupo
-                  label={`Voo com uma reserva só${voosDeUma > 1 ? ` (${voosDeUma} voos assim)` : ""}`}
-                  hint={
-                    unicaComDesenho
-                      ? "Sai como placa individual, com o desenho do modelo escolhido. Vale para todos os voos com uma reserva só."
-                      : "Sai como folha coleção, com um nome só."
-                  }
-                >
+                <>
                   <div className="plc-switches">
                     <Interruptor checked={unicaComDesenho} onChange={(v) => atualizar({ unicaIndividual: v })}>
                       Placa individual com desenho
                     </Interruptor>
                   </div>
-                  {unicaComDesenho && (
-                    <div className="plc-unica">
-                      <PlacaPreview modelo={modeloUnico} soFundo className="plc-unica__mini" titulo={modeloUnico.nome} />
-                      <select className="ui-input" value={modeloUnico.id} onChange={(e) => atualizar({ modeloUnicoId: e.target.value })} aria-label="Modelo das placas de uma reserva">
-                        {gruposProntos().map((g) => (
-                          <optgroup key={g.titulo} label={g.titulo}>
+                  {unicaComDesenho ? (
+                    <>
+                      <p className="plc-nota">Vale para todos os voos com uma reserva só. As setas da pré-visualização passam por eles.</p>
+                      {gruposProntos().map((g) => (
+                        <div className="plc-secao" key={g.titulo}>
+                          <span className="plc-rotulo">{g.titulo === "Nordeste" ? "Nordeste (todas as bases)" : `Desenhos de ${g.titulo}`}</span>
+                          <div className="plc-modelos">
                             {g.modelos.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.nome}
-                              </option>
+                              <Miniatura key={m.id} modelo={m} ativo={modeloUnicoBase.id === m.id} onClick={() => atualizar({ modeloUnicoId: m.id })} />
                             ))}
-                          </optgroup>
-                        ))}
-                        {modelosEquipe.length > 0 && (
-                          <optgroup label="Da equipe">
+                          </div>
+                        </div>
+                      ))}
+                      {modelosEquipe.length > 0 && (
+                        <div className="plc-secao">
+                          <span className="plc-rotulo">Modelos da equipe</span>
+                          <div className="plc-modelos">
                             {modelosEquipe.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.nome}
-                              </option>
+                              <Miniatura key={m.id} modelo={m} ativo={modeloUnicoBase.id === m.id} onClick={() => atualizar({ modeloUnicoId: m.id })} />
                             ))}
-                          </optgroup>
-                        )}
-                      </select>
-                    </div>
+                          </div>
+                        </div>
+                      )}
+                      {renderAjustes(modeloUnicoBase)}
+                    </>
+                  ) : (
+                    <p className="plc-nota">Esses voos saem como folha coleção, com um nome só.</p>
                   )}
-                </Grupo>
+                </>
               ) : (
                 <>
               <Grupo label="Tamanho do nome" hint={prefs.colecaoTamanho === "auto" ? "Todos os nomes do voo do mesmo tamanho: a maior letra em que o nome mais longo cabe." : "Aumenta ou diminui a letra de todas as placas do voo, sempre do mesmo tamanho para todos os nomes (até onde o nome mais longo cabe)."}>
@@ -487,15 +608,6 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
                   ]}
                 />
               </Grupo>
-                  {voosDeUma > 0 && (
-                    <p className="plc-nota">
-                      {voosDeUma === 1 ? "1 voo tem" : `${voosDeUma} voos têm`} uma reserva só e {voosDeUma === 1 ? "sai" : "saem"}{" "}
-                      {unicaComDesenho ? "como placa individual com desenho" : "como folha coleção"}.{" "}
-                      <button type="button" className="plc-link" onClick={() => setPagina(paginasColecao.findIndex((x) => grupos[x.grupo]?.reservas.length === 1))}>
-                        Abrir {voosDeUma === 1 ? "esse voo" : "o primeiro"} para escolher
-                      </button>
-                    </p>
-                  )}
                 </>
               )}
               <Grupo label={naUnica ? "Mensagem" : "Mensagem no cabeçalho"}>
@@ -513,6 +625,11 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
                 <Interruptor checked={prefs.mostrarVoo} onChange={(v) => atualizar({ mostrarVoo: v })}>
                   Número do voo
                 </Interruptor>
+                {naUnica && unicaComDesenho && (
+                  <Interruptor checked={prefs.mostrarHotel} onChange={(v) => atualizar({ mostrarHotel: v })}>
+                    Hotel embaixo do nome
+                  </Interruptor>
+                )}
                 <Interruptor checked={!!prefs.mostrarVeiculo} onChange={(v) => atualizar({ mostrarVeiculo: v })}>
                   Veículo do serviço (discreto)
                 </Interruptor>
@@ -555,91 +672,7 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
                   </div>
                 </div>
               </div>
-              <Grupo
-                label="Nome na placa"
-                hint={temAjuste ? "Vale só para esta impressão; o modelo continua igual." : "Começa como está no modelo. Mude aqui só para esta impressão."}
-              >
-                <AjustesNome valores={ajusteNome} doModelo={modeloBase} onChange={(p) => atualizar({ nome: { ...ajusteNome, ...p } })} />
-                {temAjuste && (
-                  <button type="button" className="plc-link" onClick={() => atualizar({ nome: { ...AJUSTE_NOME_VAZIO } })}>
-                    Voltar ao que está no modelo
-                  </button>
-                )}
-              </Grupo>
-              <Grupo
-                label="Tamanho do nome"
-                hint={
-                  prefs.individualTamanho === "manual"
-                    ? "Aumenta ou diminui a letra em todas as placas, sem passar da largura da placa."
-                    : "A maior letra em que o nome cabe na placa."
-                }
-              >
-                <Segmented
-                  size="sm"
-                  value={prefs.individualTamanho || "auto"}
-                  onChange={(v) => atualizar({ individualTamanho: v })}
-                  options={[
-                    { value: "auto", label: "Automático" },
-                    { value: "manual", label: "Manual" },
-                  ]}
-                />
-              </Grupo>
-              {prefs.individualTamanho === "manual" && (
-                <div className="plc-faixa">
-                  <span>Menor</span>
-                  <input
-                    type="range"
-                    min="0.6"
-                    max="1.3"
-                    step="0.05"
-                    value={prefs.individualEscala ?? 1}
-                    onChange={(e) => atualizar({ individualEscala: Number(e.target.value) })}
-                    aria-label="Tamanho do nome"
-                  />
-                  <span>Maior</span>
-                  <b>{Math.round((prefs.individualEscala ?? 1) * 100)}%</b>
-                </div>
-              )}
-              <Grupo
-                label="Fundo"
-                hint={ajusteFundo.traco || ajusteFundo.trevo !== null ? "Vale só para esta impressão." : "Começa como está no modelo."}
-              >
-                <div className="plc-nome-ajustes">
-                  <label className="plc-nome-ajuste">
-                    <span>Desenho</span>
-                    <select
-                      className="ui-input"
-                      value={ajusteFundo.traco || ""}
-                      onChange={(e) => atualizar({ fundo: { ...ajusteFundo, traco: e.target.value } })}
-                      disabled={modeloBase.desenho === "nenhum"}
-                    >
-                      <option value="">Do modelo ({TRACOS.find((t) => t.value === modeloBase.traco)?.label || "Leve"})</option>
-                      {TRACOS.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="plc-nome-ajuste plc-nome-ajuste--faixa">
-                    <span>Trevo ao fundo: {Math.round((ajusteFundo.trevo ?? modeloBase.trevo ?? 0.06) * 100)}%</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="0.15"
-                      step="0.01"
-                      value={ajusteFundo.trevo ?? modeloBase.trevo ?? 0.06}
-                      onChange={(e) => atualizar({ fundo: { ...ajusteFundo, trevo: Number(e.target.value) } })}
-                      aria-label="Intensidade do trevo"
-                    />
-                  </label>
-                </div>
-                {(ajusteFundo.traco || ajusteFundo.trevo !== null) && (
-                  <button type="button" className="plc-link" onClick={() => atualizar({ fundo: { traco: "", trevo: null } })}>
-                    Voltar ao que está no modelo
-                  </button>
-                )}
-              </Grupo>
+              {renderAjustes(modeloBase)}
               <Grupo
                 label="Mensagem"
                 hint={

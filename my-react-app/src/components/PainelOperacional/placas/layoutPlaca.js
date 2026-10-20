@@ -434,6 +434,18 @@ export const layoutIndividual = (modelo, dados = {}, opcoes = {}) => {
 
   if (opcoes.mostrarRodape)
     pecas.push(...rodape({ margens, data: dados.data }));
+  // opacidade do logo do cabeçalho (ajuste manual): 0.1 a 1
+  const opLogo = Number(opcoes.opacidadeLogo);
+  if (
+    opcoes.opacidadeLogo !== null &&
+    opcoes.opacidadeLogo !== undefined &&
+    Number.isFinite(opLogo) &&
+    opLogo < 1
+  ) {
+    return pecas.map((p) =>
+      p.t === "logo" ? { ...p, opacidade: Math.max(0, opLogo) } : p,
+    );
+  }
   return pecas;
 };
 

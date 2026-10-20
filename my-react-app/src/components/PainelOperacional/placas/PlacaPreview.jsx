@@ -61,7 +61,7 @@ const Peca = ({ p, logo }) => {
         strokeWidth={p.espessura || 0}
       />
     );
-  if (p.t === "logo" && logo) return <image href={logo} x={p.x} y={p.y} width={p.w} height={p.h} />;
+  if (p.t === "logo" && logo) return <image href={logo} x={p.x} y={p.y} width={p.w} height={p.h} opacity={p.opacidade ?? 1} />;
   return null;
 };
 

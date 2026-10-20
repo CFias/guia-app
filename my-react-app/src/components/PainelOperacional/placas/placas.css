@@ -771,3 +771,93 @@
 .plc-mini.tem-revisar .plc-mini__alerta {
   background: var(--alert, #c0392b);
 }
+
+/* Abas da impressão em grupo: folhas coleção × voos com 1 reserva */
+.plc-abas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+}
+
+.plc-abas button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-2, var(--text));
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plc-abas button small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.plc-abas button.is-on {
+  background: var(--surface, #fff);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.plc-abas button.is-on small {
+  color: var(--accent);
+}
+
+.plc-abas button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Ajuste manual da placa individual */
+.plc-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: -4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.plc-faixa-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-sm);
+}
+
+.plc-faixa-campo>span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2, var(--text));
+}
+
+.plc-faixa-campo>span b {
+  font-variant-numeric: tabular-nums;
+}
+
+.plc-faixa-campo input[type=range] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.plc-faixa-campo small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.plc-faixa-campo.is-off {
+  opacity: 0.55;
+}

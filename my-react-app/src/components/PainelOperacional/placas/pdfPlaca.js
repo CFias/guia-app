@@ -55,7 +55,17 @@ export const desenharPecas = (doc, pecas, { logo } = {}) => {
       if (p.r) doc.roundedRect(p.x, p.y, p.w, p.h, p.r, p.r, modo);
       else doc.rect(p.x, p.y, p.w, p.h, modo);
     } else if (p.t === "logo" && logo) {
+      const transparente =
+        p.opacidade !== undefined &&
+        p.opacidade < 1 &&
+        typeof doc.setGState === "function" &&
+        doc.GState;
+      if (transparente) {
+        doc.saveGraphicsState();
+        doc.setGState(new doc.GState({ opacity: p.opacidade }));
+      }
       doc.addImage(logo, "PNG", p.x, p.y, p.w, p.h, "logo_luck", "FAST");
+      if (transparente) doc.restoreGraphicsState();
     }
   });
 };

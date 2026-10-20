@@ -63,8 +63,19 @@ export const DESENHOS = [
 
 // desenhos em faixa (base) ou fixos — não escolhem posição
 const SO_BASE = [
-  "pelourinho", "orla", "jangada", "cordel", "azulejos", "saojoao", "carnaval",
-  "praia", "voudeluck", "olinda", "gunga", "ponteingleses", "xingo",
+  "pelourinho",
+  "orla",
+  "jangada",
+  "cordel",
+  "azulejos",
+  "saojoao",
+  "carnaval",
+  "praia",
+  "voudeluck",
+  "olinda",
+  "gunga",
+  "ponteingleses",
+  "xingo",
 ];
 
 export const POSICOES = [
@@ -140,34 +151,46 @@ export const MODELO_BASE = {
 // Modelos prontos da base em uso (temasRegiao.js): os pontos turísticos da
 // base e, para todas, os do Nordeste. O Clássico (sem desenho) abre a lista.
 const CLASSICO = { id: "classico", nome: "Clássico", desenho: "nenhum" };
-const completar = (lista) => lista.map((m) => ({ ...MODELO_BASE, ...m, pronto: true }));
+const completar = (lista) =>
+  lista.map((m) => ({ ...MODELO_BASE, ...m, pronto: true }));
 
 export const gruposProntos = (tema = temaDaRegiao()) => [
   { titulo: tema.cidade, modelos: completar([CLASSICO, ...tema.modelos]) },
   { titulo: "Nordeste", modelos: completar(MODELOS_NORDESTE) },
 ];
 
-export const modelosProntos = (tema) => gruposProntos(tema).flatMap((g) => g.modelos);
+export const modelosProntos = (tema) =>
+  gruposProntos(tema).flatMap((g) => g.modelos);
 
 // desenhos oferecidos no criador de modelos: os da base + Nordeste (e o
 // desenho atual do modelo, se veio de outra base)
 export const desenhosDaBase = (tema = temaDaRegiao(), atual = "") => {
-  const usados = new Set(["nenhum", atual, ...modelosProntos(tema).map((m) => m.desenho)]);
+  const usados = new Set([
+    "nenhum",
+    atual,
+    ...modelosProntos(tema).map((m) => m.desenho),
+  ]);
   return DESENHOS.filter((d) => usados.has(d.value));
 };
 
-const valido = (lista, v, padrao) => (lista.some((o) => o.value === v) ? v : padrao);
+const valido = (lista, v, padrao) =>
+  lista.some((o) => o.value === v) ? v : padrao;
 
 // Garante um modelo completo e coerente (vale para o que vem do Firestore)
 export const normalizarModelo = (m = {}) => {
   const desenho = valido(DESENHOS, m.desenho, MODELO_BASE.desenho);
   const aceitas = posicoesDoDesenho(desenho);
-  const posicao = aceitas.includes(m.posicao) ? m.posicao : aceitas[0] || "base";
+  const posicao = aceitas.includes(m.posicao)
+    ? m.posicao
+    : aceitas[0] || "base";
   const trevo = Number(m.trevo);
   return {
     ...MODELO_BASE,
     ...m,
-    nome: String(m.nome || "").trim().slice(0, 40) || "Sem nome",
+    nome:
+      String(m.nome || "")
+        .trim()
+        .slice(0, 40) || "Sem nome",
     desenho,
     posicao,
     moldura: valido(MOLDURAS, m.moldura, MODELO_BASE.moldura),
@@ -178,7 +201,9 @@ export const normalizarModelo = (m = {}) => {
     quebra: valido(QUEBRAS, m.quebra, MODELO_BASE.quebra),
     traco: valido(TRACOS, m.traco, MODELO_BASE.traco),
     mensagem: String(m.mensagem || "").slice(0, 90),
-    trevo: Number.isFinite(trevo) ? Math.min(0.2, Math.max(0, trevo)) : MODELO_BASE.trevo,
+    trevo: Number.isFinite(trevo)
+      ? Math.min(0.2, Math.max(0, trevo))
+      : MODELO_BASE.trevo,
   };
 };
 
@@ -201,7 +226,10 @@ const mensagens = (tema) => {
   };
 };
 
-export const mensagemDoIdioma = (idioma, { plural = false, tema = temaDaRegiao() } = {}) => {
+export const mensagemDoIdioma = (
+  idioma,
+  { plural = false, tema = temaDaRegiao() } = {},
+) => {
   const M = mensagens(tema);
   const par = M[idioma] || (idioma && idioma !== "pt" ? M.en : M.pt);
   return plural ? par[1] : par[0];
@@ -214,17 +242,29 @@ export const idiomaDaMaioria = (idiomas = []) => {
     const id = i || "pt";
     conta[id] = (conta[id] || 0) + 1;
   });
-  const ordem = Object.entries(conta).sort((a, b) => b[1] - a[1] || (a[0] === "pt" ? -1 : 1));
+  const ordem = Object.entries(conta).sort(
+    (a, b) => b[1] - a[1] || (a[0] === "pt" ? -1 : 1),
+  );
   return ordem[0]?.[0] || "pt";
 };
 
 const primeiroNome = (nome = "") => {
-  const p = String(nome || "").trim().split(/\s+/)[0] || "";
+  const p =
+    String(nome || "")
+      .trim()
+      .split(/\s+/)[0] || "";
   return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : "";
 };
 
 // modo: "auto" (pelo idioma) | "modelo" (texto do modelo; vazio → auto) | "nenhuma"
-export const textoMensagem = ({ modo = "auto", modelo, idioma, nome, hotel, plural = false }) => {
+export const textoMensagem = ({
+  modo = "auto",
+  modelo,
+  idioma,
+  nome,
+  hotel,
+  plural = false,
+}) => {
   if (modo === "nenhuma") return "";
   const propria = String(modelo?.mensagem || "").trim();
   if (modo === "modelo" && propria) {
@@ -260,14 +300,17 @@ export const PREFS_PADRAO = {
   // individual: tamanho do nome e fundo só desta impressão
   individualTamanho: "auto", // auto | manual
   individualEscala: 1, // 0.6 a 1.3 (manual)
-  fundo: { traco: "", trevo: null }, // "" / null = o do modelo
+  fundo: { desenho: null, trevo: null, logo: null }, // ajuste manual (null = o do modelo): intensidade do desenho, trevo e logo do cabeçalho
   mostrarVeiculo: false, // veículo do serviço, discreto
 };
 
 export const lerPrefsPlacas = () => {
   try {
     const salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS) || "null");
-    return { ...PREFS_PADRAO, ...(salvo && typeof salvo === "object" ? salvo : {}) };
+    return {
+      ...PREFS_PADRAO,
+      ...(salvo && typeof salvo === "object" ? salvo : {}),
+    };
   } catch {
     return { ...PREFS_PADRAO };
   }
@@ -294,7 +337,9 @@ export const useModelosEquipe = () => {
           const lista = snap.exists() ? snap.data()?.modelos : null;
           setModelos(
             Array.isArray(lista)
-              ? lista.filter((m) => m && m.id).map((m) => ({ ...normalizarModelo(m), id: m.id }))
+              ? lista
+                  .filter((m) => m && m.id)
+                  .map((m) => ({ ...normalizarModelo(m), id: m.id }))
               : [],
           );
           setCarregado(true);
@@ -347,5 +392,9 @@ export const useModelosEquipe = () => {
 
 export const acharModelo = (id, modelosEquipe = []) => {
   const prontos = modelosProntos();
-  return prontos.find((m) => m.id === id) || modelosEquipe.find((m) => m.id === id) || prontos[0];
+  return (
+    prontos.find((m) => m.id === id) ||
+    modelosEquipe.find((m) => m.id === id) ||
+    prontos[0]
+  );
 };
