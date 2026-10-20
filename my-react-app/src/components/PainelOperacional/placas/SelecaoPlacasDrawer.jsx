@@ -6,8 +6,9 @@ import Grupo from "./Grupo";
    para a impressão antes de abrir o painel das placas (modelo e PDF).
    - Privativas: só reservas de modalidade privativa ou executiva;
    - Todas: todas as reservas dos voos;
-   - Por operadora: as reservas de uma operadora; o guia escalado é um filtro
-     opcional (todas as placas da operadora ou só as do guia escolhido);
+   - Por operadora: marque uma ou mais operadoras; cada uma abre um painel com
+     "Todas", "Privativas" ou "Escolher reservas" (marcar uma a uma), e o guia
+     escalado como filtro opcional. Tudo o que for marcado entra no mesmo lote;
    - Uma reserva: busca e escolhe uma.
    Formato: individual (uma placa por reserva) ou em grupo (placa coleção,
    uma por voo). Os voos podem ser desmarcados um a um.
@@ -29,14 +30,102 @@ const semAcento = (t = "") =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
+// painel aberto de uma operadora: quais reservas dela entram
+const PainelOperadora = ({ operadora, cfg, reservas, guias, onMudar }) => {
+  const [buscaRes, setBuscaRes] = useState("");
+  const doGuia = reservas.filter((r) => !cfg.guia || chaveGuia(r) === cfg.guia);
+  const privativas = doGuia.filter(ehPrivativa).length;
+  const t = semAcento(buscaRes.trim());
+  const visiveis = t ? doGuia.filter((r) => semAcento(`${r.nome} ${r.codigo} ${r.voo} ${r.hotel}`).includes(t)) : doGuia;
+  const escolhidas = cfg.escolhidas || {};
+  const nEscolhidas = doGuia.filter((r) => escolhidas[r.chaveRes]).length;
+  const marcar = (lista, valor) => {
+    const novo = { ...escolhidas };
+    lista.forEach((r) => {
+      if (valor) novo[r.chaveRes] = true;
+      else delete novo[r.chaveRes];
+    });
+    onMudar({ escolhidas: novo });
+  };
+  return (
+    <div className="plc-sel__painel">
+      <Segmented
+        size="sm"
+        value={cfg.modo}
+        onChange={(v) => onMudar({ modo: v })}
+        options={[
+          { value: "todas", label: "Todas", count: doGuia.length },
+          { value: "privativas", label: "Privativas", count: privativas },
+          { value: "escolhidas", label: "Escolher reservas", count: cfg.modo === "escolhidas" ? nEscolhidas : undefined },
+        ]}
+      />
+      {guias.length > 1 && (
+        <label className="plc-sel__guia">
+          <span>Guia escalado (opcional)</span>
+          <select className="ui-input" value={cfg.guia || ""} onChange={(e) => onMudar({ guia: e.target.value })}>
+            <option value="">
+              Todos os guias ({reservas.length} reservas · {textoPax(reservas.reduce((n, r) => n + paxDe(r), 0))})
+            </option>
+            {guias.map((g) => (
+              <option key={g.chave} value={g.chave}>
+                {g.nome} · {g.n} {g.n === 1 ? "reserva" : "reservas"} · {textoPax(g.pax)}
+                {g.escalas.size ? ` · ${[...g.escalas].slice(0, 3).join(", ")}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {cfg.modo === "privativas" && privativas === 0 && <p className="plc-sel__nota">{operadora.nome} não tem reserva privativa ou executiva{cfg.guia ? " com esse guia" : ""}.</p>}
+      {cfg.modo === "escolhidas" && (
+        <>
+          {doGuia.length > 6 && <SearchInput value={buscaRes} onChange={(e) => setBuscaRes(e.target.value)} placeholder="Nome, código, voo ou hotel" />}
+          <div className="plc-sel__voos-topo">
+            <span>
+              {nEscolhidas} de {doGuia.length} marcadas
+            </span>
+            <span>
+              <button type="button" onClick={() => marcar(visiveis, true)}>
+                Marcar todas
+              </button>
+              <button type="button" onClick={() => marcar(visiveis.filter(ehPrivativa), true)} disabled={!visiveis.some(ehPrivativa)}>
+                + Privativas
+              </button>
+              <button type="button" onClick={() => marcar(visiveis, false)}>
+                Limpar
+              </button>
+            </span>
+          </div>
+          <ul className="plc-sel__lista plc-sel__reservas" aria-label={`Reservas de ${operadora.nome}`}>
+            {visiveis.map((r) => (
+              <li key={r.chaveRes}>
+                <label className={`plc-sel__res ${escolhidas[r.chaveRes] ? "is-on" : ""}`}>
+                  <input type="checkbox" checked={!!escolhidas[r.chaveRes]} onChange={(e) => marcar([r], e.target.checked)} />
+                  <span className="plc-sel__res-info">
+                    <b>{r.nome || "Sem nome"}</b>
+                    <small>{[r.hora, r.voo && `Voo ${r.voo}`, r.codigo, r.hotel].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  {ehPrivativa(r) && <span className="plc-sel__tag">{/EXECUT/i.test(r.modalidade) ? "Executivo" : "Privativo"}</span>}
+                  <span className="plc-sel__tag">{textoPax(paxDe(r))}</span>
+                </label>
+              </li>
+            ))}
+            {visiveis.length === 0 && <li className="plc-sel__vazio">Nenhuma reserva com “{buscaRes}”.</li>}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+};
+
 const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   const [quais, setQuais] = useState("privativas");
   const [formato, setFormato] = useState("individual");
   const [desmarcados, setDesmarcados] = useState({});
   const [busca, setBusca] = useState("");
   const [escolhida, setEscolhida] = useState(null); // `${chaveVoo}|${idReserva}`
-  const [operadora, setOperadora] = useState("");
-  const [guia, setGuia] = useState(""); // "" = todos os guias da operadora (opcional)
+  // operadoras marcadas: nome → { modo: "todas" | "privativas" | "escolhidas", guia, escolhidas: { chave: true } }
+  const [ops, setOps] = useState({});
+  const [aberta, setAberta] = useState(""); // operadora com o painel aberto
   const [buscaOp, setBuscaOp] = useState("");
 
   // operadoras do dia, com quantas reservas cada uma tem
@@ -44,9 +133,10 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
     const m = new Map();
     voos.forEach((v) =>
       v.reservas.forEach((r) => {
-        const o = m.get(nomeOperadora(r)) || { nome: nomeOperadora(r), n: 0, pax: 0 };
+        const o = m.get(nomeOperadora(r)) || { nome: nomeOperadora(r), n: 0, pax: 0, privativas: 0 };
         o.n += 1;
         o.pax += paxDe(r);
+        if (ehPrivativa(r)) o.privativas += 1;
         m.set(o.nome, o);
       }),
     );
@@ -57,36 +147,69 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
     return t ? operadoras.filter((o) => semAcento(o.nome).includes(t)) : operadoras;
   }, [operadoras, buscaOp]);
 
-  // guias escalados nas reservas da operadora escolhida (com a escala/veículo)
-  const guiasDaOperadora = useMemo(() => {
-    if (!operadora) return [];
-    const m = new Map();
+  // reservas de cada operadora (com o voo), para o painel "Escolher reservas"
+  const reservasPorOperadora = useMemo(() => {
+    const m = {};
     voos.forEach((v) =>
-      v.reservas
-        .filter((r) => nomeOperadora(r) === operadora)
-        .forEach((r) => {
-          const k = chaveGuia(r);
-          const atual = m.get(k) || { chave: k, nome: k === SEM_GUIA ? "Sem guia escalado" : r.guia, n: 0, pax: 0, escalas: new Set() };
-          atual.n += 1;
-          atual.pax += paxDe(r);
-          if (r.escala) atual.escalas.add(r.escala);
-          m.set(k, atual);
-        }),
+      v.reservas.forEach((r) => {
+        const nome = nomeOperadora(r);
+        (m[nome] = m[nome] || []).push({ ...r, voo: v.voo, hora: v.hora, chaveRes: `${v.chave}|${r.id}` });
+      }),
     );
-    return [...m.values()].sort((a, b) => (a.chave === SEM_GUIA) - (b.chave === SEM_GUIA) || a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [voos, operadora]);
+    return m;
+  }, [voos]);
 
-  const filtroReserva = useMemo(() => {
-    if (quais === "privativas") return ehPrivativa;
-    if (quais === "operadora") return (r) => !!operadora && nomeOperadora(r) === operadora && (!guia || chaveGuia(r) === guia);
-    return () => true;
-  }, [quais, operadora, guia]);
+  // guias escalados nas reservas de uma operadora (com a escala/veículo)
+  const guiasDe = (nome) => {
+    const m = new Map();
+    (reservasPorOperadora[nome] || []).forEach((r) => {
+      const k = chaveGuia(r);
+      const atual = m.get(k) || { chave: k, nome: k === SEM_GUIA ? "Sem guia escalado" : r.guia, n: 0, pax: 0, escalas: new Set() };
+      atual.n += 1;
+      atual.pax += paxDe(r);
+      if (r.escala) atual.escalas.add(r.escala);
+      m.set(k, atual);
+    });
+    return [...m.values()].sort((a, b) => (a.chave === SEM_GUIA) - (b.chave === SEM_GUIA) || a.nome.localeCompare(b.nome, "pt-BR"));
+  };
+
+  // a reserva entra pela configuração da operadora dela?
+  const entraPelaOperadora = (r, chaveRes) => {
+    const cfg = ops[nomeOperadora(r)];
+    if (!cfg) return false;
+    if (cfg.guia && chaveGuia(r) !== cfg.guia) return false;
+    if (cfg.modo === "privativas") return ehPrivativa(r);
+    if (cfg.modo === "escolhidas") return !!cfg.escolhidas?.[chaveRes];
+    return true;
+  };
+  const mudarOp = (nome, parcial) => setOps((o) => ({ ...o, [nome]: { ...o[nome], ...parcial } }));
+  const alternarOperadora = (nome) => {
+    setDesmarcados({});
+    if (ops[nome]) {
+      setOps((o) => {
+        const novo = { ...o };
+        delete novo[nome];
+        return novo;
+      });
+      if (aberta === nome) setAberta("");
+    } else {
+      setOps((o) => ({ ...o, [nome]: { modo: "todas", guia: "", escolhidas: {} } }));
+      setAberta(nome);
+    }
+  };
+  const resumoOp = (nome) => {
+    const lista = (reservasPorOperadora[nome] || []).filter((r) => entraPelaOperadora(r, r.chaveRes));
+    return { n: lista.length, pax: lista.reduce((p, r) => p + paxDe(r), 0) };
+  };
+
+  const filtroReserva = (r, v) => {
+    if (quais === "privativas") return ehPrivativa(r);
+    if (quais === "operadora") return entraPelaOperadora(r, `${v.chave}|${r.id}`);
+    return true;
+  };
 
   // reservas de cada voo conforme a escolha (privativas / todas / operadora)
-  const porVoo = useMemo(
-    () => voos.map((v) => ({ ...v, reservas: v.reservas.filter(filtroReserva) })).filter((v) => v.reservas.length),
-    [voos, filtroReserva],
-  );
+  const porVoo = voos.map((v) => ({ ...v, reservas: v.reservas.filter((r) => filtroReserva(r, v)) })).filter((v) => v.reservas.length);
 
   const lote = porVoo.filter((v) => !desmarcados[v.chave]);
   const totalReservas = lote.reduce((n, v) => n + v.reservas.length, 0);
@@ -165,6 +288,31 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
           />
         </Grupo>
 
+        {!umaReserva && (
+          <div className="plc-sel__formato" role="radiogroup" aria-label="Formato das placas">
+            {[
+              { value: "individual", titulo: "Individual", texto: "Uma placa por reserva", icone: "fileText" },
+              { value: "grupo", titulo: "Coleção, por voo", texto: "Os nomes de cada voo juntos (até 5 por folha)", icone: "list" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                role="radio"
+                aria-checked={formato === f.value}
+                className={formato === f.value ? "is-on" : ""}
+                onClick={() => setFormato(f.value)}
+              >
+                <Icon name={f.icone} size={18} />
+                <span>
+                  <b>{f.titulo}</b>
+                  <small>{f.texto}</small>
+                </span>
+                {formato === f.value && <Icon name="circleCheck" size={16} className="plc-sel__formato-ok" />}
+              </button>
+            ))}
+          </div>
+        )}
+
         {umaReserva ? (
           <>
             <SearchInput value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, código da reserva, voo ou hotel" autoFocus />
@@ -195,82 +343,60 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
         ) : (
           <>
             {quais === "operadora" && (
-              <>
-                <div className="plc-sel__bloco">
-                  <span className="ui-field__label">Operadora</span>
-                  {operadoras.length > 6 && (
-                    <SearchInput value={buscaOp} onChange={(e) => setBuscaOp(e.target.value)} placeholder="Buscar operadora" />
-                  )}
-                  <ul className="plc-sel__lista plc-sel__ops" role="radiogroup" aria-label="Operadora">
-                    {operadorasVisiveis.map((o) => (
-                      <li key={o.nome}>
-                        <label className={`plc-sel__res ${operadora === o.nome ? "is-on" : ""}`}>
-                          <input
-                            type="radio"
-                            name="operadora-placa"
-                            checked={operadora === o.nome}
-                            onChange={() => {
-                              setOperadora(o.nome);
-                              setGuia("");
+              <div className="plc-sel__bloco">
+                <span className="ui-field__label">Operadoras</span>
+                <p className="plc-sel__nota plc-sel__nota--topo">
+                  Marque uma ou mais. Em cada uma, escolha todas as reservas, só as privativas ou as reservas que quiser.
+                </p>
+                {operadoras.length > 6 && <SearchInput value={buscaOp} onChange={(e) => setBuscaOp(e.target.value)} placeholder="Buscar operadora" />}
+                <ul className="plc-sel__lista plc-sel__ops" aria-label="Operadoras">
+                  {operadorasVisiveis.map((o) => {
+                    const cfg = ops[o.nome];
+                    const resumo = cfg ? resumoOp(o.nome) : null;
+                    const expandida = cfg && aberta === o.nome;
+                    return (
+                      <li key={o.nome} className={`plc-sel__op ${cfg ? "is-on" : ""} ${expandida ? "is-aberta" : ""}`}>
+                        <div className="plc-sel__res plc-sel__op-linha">
+                          <input type="checkbox" checked={!!cfg} onChange={() => alternarOperadora(o.nome)} aria-label={`Incluir ${o.nome}`} />
+                          <button
+                            type="button"
+                            className="plc-sel__op-nome"
+                            onClick={() => (cfg ? setAberta(expandida ? "" : o.nome) : alternarOperadora(o.nome))}
+                            aria-expanded={!!expandida}
+                          >
+                            <span className="plc-sel__res-info">
+                              <b>{o.nome}</b>
+                              {cfg && (
+                                <small>
+                                  {cfg.modo === "privativas" ? "Privativas" : cfg.modo === "escolhidas" ? "Reservas escolhidas" : "Todas as reservas"}
+                                  {cfg.guia ? ` · ${cfg.guia === SEM_GUIA ? "sem guia escalado" : cfg.guia}` : ""}
+                                </small>
+                              )}
+                            </span>
+                            <span className="plc-sel__tag">
+                              {cfg ? `${resumo.n} de ${o.n}` : o.n} {o.n === 1 ? "reserva" : "reservas"} · {textoPax(cfg ? resumo.pax : o.pax)}
+                            </span>
+                            {cfg && <Icon name={expandida ? "chevronUp" : "chevronDown"} size={14} />}
+                          </button>
+                        </div>
+                        {expandida && (
+                          <PainelOperadora
+                            operadora={o}
+                            cfg={cfg}
+                            reservas={reservasPorOperadora[o.nome] || []}
+                            guias={guiasDe(o.nome)}
+                            onMudar={(parcial) => {
                               setDesmarcados({});
+                              mudarOp(o.nome, parcial);
                             }}
                           />
-                          <span className="plc-sel__res-info">
-                            <b>{o.nome}</b>
-                          </span>
-                          <span className="plc-sel__tag">
-                            {o.n} {o.n === 1 ? "reserva" : "reservas"} · {textoPax(o.pax)}
-                          </span>
-                        </label>
+                        )}
                       </li>
-                    ))}
-                  </ul>
-                </div>
-                {operadora && (
-                  <Grupo
-                    label="Guia escalado (opcional)"
-                    hint={guia ? "Só as placas das reservas em que este guia está escalado." : "Todas as placas da operadora. Escolha um guia para imprimir só as dele."}
-                  >
-                    <select
-                      className="ui-input"
-                      value={guia}
-                      onChange={(e) => {
-                        setGuia(e.target.value);
-                        setDesmarcados({});
-                      }}
-                    >
-                      <option value="">
-                        Todos os guias ({guiasDaOperadora.reduce((n, g) => n + g.n, 0)} reservas · {textoPax(guiasDaOperadora.reduce((n, g) => n + g.pax, 0))})
-                      </option>
-                      {guiasDaOperadora.map((g) => (
-                        <option key={g.chave} value={g.chave}>
-                          {g.nome} · {g.n} {g.n === 1 ? "reserva" : "reservas"} · {textoPax(g.pax)}
-                          {g.escalas.size ? ` · ${[...g.escalas].slice(0, 3).join(", ")}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </Grupo>
-                )}
-              </>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
-            <Grupo
-              label="Formato"
-              hint={
-                formato === "individual"
-                  ? "Uma placa por reserva, com o voo de cada uma."
-                  : "Placa coleção: os nomes de cada voo juntos (até 5 por folha). Cada voo começa numa folha nova."
-              }
-            >
-              <Segmented
-                size="sm"
-                value={formato}
-                onChange={setFormato}
-                options={[
-                  { value: "individual", label: "Individual" },
-                  { value: "grupo", label: "Em grupo, por voo" },
-                ]}
-              />
-            </Grupo>
             {quais === "privativas" && <p className="plc-sel__nota">Entram as reservas de modalidade privativa e executiva.</p>}
 
             <div className="plc-sel__voos-topo">
@@ -291,9 +417,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
                 {quais === "privativas"
                   ? "Nenhuma reserva privativa nas chegadas da tela."
                   : quais === "operadora"
-                    ? operadora
+                    ? Object.keys(ops).length
                       ? "Nenhuma reserva com essa escolha."
-                      : "Escolha a operadora."
+                      : "Marque uma operadora."
                     : "Nenhuma chegada na tela."}
               </p>
             ) : (
