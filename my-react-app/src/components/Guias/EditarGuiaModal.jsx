@@ -6,7 +6,6 @@ import {
 } from "firebase/firestore";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
-import "./styles.css";
 import "./guias.css";
 import { Bandeira, Drawer, Field, Icon } from "../ui";
 import FotoGuiaEditor from "./FotoGuiaEditor";

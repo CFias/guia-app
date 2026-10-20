@@ -4,7 +4,6 @@ import { getDocs } from "firebase/firestore";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
 import FotoRapidaGuia from "./FotoRapidaGuia";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
-import "./styles.css";
 import "./guias.css";
 import {
   Button,
