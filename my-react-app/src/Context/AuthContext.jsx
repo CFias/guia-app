@@ -4,10 +4,11 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../Services/Services/firebase";
 import { enviarEmailRedefinicao } from "../Services/Services/authEmail";
 import { ROLES } from "./permissions";
+import { registrarLogin } from "../Services/Services/atividadeRepository";
 
 const AuthContext = createContext(null);
 
@@ -72,8 +73,14 @@ export const AuthProvider = ({ children }) => {
       perfil,
       role,
       loading,
-      login: (email, senha) =>
-        signInWithEmailAndPassword(auth, email.trim(), senha),
+      login: async (email, senha) => {
+        const cred = await signInWithEmailAndPassword(auth, email.trim(), senha);
+        // Balanço de uso: último login (melhor esforço, não atrasa a entrada)
+        getDoc(doc(db, "users", cred.user.uid))
+          .then((s) => s.exists() && s.data().ativo === true && registrarLogin(cred.user.uid, s.data()))
+          .catch(() => {});
+        return cred;
+      },
       logout: () => signOut(auth),
       enviarRedefinicaoSenha: (email) => enviarEmailRedefinicao(email),
     };

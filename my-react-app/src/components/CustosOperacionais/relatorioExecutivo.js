@@ -9,7 +9,11 @@
 // (custos_dia). O "evitável" vem do recomendador de trocas e é estimativa.
 
 import logoLuck from "../../assets/clover.png";
-import { NOME_CATEGORIA, NOME_TIPO } from "../../Services/Services/custosCalculo";
+import {
+  NOME_CATEGORIA,
+  NOME_TIPO,
+} from "../../Services/Services/custosCalculo";
+import { registrarImpressao } from "../../Services/Services/atividadeRepository";
 
 const esc = (t) =>
   String(t ?? "")
@@ -19,9 +23,17 @@ const esc = (t) =>
     .replace(/"/g, "&quot;");
 
 const reais = (v, centavos = false) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: centavos ? 2 : 0, maximumFractionDigits: centavos ? 2 : 0 });
+  Number(v || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: centavos ? 2 : 0,
+    maximumFractionDigits: centavos ? 2 : 0,
+  });
 const num = (v) => Number(v || 0).toLocaleString("pt-BR");
-const pct = (v, t) => (t ? `${((v / t) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—");
+const pct = (v, t) =>
+  t
+    ? `${((v / t) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+    : "—";
 const dataBr = (iso = "") => {
   const [a, m, d] = String(iso).split("-");
   return a ? `${d}/${m}/${a}` : "";
@@ -32,7 +44,15 @@ const diaSemana = (iso) => {
   return DIAS[new Date(a, m - 1, d, 12).getDay()];
 };
 
-const COR = { barra: "#0e7490", eco: "#1a7f37", evit: "#b45309", alerta: "#b42318", t2: "#57606a", t3: "#8c959f", ln: "#d8dee4" };
+const COR = {
+  barra: "#0e7490",
+  eco: "#1a7f37",
+  evit: "#b45309",
+  alerta: "#b42318",
+  t2: "#57606a",
+  t3: "#8c959f",
+  ln: "#d8dee4",
+};
 
 const CSS = `
 @page { size: A4 portrait; margin: 12mm 12mm 14mm; }
@@ -73,12 +93,15 @@ const barrasHtml = (itens, total, { max = 8, nome = (k) => k } = {}) => {
   const maior = Math.max(1, ...lista.map((i) => i.valor));
   return `<table><thead><tr><th class="e">Item</th><th class="e" style="width:42%"></th><th>Valor</th><th>%</th><th>Serv.</th></tr></thead><tbody>${lista
     .map(
-      (i) => `<tr><td class="e">${esc(nome(i.chave))}</td><td class="e"><span class="barra" style="width:${Math.max(2, (i.valor / maior) * 100)}%"></span></td><td>${reais(i.valor)}</td><td>${pct(
-        i.valor,
-        total,
-      )}</td><td>${num(i.servicos)}</td></tr>`,
+      (i) =>
+        `<tr><td class="e">${esc(nome(i.chave))}</td><td class="e"><span class="barra" style="width:${Math.max(2, (i.valor / maior) * 100)}%"></span></td><td>${reais(i.valor)}</td><td>${pct(
+          i.valor,
+          total,
+        )}</td><td>${num(i.servicos)}</td></tr>`,
     )
-    .join("")}</tbody></table>${itens.length > max ? `<p class="fonte">+ ${itens.length - max} outros.</p>` : ""}`;
+    .join(
+      "",
+    )}</tbody></table>${itens.length > max ? `<p class="fonte">+ ${itens.length - max} outros.</p>` : ""}`;
 };
 
 // colunas do custo por dia (SVG)
@@ -89,7 +112,8 @@ const colunasDiaSvg = (porDia) => {
   const maior = Math.max(1, ...porDia.map((d) => d.total + (d.evitavel || 0)));
   const passo = W / Math.max(1, porDia.length);
   const larg = Math.max(2, Math.min(22, passo * 0.7));
-  const mostraData = (i) => porDia.length <= 16 || i % Math.ceil(porDia.length / 12) === 0;
+  const mostraData = (i) =>
+    porDia.length <= 16 || i % Math.ceil(porDia.length / 12) === 0;
   const barras = porDia
     .map((d, i) => {
       const x = i * passo + (passo - larg) / 2;
@@ -101,7 +125,9 @@ const colunasDiaSvg = (porDia) => {
           ? `<rect x="${x}" y="${base - 2}" width="${larg}" height="2" fill="${COR.ln}"/>`
           : `<rect x="${x}" y="${base - h}" width="${larg}" height="${Math.max(1, h)}" rx="2" fill="${COR.barra}"/>`
       }${he > 0.5 ? `<rect x="${x}" y="${base - h - he}" width="${larg}" height="${he}" fill="none" stroke="${COR.evit}" stroke-dasharray="2 2"/>` : ""}${
-        mostraData(i) ? `<text x="${x + larg / 2}" y="${H - 6}" font-size="8" text-anchor="middle" fill="${COR.t2}">${d.data.slice(8)}/${d.data.slice(5, 7)}</text>` : ""
+        mostraData(i)
+          ? `<text x="${x + larg / 2}" y="${H - 6}" font-size="8" text-anchor="middle" fill="${COR.t2}">${d.data.slice(8)}/${d.data.slice(5, 7)}</text>`
+          : ""
       }`;
     })
     .join("");
@@ -112,17 +138,24 @@ const colunasDiaSvg = (porDia) => {
 const destaques = (r, nDias) => {
   const t = r.total;
   const itens = [];
-  const diasComValor = r.porDia.filter((d) => d.status !== "sem-lancamento" && d.total > 0);
+  const diasComValor = r.porDia.filter(
+    (d) => d.status !== "sem-lancamento" && d.total > 0,
+  );
   if (diasComValor.length) {
     const maior = [...diasComValor].sort((a, b) => b.total - a.total)[0];
-    const media = diasComValor.reduce((a, d) => a + d.total, 0) / diasComValor.length;
-    itens.push(`Custo médio por dia de <b>${reais(media)}</b>; o dia mais caro foi <b>${diaSemana(maior.data)} ${dataBr(maior.data)}</b> (${reais(maior.total)}).`);
+    const media =
+      diasComValor.reduce((a, d) => a + d.total, 0) / diasComValor.length;
+    itens.push(
+      `Custo médio por dia de <b>${reais(media)}</b>; o dia mais caro foi <b>${diaSemana(maior.data)} ${dataBr(maior.data)}</b> (${reais(maior.total)}).`,
+    );
   }
   const forn = r.porFornecedor.filter((f) => f.chave !== "Sem fornecedor");
   if (forn.length) {
     const top = forn[0];
     const top3 = forn.slice(0, 3).reduce((a, f) => a + f.valor, 0);
-    itens.push(`<b>${esc(top.chave)}</b> é o maior fornecedor (${pct(top.valor, t.fornecedores)} do valor de fornecedores); os 3 maiores somam ${pct(top3, t.fornecedores)}.`);
+    itens.push(
+      `<b>${esc(top.chave)}</b> é o maior fornecedor (${pct(top.valor, t.fornecedores)} do valor de fornecedores); os 3 maiores somam ${pct(top3, t.fornecedores)}.`,
+    );
   }
   const ecoReal = t.economia + t.noShowEconomia;
   if (ecoReal > 0)
@@ -134,7 +167,9 @@ const destaques = (r, nDias) => {
   if (t.evitavel > 0 || t.evitavelRessalva > 0)
     itens.push(
       `Evitável estimado: até <b>${reais(t.evitavel)}</b> em ${num(t.evitavelQtd)} troca(s) de veículo sugeridas pelo recomendador${
-        t.evitavelRessalva > 0 ? `; outros ${reais(t.evitavelRessalva)} (${num(t.evitavelRessalvaQtd)}) dependem de reservas que pedem fornecedor ou veículo específico` : ""
+        t.evitavelRessalva > 0
+          ? `; outros ${reais(t.evitavelRessalva)} (${num(t.evitavelRessalvaQtd)}) dependem de reservas que pedem fornecedor ou veículo específico`
+          : ""
       }.`,
     );
   const alertas = t.alertaLotacao + t.alertaNaoEscalar + t.alertaHorario;
@@ -144,14 +179,26 @@ const destaques = (r, nDias) => {
         t.alertaHorario,
       )}</b> horário(s) apertado(s) no mesmo veículo.`,
     );
-  if (t.acimaQtd) itens.push(`${num(t.acimaQtd)} serviço(s) cobrados acima da tabela (+${reais(t.acimaDaTabela)}) — vale revisar a tabela ou o fornecedor.`);
+  if (t.acimaQtd)
+    itens.push(
+      `${num(t.acimaQtd)} serviço(s) cobrados acima da tabela (+${reais(t.acimaDaTabela)}) — vale revisar a tabela ou o fornecedor.`,
+    );
   const pend = t.semValor + t.guiasAConfirmar;
-  if (pend) itens.push(`Pendências: ${num(t.semValor)} serviço(s) sem valor e ${num(t.guiasAConfirmar)} guia(s) a confirmar — o custo real pode ser maior.`);
-  if (t.diasComLancamento < nDias) itens.push(`Atenção: ${nDias - t.diasComLancamento} dia(s) do período sem lançamento ficaram fora dos números.`);
+  if (pend)
+    itens.push(
+      `Pendências: ${num(t.semValor)} serviço(s) sem valor e ${num(t.guiasAConfirmar)} guia(s) a confirmar — o custo real pode ser maior.`,
+    );
+  if (t.diasComLancamento < nDias)
+    itens.push(
+      `Atenção: ${nDias - t.diasComLancamento} dia(s) do período sem lançamento ficaram fora dos números.`,
+    );
   return itens;
 };
 
-export const montarHtmlExecutivo = (r, { inicio, fim, modo = "simples", nDias }) => {
+export const montarHtmlExecutivo = (
+  r,
+  { inicio, fim, modo = "simples", nDias },
+) => {
   const t = r.total;
   const agora = new Date();
   const gerado = `${agora.toLocaleDateString("pt-BR")} ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
@@ -168,8 +215,13 @@ export const montarHtmlExecutivo = (r, { inicio, fim, modo = "simples", nDias })
 </div>`;
 
   const lista = destaques(r, nDias);
-  const tipos = barrasHtml(r.porTipo, t.fornecedores, { nome: (k) => NOME_TIPO[k] || k, max: 6 });
-  const fornecedores = barrasHtml(r.porFornecedor, t.fornecedores, { max: detalhado ? 10 : 5 });
+  const tipos = barrasHtml(r.porTipo, t.fornecedores, {
+    nome: (k) => NOME_TIPO[k] || k,
+    max: 6,
+  });
+  const fornecedores = barrasHtml(r.porFornecedor, t.fornecedores, {
+    max: detalhado ? 10 : 5,
+  });
 
   let corpo = `${kpis}
 <h2>Destaques</h2>
@@ -192,9 +244,16 @@ export const montarHtmlExecutivo = (r, { inicio, fim, modo = "simples", nDias })
 <tr><td class="e">Tabela MI</td><td>${num(t.guiaMiQtd)} · ${reais(t.guiaMiValor)}</td></tr>
 <tr><td class="e">Regular + idioma (adicional)</td><td>${num(t.guiaIdiomaQtd)} · ${reais(t.guiaAdicional)}</td></tr>
 </tbody></table>
-${guias.length ? `<table style="margin-top:6px"><thead><tr><th class="e">Guia</th><th>Serv.</th><th>Valor</th></tr></thead><tbody>${guias
-      .map((g) => `<tr><td class="e">${esc(g.chave)}</td><td>${num(g.servicos)}</td><td>${reais(g.valor)}</td></tr>`)
-      .join("")}</tbody></table>` : ""}
+${
+  guias.length
+    ? `<table style="margin-top:6px"><thead><tr><th class="e">Guia</th><th>Serv.</th><th>Valor</th></tr></thead><tbody>${guias
+        .map(
+          (g) =>
+            `<tr><td class="e">${esc(g.chave)}</td><td>${num(g.servicos)}</td><td>${reais(g.valor)}</td></tr>`,
+        )
+        .join("")}</tbody></table>`
+    : ""
+}
 </div>
 </div>
 <div class="duas blk">
@@ -214,7 +273,9 @@ ${guias.length ? `<table style="margin-top:6px"><thead><tr><th class="e">Guia</t
   corpo += `
 <div class="nota blk">
 <p><b>Sobre o "evitável":</b> é uma estimativa do recomendador de trocas (serviços casados entre veículos da mesma categoria, com lugares e horário livres, pela tabela de tarifas). É relativo: nem toda troca é viável — a reserva pode pedir um fornecedor ou veículo específico, o veículo pode não estar disponível de fato ou a operação pode ter outra prioridade. Por isso a parte que depende de observação da reserva aparece separada ("com ressalva").${
-    t.diasComRecomendador < t.diasComLancamento ? ` Calculado em ${num(t.diasComRecomendador)} de ${num(t.diasComLancamento)} dias (os demais foram lançados antes desta versão).` : ""
+    t.diasComRecomendador < t.diasComLancamento
+      ? ` Calculado em ${num(t.diasComRecomendador)} de ${num(t.diasComLancamento)} dias (os demais foram lançados antes desta versão).`
+      : ""
   }</p>
 <p><b>Fonte:</b> serviços, escalas e reservas do Phoenix; valores lançados no Custo do dia da FiaSystem (o que não foi lançado usa a tabela de tarifas). Reservas com CLD, cancelado, não escalar ou dispensado não contam passageiros.</p>
 </div>`;
@@ -228,10 +289,16 @@ ${corpo}
 };
 
 export const imprimirExecutivo = (r, opcoes) => {
+  registrarImpressao(
+    "relatorio_executivo",
+    "Relatório executivo de custos",
+    opcoes?.modo || "",
+  ); // Balanço de uso
   const html = montarHtmlExecutivo(r, opcoes);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();

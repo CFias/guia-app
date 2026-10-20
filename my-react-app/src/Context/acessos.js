@@ -15,7 +15,11 @@
    ========================================================= */
 
 import { ROLES } from "./permissions";
-import { ROTAS_SO_SEDE, ehSede, regiaoAtual } from "../Services/Services/regiaoAtiva";
+import {
+  ROTAS_SO_SEDE,
+  ehSede,
+  regiaoAtual,
+} from "../Services/Services/regiaoAtiva";
 
 export const GRUPOS_ACESSO = [
   {
@@ -28,20 +32,38 @@ export const GRUPOS_ACESSO = [
       {
         chave: "painelOperacional",
         label: "Painel Operacional",
-        detalhe: "Inclui Chegadas, OUT's, Conferência de voos e Resumo por guia.",
+        detalhe:
+          "Inclui Chegadas, OUT's, Conferência de voos e Resumo por guia.",
         rotas: ["/op", "/chegadas", "/outs", "/conferencia", "/resumo"],
       },
       { chave: "previas", label: "Prévia de Serviços", rotas: ["/previas"] },
-      { chave: "planilha", label: "Planilha operacional", rotas: ["/planilha"] },
+      {
+        chave: "planilha",
+        label: "Planilha operacional",
+        rotas: ["/planilha"],
+      },
     ],
   },
   {
     titulo: "Escala e guias",
     areas: [
-      { chave: "gerarEscala", label: "Gerar Escala", detalhe: "Inclui a Escala semanal.", rotas: ["/passeios", "/escala-semanal"] },
+      {
+        chave: "gerarEscala",
+        label: "Gerar Escala",
+        detalhe: "Inclui a Escala semanal.",
+        rotas: ["/passeios", "/escala-semanal"],
+      },
       { chave: "listaGuias", label: "Lista de Guias", rotas: ["/guias"] },
-      { chave: "mapaAfinidade", label: "Mapa de afinidade", rotas: ["/mapear-guias"] },
-      { chave: "disponibilidade", label: "Disponibilidade da semana", rotas: ["/disponibilidade-guia"] },
+      {
+        chave: "mapaAfinidade",
+        label: "Mapa de afinidade",
+        rotas: ["/mapear-guias"],
+      },
+      {
+        chave: "disponibilidade",
+        label: "Disponibilidade da semana",
+        rotas: ["/disponibilidade-guia"],
+      },
     ],
   },
   {
@@ -50,7 +72,8 @@ export const GRUPOS_ACESSO = [
       {
         chave: "custos",
         label: "Custos operacionais",
-        detalhe: "Custos lançados e tabela de tarifas — protegidos também no banco.",
+        detalhe:
+          "Custos lançados e tabela de tarifas — protegidos também no banco.",
         rotas: ["/custos"],
         protegidoNoBanco: true,
       },
@@ -61,7 +84,11 @@ export const GRUPOS_ACESSO = [
         rotas: ["/recepcao-turnos"],
         protegidoNoBanco: true,
       },
-      { chave: "servicosFornecedor", label: "Serviços por Fornecedor", rotas: ["/servicos-fornecedor"] },
+      {
+        chave: "servicosFornecedor",
+        label: "Serviços por Fornecedor",
+        rotas: ["/servicos-fornecedor"],
+      },
     ],
   },
   {
@@ -82,11 +109,16 @@ export const GRUPOS_ACESSO = [
       {
         chave: "centralInformacoes",
         label: "Central de Informações (edição)",
-        detalhe: "Cadastrar e editar o que o comercial vê — protegido também no banco.",
+        detalhe:
+          "Cadastrar e editar o que o comercial vê — protegido também no banco.",
         rotas: ["/faqadmin"],
         protegidoNoBanco: true,
       },
-      { chave: "verComercial", label: "Ver como o comercial", rotas: ["/faqcomercial"] },
+      {
+        chave: "verComercial",
+        label: "Ver como o comercial",
+        rotas: ["/faqcomercial"],
+      },
     ],
   },
   {
@@ -95,7 +127,8 @@ export const GRUPOS_ACESSO = [
       {
         chave: "configuracoes",
         label: "Configurações do operacional",
-        detalhe: "Regras da escala, Google Drive, serviços fora da escala. Sem isto, vê só o Tema.",
+        detalhe:
+          "Regras da escala, Google Drive, serviços fora da escala. Sem isto, vê só o Tema.",
         rotas: [],
       },
     ],
@@ -106,7 +139,11 @@ export const AREAS = GRUPOS_ACESSO.flatMap((g) => g.areas);
 
 export const ROTA_ACESSOS = "/acessos";
 
-export const ehGerencia = (perfil) => !!perfil && perfil.ativo === true && perfil.role === ROLES.OPERACIONAL && perfil.gerencia === true;
+export const ehGerencia = (perfil) =>
+  !!perfil &&
+  perfil.ativo === true &&
+  perfil.role === ROLES.OPERACIONAL &&
+  perfil.gerencia === true;
 
 // Telas que a gerência continua vendo quando troca para outra base
 // (cuidar das contas é da gerência, em qualquer base).
@@ -115,18 +152,24 @@ const GERENCIA_EM_QUALQUER_BASE = ["usuarios"];
 // A tela existe na base (região) em uso? Salvador tem todas; as outras bases
 // só as marcadas em Gestão → Regiões (Services/Services/regiaoAtiva.js).
 export const telaNaRegiao = (chave, regiao = regiaoAtual()) =>
-  ehSede(regiao) || (Array.isArray(regiao?.telas) && regiao.telas.includes(chave));
+  ehSede(regiao) ||
+  (Array.isArray(regiao?.telas) && regiao.telas.includes(chave));
 
 // A conta pode abrir a tela? (só faz sentido para o Operacional)
 export const podeArea = (perfil, chave, regiao = regiaoAtual()) => {
   if (!perfil || perfil.role !== ROLES.OPERACIONAL) return false;
   const gerencia = ehGerencia(perfil);
-  if (!telaNaRegiao(chave, regiao) && !(gerencia && GERENCIA_EM_QUALQUER_BASE.includes(chave))) return false;
+  if (
+    !telaNaRegiao(chave, regiao) &&
+    !(gerencia && GERENCIA_EM_QUALQUER_BASE.includes(chave))
+  )
+    return false;
   if (gerencia) return true;
   return perfil.acessos?.[chave] !== false;
 };
 
-const limparCaminho = (pathname) => (pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname);
+const limparCaminho = (pathname) =>
+  pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
 
 export const areaDaRota = (pathname) => {
   const caminho = limparCaminho(pathname);
@@ -139,9 +182,19 @@ export const rotaForaDaRegiao = (pathname, regiao = regiaoAtual()) =>
 
 // Primeira tela liberada (para onde a pessoa vai quando abre algo bloqueado)
 export const rotaInicial = (perfil, regiao = regiaoAtual()) => {
-  const area = AREAS.find((a) => a.rotas.length && podeArea(perfil, a.chave, regiao));
+  const area = AREAS.find(
+    (a) => a.rotas.length && podeArea(perfil, a.chave, regiao),
+  );
   if (!area) return "/sobre";
   return area.rotas.find((r) => !rotaForaDaRegiao(r, regiao)) || "/sobre";
 };
 
-export const contarBloqueadas = (acessos = {}) => AREAS.filter((a) => acessos?.[a.chave] === false).length;
+export const contarBloqueadas = (acessos = {}) =>
+  AREAS.filter((a) => acessos?.[a.chave] === false).length;
+
+// Balanço de uso (quem usa, impressões, avaliações): a gerência e as contas
+// que a gerência marcar (users/{uid}.verBalanco — mesma regra do firestore.rules).
+export const podeVerBalanco = (perfil) =>
+  !!perfil &&
+  perfil.ativo === true &&
+  (ehGerencia(perfil) || perfil.verBalanco === true);

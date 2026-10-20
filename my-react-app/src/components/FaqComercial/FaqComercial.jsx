@@ -63,6 +63,7 @@ import {
   nomeDoMotoguia,
   ehRegra,
 } from "./catalogo";
+import { registrarAcao } from "../../Services/Services/atividadeRepository";
 
 const getHojeIso = () => {
   const hoje = new Date();
@@ -498,7 +499,7 @@ const FaqComercial = () => {
         .sort(
           (a, b) =>
             (obterFichaEmbarcacao(a).capacidade ?? 9999) -
-            (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
         ),
     [itensFiltrados],
   );
@@ -581,6 +582,7 @@ const FaqComercial = () => {
   const abrirDetalhe = (item) => {
     setItemDetalhado(item);
     registrarUso(item, "contadorVisualizacoes");
+    registrarAcao("central_consulta", "Consultou a Central de Informações", item?.pergunta || ""); // Balanço de uso
   };
 
   const marcarCopiado = (chave) => {
@@ -597,6 +599,7 @@ const FaqComercial = () => {
       );
       marcarCopiado(item.id);
       registrarUso(item, "contadorCopias");
+      registrarAcao("central_copia", "Copiou uma resposta da Central", item?.pergunta || "");
     } catch (err) {
       console.error("Erro ao copiar resposta:", err);
       alert("Não foi possível copiar a resposta.");
@@ -1232,12 +1235,13 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${
+        selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-        }`}
+      }`}
       {...propsCardClicavel(item, onAbrir)}
     >
       <div className={`faq-cat-veiculo-foto ${moto ? "tem-faixa" : ""}`}>
@@ -1840,15 +1844,15 @@ const FaqDetalhe = ({
             {(ficha.passageiros !== null ||
               ficha.malasGrandes !== null ||
               ficha.malasBordo !== null) && (
-                <div className="faq-cat-bloco">
-                  <h4>
-                    {configuracoes.length > 1
-                      ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
-                      : "Capacidade"}
-                  </h4>
-                  <Especificacoes ficha={ficha} />
-                </div>
-              )}
+              <div className="faq-cat-bloco">
+                <h4>
+                  {configuracoes.length > 1
+                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                    : "Capacidade"}
+                </h4>
+                <Especificacoes ficha={ficha} />
+              </div>
+            )}
 
             {configuracoes.length > 0 && (
               <div className="faq-cat-bloco">

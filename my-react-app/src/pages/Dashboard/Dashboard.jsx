@@ -8,7 +8,8 @@ import BoasVindasComercial from "../../components/BoasVindas/BoasVindasComercial
 import BoasVindasBase from "../../components/BoasVindas/BoasVindasBase";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS, ROLES } from "../../Context/permissions";
-import { areaDaRota, ehGerencia, podeArea, rotaForaDaRegiao } from "../../Context/acessos";
+import { areaDaRota, ehGerencia, podeArea, podeVerBalanco, rotaForaDaRegiao } from "../../Context/acessos";
+import AvaliacaoSistema from "../../components/Atividade/AvaliacaoSistema";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ehSede } from "../../Services/Services/regiaoAtiva";
 import { usePreferenciasUI } from "../../Context/preferenciasUIContext";
@@ -104,6 +105,7 @@ const Dashboard = ({ loading }) => {
   const podeVer = useCallback(
     (item) => {
       if (!(ACESSO[item.area] || []).includes(role)) return false;
+      if (item.somenteBalanco) return podeVerBalanco(perfil);
       if (role !== ROLES.OPERACIONAL) return true;
       if (item.somenteGerencia) return ehGerencia(perfil);
       if (!item.chave) return true;
@@ -277,6 +279,7 @@ const Dashboard = ({ loading }) => {
           <div className="sidebar-footer">
             {podeVer(ITEM_CONFIGURACOES) && renderItem(ITEM_CONFIGURACOES)}
             {podeVer(ITEM_SOBRE) && renderItem(ITEM_SOBRE)}
+            <AvaliacaoSistema variante="menu" recolhido={recolhido} />
 
             <div className="sidebar-user">
               <span className="sidebar-avatar" aria-hidden="true">

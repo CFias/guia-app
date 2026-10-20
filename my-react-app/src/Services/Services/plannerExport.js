@@ -8,7 +8,12 @@
 
 import * as XLSX from "xlsx";
 import logoLuck from "../../assets/clover.png";
-import { SITUACAO_ESCALA, entregarImagem, gerarImagemEscala } from "./escalaImagem";
+import {
+  SITUACAO_ESCALA,
+  entregarImagem,
+  gerarImagemEscala,
+} from "./escalaImagem";
+import { registrarImpressao } from "./atividadeRepository";
 
 // Situação do serviço, a partir da classe que o Gerar Escala já usa.
 const TIPO_POR_CLASSE = {
@@ -51,7 +56,10 @@ export const periodoDaSemana = (semana = []) => {
     // "20/10 a 26/10/2026"
     texto: ini && fim ? `${ddmm(ini)} a ${dataBr(fim)}` : "",
     // nome da aba no Drive (a barra não é permitida): "20.10 a 26.10.2026"
-    aba: ini && fim ? `${ddmm(ini).replace("/", ".")} a ${dataBr(fim).replace(/\//g, ".")}` : "Escala",
+    aba:
+      ini && fim
+        ? `${ddmm(ini).replace("/", ".")} a ${dataBr(fim).replace(/\//g, ".")}`
+        : "Escala",
   };
 };
 
@@ -73,28 +81,36 @@ export const construirEscalaPorDia = ({
   getClasseStatusServico,
 }) =>
   semana.map((dia) => {
-    const servicos = agruparRegistrosPorServico(extras[dia.date] || []).map((item) => {
-      const classe = getClasseStatusServico ? getClasseStatusServico(item) : "";
-      const tipo = TIPO_POR_CLASSE[classe] || "formar";
-      return {
-        passeio: item.serviceName || "-",
-        guia: item.guiaNome || "",
-        pax: Number(item.passengers || 0),
-        adultos: Number(item.adultCount || 0),
-        criancas: Number(item.childCount || 0),
-        infantes: Number(item.infantCount || 0),
-        idiomas: idiomasTexto(item.idiomas),
-        status: getTextoStatusServico(item),
-        statusClass: classe,
-        tipo,
-      };
-    });
+    const servicos = agruparRegistrosPorServico(extras[dia.date] || []).map(
+      (item) => {
+        const classe = getClasseStatusServico
+          ? getClasseStatusServico(item)
+          : "";
+        const tipo = TIPO_POR_CLASSE[classe] || "formar";
+        return {
+          passeio: item.serviceName || "-",
+          guia: item.guiaNome || "",
+          pax: Number(item.passengers || 0),
+          adultos: Number(item.adultCount || 0),
+          criancas: Number(item.childCount || 0),
+          infantes: Number(item.infantCount || 0),
+          idiomas: idiomasTexto(item.idiomas),
+          status: getTextoStatusServico(item),
+          statusClass: classe,
+          tipo,
+        };
+      },
+    );
 
     const precisaGuia = (s) => s.tipo !== "fechado";
     return {
       date: dia.date,
       dia: dia.day,
-      diaCurto: DIA_CURTO[dia.day] || String(dia.day || "").slice(0, 3).toUpperCase(),
+      diaCurto:
+        DIA_CURTO[dia.day] ||
+        String(dia.day || "")
+          .slice(0, 3)
+          .toUpperCase(),
       data: dataBr(dia.date),
       label: dia.label,
       servicos,
@@ -114,7 +130,10 @@ export const totaisDaEscala = (dias = []) =>
       pax: acc.pax + d.totais.pax,
       semGuia: acc.semGuia + d.totais.semGuia,
       formar: acc.formar + d.totais.formar,
-      guias: new Set([...acc.guias, ...d.servicos.map((s) => s.guia).filter(Boolean)]),
+      guias: new Set([
+        ...acc.guias,
+        ...d.servicos.map((s) => s.guia).filter(Boolean),
+      ]),
     }),
     { servicos: 0, pax: 0, semGuia: 0, formar: 0, guias: new Set() },
   );
@@ -124,13 +143,13 @@ export const construirDadosEscala = (args) =>
   construirEscalaPorDia(args).flatMap((d) =>
     d.servicos.length
       ? d.servicos.map((s) => ({
-        data: d.label,
-        passeio: s.passeio,
-        guia: s.guia || "-",
-        pax: s.pax,
-        status: s.status,
-        statusClass: s.statusClass,
-      }))
+          data: d.label,
+          passeio: s.passeio,
+          guia: s.guia || "-",
+          pax: s.pax,
+          status: s.status,
+          statusClass: s.statusClass,
+        }))
       : [{ data: d.label, passeio: "-", guia: "-", pax: "-", status: "-" }],
   );
 
@@ -140,17 +159,43 @@ export const construirDadosEscala = (args) =>
 export const construirWorkbookEscala = (dias = [], semana = []) => {
   const periodo = periodoDaSemana(semana.length ? semana : dias);
   const tot = totaisDaEscala(dias);
-  const cab = ["DIA", "DATA", "PASSEIO", "GUIA", "PAX", "ADT", "CHD", "INF", "IDIOMAS", "STATUS", "OBSERVAÇÕES"];
+  const cab = [
+    "DIA",
+    "DATA",
+    "PASSEIO",
+    "GUIA",
+    "PAX",
+    "ADT",
+    "CHD",
+    "INF",
+    "IDIOMAS",
+    "STATUS",
+    "OBSERVAÇÕES",
+  ];
   const linhas = [
     [`Escala semanal de passeios · ${periodo.texto}`],
-    [`${tot.servicos} passeios · ${tot.pax} pax · ${tot.semGuia} sem guia · ${tot.formar} para formar grupo`],
+    [
+      `${tot.servicos} passeios · ${tot.pax} pax · ${tot.semGuia} sem guia · ${tot.formar} para formar grupo`,
+    ],
     [],
     cab,
   ];
 
   dias.forEach((d) => {
     if (!d.servicos.length) {
-      linhas.push([d.dia, d.data, "Sem passeios", "", "", "", "", "", "", "", ""]);
+      linhas.push([
+        d.dia,
+        d.data,
+        "Sem passeios",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
       return;
     }
     d.servicos.forEach((s) =>
@@ -171,7 +216,9 @@ export const construirWorkbookEscala = (dias = [], semana = []) => {
   });
 
   const planilha = XLSX.utils.aoa_to_sheet(linhas);
-  planilha["!cols"] = [10, 11, 40, 22, 6, 6, 6, 6, 14, 16, 30].map((wch) => ({ wch }));
+  planilha["!cols"] = [10, 11, 40, 22, 6, 6, 6, 6, 14, 16, 30].map((wch) => ({
+    wch,
+  }));
   planilha["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: cab.length - 1 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: cab.length - 1 } },
@@ -183,7 +230,8 @@ export const construirWorkbookEscala = (dias = [], semana = []) => {
   return workbook;
 };
 
-export const nomeArquivoEscala = (semana = []) => `Escala semanal ${periodoDaSemana(semana).aba}`;
+export const nomeArquivoEscala = (semana = []) =>
+  `Escala semanal ${periodoDaSemana(semana).aba}`;
 
 // ---------------------------------------------------------------------
 // Página em nova aba
@@ -273,8 +321,11 @@ const pillSituacao = (s) => {
 };
 
 const linhasDoDia = (d) => {
-  const celulaData = `<td class="data" rowspan="${Math.max(1, d.servicos.length)}"><b>${esc(ddmm(d.date))}</b><span>${esc(String(d.dia || "").toUpperCase())}</span>${d.servicos.length ? `<button class="bt-img" type="button" data-img="${esc(d.date)}" title="Baixar a imagem só deste dia">↓ Imagem</button>` : ""
-    }</td>`;
+  const celulaData = `<td class="data" rowspan="${Math.max(1, d.servicos.length)}"><b>${esc(ddmm(d.date))}</b><span>${esc(String(d.dia || "").toUpperCase())}</span>${
+    d.servicos.length
+      ? `<button class="bt-img" type="button" data-img="${esc(d.date)}" title="Baixar a imagem só deste dia">↓ Imagem</button>`
+      : ""
+  }</td>`;
   if (!d.servicos.length) {
     return `<tr>${celulaData}<td class="vazio-dia" colspan="5">Sem passeios</td></tr>`;
   }
@@ -295,11 +346,19 @@ const linhasDoDia = (d) => {
 export const montarHtmlEscala = (dias = [], semana = []) => {
   const periodo = periodoDaSemana(semana.length ? semana : dias);
   const tot = totaisDaEscala(dias);
-  const formados = dias.reduce((a, d) => a + d.servicos.filter((s) => s.tipo === "formado").length, 0);
+  const formados = dias.reduce(
+    (a, d) => a + d.servicos.filter((s) => s.tipo === "formado").length,
+    0,
+  );
   const agora = new Date();
   const gerado = `${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
-  const corpo = dias.map((d) => `<tbody class="dia" data-dia="${esc(d.date)}">${linhasDoDia(d)}</tbody>`).join("");
+  const corpo = dias
+    .map(
+      (d) =>
+        `<tbody class="dia" data-dia="${esc(d.date)}">${linhasDoDia(d)}</tbody>`,
+    )
+    .join("");
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Passeios da semana ${esc(periodo.texto)}</title><style>${CSS}</style></head><body>
@@ -391,6 +450,7 @@ export const abrirEscalaEmNovaAba = ({
   getClasseStatusServico,
 }) => {
   try {
+    registrarImpressao("escala_semanal", "Escala semanal (planilha/imagem)"); // Balanço de uso
     const novaAba = window.open("", "_blank");
 
     if (!novaAba) {
@@ -414,7 +474,10 @@ export const abrirEscalaEmNovaAba = ({
     // pelo botão da nova aba — a aba não depende de script externo.
     novaAba.__baixarExcel = () => {
       try {
-        XLSX.writeFile(construirWorkbookEscala(dias, semana), `${nomeArquivoEscala(semana)}.xlsx`);
+        XLSX.writeFile(
+          construirWorkbookEscala(dias, semana),
+          `${nomeArquivoEscala(semana)}.xlsx`,
+        );
       } catch (err) {
         console.error("Erro ao exportar Excel:", err);
         novaAba.alert("Erro ao exportar o Excel.");
@@ -424,7 +487,12 @@ export const abrirEscalaEmNovaAba = ({
     // Imagem para o grupo dos vendedores (semana ou um dia, seguindo os filtros)
     novaAba.__baixarImagem = async (opcoes = {}) => {
       try {
-        const imagem = await gerarImagemEscala({ dias, semana, doc: novaAba.document, ...opcoes });
+        const imagem = await gerarImagemEscala({
+          dias,
+          semana,
+          doc: novaAba.document,
+          ...opcoes,
+        });
         await entregarImagem(imagem, novaAba);
       } catch (err) {
         console.error("Erro ao gerar a imagem da escala:", err);

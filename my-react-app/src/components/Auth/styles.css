@@ -278,3 +278,34 @@ a.auth-link-btn {
 .auth-sem-permissao b {
   color: var(--text);
 }
+
+/* Primeiro acesso: checklist da senha */
+.auth-regras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-3, #6c757d);
+}
+
+.auth-regras li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.auth-regras li.ok {
+  color: var(--success, #1f7a4d);
+  font-weight: 600;
+}
+
+.auth-hint-ok {
+  color: var(--success, #1f7a4d) !important;
+}
+
+.auth-hint-erro {
+  color: var(--alert, #c0392b) !important;
+}

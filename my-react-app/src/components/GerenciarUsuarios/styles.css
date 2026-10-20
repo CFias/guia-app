@@ -527,3 +527,21 @@
   cursor: pointer;
   padding: 4px;
 }
+
+/* Último acesso e primeiro acesso pendente */
+.usuarios-ultimo {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.usuarios-badge.pendente {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent 60%);
+}
+
+.usuarios-badge.balanco {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}

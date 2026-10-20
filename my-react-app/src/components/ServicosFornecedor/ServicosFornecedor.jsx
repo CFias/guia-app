@@ -38,6 +38,7 @@ import PlotadosDrawer from "./PlotadosDrawer";
 import "./styles.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
+import { registrarImpressao } from "../../Services/Services/atividadeRepository";
 
 // "plotado" = veículo com a marca (adesivado). Automático pelo nome
 // ("- PLOTADA"); dá para marcar/desmarcar à mão (fica no vínculo do veículo).
@@ -1464,28 +1465,29 @@ const ServicosFornecedor = () => {
     const tabelaDetalhe = (lista) => `
       <table>
         <thead><tr>${colunasVisiveis
-        .map((c) => `<th${["reservas", "pax", "paxDetalhado"].includes(c.id) ? ' class="num"' : ""}>${esc(c.label)}</th>`)
-        .join("")}</tr></thead>
-        <tbody>${lista.length
-        ? lista
-          .map(
-            (s) =>
-              `<tr>${colunasVisiveis
-                .map((c) => {
-                  const classe = ["reservas", "pax", "paxDetalhado"].includes(c.id) ? ' class="num"' : "";
-                  const valor =
-                    c.id === "tipo"
-                      ? tagTipo(s.tipo)
-                      : c.id === "veiculo"
-                        ? comPlotado(s.veiculo)
-                        : esc(valorCelula(s, c.id));
-                  return `<td${classe}>${valor}</td>`;
-                })
-                .join("")}</tr>`,
-          )
-          .join("")
-        : `<tr><td colspan="${colunasVisiveis.length}" class="vazio">Nenhum serviço no período.</td></tr>`
-      }</tbody>
+          .map((c) => `<th${["reservas", "pax", "paxDetalhado"].includes(c.id) ? ' class="num"' : ""}>${esc(c.label)}</th>`)
+          .join("")}</tr></thead>
+        <tbody>${
+          lista.length
+            ? lista
+                .map(
+                  (s) =>
+                    `<tr>${colunasVisiveis
+                      .map((c) => {
+                        const classe = ["reservas", "pax", "paxDetalhado"].includes(c.id) ? ' class="num"' : "";
+                        const valor =
+                          c.id === "tipo"
+                            ? tagTipo(s.tipo)
+                            : c.id === "veiculo"
+                              ? comPlotado(s.veiculo)
+                              : esc(valorCelula(s, c.id));
+                        return `<td${classe}>${valor}</td>`;
+                      })
+                      .join("")}</tr>`,
+                )
+                .join("")
+            : `<tr><td colspan="${colunasVisiveis.length}" class="vazio">Nenhum serviço no período.</td></tr>`
+        }</tbody>
       </table>`;
 
     const kpisDe = (lista, extras = []) => {
@@ -1503,10 +1505,10 @@ const ServicosFornecedor = () => {
 
     const avisos = datasComFalha.length
       ? [
-        `Não foi possível carregar ${datasComFalha.length} dia(s) — ${datasComFalha
-          .map(formatarDataCurta)
-          .join(", ")}. Os números podem estar incompletos.`,
-      ]
+          `Não foi possível carregar ${datasComFalha.length} dia(s) — ${datasComFalha
+            .map(formatarDataCurta)
+            .join(", ")}. Os números podem estar incompletos.`,
+        ]
       : [];
     const foraCount = veiculosForaDoRelatorio.length;
     const rodape = [
@@ -1576,57 +1578,58 @@ const ServicosFornecedor = () => {
       const veicsComServico = new Set(lista.map((sv) => sv.veiculoKey)).size;
       const diasComServico = new Set(lista.map((sv) => sv.data)).size;
       const resumoTexto = lista.length
-        ? `No período de <b>${esc(periodo)}</b>, <b>${esc(grupoAtual.nome)}</b> fez <b>${formatarNumero(lista.length)} serviço(s)</b> com ${veicsComServico} veículo(s) — média de ${mediaDia(lista)} por dia, com serviço em ${diasComServico} de ${datasPeriodo.length} dias. Divisão: ${textoDivisao(lista)}.${listaVeic.length > 1 ? ` Quem mais rodou: <b>${esc(listaVeic[0].nome)}</b> (${formatarNumero(listaVeic[0].total)}).` : ""
-        }${textoApoio(lista)}`
+        ? `No período de <b>${esc(periodo)}</b>, <b>${esc(grupoAtual.nome)}</b> fez <b>${formatarNumero(lista.length)} serviço(s)</b> com ${veicsComServico} veículo(s) — média de ${mediaDia(lista)} por dia, com serviço em ${diasComServico} de ${datasPeriodo.length} dias. Divisão: ${textoDivisao(lista)}.${
+            listaVeic.length > 1 ? ` Quem mais rodou: <b>${esc(listaVeic[0].nome)}</b> (${formatarNumero(listaVeic[0].total)}).` : ""
+          }${textoApoio(lista)}`
         : `Nenhum serviço de <b>${esc(grupoAtual.nome)}</b> no período com a seleção atual.`;
       const rodapeGrupo = `${notaApoio(lista)}${rodape}`;
 
       documento = minimalista
         ? documentoRelatorio({
-          escalaFonte: escalaDaFonte(fonteRelatorio),
-          titulo: grupoAtual.nome,
-          subtitulo: posicaoAtual ? `${posicaoAtual}º de ${rankingFornecedores.length} fornecedores no período` : "",
-          resumo: resumoTexto,
-          periodo,
-          geradoEm,
-          meta: filtroTxt ? [`Filtro: ${filtroTxt}`] : [],
-          avisos,
-          kpis: kpisDe(lista).slice(0, 7),
-          corpo: `<h2>Por veículo</h2>${htmlTabelaMinimalista(
-            contarPorTipo(lista, (sv) => sv.veiculoKey, (sv) => ({
-              nome: sv.veiculo,
-              etiqueta: infoPorVeiculo.get(sv.veiculoKey)?.plotado ? "plotado" : "",
-            })),
-            { rotuloLinha: "Veículo" },
-          )}`,
-          rodape: rodapeGrupo,
-        })
+            escalaFonte: escalaDaFonte(fonteRelatorio),
+            titulo: grupoAtual.nome,
+            subtitulo: posicaoAtual ? `${posicaoAtual}º de ${rankingFornecedores.length} fornecedores no período` : "",
+            resumo: resumoTexto,
+            periodo,
+            geradoEm,
+            meta: filtroTxt ? [`Filtro: ${filtroTxt}`] : [],
+            avisos,
+            kpis: kpisDe(lista).slice(0, 7),
+            corpo: `<h2>Por veículo</h2>${htmlTabelaMinimalista(
+              contarPorTipo(lista, (sv) => sv.veiculoKey, (sv) => ({
+                nome: sv.veiculo,
+                etiqueta: infoPorVeiculo.get(sv.veiculoKey)?.plotado ? "plotado" : "",
+              })),
+              { rotuloLinha: "Veículo" },
+            )}`,
+            rodape: rodapeGrupo,
+          })
         : documentoRelatorio({
-          escalaFonte: escalaDaFonte(fonteRelatorio),
-          titulo: grupoAtual.nome,
-          resumo: resumoTexto,
-          subtitulo: [
-            posicaoAtual ? `${posicaoAtual}º de ${rankingFornecedores.length} fornecedores no período` : "",
-            `${veicsGrupo.length} veículo(s): ${veicsGrupo
-              .map((v) => `${v.nome}${infoPorVeiculo.get(v.chave)?.plotado ? " (plotado)" : ""}`)
-              .join(", ") || "—"}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          periodo,
-          geradoEm,
-          meta: filtroTxt ? [`Filtro: ${filtroTxt}`] : [],
-          avisos,
-          kpis: kpisDe(lista),
-          graficos: [
-            { titulo: "Serviços por dia", html: svgColunasDias(porDiaDe(lista)) },
-            { titulo: "Por tipo de serviço", html: htmlDivisaoTipos(porTipoDe(lista)) },
-            ...(listaVeic.length > 1 ? [{ titulo: "Por veículo", largo: true, html: htmlBarrasSimples(listaVeic) }] : []),
-          ],
-          corpo: `<h2>Serviços (${formatarNumero(lista.length)})</h2>${tabelaDetalhe(lista)}`,
-          rodape: rodapeGrupo,
-          paisagem: true,
-        });
+        escalaFonte: escalaDaFonte(fonteRelatorio),
+        titulo: grupoAtual.nome,
+        resumo: resumoTexto,
+        subtitulo: [
+          posicaoAtual ? `${posicaoAtual}º de ${rankingFornecedores.length} fornecedores no período` : "",
+          `${veicsGrupo.length} veículo(s): ${veicsGrupo
+            .map((v) => `${v.nome}${infoPorVeiculo.get(v.chave)?.plotado ? " (plotado)" : ""}`)
+            .join(", ") || "—"}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        periodo,
+        geradoEm,
+        meta: filtroTxt ? [`Filtro: ${filtroTxt}`] : [],
+        avisos,
+        kpis: kpisDe(lista),
+        graficos: [
+          { titulo: "Serviços por dia", html: svgColunasDias(porDiaDe(lista)) },
+          { titulo: "Por tipo de serviço", html: htmlDivisaoTipos(porTipoDe(lista)) },
+          ...(listaVeic.length > 1 ? [{ titulo: "Por veículo", largo: true, html: htmlBarrasSimples(listaVeic) }] : []),
+        ],
+        corpo: `<h2>Serviços (${formatarNumero(lista.length)})</h2>${tabelaDetalhe(lista)}`,
+        rodape: rodapeGrupo,
+        paisagem: true,
+      });
     } else {
       const fornecedoresNoRel = Array.from(new Set(servicosRanking.map((s) => s.fornecedorNome)));
       const linhasGrafico = rankingExibido.map((r) => ({
@@ -1644,7 +1647,8 @@ const ServicosFornecedor = () => {
         .map(
           (r) => `<tr>
             <td class="num">${r.posicao}º</td>
-            <td><strong>${comPlotado(r.nome)}</strong><div class="mini">${porVeiculo ? esc(r.fornecedorNome) : r.veiculos.map(comPlotado).join(", ")
+            <td><strong>${comPlotado(r.nome)}</strong><div class="mini">${
+              porVeiculo ? esc(r.fornecedorNome) : r.veiculos.map(comPlotado).join(", ")
             }</div></td>
             ${TIPOS.map((t) => `<td class="num">${formatarNumero(r[t])}</td>`).join("")}
             <td class="num"><strong>${formatarNumero(r.total)}</strong></td>
@@ -1658,12 +1662,13 @@ const ServicosFornecedor = () => {
       const [p1, p2, p3] = rankingExibido;
       const resumoTexto = servicosRanking.length
         ? `No período de <b>${esc(periodo)}</b> (${datasPeriodo.length} dias), <b>${rankingExibido.length} ${quem}</b> fizeram <b>${formatarNumero(
-          servicosRanking.length,
-        )} serviços</b> — média de ${mediaDia(servicosRanking)} por dia. <b>${esc(p1.nome)}</b> lidera com ${formatarNumero(p1.total)} (${pct(
-          p1.total,
-          servicosRanking.length,
-        )}%)${p2 ? `, seguido por <b>${esc(p2.nome)}</b> (${formatarNumero(p2.total)})` : ""}${p3 ? ` e <b>${esc(p3.nome)}</b> (${formatarNumero(p3.total)})` : ""
-        }. Divisão: ${textoDivisao(servicosRanking)}.${textoApoio(servicosRanking)}`
+            servicosRanking.length,
+          )} serviços</b> — média de ${mediaDia(servicosRanking)} por dia. <b>${esc(p1.nome)}</b> lidera com ${formatarNumero(p1.total)} (${pct(
+            p1.total,
+            servicosRanking.length,
+          )}%)${p2 ? `, seguido por <b>${esc(p2.nome)}</b> (${formatarNumero(p2.total)})` : ""}${
+            p3 ? ` e <b>${esc(p3.nome)}</b> (${formatarNumero(p3.total)})` : ""
+          }. Divisão: ${textoDivisao(servicosRanking)}.${textoApoio(servicosRanking)}`
         : "Nenhum serviço no período com a seleção atual.";
       const tituloRanking =
         !porVeiculo && fornecedoresNoRel.length === 1
@@ -1677,10 +1682,10 @@ const ServicosFornecedor = () => {
         ...avisos,
         ...(pendentesMarcados.length
           ? [
-            `${pendentesMarcados.reduce((a, v) => a + v.total, 0)} serviço(s) de ${pendentesMarcados.length} veículo(s) sem fornecedor definido não entram neste ranking: ${pendentesMarcados
-              .map((v) => v.nome)
-              .join(", ")}.`,
-          ]
+              `${pendentesMarcados.reduce((a, v) => a + v.total, 0)} serviço(s) de ${pendentesMarcados.length} veículo(s) sem fornecedor definido não entram neste ranking: ${pendentesMarcados
+                .map((v) => v.nome)
+                .join(", ")}.`,
+            ]
           : []),
       ];
       const rodapeRanking = `${notaApoio(servicosRanking)}${rodape}`;
@@ -1714,29 +1719,29 @@ const ServicosFornecedor = () => {
         });
       } else {
 
-        documento = documentoRelatorio({
-          escalaFonte: escalaDaFonte(fonteRelatorio),
-          titulo: tituloRanking,
-          resumo: resumoTexto,
-          subtitulo:
-            fornecedoresNoRel.length <= 6
-              ? `Fornecedores: ${fornecedoresNoRel.join(", ") || "—"}`
-              : `${fornecedoresNoRel.length} fornecedores`,
-          periodo,
-          geradoEm,
-          meta: [`Veículos no relatório: ${totalVeiculosMarcados}`, ...(termoBusca ? [`Busca: "${busca}"`] : [])],
-          avisos: avisosRanking,
-          kpis: kpisDe(servicosRanking),
-          graficos: [
-            {
-              titulo: porVeiculo ? "Serviços por veículo" : "Serviços por fornecedor",
-              largo: true,
-              html: htmlBarrasEmpilhadas(linhasGrafico),
-            },
-            { titulo: "Serviços por dia", html: svgColunasDias(porDiaDe(servicosRanking)) },
-            { titulo: "Por tipo de serviço", html: htmlDivisaoTipos(porTipoDe(servicosRanking)) },
-          ],
-          corpo: `
+      documento = documentoRelatorio({
+        escalaFonte: escalaDaFonte(fonteRelatorio),
+        titulo: tituloRanking,
+        resumo: resumoTexto,
+        subtitulo:
+          fornecedoresNoRel.length <= 6
+            ? `Fornecedores: ${fornecedoresNoRel.join(", ") || "—"}`
+            : `${fornecedoresNoRel.length} fornecedores`,
+        periodo,
+        geradoEm,
+        meta: [`Veículos no relatório: ${totalVeiculosMarcados}`, ...(termoBusca ? [`Busca: "${busca}"`] : [])],
+        avisos: avisosRanking,
+        kpis: kpisDe(servicosRanking),
+        graficos: [
+          {
+            titulo: porVeiculo ? "Serviços por veículo" : "Serviços por fornecedor",
+            largo: true,
+            html: htmlBarrasEmpilhadas(linhasGrafico),
+          },
+          { titulo: "Serviços por dia", html: svgColunasDias(porDiaDe(servicosRanking)) },
+          { titulo: "Por tipo de serviço", html: htmlDivisaoTipos(porTipoDe(servicosRanking)) },
+        ],
+        corpo: `
           <section class="secao">
             <h2>${porVeiculo ? "Ranking por veículo" : "Ranking por fornecedor"}</h2>
             <table>
@@ -1748,24 +1753,25 @@ const ServicosFornecedor = () => {
               <tbody>${linhasRanking || '<tr><td colspan="9" class="vazio">Nenhum serviço no período.</td></tr>'}</tbody>
             </table>
           </section>
-          ${modoImpressao === "completo"
+          ${
+            modoImpressao === "completo"
               ? rankingExibido
-                .map((r) => {
-                  const lista = servicosRanking.filter((s) => (porVeiculo ? s.veiculoKey === r.id : s.fornecedorKey === r.id));
-                  return `<section class="quebra">
+                  .map((r) => {
+                    const lista = servicosRanking.filter((s) => (porVeiculo ? s.veiculoKey === r.id : s.fornecedorKey === r.id));
+                    return `<section class="quebra">
                       <h2>${r.posicao}º · ${comPlotado(r.nome)}</h2>
                       <p class="sub">${formatarNumero(r.total)} serviço(s) · ${formatarNumero(r.pax)} pax · ${TIPOS.map(
-                    (t) => `${TIPO_LABEL[t]}: ${r[t]}`,
-                  ).join(" · ")}</p>
+                        (t) => `${TIPO_LABEL[t]}: ${r[t]}`,
+                      ).join(" · ")}</p>
                       ${tabelaDetalhe(lista)}
                     </section>`;
-                })
-                .join("")
+                  })
+                  .join("")
               : ""
-            }`,
-          rodape: rodapeRanking,
-          paisagem: modoImpressao === "completo",
-        });
+          }`,
+        rodape: rodapeRanking,
+        paisagem: modoImpressao === "completo",
+      });
       }
     }
 
@@ -1774,6 +1780,7 @@ const ServicosFornecedor = () => {
       alert("Libere os pop-ups deste site para imprimir o relatório.");
       return;
     }
+    registrarImpressao("relatorio_fornecedor", "Relatório de serviços por fornecedor"); // Balanço de uso
     janela.document.open();
     janela.document.write(documento);
     janela.document.close();

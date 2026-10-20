@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import "./styles/tokens.css"; // primeiro: tokens de cor/fonte/raio de todo o app
 import "./components/ui/ui.css";
 import App from "./App";
+import RegistroAtividade from "./components/Atividade/RegistroAtividade";
 import { ThemeProvider } from "./Context/ThemeContext";
 import { AuthProvider } from "./Context/AuthContext";
 import RegiaoProvider from "./Context/RegiaoProvider";
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <RegiaoProvider>
             <PreferenciasUIProvider>
               <ToastProvider>
+                <RegistroAtividade />
                 <App />
               </ToastProvider>
             </PreferenciasUIProvider>

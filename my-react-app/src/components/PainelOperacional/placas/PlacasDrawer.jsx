@@ -19,6 +19,7 @@ import {
 import AjustesNome, { AJUSTE_NOME_VAZIO, aplicarAjusteNome } from "./AjustesNome";
 import { LETRAS, useFontesPlaca } from "./fontesPlaca";
 import { OPACIDADE_TRACO } from "./artePlaca";
+import { registrarImpressao } from "../../../Services/Services/atividadeRepository";
 import ConferenciaNomes from "./ConferenciaNomes";
 import { nomeEditado, tratarNomePlaca } from "./nomesPlaca";
 import "./placas.css";
@@ -307,6 +308,11 @@ const PlacasDrawer = ({ open, onClose, modo = "individual", origem, data }) => {
   const gerar = async () => {
     setGerando(true);
     try {
+      registrarImpressao(
+        ehColecao ? "placas_colecao" : "placas_individuais",
+        ehColecao ? "Placas coleção (PDF)" : "Placas individuais (PDF)",
+        `${total} ${total === 1 ? "placa" : "placas"}${varios ? ` · ${grupos.length} voos` : voo ? ` · voo ${voo}` : ""}`,
+      ); // Balanço de uso
       if (ehColecao) {
         await gerarPdfColecao({
           paginas: paginasColecao,

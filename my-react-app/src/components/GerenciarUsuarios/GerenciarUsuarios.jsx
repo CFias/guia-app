@@ -86,6 +86,18 @@ const grupoDaConta = (u) =>
   u.ativo === false ? "desativadas" : u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role;
 const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.COMERCIAL]: 2, [ROLES.GUIA]: 3, desativadas: 4 };
 
+// "Último acesso: hoje 14:32" / "Nunca entrou"
+const paraData = (v) => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
+const textoUltimoAcesso = (u) => {
+  const d = paraData(u.ultimoAcesso) || paraData(u.ultimoLogin);
+  if (!d) return u.senhaTemporaria ? "Nunca entrou" : "Último acesso: sem registro";
+  const min = (Date.now() - d.getTime()) / 60000;
+  if (min < 6) return "Usando agora";
+  const hoje = new Date().toDateString() === d.toDateString();
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return `Último acesso: ${hoje ? `hoje ${hora}` : `${d.toLocaleDateString("pt-BR")} ${hora}`}`;
+};
+
 const FORM_VAZIO = {
   nome: "",
   email: "",
@@ -283,6 +295,8 @@ const GerenciarUsuarios = () => {
         ...(souGerencia && form.role === ROLES.OPERACIONAL && form.regiao && form.regiao !== ID_SEDE
           ? { regiao: form.regiao }
           : {}),
+        // primeiro acesso: a pessoa troca a senha temporária pela dela (DefinirSenha)
+        senhaTemporaria: true,
         createdAt: Timestamp.now(),
         createdBy: usuarioLogado.uid,
       });
@@ -293,11 +307,11 @@ const GerenciarUsuarios = () => {
 
       // Se a conta de login chegou a ser criada mas o perfil não foi salvo,
       // desfaz — senão sobra uma conta "órfã" que bloqueia o e-mail.
-      if (cred?.user) await deleteUser(cred.user).catch(() => { });
+      if (cred?.user) await deleteUser(cred.user).catch(() => {});
 
       setMsg({ tipo: "erro", texto: mensagemErroAuth(err.code) });
     } finally {
-      await signOut(secondaryAuth).catch(() => { });
+      await signOut(secondaryAuth).catch(() => {});
       setSalvando(false);
     }
 
@@ -315,7 +329,8 @@ const GerenciarUsuarios = () => {
       `Acesso ao Operacional Luck · base ${credenciais.base || SEDE.nome}\n` +
       `Endereço: ${window.location.origin}/login\n` +
       `E-mail: ${credenciais.email}\n` +
-      `Senha temporária: ${credenciais.senha}`;
+      `Senha temporária: ${credenciais.senha}\n` +
+      `No primeiro acesso, o sistema pede para você criar a sua senha.`;
     try {
       await navigator.clipboard.writeText(texto);
       setCopiado(true);
@@ -342,6 +357,8 @@ const GerenciarUsuarios = () => {
         ...(dados.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : { guideId: deleteField(), guideName: deleteField() }),
+        // quem vê o Balanço de uso: só a gerência marca
+        ...(souGerencia ? { verBalanco: !!dados.verBalanco } : {}),
         // base: só a gerência mexe (a regra do banco não deixa os demais)
         ...(souGerencia
           ? { regiao: dados.role === ROLES.OPERACIONAL && dados.regiao && dados.regiao !== ID_SEDE ? dados.regiao : deleteField() }
@@ -398,8 +415,9 @@ const GerenciarUsuarios = () => {
         <div className="usuarios-credenciais">
           <strong>Conta criada para {credenciais.nome}</strong>
           <p>
-            Envie estes dados para a pessoa. Por segurança, a senha só aparece
-            aqui agora — depois, use “Enviar link de nova senha”.
+            Envie estes dados para a pessoa. No primeiro acesso, o sistema pede
+            para ela criar a própria senha (digitada duas vezes); a temporária
+            deixa de valer. Por segurança, a senha só aparece aqui agora.
           </p>
           <code>
             {credenciais.email}
@@ -611,72 +629,83 @@ const GerenciarUsuarios = () => {
             <ul className="usuarios-lista">
               {usuariosVisiveis.map((u, i) => (
                 <Fragment key={u.id}>
-                  {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
-                    <li className="usuarios-grupo" aria-hidden="true">
-                      {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
-                    </li>
-                  )}
-                  <li className={u.ativo === false ? "inativo" : ""}>
-                    <div className="usuarios-item-info">
-                      <strong>
-                        {u.nome}
-                        {u.id === usuarioLogado.uid && (
-                          <span className="usuarios-voce"> (você)</span>
-                        )}
-                      </strong>
-                      <span>{u.email}</span>
-                      {u.role === ROLES.GUIA && (
-                        <span className="usuarios-vinculo">
-                          Guia: {u.guideName || "—"}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="usuarios-item-tags">
-                      <span className={`usuarios-badge role-${u.role}`}>
-                        {ROLE_LABELS[u.role] || u.role}
-                      </span>
-                      {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
-                        <span className="usuarios-badge gerencia">Gerência</span>
-                      )}
-                      {u.role === ROLES.OPERACIONAL && u.regiao && u.regiao !== ID_SEDE && (
-                        <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
-                          {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
-                        </span>
-                      )}
-                      {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
-                        <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
-                          {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
-                        </span>
-                      )}
-                      {u.ativo === false && (
-                        <span className="usuarios-badge desativado">Desativado</span>
-                      )}
-                    </div>
-
-                    <div className="usuarios-item-acoes">
-                      <button
-                        type="button"
-                        className="usuarios-icon-btn"
-                        title="Enviar link de nova senha"
-                        onClick={() => enviarRedefinicao(u)}
-                      >
-                        <Icon name="key" size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="usuarios-icon-btn"
-                        title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
-                        disabled={!podeEditar(u)}
-                        onClick={() => {
-                          setMsg(null);
-                          setEditando(u);
-                        }}
-                      >
-                        <Icon name="pencil" size={16} />
-                      </button>
-                    </div>
+                {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
+                  <li className="usuarios-grupo" aria-hidden="true">
+                    {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
                   </li>
+                )}
+                <li className={u.ativo === false ? "inativo" : ""}>
+                  <div className="usuarios-item-info">
+                    <strong>
+                      {u.nome}
+                      {u.id === usuarioLogado.uid && (
+                        <span className="usuarios-voce"> (você)</span>
+                      )}
+                    </strong>
+                    <span>{u.email}</span>
+                    <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
+                    {u.role === ROLES.GUIA && (
+                      <span className="usuarios-vinculo">
+                        Guia: {u.guideName || "—"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="usuarios-item-tags">
+                    <span className={`usuarios-badge role-${u.role}`}>
+                      {ROLE_LABELS[u.role] || u.role}
+                    </span>
+                    {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
+                      <span className="usuarios-badge gerencia">Gerência</span>
+                    )}
+                    {u.role === ROLES.OPERACIONAL && u.regiao && u.regiao !== ID_SEDE && (
+                      <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
+                        {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
+                      </span>
+                    )}
+                    {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
+                      <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
+                        {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                      </span>
+                    )}
+                    {u.ativo === false && (
+                      <span className="usuarios-badge desativado">Desativado</span>
+                    )}
+                    {u.senhaTemporaria === true && u.ativo !== false && (
+                      <span className="usuarios-badge pendente" title="Ainda não entrou para criar a própria senha">
+                        1º acesso pendente
+                      </span>
+                    )}
+                    {u.verBalanco === true && !u.gerencia && (
+                      <span className="usuarios-badge balanco" title="Pode ver o Balanço de uso">
+                        Vê o balanço
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="usuarios-item-acoes">
+                    <button
+                      type="button"
+                      className="usuarios-icon-btn"
+                      title="Enviar link de nova senha"
+                      onClick={() => enviarRedefinicao(u)}
+                    >
+                      <Icon name="key" size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="usuarios-icon-btn"
+                      title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
+                      disabled={!podeEditar(u)}
+                      onClick={() => {
+                        setMsg(null);
+                        setEditando(u);
+                      }}
+                    >
+                      <Icon name="pencil" size={16} />
+                    </button>
+                  </div>
+                </li>
                 </Fragment>
               ))}
             </ul>
@@ -705,6 +734,7 @@ const GerenciarUsuarios = () => {
           ehVoce={editando.id === usuarioLogado.uid}
           rolesPermitidos={rolesPermitidos}
           opcoesRegiao={mostrarRegiao ? opcoesRegiao : null}
+          podeMarcarBalanco={souGerencia}
           onFechar={() => setEditando(null)}
           onSalvar={async (dados) => {
             const ok = await salvarEdicao(dados);
@@ -723,6 +753,7 @@ const EditarUsuarioModal = ({
   ehVoce,
   rolesPermitidos = Object.values(ROLES),
   opcoesRegiao = null,
+  podeMarcarBalanco = false,
   onFechar,
   onSalvar,
 }) => {
@@ -733,6 +764,7 @@ const EditarUsuarioModal = ({
     ativo: usuario.ativo !== false,
     guideId: usuario.guideId || "",
     regiao: usuario.regiao || ID_SEDE,
+    verBalanco: usuario.verBalanco === true,
   });
   const [salvando, setSalvando] = useState(false);
 
@@ -823,6 +855,13 @@ const EditarUsuarioModal = ({
           />
           <span>Conta ativa (desmarque para bloquear o acesso)</span>
         </label>
+
+        {podeMarcarBalanco && !usuario.gerencia && dados.role !== ROLES.GUIA && (
+          <label className="usuarios-check">
+            <input type="checkbox" checked={dados.verBalanco} onChange={(e) => set("verBalanco", e.target.checked)} />
+            <span>Pode ver o Balanço de uso (quem usa, impressões e avaliações)</span>
+          </label>
+        )}
 
         {ehVoce && (
           <small className="usuarios-hint">

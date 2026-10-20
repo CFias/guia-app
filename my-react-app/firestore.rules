@@ -20,6 +20,11 @@ rules_version = '2';
 //    guia        → própria disponibilidade (dentro da janela configurável), próprios idiomas e própria foto
 //  Conta sem documento em `users`, ou com ativo != true → nada.
 //
+//  BALANÇO DE USO — atividade_diaria/{uid}__{dia} e avaliacoes/{uid}:
+//    cada conta grava só o próprio registro de uso e a própria avaliação;
+//    quem lê tudo é a gerência e as contas com users/{uid}.verBalanco == true
+//    (marcadas pela gerência).
+//
 //  REGIÕES (bases Luck) — users/{uid}.regiao (sem o campo = 'ssa'):
 //    Salvador ('ssa') é a sede e tem tudo acima. Conta do Operacional de
 //    OUTRA base só lê/grava o que é da base dela: os documentos de
@@ -89,13 +94,18 @@ service cloud.firestore {
       );
     }
 
+    // Balanço de uso: gerência + contas marcadas pela gerência
+    function podeVerBalanco() {
+      return ativo() && (isGerencia() || meuPerfil().get('verBalanco', false) == true);
+    }
+
     function caminhoControle() {
       return /databases/$(database)/documents/settings/acessos;
     }
 
     // Coleções / documentos que pertencem a UMA tela só
     function podeLerColecao(col, id) {
-      return regionalLe(col, id) || daSede() && col != 'users' && (
+      return regionalLe(col, id) || daSede() && !(col in ['users', 'atividade_diaria', 'avaliacoes']) && (
         (col == 'custos_dia' && podeArea('custos'))
         || (col == 'settings' && id == 'custos'
             && (podeArea('custos') || podeArea('servicosFornecedor')))
@@ -106,7 +116,7 @@ service cloud.firestore {
       );
     }
     function podeGravarColecao(col, id) {
-      return regionalGrava(col, id) || daSede() && col != 'users' && (
+      return regionalGrava(col, id) || daSede() && !(col in ['users', 'atividade_diaria', 'avaliacoes']) && (
         (col == 'custos_dia' && podeArea('custos'))
         || (col == 'settings' && id == 'custos' && podeArea('custos'))
         || (col == 'settings' && (id == 'turnos_equipe' || id.matches('turnos_equipe__.*')) && podeArea('demandaTurnos'))
@@ -157,12 +167,26 @@ service cloud.firestore {
       // inclusive pra avisar "conta desativada")
       allow read: if signedIn() && request.auth.uid == uid;
       // a própria conta só pode atualizar o contador das boas-vindas
-      // (modal das 3 primeiras entradas do comercial) — nenhum outro campo
+      // (modal das primeiras entradas) — nenhum outro campo
       allow update: if signedIn() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['boasVindasVistas', 'boasVindasUltima'])
         && request.resource.data.boasVindasVistas is int
         && request.resource.data.boasVindasVistas <= 10;
+      // ...o último login / último acesso / última tela (Balanço de uso) e a
+      // resposta ao convite de avaliação ("Depois" / "Não mostrar mais")
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['ultimoLogin', 'ultimoAcesso', 'ultimaTela', 'avaliacaoConvite']);
+      // ...e, no primeiro acesso, avisar que trocou a senha temporária
+      // (só pode DESLIGAR a marcação, nunca ligar)
+      allow update: if signedIn() && request.auth.uid == uid
+        && resource.data.get('senhaTemporaria', false) == true
+        && request.resource.data.senhaTemporaria == false
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['senhaTemporaria', 'senhaDefinidaEm']);
+      // quem vê o Balanço de uso enxerga a lista de contas (nome, nível, último acesso)
+      allow read: if podeVerBalanco();
       // GERÊNCIA: cria, edita, lista e remove qualquer perfil — inclusive
       // contas do Operacional, a marcação de gerência e os acessos por tela.
       allow read, write: if isGerencia();
@@ -174,7 +198,7 @@ service cloud.firestore {
         && request.resource.data.role in ['comercial', 'guia']
         && request.resource.data.keys().hasOnly([
              'nome', 'email', 'role', 'ativo', 'guideId', 'guideName',
-             'createdAt', 'createdBy'
+             'createdAt', 'createdBy', 'senhaTemporaria'
            ]);
       allow update: if podeArea('usuarios') && daSede()
         && resource.data.role in ['comercial', 'guia']
@@ -301,6 +325,28 @@ service cloud.firestore {
       allow update: if (isComercial() || (podeArea('verComercial') && daSede()))
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['contadorVisualizacoes', 'contadorCopias']);
+    }
+
+    // ---------- Balanço de uso ----------
+    // Um documento por pessoa por dia: {uid}__{AAAA-MM-DD}. Cada conta ativa
+    // grava só o próprio; ninguém apaga (só pelo console do Firebase).
+    match /atividade_diaria/{docId} {
+      allow read: if podeVerBalanco()
+        || (ativo() && resource.data.uid == request.auth.uid);
+      allow create, update: if ativo()
+        && docId.matches(request.auth.uid + '__[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.resource.data.uid == request.auth.uid
+        && (!('eventos' in request.resource.data) || request.resource.data.eventos.size() <= 200);
+    }
+    // Avaliação do sistema (0 a 5 estrelas + comentário): uma por conta.
+    match /avaliacoes/{uid} {
+      allow read: if podeVerBalanco() || (ativo() && request.auth.uid == uid);
+      allow create, update: if ativo() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.nota is int
+        && request.resource.data.nota >= 0 && request.resource.data.nota <= 5
+        && request.resource.data.comentario is string
+        && request.resource.data.comentario.size() <= 1000;
     }
 
     // ---------- Operacional (inclui coleções futuras) ----------

@@ -4,6 +4,7 @@ import { useAuth } from "../../Context/AuthContext";
 import { HOME_BY_ROLE, ROLES } from "../../Context/permissions";
 import { areaDaRota, podeArea, rotaForaDaRegiao, rotaInicial, telaNaRegiao } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
+import DefinirSenha from "./DefinirSenha";
 import "./styles.css";
 
 export const TelaCarregando = () => (
@@ -45,12 +46,14 @@ export const SemAcesso = () => {
    - sessão sem acesso     → tela "Acesso não liberado"
    - nível não permitido   → manda para a home do próprio nível */
 export const RequireRole = ({ roles }) => {
-  const { user, role, loading } = useAuth();
+  const { user, perfil, role, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <TelaCarregando />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   if (!role) return <SemAcesso />;
+  // primeiro acesso com senha temporária: define a senha antes de tudo
+  if (perfil?.senhaTemporaria === true) return <DefinirSenha />;
   if (!roles.includes(role)) {
     return <Navigate to={HOME_BY_ROLE[role]} replace />;
   }

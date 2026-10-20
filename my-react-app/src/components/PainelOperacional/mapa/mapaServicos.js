@@ -21,6 +21,7 @@
 // })
 
 import logoLuck from "../../../assets/clover.png";
+import { registrarImpressao } from "../../../Services/Services/atividadeRepository";
 
 const esc = (t) =>
   String(t ?? "")
@@ -151,6 +152,7 @@ ${blocosHtml || '<p class="vazio">Nenhum serviço para imprimir com os filtros a
 
 // Abre a impressão sem trocar de tela (iframe escondido).
 export const imprimirMapa = (dados, opcoes = {}) => {
+  registrarImpressao("mapa_servicos", "Mapa de serviços", dados?.titulo || ""); // Balanço de uso
   const html = montarHtmlMapa(dados, opcoes);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");

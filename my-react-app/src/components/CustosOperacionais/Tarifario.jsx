@@ -14,6 +14,8 @@ import { FormGuia, FormTarifa } from "./FormulariosTarifa";
 import FiltroVeiculo from "./FiltroVeiculo";
 import { dataBr, duracaoTexto, hojeIso } from "./custosDatas";
 import { acharTarifaPar, ladosIguais, modeloDoPar, montarSecoesTarifario, nomeDoPar } from "./tarifarioGrade";
+import { imprimirMural } from "./tarifarioMural";
+import { registrarImpressao } from "../../Services/Services/atividadeRepository";
 
 /* =========================================================
    TARIFÁRIO — todos os valores numa tabela só, por tipo de serviço
@@ -311,8 +313,27 @@ const Tarifario = ({ config, vinculos, fornecedores, passeios }) => {
           <Button icon="plus" onClick={() => setEditando({ tarifa: { fornecedor: fornecedorSel }, aplicarPar: true })}>
             Nova tarifa
           </Button>
-          <Button variant="primary" icon="printer" onClick={() => window.print()} disabled={!temValores}>
-            Imprimir
+          <Button icon="fileText" onClick={() => { registrarImpressao("tarifario", "Tarifário (tela completa)"); window.print(); }} disabled={!temValores} title="Tudo da tela, com guias e regras">
+            Imprimir completo
+          </Button>
+          <Button
+            variant="primary"
+            icon="printer"
+            title="Folha para o mural: serviço, veículo e valor"
+            onClick={() =>
+              imprimirMural(secoes, {
+                mostrarCasado,
+                subtitulo: [
+                  fornecedorSel || "Tabela geral",
+                  veiculoSel ? (veiculoSel === "qualquer" ? "qualquer veículo" : NOME_CATEGORIA[veiculoSel]) : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+              })
+            }
+            disabled={!secoes.some((s) => s.linhas.length)}
+          >
+            Imprimir para o mural
           </Button>
         </div>
       </div>
