@@ -18,21 +18,135 @@ import condensadaUrl from "../../../assets/fonts/placa-condensada.ttf";
 import suaveUrl from "../../../assets/fonts/placa-suave.ttf";
 import editorialUrl from "../../../assets/fonts/placa-editorial.ttf";
 import cursivaUrl from "../../../assets/fonts/placa-cursiva.ttf";
+import interUrl from "../../../assets/fonts/placa-inter.ttf";
+import interFinaUrl from "../../../assets/fonts/placa-inter-fina.ttf";
+import modernaFinaUrl from "../../../assets/fonts/placa-moderna-fina.ttf";
+import charterUrl from "../../../assets/fonts/placa-charter.ttf";
 
 // cap: altura da maiúscula (fração do tamanho) — usada para centralizar o nome
 export const FONTES_PLACA = {
-  forte: { label: "Forte", pdf: "helvetica", estilo: "bold", css: "Helvetica, Arial, sans-serif", peso: 700, cap: 0.718 },
-  elegante: { label: "Elegante (serifa)", pdf: "times", estilo: "bold", css: '"Times New Roman", Times, serif', peso: 700, cap: 0.662 },
-  moderna: { label: "Moderna", pdf: "PlacaModerna", estilo: "normal", css: '"PlacaModerna", sans-serif', peso: 400, cap: 0.705, url: modernaUrl },
-  condensada: { label: "Condensada", pdf: "PlacaCondensada", estilo: "normal", css: '"PlacaCondensada", sans-serif', peso: 400, cap: 0.729, url: condensadaUrl },
-  suave: { label: "Suave", pdf: "PlacaSuave", estilo: "normal", css: '"PlacaSuave", sans-serif', peso: 400, cap: 0.648, url: suaveUrl },
-  classica: { label: "Clássica", pdf: "PlacaClassica", estilo: "normal", css: '"PlacaClassica", serif', peso: 400, cap: 0.667, url: classicaUrl },
-  editorial: { label: "Editorial", pdf: "PlacaEditorial", estilo: "normal", css: '"PlacaEditorial", serif', peso: 400, cap: 0.7, url: editorialUrl },
-  cursiva: { label: "Itálica", pdf: "PlacaCursiva", estilo: "normal", css: '"PlacaCursiva", serif', peso: 400, cap: 0.7, url: cursivaUrl },
-  maquina: { label: "Máquina de escrever", pdf: "courier", estilo: "bold", css: '"Courier New", Courier, monospace', peso: 700, cap: 0.571 },
+  // sem serifa
+  forte: {
+    label: "Forte (Helvetica)",
+    pdf: "helvetica",
+    estilo: "bold",
+    css: "Helvetica, Arial, sans-serif",
+    peso: 700,
+    cap: 0.718,
+  },
+  moderna: {
+    label: "Moderna (Poppins)",
+    pdf: "PlacaModerna",
+    estilo: "normal",
+    css: '"PlacaModerna", sans-serif',
+    peso: 400,
+    cap: 0.705,
+    url: modernaUrl,
+  },
+  modernaFina: {
+    label: "Moderna fina (Poppins Light)",
+    pdf: "PlacaModernaFina",
+    estilo: "normal",
+    css: '"PlacaModernaFina", sans-serif',
+    peso: 400,
+    cap: 0.699,
+    url: modernaFinaUrl,
+  },
+  inter: {
+    label: "Inter",
+    pdf: "PlacaInter",
+    estilo: "normal",
+    css: '"PlacaInter", sans-serif',
+    peso: 400,
+    cap: 0.728,
+    url: interUrl,
+  },
+  interFina: {
+    label: "Inter fina",
+    pdf: "PlacaInterFina",
+    estilo: "normal",
+    css: '"PlacaInterFina", sans-serif',
+    peso: 400,
+    cap: 0.728,
+    url: interFinaUrl,
+  },
+  condensada: {
+    label: "Condensada (DejaVu)",
+    pdf: "PlacaCondensada",
+    estilo: "normal",
+    css: '"PlacaCondensada", sans-serif',
+    peso: 400,
+    cap: 0.729,
+    url: condensadaUrl,
+  },
+  suave: {
+    label: "Suave (Carlito)",
+    pdf: "PlacaSuave",
+    estilo: "normal",
+    css: '"PlacaSuave", sans-serif',
+    peso: 400,
+    cap: 0.648,
+    url: suaveUrl,
+  },
+  // com serifa
+  elegante: {
+    label: "Elegante (Times)",
+    pdf: "times",
+    estilo: "bold",
+    css: '"Times New Roman", Times, serif',
+    peso: 700,
+    cap: 0.662,
+  },
+  classica: {
+    label: "Clássica (Caladea)",
+    pdf: "PlacaClassica",
+    estilo: "normal",
+    css: '"PlacaClassica", serif',
+    peso: 400,
+    cap: 0.667,
+    url: classicaUrl,
+  },
+  charter: {
+    label: "Charter",
+    pdf: "PlacaCharter",
+    estilo: "normal",
+    css: '"PlacaCharter", serif',
+    peso: 400,
+    cap: 0.671,
+    url: charterUrl,
+  },
+  editorial: {
+    label: "Editorial (Lora)",
+    pdf: "PlacaEditorial",
+    estilo: "normal",
+    css: '"PlacaEditorial", serif',
+    peso: 400,
+    cap: 0.7,
+    url: editorialUrl,
+  },
+  cursiva: {
+    label: "Itálica (Lora itálica)",
+    pdf: "PlacaCursiva",
+    estilo: "normal",
+    css: '"PlacaCursiva", serif',
+    peso: 400,
+    cap: 0.7,
+    url: cursivaUrl,
+  },
+  maquina: {
+    label: "Máquina de escrever",
+    pdf: "courier",
+    estilo: "bold",
+    css: '"Courier New", Courier, monospace',
+    peso: 700,
+    cap: 0.571,
+  },
 };
 
-export const LETRAS = Object.entries(FONTES_PLACA).map(([value, f]) => ({ value, label: f.label }));
+export const LETRAS = Object.entries(FONTES_PLACA).map(([value, f]) => ({
+  value,
+  label: f.label,
+}));
 
 // ---------- carregamento ----------
 const base64 = {}; // id → conteúdo do TTF em base64
@@ -43,32 +157,59 @@ let versao = 0;
 const paraBase64 = (buffer) => {
   const bytes = new Uint8Array(buffer);
   let bin = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(bin);
 };
 
 export const versaoFontes = () => versao;
 
+// fontes que o jsPDF não conseguiu ler (ficam de fora e caem na Forte)
+const quebradas = new Set();
+
 export const fonteCarregada = (id) => {
   const f = FONTES_PLACA[id];
-  return !!f && (!f.url || !!base64[id]);
+  return !!f && (!f.url || (!!base64[id] && !quebradas.has(id)));
 };
 
 // fonte efetiva (cai na Forte enquanto a própria não carregou)
-export const fonteDoNome = (id) => (fonteCarregada(id) ? FONTES_PLACA[id] : FONTES_PLACA.forte);
+export const fonteDoNome = (id) =>
+  fonteCarregada(id) ? FONTES_PLACA[id] : FONTES_PLACA.forte;
 
-// registra as fontes próprias já carregadas num documento jsPDF
+// registra as fontes próprias já carregadas num documento jsPDF.
+// O jsPDF não avisa quando não consegue ler um TTF (o erro fica só no
+// console e a fonte entra "vazia", quebrando a medição depois). Por isso
+// cada fonte é testada logo depois de entrar: se não medir, ela é marcada
+// como quebrada e o sistema usa a Forte no lugar — nunca derruba a tela.
 export const registrarFontesNoPdf = (doc) => {
+  let mudou = false;
   Object.entries(FONTES_PLACA).forEach(([id, f]) => {
-    if (!f.url || !base64[id]) return;
+    if (!f.url || !base64[id] || quebradas.has(id)) return;
     const arquivo = `${f.pdf}.ttf`;
     try {
       doc.addFileToVFS(arquivo, base64[id]);
       doc.addFont(arquivo, f.pdf, "normal");
+      doc.setFont(f.pdf, "normal");
+      const largura = doc.getTextWidth("Ag");
+      if (!(largura > 0)) throw new Error("largura inválida");
     } catch (e) {
-      console.error(`Fonte ${f.label} não entrou no PDF:`, e);
+      quebradas.add(id);
+      mudou = true;
+      console.error(
+        `Fonte ${f.label} não pôde ser usada no PDF; usando a Forte no lugar.`,
+        e,
+      );
     }
   });
+  try {
+    doc.setFont("helvetica", "normal");
+  } catch {
+    /* sem fonte padrão: nada a fazer */
+  }
+  if (mudou) {
+    versao += 1;
+    ouvintes.forEach((fn) => fn(versao));
+  }
   return doc;
 };
 
@@ -97,7 +238,9 @@ export const carregarFontesPlaca = () => {
               versao += 1;
               ouvintes.forEach((fn) => fn(versao));
             })
-            .catch((e) => console.error(`Não foi possível carregar a fonte ${f.label}:`, e)),
+            .catch((e) =>
+              console.error(`Não foi possível carregar a fonte ${f.label}:`, e),
+            ),
         ),
     );
   }

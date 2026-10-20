@@ -18,8 +18,8 @@ const TODOS_DESENHOS = { ...DESENHOS_SVG, ...DESENHOS_NORDESTE, ...DESENHOS_REGI
 export const LARGURA = 297;
 export const ALTURA = 210;
 
-const COR_TRACO = { leve: "#9aa0a6", "bem-leve": "#c3c7cb" };
-const COR_FITA_TEXTO = { leve: "#a9afb5", "bem-leve": "#ced2d6" };
+const COR_TRACO = { marcado: "#6c737a", leve: "#9aa0a6", "bem-leve": "#c3c7cb" };
+const COR_FITA_TEXTO = { marcado: "#7d848b", leve: "#a9afb5", "bem-leve": "#ced2d6" };
 
 // margens que dependem do modelo (usadas também pelo layout do texto)
 export const margensDoModelo = (modelo = {}) => {

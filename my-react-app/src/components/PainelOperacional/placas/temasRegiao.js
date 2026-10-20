@@ -12,7 +12,13 @@
 
 import { regiaoAtual } from "../../../Services/Services/regiaoAtiva";
 
-const m = (id, nome, desenho, posicao = "direita", extra = {}) => ({ id, nome, desenho, posicao, ...extra });
+const m = (id, nome, desenho, posicao = "direita", extra = {}) => ({
+  id,
+  nome,
+  desenho,
+  posicao,
+  ...extra,
+});
 
 export const MODELOS_NORDESTE = [
   m("praia", "Praia", "praia", "base", { novo: true }),
@@ -53,9 +59,15 @@ export const TEMAS = {
     uf: "RN",
     apelidos: ["pipa", "genipabu", "sao miguel do gostoso"],
     modelos: [
-      m("reis_magos", "Forte dos Reis Magos", "reismagos", "direita", { novo: true }),
-      m("morro_careca", "Morro do Careca", "morrocareca", "direita", { novo: true }),
-      m("cajueiro", "Cajueiro de Pirangi", "cajueiro", "direita", { novo: true }),
+      m("reis_magos", "Forte dos Reis Magos", "reismagos", "direita", {
+        novo: true,
+      }),
+      m("morro_careca", "Morro do Careca", "morrocareca", "direita", {
+        novo: true,
+      }),
+      m("cajueiro", "Cajueiro de Pirangi", "cajueiro", "direita", {
+        novo: true,
+      }),
     ],
   },
   rec: {
@@ -67,7 +79,9 @@ export const TEMAS = {
     modelos: [
       m("frevo", "Frevo", "frevo", "direita", { novo: true }),
       m("olinda", "Olinda", "olinda", "base", { novo: true }),
-      m("porto_galinhas", "Porto de Galinhas", "portogalinhas", "direita", { novo: true }),
+      m("porto_galinhas", "Porto de Galinhas", "portogalinhas", "direita", {
+        novo: true,
+      }),
     ],
   },
   mcz: {
@@ -76,7 +90,9 @@ export const TEMAS = {
     uf: "AL",
     apelidos: ["maragogi", "gunga", "pajucara", "sao miguel dos milagres"],
     modelos: [
-      m("pajucara", "Piscinas de Pajuçara", "pajucara", "direita", { novo: true }),
+      m("pajucara", "Piscinas de Pajuçara", "pajucara", "direita", {
+        novo: true,
+      }),
       m("gunga", "Praia do Gunga", "gunga", "base", { novo: true }),
     ],
   },
@@ -86,8 +102,12 @@ export const TEMAS = {
     uf: "CE",
     apelidos: ["jericoacoara", "jeri", "canoa quebrada", "cumbuco"],
     modelos: [
-      m("ponte_ingleses", "Ponte dos Ingleses", "ponteingleses", "base", { novo: true }),
-      m("pedra_furada", "Pedra Furada", "pedrafurada", "direita", { novo: true }),
+      m("ponte_ingleses", "Ponte dos Ingleses", "ponteingleses", "base", {
+        novo: true,
+      }),
+      m("pedra_furada", "Pedra Furada", "pedrafurada", "direita", {
+        novo: true,
+      }),
     ],
   },
   jpa: {
@@ -96,7 +116,9 @@ export const TEMAS = {
     uf: "PB",
     apelidos: ["joao pessoa", "cabo branco", "jacare"],
     modelos: [
-      m("cabo_branco", "Farol do Cabo Branco", "cabobranco", "direita", { novo: true }),
+      m("cabo_branco", "Farol do Cabo Branco", "cabobranco", "direita", {
+        novo: true,
+      }),
       m("jacare", "Pôr do sol do Jacaré", "jacare", "direita", { novo: true }),
     ],
   },
@@ -106,7 +128,9 @@ export const TEMAS = {
     uf: "SE",
     apelidos: ["xingo", "caninde"],
     modelos: [
-      m("caranguejo", "Passarela do Caranguejo", "caranguejo", "direita", { novo: true }),
+      m("caranguejo", "Passarela do Caranguejo", "caranguejo", "direita", {
+        novo: true,
+      }),
       m("xingo", "Cânion do Xingó", "xingo", "base", { novo: true }),
     ],
   },
@@ -115,35 +139,59 @@ export const TEMAS = {
     estado: "Bahia",
     uf: "BA",
     apelidos: ["arraial d'ajuda", "arraial dajuda", "trancoso"],
-    modelos: [m("caravela", "Caravela do Descobrimento", "caravela", "direita", { novo: true }), ...BAHIA],
+    modelos: [
+      m("caravela", "Caravela do Descobrimento", "caravela", "direita", {
+        novo: true,
+      }),
+      ...BAHIA,
+    ],
   },
 };
 
 // opções para o campo "Tema das placas" em Gestão → Regiões
-export const OPCOES_TEMA = Object.entries(TEMAS).map(([id, t]) => ({ id, label: `${t.cidade} · ${t.uf}` }));
+export const OPCOES_TEMA = Object.entries(TEMAS).map(([id, t]) => ({
+  id,
+  label: `${t.cidade} · ${t.uf}`,
+}));
 
 const semAcento = (t = "") =>
-  String(t)
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+  String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 // tema pelo nome/sigla da base, quando não foi escolhido
+// O NOME da base manda: o código (id) não muda quando a base é renomeada
+// (ex.: um cadastro criado como "Recife" e depois trocado para "Maceió"
+// continua com o código "rec"), então ele só é usado se o nome não disser nada.
 export const acharTemaPorNome = (regiao = {}) => {
   const nome = semAcento(regiao.nome);
   const id = semAcento(regiao.id);
-  if (TEMAS[id]) return id;
-  const achado = Object.entries(TEMAS).find(
-    ([, t]) => semAcento(t.cidade) === nome || (t.apelidos || []).some((a) => nome.includes(a)),
+  const entradas = Object.entries(TEMAS);
+  const exato = entradas.find(([, t]) => semAcento(t.cidade) === nome);
+  if (exato) return exato[0];
+  const contem = entradas.find(
+    ([, t]) => nome && nome.includes(semAcento(t.cidade)),
   );
-  return achado ? achado[0] : "";
+  if (contem) return contem[0];
+  const apelido = entradas.find(
+    ([, t]) => nome && (t.apelidos || []).some((a) => nome.includes(a)),
+  );
+  if (apelido) return apelido[0];
+  return TEMAS[id] ? id : "";
 };
 
 export const temaDaRegiao = (regiao = regiaoAtual()) => {
-  const id = (regiao?.tema && TEMAS[regiao.tema] && regiao.tema) || acharTemaPorNome(regiao);
+  const id =
+    (regiao?.tema && TEMAS[regiao.tema] && regiao.tema) ||
+    acharTemaPorNome(regiao);
   if (id) return { id, preposicao: "a", ...TEMAS[id] };
-  return { id: "", cidade: regiao?.nome || "Nordeste", estado: "", uf: "", preposicao: "a", modelos: [] };
+  return {
+    id: "",
+    cidade: regiao?.nome || "Nordeste",
+    estado: "",
+    uf: "",
+    preposicao: "a",
+    modelos: [],
+  };
 };
 
-export const subtituloDoTema = (tema = temaDaRegiao()) => [tema.cidade, tema.estado].filter(Boolean).join(" · ");
+export const subtituloDoTema = (tema = temaDaRegiao()) =>
+  [tema.cidade, tema.estado].filter(Boolean).join(" · ");

@@ -20,6 +20,8 @@ export const ehPrivativa = (r) => /PRIV|EXECUT/i.test(String(r?.modalidade || ""
 const SEM_GUIA = "__sem_guia__";
 const nomeOperadora = (r) => String(r?.operadora || "").trim() || "Sem operadora";
 const chaveGuia = (r) => String(r?.guia || "").trim() || SEM_GUIA;
+const paxDe = (r) => Number(r?.pax) || 0;
+const textoPax = (n) => `${n} pax`;
 
 const semAcento = (t = "") =>
   String(t)
@@ -40,8 +42,15 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   // operadoras do dia, com quantas reservas cada uma tem
   const operadoras = useMemo(() => {
     const m = new Map();
-    voos.forEach((v) => v.reservas.forEach((r) => m.set(nomeOperadora(r), (m.get(nomeOperadora(r)) || 0) + 1)));
-    return [...m.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
+    voos.forEach((v) =>
+      v.reservas.forEach((r) => {
+        const o = m.get(nomeOperadora(r)) || { nome: nomeOperadora(r), n: 0, pax: 0 };
+        o.n += 1;
+        o.pax += paxDe(r);
+        m.set(o.nome, o);
+      }),
+    );
+    return [...m.values()].sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
   }, [voos]);
   const operadorasVisiveis = useMemo(() => {
     const t = semAcento(buscaOp.trim());
@@ -57,8 +66,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
         .filter((r) => nomeOperadora(r) === operadora)
         .forEach((r) => {
           const k = chaveGuia(r);
-          const atual = m.get(k) || { chave: k, nome: k === SEM_GUIA ? "Sem guia escalado" : r.guia, n: 0, escalas: new Set() };
+          const atual = m.get(k) || { chave: k, nome: k === SEM_GUIA ? "Sem guia escalado" : r.guia, n: 0, pax: 0, escalas: new Set() };
           atual.n += 1;
+          atual.pax += paxDe(r);
           if (r.escala) atual.escalas.add(r.escala);
           m.set(k, atual);
         }),
@@ -80,6 +90,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
 
   const lote = porVoo.filter((v) => !desmarcados[v.chave]);
   const totalReservas = lote.reduce((n, v) => n + v.reservas.length, 0);
+  const totalPax = lote.reduce((n, v) => n + v.reservas.reduce((p, r) => p + paxDe(r), 0), 0);
   const totalPrivativas = voos.reduce((n, v) => n + v.reservas.filter(ehPrivativa).length, 0);
   const totalTodas = voos.reduce((n, v) => n + v.reservas.length, 0);
 
@@ -208,7 +219,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
                             <b>{o.nome}</b>
                           </span>
                           <span className="plc-sel__tag">
-                            {o.n} {o.n === 1 ? "reserva" : "reservas"}
+                            {o.n} {o.n === 1 ? "reserva" : "reservas"} · {textoPax(o.pax)}
                           </span>
                         </label>
                       </li>
@@ -228,10 +239,12 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
                         setDesmarcados({});
                       }}
                     >
-                      <option value="">Todos os guias ({guiasDaOperadora.reduce((n, g) => n + g.n, 0)} reservas)</option>
+                      <option value="">
+                        Todos os guias ({guiasDaOperadora.reduce((n, g) => n + g.n, 0)} reservas · {textoPax(guiasDaOperadora.reduce((n, g) => n + g.pax, 0))})
+                      </option>
                       {guiasDaOperadora.map((g) => (
                         <option key={g.chave} value={g.chave}>
-                          {g.nome} · {g.n} {g.n === 1 ? "reserva" : "reservas"}
+                          {g.nome} · {g.n} {g.n === 1 ? "reserva" : "reservas"} · {textoPax(g.pax)}
                           {g.escalas.size ? ` · ${[...g.escalas].slice(0, 3).join(", ")}` : ""}
                         </option>
                       ))}
@@ -262,7 +275,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
 
             <div className="plc-sel__voos-topo">
               <span>
-                {lote.length} de {porVoo.length} voos · {totalReservas} {totalReservas === 1 ? "reserva" : "reservas"}
+                {lote.length} de {porVoo.length} voos · {totalReservas} {totalReservas === 1 ? "reserva" : "reservas"} · {textoPax(totalPax)}
               </span>
               <span>
                 <button type="button" onClick={() => marcarTodos(true)}>
@@ -297,7 +310,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
                         <small>{v.reservas.map((r) => r.nome).filter(Boolean).slice(0, 4).join(", ")}{v.reservas.length > 4 ? "…" : ""}</small>
                       </span>
                       <span className="plc-sel__tag">
-                        {v.reservas.length} {v.reservas.length === 1 ? "reserva" : "reservas"}
+                        {v.reservas.length} {v.reservas.length === 1 ? "reserva" : "reservas"} · {textoPax(v.reservas.reduce((p, r) => p + paxDe(r), 0))}
                       </span>
                     </label>
                   </li>

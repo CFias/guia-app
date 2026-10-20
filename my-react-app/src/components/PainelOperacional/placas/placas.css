@@ -481,3 +481,293 @@
 .plc-sel .ui-search {
   flex: none;
 }
+
+/* coleção: modelo das placas de voos com uma reserva só */
+.plc-unica {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.plc-unica__mini {
+  flex: none;
+  width: 96px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.plc-unica select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* miniaturas de todas as placas embaixo da prévia (clique para abrir) */
+.plc-miniaturas {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.plc-mini {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 112px;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.plc-mini:hover {
+  border-color: var(--border);
+}
+
+.plc-mini.is-on {
+  border-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.plc-mini:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.plc-mini__placa {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.plc-mini span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plc-nota {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(0, 0, 0, .04));
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.plc-nota .plc-link {
+  margin: 0;
+}
+
+.plc-nome-ajuste--faixa input[type=range] {
+  width: 100%;
+  accent-color: var(--accent);
+  margin-top: 8px;
+}
+
+/* Conferência dos nomes */
+.plc-conf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--success, #1f7a4d) 6%, transparent);
+}
+
+.plc-conf.tem-trocado {
+  background: color-mix(in srgb, #c98a00 8%, transparent);
+  border-color: color-mix(in srgb, #c98a00 35%, var(--border));
+}
+
+.plc-conf.tem-revisar {
+  background: color-mix(in srgb, var(--alert, #c0392b) 7%, transparent);
+  border-color: color-mix(in srgb, var(--alert, #c0392b) 40%, var(--border));
+}
+
+.plc-conf__topo {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.plc-conf__topo>svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--success, #1f7a4d);
+}
+
+.plc-conf.tem-trocado .plc-conf__topo>svg {
+  color: #c98a00;
+}
+
+.plc-conf.tem-revisar .plc-conf__topo>svg {
+  color: var(--alert, #c0392b);
+}
+
+.plc-conf__topo b {
+  display: block;
+  font-size: var(--fs-md);
+}
+
+.plc-conf__topo p {
+  margin: 1px 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.plc-conf .plc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+
+.plc-conf__ajuda {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.plc-conf__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.plc-conf__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface, transparent);
+}
+
+.plc-conf__linha {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plc-conf__selo {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+}
+
+.plc-conf__selo.is-trocado {
+  background: color-mix(in srgb, #c98a00 18%, transparent);
+  color: #9a6a00;
+}
+
+.plc-conf__selo.is-revisar {
+  background: color-mix(in srgb, var(--alert, #c0392b) 16%, transparent);
+  color: var(--alert, #c0392b);
+}
+
+.plc-conf__selo.is-editado {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.plc-conf__voo {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.plc-conf__ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plc-conf__original {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.plc-conf__original span {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.plc-conf__campo {
+  display: flex;
+  gap: 4px;
+}
+
+.plc-conf__campo .ui-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.plc-conf__desfazer {
+  flex: none;
+  width: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.plc-conf__desfazer:hover {
+  color: var(--text);
+}
+
+/* miniatura com nome trocado/para revisar */
+.plc-mini__alerta {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #c98a00;
+  vertical-align: 1px;
+}
+
+.plc-mini.tem-revisar .plc-mini__alerta {
+  background: var(--alert, #c0392b);
+}

@@ -108,6 +108,7 @@ export const QUEBRAS = [
 ];
 
 export const TRACOS = [
+  { value: "marcado", label: "Marcado" },
   { value: "leve", label: "Leve" },
   { value: "bem-leve", label: "Bem leve" },
 ];
@@ -256,6 +257,11 @@ export const PREFS_PADRAO = {
   colecaoLetra: "forte",
   // ajustes do nome só desta impressão ("" = o do modelo) — AjustesNome.jsx
   nome: { letra: "", alinhamento: "", alturaNome: "", caixa: "", quebra: "" },
+  // individual: tamanho do nome e fundo só desta impressão
+  individualTamanho: "auto", // auto | manual
+  individualEscala: 1, // 0.6 a 1.3 (manual)
+  fundo: { traco: "", trevo: null }, // "" / null = o do modelo
+  mostrarVeiculo: false, // veículo do serviço, discreto
 };
 
 export const lerPrefsPlacas = () => {
