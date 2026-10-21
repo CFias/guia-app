@@ -79,7 +79,7 @@ export const enviarArquivo = async (arquivo, { id, aoProgredir } = {}) => {
     aoProgredir?.((i + 1) / partes);
   }
   // substituindo um arquivo maior: apaga as partes que sobraram
-  if (id) await apagarPartes(arquivoId, partes).catch(() => {});
+  if (id) await apagarPartes(arquivoId, partes).catch(() => { });
 
   const meta = {
     nome: arquivo.name || "arquivo",
@@ -99,7 +99,7 @@ export const lerMetaArquivo = async (id) => {
 
 export const removerArquivo = async (id) => {
   if (!id) return;
-  await apagarPartes(id).catch(() => {});
+  await apagarPartes(id).catch(() => { });
   await deleteDoc(refMeta(id));
 };
 
@@ -149,4 +149,10 @@ export const abrirArquivo = async (id, { nome, tipo } = {}) => {
     aba?.close();
     throw e;
   }
+};
+
+// conteúdo do arquivo como texto (ex.: o JSON com os quadros do giro 360º)
+export const lerArquivoTexto = async (id) => {
+  const { blob } = await montarBlob(id);
+  return blob.text();
 };

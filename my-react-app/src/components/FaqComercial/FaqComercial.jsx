@@ -35,6 +35,8 @@ import { rotuloDoIdioma } from "../../Services/Utils/idiomas";
 import BoasVindasComercial from "../BoasVindas/BoasVindasComercial";
 import { useAuth } from "../../Context/AuthContext";
 import VisualizadorFoto from "./VisualizadorFoto";
+import Giro360 from "./Giro360";
+import "./giro360.css";
 import {
   FORMATOS,
   MENSAGEM_VENCIDA,
@@ -499,7 +501,7 @@ const FaqComercial = () => {
         .sort(
           (a, b) =>
             (obterFichaEmbarcacao(a).capacidade ?? 9999) -
-              (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
+            (obterFichaEmbarcacao(b).capacidade ?? 9999) || ordenarPorPergunta(a, b),
         ),
     [itensFiltrados],
   );
@@ -1235,13 +1237,12 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
 
   return (
     <article
-      className={`faq-cat-card faq-cat-veiculo ${
-        selo === "recomendado"
+      className={`faq-cat-card faq-cat-veiculo ${selo === "recomendado"
           ? "is-comporta"
           : selo === "nao"
             ? "is-nao-comporta"
             : ""
-      }`}
+        }`}
       {...propsCardClicavel(item, onAbrir)}
     >
       <div className={`faq-cat-veiculo-foto ${moto ? "tem-faixa" : ""}`}>
@@ -1249,6 +1250,11 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
           <img src={imagens[0]} alt={nome} loading="lazy" />
         ) : (
           <SemFotoIlustrada item={item} formato={FORMATOS.VEICULO} tom={tom} />
+        )}
+        {item.giro360?.arquivoId && !item.veiculoForaCatalogo && (
+          <span className="giro-selo" title="Tem giro 360º">
+            <Icon name="refresh" size={11} /> 360º
+          </span>
         )}
         <div className="faq-cat-veiculo-selos">
           {moto ? (
@@ -1646,16 +1652,27 @@ const ListaPrecos = ({ item, linhas, vencida, copiadoId, onCopiarLinha }) => {
   );
 };
 
-const Galeria = ({ imagens, nome, ilustracao = "duvida" }) => {
+const Galeria = ({ imagens, nome, ilustracao = "duvida", item360 = null }) => {
   const [indice, setIndice] = useState(0);
   const [ampliada, setAmpliada] = useState(false);
+  const [giro, setGiro] = useState(false);
+  const tem360 = !!item360?.giro360?.arquivoId;
+  const botao360 = tem360 && (
+    <>
+      <button type="button" className="giro-botao" onClick={() => setGiro(true)} title="Ver o veículo em 360º">
+        <Icon name="refresh" size={14} /> 360º
+      </button>
+      {giro && <Giro360 item={item360} onFechar={() => setGiro(false)} />}
+    </>
+  );
 
   if (!imagens.length) {
     return (
       <div
         className="faq-cat-galeria faq-cat-galeria--vazia is-ilustrada"
-        style={{ "--fundo-ilus": (ILUSTRACOES[ilustracao] || ILUSTRACOES.duvida).fundo }}
+        style={{ "--fundo-ilus": (ILUSTRACOES[ilustracao] || ILUSTRACOES.duvida).fundo, position: "relative" }}
       >
+        {botao360}
         <IlustracaoCategoria chave={ilustracao} tamanho={120} />
       </div>
     );
@@ -1667,6 +1684,7 @@ const Galeria = ({ imagens, nome, ilustracao = "duvida" }) => {
   return (
     <div className="faq-cat-galeria">
       <div className="faq-cat-galeria-principal">
+        {botao360}
         <img className="faq-cat-galeria-fundo" src={imagens[indice]} alt="" aria-hidden="true" />
         <button
           type="button"
@@ -1833,7 +1851,7 @@ const FaqDetalhe = ({
 
         {ehVeiculo && (
           <>
-            <Galeria imagens={imagens} nome={titulo} ilustracao={ilustracao} />
+            <Galeria imagens={imagens} nome={titulo} ilustracao={ilustracao} item360={item.veiculoForaCatalogo ? null : item} />
 
             {item.nomeVeiculo && item.pergunta && item.pergunta !== item.nomeVeiculo && (
               <p className="faq-cat-detalhe-pergunta">{item.pergunta}</p>
@@ -1844,15 +1862,15 @@ const FaqDetalhe = ({
             {(ficha.passageiros !== null ||
               ficha.malasGrandes !== null ||
               ficha.malasBordo !== null) && (
-              <div className="faq-cat-bloco">
-                <h4>
-                  {configuracoes.length > 1
-                    ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
-                    : "Capacidade"}
-                </h4>
-                <Especificacoes ficha={ficha} />
-              </div>
-            )}
+                <div className="faq-cat-bloco">
+                  <h4>
+                    {configuracoes.length > 1
+                      ? `Capacidade · ${(configuracoes.find((o) => !o.acessorio) || configuracoes[0]).nome}`
+                      : "Capacidade"}
+                  </h4>
+                  <Especificacoes ficha={ficha} />
+                </div>
+              )}
 
             {configuracoes.length > 0 && (
               <div className="faq-cat-bloco">

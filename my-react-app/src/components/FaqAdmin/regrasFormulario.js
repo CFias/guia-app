@@ -48,6 +48,8 @@ export const FORMULARIO_VAZIO = {
   fornecedor: "",
   placa: "",
   imagensVeiculoTexto: "",
+  // giro 360º do veículo: { arquivoId, quadros } (FaqAdmin/Giro360Editor)
+  giro360: null,
   linkOficialVeiculo: "",
   veiculoForaCatalogo: false,
   // Capacidade do veículo: uma ou mais configurações (ex.: sem bagageiro /
@@ -161,6 +163,8 @@ export const formularioDoItem = (item, copia = false) => {
     fornecedor: String(item.fornecedor || "").trim(),
     placa: String(item.placa || "").trim(),
     imagensVeiculoTexto: obterImagens(item).join("\n"),
+    // cópia não leva o giro (o arquivo é do item original)
+    giro360: copia ? null : item.giro360?.arquivoId ? item.giro360 : null,
     linkOficialVeiculo: item.linkOficialVeiculo || "",
     veiculoForaCatalogo: !!item.veiculoForaCatalogo,
     tipoVeiculo: ficha.tipoVeiculo,

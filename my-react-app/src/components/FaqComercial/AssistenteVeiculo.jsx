@@ -9,7 +9,10 @@ import {
   descreverEspeciais,
   rotuloFaixa,
 } from "./catalogo";
+import SimuladorBagagem from "./SimuladorBagagem";
+import { veiculosSimulaveis } from "./simulacaoBagagem";
 import "./assistente.css";
+import "./simulador.css";
 
 /* Assistente de veículo: o vendedor informa o grupo e recebe a
    lista de veículos recomendados (com ou sem bagageiro/carretinha),
@@ -102,7 +105,7 @@ const fotoDe = (item) => {
 };
 
 // Uma opção da lista de recomendados: foto, nome, selos e capacidade.
-const OpcaoRecomendada = ({ item, primeira = false, veiculos, onAbrirVeiculo }) => {
+const OpcaoRecomendada = ({ item, primeira = false, veiculos, onAbrirVeiculo, onSimular }) => {
   const { opcao, noLimite, apertado } = item;
   const foto = veiculos.map(fotoDe).find(Boolean);
   return (
@@ -147,6 +150,11 @@ const OpcaoRecomendada = ({ item, primeira = false, veiculos, onAbrirVeiculo }) 
           {opcao.combinacoes.length > 0 && ` · ${descreverCombinacoes(opcao.combinacoes)}`}
         </span>
         {opcao.observacao && <span className="assist-opcao-obs">{opcao.observacao}</span>}
+        {onSimular && (
+          <button type="button" className="assist-simular" onClick={() => onSimular(opcao.nome)}>
+            <Icon name="briefcase" size={13} /> Ver as malas no porta-malas
+          </button>
+        )}
         {veiculos.length > 0 && (
           <div className="assist-veiculos">
             {veiculos.map((v) => {
@@ -176,7 +184,7 @@ const OpcaoRecomendada = ({ item, primeira = false, veiculos, onAbrirVeiculo }) 
 
 // Resposta pelas regras da operação: o veículo (categoria), o porquê e a
 // régua das faixas — sem lista de carros, para não gerar dúvida.
-const ResultadoFaixas = ({ resultado, grupo, malasTexto, mensagemSemOpcao, acoes }) => {
+const ResultadoFaixas = ({ resultado, grupo, malasTexto, mensagemSemOpcao, acoes, onSimular }) => {
   const { categoria, faixaPax, padrao, escolha, especiais, consultar, faixas } = resultado;
   const qtd = resultado.efetivo.pax || 1;
 
@@ -223,6 +231,11 @@ const ResultadoFaixas = ({ resultado, grupo, malasTexto, mensagemSemOpcao, acoes
       </span>
 
       <h3 className="assist-faixa-nome">{categoria.nome}</h3>
+      {onSimular && (
+        <button type="button" className="assist-simular" onClick={() => onSimular(categoria.nome)}>
+          <Icon name="briefcase" size={13} /> Ver as malas no porta-malas
+        </button>
+      )}
 
       {resultado.subiuPorBagagem ? (
         <p className="assist-motivo is-bagagem">
@@ -284,9 +297,8 @@ const ResultadoFaixas = ({ resultado, grupo, malasTexto, mensagemSemOpcao, acoes
           {faixas.map((f) => (
             <li
               key={f.id}
-              className={`${f.id === faixaEscolhida.id ? "is-escolhida" : ""} ${
-                f.id === faixaPax.id && f.id !== faixaEscolhida.id ? "is-pax" : ""
-              }`}
+              className={`${f.id === faixaEscolhida.id ? "is-escolhida" : ""} ${f.id === faixaPax.id && f.id !== faixaEscolhida.id ? "is-pax" : ""
+                }`}
             >
               <b>{rotuloFaixa(f)}</b>
               <span>{f.categorias[0].nome}</span>
@@ -312,6 +324,15 @@ const AssistenteVeiculo = ({
   const [copiado, setCopiado] = useState(false);
   const [especiaisAbertos, setEspeciaisAbertos] = useState(false);
   const [verMaiores, setVerMaiores] = useState(false);
+  // "recomendar" (qual veículo?) ou "simular" (as malas no porta-malas)
+  const [modo, setModo] = useState("recomendar");
+  const [simId, setSimId] = useState("");
+  const simulaveis = veiculosSimulaveis(config);
+  const simular = (nome) => {
+    const v = simulaveis.find((x) => x.nome.toLowerCase() === String(nome || "").toLowerCase());
+    setSimId(v ? v.id : "");
+    setModo("simular");
+  };
   const resultado = recomendarVeiculo(config, grupo);
   const { recomendada } = resultado;
 
@@ -370,7 +391,7 @@ const AssistenteVeiculo = ({
           </span>
           <div>
             <h2>{titulo}</h2>
-            <p>Informe o grupo e veja qual veículo atende.</p>
+            <p>{modo === "simular" ? "Escolha o veículo e veja como as malas ficam no porta-malas." : "Informe o grupo e veja qual veículo atende."}</p>
           </div>
           {onRecolher && (
             <button
@@ -384,6 +405,17 @@ const AssistenteVeiculo = ({
             </button>
           )}
         </div>
+
+        {simulaveis.length > 0 && (
+          <div className="assist-modos" role="tablist" aria-label="O que fazer">
+            <button type="button" role="tab" aria-selected={modo === "recomendar"} className={modo === "recomendar" ? "is-on" : ""} onClick={() => setModo("recomendar")}>
+              <Icon name="sparkles" size={14} /> Qual veículo?
+            </button>
+            <button type="button" role="tab" aria-selected={modo === "simular"} className={modo === "simular" ? "is-on" : ""} onClick={() => setModo("simular")}>
+              <Icon name="briefcase" size={14} /> Simular no porta-malas
+            </button>
+          </div>
+        )}
 
         <div className="assist-campos">
           {CAMPOS.map((campo) => (
@@ -453,7 +485,9 @@ const AssistenteVeiculo = ({
       </div>
 
       <div className="assist-saida" aria-live="polite">
-        {resultado.totalOpcoes === 0 ? (
+        {modo === "simular" ? (
+          <SimuladorBagagem config={config} veiculos={veiculos} grupo={grupo} veiculoId={simId} onVeiculo={setSimId} />
+        ) : resultado.totalOpcoes === 0 ? (
           <div className="assist-vazio">
             <Icon name="settings" size={22} />
             <span>
@@ -471,6 +505,7 @@ const AssistenteVeiculo = ({
             grupo={grupo}
             malasTexto={malasTexto}
             mensagemSemOpcao={config.mensagemSemOpcao}
+            onSimular={simulaveis.length ? simular : undefined}
             acoes={
               <div className="assist-acoes">
                 <Button variant="secondary" size="sm" icon="message" onClick={enviar}>
@@ -556,6 +591,7 @@ const AssistenteVeiculo = ({
                   primeira={i === 0}
                   veiculos={veiculosDa(r.opcao)}
                   onAbrirVeiculo={onAbrirVeiculo}
+                  onSimular={r.opcao.combinacoes?.length ? simular : undefined}
                 />
               ))}
               {verMaiores && resultado.maiores.length > 0 && (

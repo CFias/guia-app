@@ -1,0 +1,25 @@
+/* Giro 360º do veículo */
+.giro { display: flex; flex-direction: column; gap: 10px; }
+.giro__palco { position: relative; overflow: hidden; border-radius: 12px; background: #f3f4f5; cursor: grab; touch-action: pan-y; user-select: none; aspect-ratio: 16 / 10; }
+.giro__palco:active { cursor: grabbing; }
+.giro__palco:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.giro__palco img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.giro__dica { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 12px; pointer-events: none; }
+.giro__controles { display: flex; align-items: center; gap: 8px; }
+.giro__controles input[type=range] { flex: 1; accent-color: var(--accent); }
+.giro__controles > button { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface, #fff); color: var(--text); cursor: pointer; }
+.giro__controles > .giro__auto { display: inline-flex; gap: 6px; width: auto; padding: 0 10px; font: inherit; font-size: var(--fs-sm); font-weight: 600; }
+.giro__auto.is-on { border-color: var(--accent); color: var(--accent); }
+.giro.is-compacto .giro__palco { aspect-ratio: 16 / 9; }
+
+.giro-janela { position: fixed; inset: 0; z-index: 1350; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.6); }
+.giro-janela__caixa { display: flex; flex-direction: column; gap: 12px; width: min(920px, 100%); max-height: calc(100vh - 32px); padding: 14px 16px 16px; border-radius: 14px; background: var(--surface, #fff); color: var(--text); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); overflow: auto; }
+.giro-janela__topo { display: flex; align-items: center; justify-content: space-between; }
+.giro-janela__topo strong { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-lg, 17px); }
+.giro-janela__topo button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
+.giro-janela__msg { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 240px; margin: 0; color: var(--text-3); }
+
+/* botão "360º" nas fotos do veículo */
+.giro-botao { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(0, 0, 0, 0.62); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); }
+.giro-botao:hover { background: rgba(0, 0, 0, 0.78); }
+.giro-selo { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 11px; font-weight: 700; }

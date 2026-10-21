@@ -1012,3 +1012,88 @@ textarea.fi-input {
 .fi-msg--erro {
   color: var(--alert, #d9480f);
 }
+
+/* giro 360º do veículo */
+.fi-giro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+}
+
+.fi-giro__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}
+
+.fi-giro__titulo small {
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.giro-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.giro-editor__dicas {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.giro-editor__dicas b {
+  color: var(--text);
+}
+
+.giro-editor__info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.giro-editor__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.giro-editor__progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.giro-editor__progresso i {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  overflow: hidden;
+}
+
+.giro-editor__progresso b {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.giro-editor__erro {
+  margin: 0;
+  color: var(--alert);
+  font-size: var(--fs-sm);
+}

@@ -62,6 +62,7 @@ import {
 } from "./regrasFormulario";
 import { removerArquivo } from "../../Services/Services/arquivosRepository";
 import CondicoesGeraisAdmin from "./CondicoesGeraisAdmin";
+import { removerGiro360 } from "../FaqComercial/giro360Dados";
 
 // ícones usados como componente (ex.: devolvidos por função)
 const LuggageRounded = iconeMui("briefcase");
@@ -844,6 +845,7 @@ const FaqAdmin = () => {
               .filter(Boolean),
         linkOficialVeiculo: formulario.linkOficialVeiculo.trim(),
         veiculoForaCatalogo: !!formulario.veiculoForaCatalogo,
+        giro360: formato === FORMATOS.VEICULO && formulario.giro360?.arquivoId ? formulario.giro360 : null,
         formato,
         fichaVeiculo: {
           tipoVeiculo: formulario.tipoVeiculo.trim(),
@@ -887,7 +889,12 @@ const FaqAdmin = () => {
 
       let idSalvo = editandoId;
       if (editandoId) {
+        const giroAntes = itens.find((i) => i.id === editandoId)?.giro360?.arquivoId;
         await updateDoc(doc(db, "faq_itens", editandoId), payload);
+        // giro 360º trocado ou tirado: apaga o arquivo antigo
+        if (giroAntes && giroAntes !== payload.giro360?.arquivoId) {
+          removerGiro360(giroAntes).catch((e) => console.error("Erro ao apagar giro 360º:", e));
+        }
         // anexos tirados do item: apaga os arquivos
         const antes = anexosDoItem(itens.find((i) => i.id === editandoId));
         const ficam = new Set(payload.anexos.map((a) => a.id));

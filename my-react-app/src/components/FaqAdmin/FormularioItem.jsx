@@ -1,5 +1,6 @@
 import Icon from "../ui/Icon";
 import FotosVeiculo from "./FotosVeiculo";
+import Giro360Editor from "./Giro360Editor";
 import AnexosEditor from "./AnexosEditor";
 import IlustracaoCategoria from "../FaqComercial/IlustracaoCategoria";
 import IdiomaTag from "../ui/IdiomaTag";
@@ -1069,6 +1070,18 @@ const FormularioItem = ({
               disabled={salvando}
               nome={f.nomeVeiculo || "Veículo"}
             />
+
+            <div className="fi-giro">
+              <span className="fi-giro__titulo">
+                <Icon name="refresh" size={14} /> Giro 360º <small>opcional</small>
+              </span>
+              <Giro360Editor
+                valor={f.giro360}
+                onChange={(g) => atualizar("giro360", g)}
+                disabled={salvando}
+                nome={f.nomeVeiculo || "Veículo"}
+              />
+            </div>
 
             <details className="fi-mais">
               <summary>Link do fabricante e veículo fora de catálogo</summary>
