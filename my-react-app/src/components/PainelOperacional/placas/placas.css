@@ -1011,3 +1011,172 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Imprimir placas: 3 formatos e voo que abre as reservas */
+.plc-sel__formato {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 560px) {
+  .plc-sel__formato {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plc-sel__voo-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plc-sel__voo-btn>svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.plc-sel__do-voo {
+  margin: 6px 0 4px 26px;
+}
+
+/* ---------- Junção de voos (pré-visualização) ---------- */
+.plc-juncao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.plc-juncao__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.plc-juncao__topo b {
+  color: var(--text);
+}
+
+.plc-juncao__ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.plc-juncao__ops button {
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plc-juncao__ops button.is-on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-text, var(--accent));
+}
+
+.plc-juncao__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.plc-juncao__lista .plc-sel__res {
+  padding: 6px 8px;
+  background: var(--surface);
+}
+
+.plc-juncao__lista .plc-sel__res-info b {
+  font-size: var(--fs-sm);
+}
+
+.plc-juncao__lista .plc-sel__res-info small {
+  font-size: var(--fs-xs);
+}
+
+.plc-juncao__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plc-juncao__add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.plc-juncao__add select {
+  font-size: var(--fs-sm);
+}
+
+.plc-juncao__lista>li>.plc-sel__res {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.plc-juncao__lista>li>button.plc-sel__res {
+  background: var(--surface);
+}
+
+.plc-juncao__lista>li>button.plc-sel__res>svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.plc-juncao__busca {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-3);
+}
+
+.plc-juncao__busca input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+}
+
+.plc-juncao__busca:focus-within {
+  border-color: var(--accent);
+}

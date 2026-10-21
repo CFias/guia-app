@@ -10,11 +10,13 @@ import Grupo from "./Grupo";
      "Todas", "Privativas" ou "Escolher reservas" (marcar uma a uma), e o guia
      escalado como filtro opcional. Tudo o que for marcado entra no mesmo lote;
    - Uma reserva: busca e escolhe uma.
-   Formato: individual (uma placa por reserva) ou em grupo (placa coleção,
-   uma por voo). Os voos podem ser desmarcados um a um.
+   Formato: individual (uma placa por reserva), em grupo (placa coleção,
+   uma por voo) ou "Juntar voos" (coleção com voos diferentes na mesma folha —
+   também dá para ligar na pré-visualização). Os voos podem ser desmarcados um
+   a um e, abrindo o voo, cada reserva (com código e operadora).
 
    voos: [{ chave, voo, hora, reservas: [{ id, nome, hotel, idioma, codigo, modalidade, pax, operadora, guia, escala }] }]
-   onContinuar({ modo: "individual" | "colecao", lote: [{ voo, reservas }] }) */
+   onContinuar({ modo: "individual" | "colecao", lote: [{ voo, hora, reservas }], juncao }) */
 
 export const ehPrivativa = (r) => /PRIV|EXECUT/i.test(String(r?.modalidade || ""));
 
@@ -121,6 +123,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   const [quais, setQuais] = useState("privativas");
   const [formato, setFormato] = useState("individual");
   const [desmarcados, setDesmarcados] = useState({});
+  // reservas tiradas uma a uma (Privativas / Todas): `${chaveVoo}|${id}` → true
+  const [fora, setFora] = useState({});
+  const [vooAberto, setVooAberto] = useState("");
   const [busca, setBusca] = useState("");
   const [escolhida, setEscolhida] = useState(null); // `${chaveVoo}|${idReserva}`
   // operadoras marcadas: nome → { modo: "todas" | "privativas" | "escolhidas", guia, escolhidas: { chave: true } }
@@ -208,10 +213,15 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
     return true;
   };
 
-  // reservas de cada voo conforme a escolha (privativas / todas / operadora)
-  const porVoo = voos.map((v) => ({ ...v, reservas: v.reservas.filter((r) => filtroReserva(r, v)) })).filter((v) => v.reservas.length);
+  // reservas de cada voo conforme a escolha (privativas / todas / operadora);
+  // "todas" fica com a lista completa para poder remarcar quem foi tirado
+  const porVooCompleto = voos.map((v) => ({ ...v, reservas: v.reservas.filter((r) => filtroReserva(r, v)) })).filter((v) => v.reservas.length);
+  const porVoo = porVooCompleto
+    .map((v) => ({ ...v, reservas: quais === "operadora" ? v.reservas : v.reservas.filter((r) => !fora[`${v.chave}|${r.id}`]) }))
+    .filter((v) => v.reservas.length || porVooCompleto.some((x) => x.chave === v.chave));
+  const alternarFora = (chave) => setFora((f) => ({ ...f, [chave]: !f[chave] }));
 
-  const lote = porVoo.filter((v) => !desmarcados[v.chave]);
+  const lote = porVoo.filter((v) => !desmarcados[v.chave] && v.reservas.length);
   const totalReservas = lote.reduce((n, v) => n + v.reservas.length, 0);
   const totalPax = lote.reduce((n, v) => n + v.reservas.reduce((p, r) => p + paxDe(r), 0), 0);
   const totalPrivativas = voos.reduce((n, v) => n + v.reservas.filter(ehPrivativa).length, 0);
@@ -238,7 +248,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
     ? reservaEscolhida ? 1 : 0
     : formato === "individual"
       ? totalReservas
-      : lote.length;
+      : formato === "juncao"
+        ? Math.ceil(totalReservas / 6)
+        : lote.length;
 
   const continuar = () => {
     if (umaReserva) {
@@ -246,7 +258,11 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
       onContinuar({ modo: "individual", lote: [{ voo: reservaEscolhida.voo, reservas: [reservaEscolhida.reserva] }] });
       return;
     }
-    onContinuar({ modo: formato === "grupo" ? "colecao" : "individual", lote: lote.map((v) => ({ voo: v.voo, reservas: v.reservas })) });
+    onContinuar({
+      modo: formato === "individual" ? "individual" : "colecao",
+      juncao: formato === "juncao",
+      lote: lote.map((v) => ({ voo: v.voo, hora: v.hora, reservas: v.reservas })),
+    });
   };
 
   const alternarVoo = (chave) => setDesmarcados((d) => ({ ...d, [chave]: !d[chave] }));
@@ -265,7 +281,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
           <Button variant="primary" icon="arrowRight" onClick={continuar} disabled={!placasEstimadas}>
             {!umaReserva && formato === "grupo"
               ? `Escolher modelo (${lote.length} ${lote.length === 1 ? "voo" : "voos"})`
-              : `Escolher modelo (${placasEstimadas} ${placasEstimadas === 1 ? "placa" : "placas"})`}
+              : !umaReserva && formato === "juncao"
+                ? `Juntar ${totalReservas} ${totalReservas === 1 ? "nome" : "nomes"} (${lote.length} ${lote.length === 1 ? "voo" : "voos"})`
+                : `Escolher modelo (${placasEstimadas} ${placasEstimadas === 1 ? "placa" : "placas"})`}
           </Button>
         </>
       }
@@ -278,6 +296,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
             onChange={(v) => {
               setQuais(v);
               setDesmarcados({});
+              setFora({});
             }}
             options={[
               { value: "privativas", label: "Privativas", count: totalPrivativas },
@@ -293,6 +312,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
             {[
               { value: "individual", titulo: "Individual", texto: "Uma placa por reserva", icone: "fileText" },
               { value: "grupo", titulo: "Coleção, por voo", texto: "Os nomes de cada voo juntos (até 5 por folha)", icone: "list" },
+              { value: "juncao", titulo: "Juntar voos", texto: "Voos diferentes na mesma folha (aproveita a página)", icone: "layers" },
             ].map((f) => (
               <button
                 key={f.value}
@@ -424,23 +444,59 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
               </p>
             ) : (
               <ul className="plc-sel__lista">
-                {porVoo.map((v) => (
-                  <li key={v.chave}>
-                    <label className={`plc-sel__voo ${desmarcados[v.chave] ? "" : "is-on"}`}>
-                      <input type="checkbox" checked={!desmarcados[v.chave]} onChange={() => alternarVoo(v.chave)} />
-                      <span className="plc-sel__voo-hora">{v.hora || "--:--"}</span>
-                      <span className="plc-sel__res-info">
-                        <b>
-                          <Icon name="planeLanding" size={13} /> {v.voo || "Sem voo"}
-                        </b>
-                        <small>{v.reservas.map((r) => r.nome).filter(Boolean).slice(0, 4).join(", ")}{v.reservas.length > 4 ? "…" : ""}</small>
-                      </span>
-                      <span className="plc-sel__tag">
-                        {v.reservas.length} {v.reservas.length === 1 ? "reserva" : "reservas"} · {textoPax(v.reservas.reduce((p, r) => p + paxDe(r), 0))}
-                      </span>
-                    </label>
-                  </li>
-                ))}
+                {porVoo.map((v) => {
+                  const completo = porVooCompleto.find((x) => x.chave === v.chave)?.reservas || v.reservas;
+                  const podeAbrir = quais !== "operadora";
+                  const aberto = podeAbrir && vooAberto === v.chave;
+                  return (
+                    <li key={v.chave} className={aberto ? "plc-sel__voo-aberto" : ""}>
+                      <div className={`plc-sel__voo ${desmarcados[v.chave] || !v.reservas.length ? "" : "is-on"}`}>
+                        <input type="checkbox" checked={!desmarcados[v.chave] && v.reservas.length > 0} onChange={() => alternarVoo(v.chave)} aria-label={`Incluir o voo ${v.voo || ""}`} />
+                        <button
+                          type="button"
+                          className="plc-sel__voo-btn"
+                          onClick={() => (podeAbrir ? setVooAberto(aberto ? "" : v.chave) : alternarVoo(v.chave))}
+                          aria-expanded={podeAbrir ? aberto : undefined}
+                          title={podeAbrir ? "Ver as reservas do voo" : undefined}
+                        >
+                          <span className="plc-sel__voo-hora">{v.hora || "--:--"}</span>
+                          <span className="plc-sel__res-info">
+                            <b>
+                              <Icon name="planeLanding" size={13} /> {v.voo || "Sem voo"}
+                            </b>
+                            <small>{v.reservas.map((r) => r.nome).filter(Boolean).slice(0, 4).join(", ")}{v.reservas.length > 4 ? "…" : ""}</small>
+                          </span>
+                          <span className="plc-sel__tag">
+                            {v.reservas.length < completo.length ? `${v.reservas.length} de ${completo.length}` : v.reservas.length} {completo.length === 1 ? "reserva" : "reservas"} ·{" "}
+                            {textoPax(v.reservas.reduce((p, r) => p + paxDe(r), 0))}
+                          </span>
+                          {podeAbrir && <Icon name={aberto ? "chevronUp" : "chevronDown"} size={14} />}
+                        </button>
+                      </div>
+                      {aberto && (
+                        <ul className="plc-sel__lista plc-sel__reservas plc-sel__do-voo" aria-label={`Reservas do voo ${v.voo || ""}`}>
+                          {completo.map((r) => {
+                            const chave = `${v.chave}|${r.id}`;
+                            const dentro = !fora[chave];
+                            return (
+                              <li key={chave}>
+                                <label className={`plc-sel__res ${dentro ? "is-on" : ""}`}>
+                                  <input type="checkbox" checked={dentro} onChange={() => alternarFora(chave)} />
+                                  <span className="plc-sel__res-info">
+                                    <b>{r.nome || "Sem nome"}</b>
+                                    <small>{[r.codigo, nomeOperadora(r), r.hotel].filter(Boolean).join(" · ")}</small>
+                                  </span>
+                                  {ehPrivativa(r) && <span className="plc-sel__tag">{/EXECUT/i.test(r.modalidade) ? "Executivo" : "Privativo"}</span>}
+                                  <span className="plc-sel__tag">{textoPax(paxDe(r))}</span>
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>

@@ -15,23 +15,14 @@ import {
 import { layoutColecao, layoutIndividual, paginarColecao } from "./layoutPlaca";
 import { carregarFontesPlaca, registrarFontesNoPdf } from "./fontesPlaca";
 
-const novoDoc = () =>
-  registrarFontesNoPdf(
-    new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }),
-  );
+const novoDoc = () => registrarFontesNoPdf(new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }));
 
 export const desenharPecas = (doc, pecas, { logo } = {}) => {
   pecas.forEach((p) => {
     if (p.t === "texto") {
       doc.setFontSize(p.size);
       doc.setTextColor(...(p.cor || [0, 0, 0]));
-      const escrever = () =>
-        doc.text(
-          String(p.txt ?? ""),
-          p.x,
-          p.y,
-          p.align && p.align !== "left" ? { align: p.align } : undefined,
-        );
+      const escrever = () => doc.text(String(p.txt ?? ""), p.x, p.y, p.align && p.align !== "left" ? { align: p.align } : undefined);
       try {
         doc.setFont(p.font || "helvetica", p.style || "normal");
         escrever();
@@ -55,11 +46,7 @@ export const desenharPecas = (doc, pecas, { logo } = {}) => {
       if (p.r) doc.roundedRect(p.x, p.y, p.w, p.h, p.r, p.r, modo);
       else doc.rect(p.x, p.y, p.w, p.h, modo);
     } else if (p.t === "logo" && logo) {
-      const transparente =
-        p.opacidade !== undefined &&
-        p.opacidade < 1 &&
-        typeof doc.setGState === "function" &&
-        doc.GState;
+      const transparente = p.opacidade !== undefined && p.opacidade < 1 && typeof doc.setGState === "function" && doc.GState;
       if (transparente) {
         doc.saveGraphicsState();
         doc.setGState(new doc.GState({ opacity: p.opacidade }));
@@ -71,29 +58,17 @@ export const desenharPecas = (doc, pecas, { logo } = {}) => {
 };
 
 const nomeArquivo = (prefixo, txt) =>
-  `${prefixo}-${String(txt || "placa")
-    .trim()
-    .replace(/[^\w-]+/g, "-")
-    .replace(/-+/g, "-")}.pdf`;
+  `${prefixo}-${String(txt || "placa").trim().replace(/[^\w-]+/g, "-").replace(/-+/g, "-")}.pdf`;
 
 const recursos = async (modelo, tipo) => {
-  const [logo, trevo] = await Promise.all([
-    carregarLogoPequeno(),
-    carregarTrevoCinza(),
-    carregarFontesPlaca(),
-  ]);
+  const [logo, trevo] = await Promise.all([carregarLogoPequeno(), carregarTrevoCinza(), carregarFontesPlaca()]);
   const fundo = await rasterizarArte(svgArte(modelo, { tipo, trevo }));
   return { logo, fundo };
 };
 
 /* placas: [{ nome (já no formato da placa), voo, hotel, mensagem }]
    opcoes: { mostrarVoo, mostrarHotel, mostrarRodape, data } */
-export const gerarPdfIndividuais = async ({
-  placas = [],
-  modelo,
-  opcoes = {},
-  arquivo,
-}) => {
+export const gerarPdfIndividuais = async ({ placas = [], modelo, opcoes = {}, arquivo }) => {
   if (!placas.length) return;
   const { logo, fundo } = await recursos(modelo, "individual");
   const doc = novoDoc();
@@ -101,19 +76,9 @@ export const gerarPdfIndividuais = async ({
   placas.forEach((dados, i) => {
     if (i > 0) doc.addPage();
     doc.addImage(fundo, "JPEG", 0, 0, LARGURA, ALTURA, alias, "FAST");
-    desenharPecas(
-      doc,
-      layoutIndividual(modelo, { ...dados, data: opcoes.data }, opcoes),
-      { logo },
-    );
+    desenharPecas(doc, layoutIndividual(modelo, { ...dados, data: opcoes.data }, opcoes), { logo });
   });
-  doc.save(
-    arquivo ||
-      nomeArquivo(
-        "placas",
-        placas.length === 1 ? placas[0].nome : placas[0].voo,
-      ),
-  );
+  doc.save(arquivo || nomeArquivo("placas", placas.length === 1 ? placas[0].nome : placas[0].voo));
 };
 
 /* nomes: [texto] já ordenados; opcoes da coleção (ver layoutColecao).
@@ -134,64 +99,30 @@ export const gerarPdfColecao = async ({
 }) => {
   const folhas =
     paginas ||
-    paginarColecao(nomes, opcoes.porPlaca).map((p, i, todas) => ({
-      voo,
-      nomes: p,
-      numero: i + 1,
-      total: todas.length,
-      mensagem,
-    }));
+    paginarColecao(nomes, opcoes.porPlaca).map((p, i, todas) => ({ voo, nomes: p, numero: i + 1, total: todas.length, mensagem }));
   if (!folhas.length) return;
-  const temIndividual =
-    modeloIndividual && folhas.some((f) => f.tipo === "individual");
+  const temIndividual = modeloIndividual && folhas.some((f) => f.tipo === "individual");
   const { logo, fundo } = await recursos({ trevo }, "colecao");
-  const fundoIndividual = temIndividual
-    ? (await recursos(modeloIndividual, "individual")).fundo
-    : null;
+  const fundoIndividual = temIndividual ? (await recursos(modeloIndividual, "individual")).fundo : null;
   const doc = novoDoc();
   folhas.forEach((f, i) => {
     if (i > 0) doc.addPage();
     if (f.tipo === "individual" && fundoIndividual) {
-      doc.addImage(
-        fundoIndividual,
-        "JPEG",
-        0,
-        0,
-        LARGURA,
-        ALTURA,
-        `fundo_${modeloIndividual.id || "unica"}`,
-        "FAST",
-      );
-      desenharPecas(
-        doc,
-        layoutIndividual(
-          modeloIndividual,
-          { ...f.placa, data: opcoesIndividual.data ?? opcoes.data },
-          opcoesIndividual,
-        ),
-        { logo },
-      );
+      doc.addImage(fundoIndividual, "JPEG", 0, 0, LARGURA, ALTURA, `fundo_${modeloIndividual.id || "unica"}`, "FAST");
+      desenharPecas(doc, layoutIndividual(modeloIndividual, { ...f.placa, data: opcoesIndividual.data ?? opcoes.data }, opcoesIndividual), { logo });
       return;
     }
     doc.addImage(fundo, "JPEG", 0, 0, LARGURA, ALTURA, "fundo_colecao", "FAST");
     desenharPecas(
       doc,
       layoutColecao(
-        {
-          nomes: f.nomes,
-          veiculos: f.veiculos,
-          numero: f.numero,
-          total: f.total,
-        },
+        { nomes: f.nomes, veiculos: f.veiculos, detalhes: f.detalhes, numero: f.numero, total: f.total },
         { voo: f.voo, mensagem: f.mensagem, data: opcoes.data },
         {
           ...opcoes,
-          nomesReferencia:
-            f.referencia ||
-            folhas
-              .filter((x) => x.voo === f.voo && x.nomes)
-              .flatMap((x) => x.nomes),
+          nomesReferencia: f.referencia || folhas.filter((x) => x.voo === f.voo && x.nomes).flatMap((x) => x.nomes),
           veiculosReferencia: f.referenciaVeiculos,
+          detalhesReferencia: f.referenciaDetalhes,
         },
       ),
       { logo },
