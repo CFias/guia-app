@@ -81,8 +81,8 @@ const FaixaModelo = ({ modelo, trabalha, folga }) => {
     m?.tipo === "semanal"
       ? [Array.from({ length: 14 }, (_, i) => (m.folgas === 1 ? i % 7 !== 6 : i % 7 < 5))]
       : Array.from({ length: Math.min(3, Math.max(1, Math.ceil((trabalha + folga) / trabalha))) }, (_, g) =>
-          Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
-        );
+        Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
+      );
   return (
     <div className="aes-faixa" aria-hidden="true">
       {linhas.map((l, g) => (
@@ -404,7 +404,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
               <Icon name="users" size={12} /> {t.colaboradores.length}
             </span>
             <span className="aes-turnos__acoes">
-              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
+              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos];[l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
               <Button variant="ghost" iconOnly size="sm" icon="trash" disabled={r.turnos.length <= 1} onClick={() => removerTurno(t)} aria-label={`Remover ${t.nome}`} />
             </span>
           </li>
@@ -718,6 +718,10 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
           </button>
         ))}
       </div>
+      <label className="aes-check">
+        <input type="checkbox" checked={at.recepcaoPorReserva !== false} onChange={(e) => setAt({ recepcaoPorReserva: e.target.checked })} /> Veículo com mais de uma reserva:{" "}
+        {at.etapas[0]?.nome?.toLowerCase() || "recepção"} marcada reserva a reserva (o veículo fica completo quando todas chegarem)
+      </label>
       <label className="aes-check">
         <input type="checkbox" checked={at.avisarForaDoTurno} onChange={(e) => setAt({ avisarForaDoTurno: e.target.checked })} /> Avisar quando alguém marcar um veículo fora do próprio turno
       </label>

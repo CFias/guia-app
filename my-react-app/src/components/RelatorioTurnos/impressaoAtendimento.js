@@ -10,7 +10,7 @@ import { regiaoAtual } from "../../Services/Services/regiaoAtiva";
 import { dataBr, num } from "../../Services/Services/relatorioTurnos";
 import { registrarImpressao } from "../../Services/Services/atividadeRepository";
 import { CSS_IMPRESSAO, esc, imprimirHtml } from "./impressaoTurnos";
-import { esperaDoDoc, horaDe, marcasDaEtapa, resumoEsperas, textoMinutos, textoPax } from "../../Services/Services/atendimentoAeroporto";
+import { esperaDoDoc, horaDe, marcasDaEtapa, resumoEsperas, resumoEsperasPorReserva, textoMinutos, textoPax } from "../../Services/Services/atendimentoAeroporto";
 
 // tabela de no show (impressão)
 const htmlNoShow = (lista, titulo = "No show") =>
@@ -177,6 +177,28 @@ export const baixarExcelAtendimento = (r) => {
     ),
   );
   if (porReserva.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(porReserva), "Reservas");
+  if (etapas.length > 1) {
+    const pr = resumoEsperasPorReserva(r.docs, etapas);
+    if (pr.reservas.length) {
+      const linhas = [
+        ["Dia", "Hora", "Voo(s)", "Reserva", "Passageiro", "Pax", `${etapas[0].nome} (quem)`, `${etapas[0].nome} (hora)`, `${etapas[etapas.length - 1].nome} (hora)`, "Espera (min)", "Marcada na reserva?"],
+        ...pr.reservas.map((x) => [
+          dataBr(x.doc.data),
+          x.doc.hora || "",
+          (x.doc.voos || []).join(", "),
+          x.reserva.codigo || "",
+          x.reserva.titular || "",
+          Number(x.reserva.pax) || 0,
+          x.espera.inicio?.nome || "",
+          horaDe(x.espera.inicio?.em),
+          horaDe(x.espera.fim?.em),
+          x.espera.min ?? "",
+          x.espera.porReserva ? "sim" : "não (veículo)",
+        ]),
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), "Espera por reserva");
+    }
+  }
   if (rel.noShow?.reservas) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasNoShowExcel(rel.noShow.lista)), "No show");
   if (rel.pendentes.length) {
     const pend = [["Dia", "Hora", "Voo(s)", "Veículo", "Pax", "Falta"], ...rel.pendentes.map((g) => [dataBr(g.data), g.hora, g.voos.join(", "), g.veiculo || "", g.pax, g.faltando.join(", ")])];

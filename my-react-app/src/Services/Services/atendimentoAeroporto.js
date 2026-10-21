@@ -301,10 +301,12 @@ export const contarAtendimentos = (docs = [], etapas = [], regra = "dividir") =>
       porEtapa[e.id].veiculos += 1;
       const parte = regra === "total" ? paxEfetivo(d) : paxEfetivo(d) / marcas.length;
       marcas.forEach(([id, m]) => {
+        // recepção por reserva: cada um fica com os pax das reservas que recebeu
+        const parteDele = typeof m.paxReservas === "number" ? m.paxReservas : parte;
         const chave = m.colaboradorId || id;
         const p = pessoas.get(chave) || { id: chave, nome: m.nome || "Sem nome", colaboradorId: m.colaboradorId || "", etapas: {} };
         const x = p.etapas[e.id] || { pax: 0, veiculos: 0 };
-        x.pax += parte;
+        x.pax += parteDele;
         x.veiculos += 1;
         p.etapas[e.id] = x;
         pessoas.set(chave, p);
@@ -473,7 +475,8 @@ export const buscarReserva = ({ termo, docs = [], chegadas = null, etapas = [] }
       reserva: r,
       doc: doc || null,
       noShow: doc ? noShowDaReserva(doc, r) : null,
-      espera: doc ? esperaDoDoc(doc, etapas) : null,
+      recepcao: doc ? recepcaoDaReserva(doc, r) : null,
+      espera: doc ? esperaDaReserva(doc, r, etapas) : null,
       // etapas em que o colaborador buscado aparece (quando a busca foi por ele)
       etapasDoColaborador: doc && !bateReserva(r) ? doColaborador(doc) : [],
     });
@@ -511,7 +514,8 @@ export const relatorioDoColaborador = ({ docs = [], etapas = [], regra = "dividi
       totalEtapa[e.id] += paxEfetivo(d);
       const minha = marcas.find(([k, v]) => (v.colaboradorId || k) === id);
       if (!minha) return;
-      const pax = regra === "total" ? paxEfetivo(d) : paxEfetivo(d) / marcas.length;
+      const pax =
+        typeof minha[1].paxReservas === "number" ? minha[1].paxReservas : regra === "total" ? paxEfetivo(d) : paxEfetivo(d) / marcas.length;
       porEtapa[e.id].pax += pax;
       porEtapa[e.id].veiculos += 1;
       const dia = dias.get(d.data) || { data: d.data, etapas: Object.fromEntries(etapas.map((x) => [x.id, { pax: 0, veiculos: 0 }])) };
@@ -531,5 +535,122 @@ export const relatorioDoColaborador = ({ docs = [], etapas = [], regra = "dividi
     totalVeiculos: veiculos.length,
     // no shows que esta pessoa informou
     noShows: listaNoShow(docs).filter((n) => n.colaboradorId === id),
+  };
+};
+
+// ---------------------------------------------------------------------
+// RECEPÇÃO POR RESERVA (veículo com mais de uma reserva)
+//   recepcoes.{chave da reserva} = { nome, colaboradorId, em, por, lancado,
+//   horaManual, codigo, titular, pax }. Quando todas as reservas (menos as
+//   de no show) estão recepcionadas, a etapa principal do veículo (a 1ª,
+//   "Recepcionou") é marcada sozinha: uma marca por pessoa, com os pax das
+//   reservas que ela recebeu (paxReservas) e a hora da última reserva.
+// ---------------------------------------------------------------------
+const entradasRecepcao = (doc) => Object.entries(doc?.recepcoes || {}).filter(([, v]) => v && typeof v === "object" && v.em);
+export const recepcaoDaReserva = (doc, r, i = 0) => {
+  if (!doc?.recepcoes) return null;
+  const direto = doc.recepcoes[chaveReserva(r, i)];
+  if (direto?.em) return direto;
+  const achado = entradasRecepcao(doc).find(([, v]) => (r.codigo && v.codigo === r.codigo) || (!r.codigo && v.titular === r.titular));
+  return achado ? achado[1] : null;
+};
+const quando = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : v ? new Date(v) : null);
+
+export const marcarRecepcaoReservas = async ({ data, grupo, doc, docId, alvo = [], marcar = true, quem, por, etapaId, lancado = false, horaManual = "" }) => {
+  const proprio = idAtendimento(data, grupo.chave);
+  const herdado = docId && docId !== proprio;
+  const ref = docBase(COL_ATENDIMENTOS, herdado ? docId : proprio);
+  const em = horaManual ? Timestamp.fromDate(new Date(`${data}T${horaManual}:00`)) : Timestamp.now();
+  // como as recepções ficam depois desta mudança
+  const recep = Object.fromEntries(entradasRecepcao(doc));
+  const mudancas = {};
+  alvo.forEach(({ r, i }) => {
+    const k = chaveReserva(r, i);
+    if (marcar) {
+      if (recep[k]) return;
+      recep[k] = {
+        nome: quem?.nome || "",
+        colaboradorId: quem?.id || "",
+        em,
+        por: por || "",
+        ...(lancado ? { lancado: true, horaManual: !!horaManual } : {}),
+        ...resumoReserva(r),
+      };
+      mudancas[k] = recep[k];
+    } else if (recep[k]) {
+      delete recep[k];
+      mudancas[k] = deleteField();
+    }
+  });
+  // reservas que contam (no show não precisa ser recepcionada)
+  const ativas = (grupo.reservas || []).map((r, i) => ({ r, i })).filter(({ r, i }) => !noShowDaReserva(doc, r, i));
+  const completo = ativas.length > 0 && ativas.every(({ r, i }) => recep[chaveReserva(r, i)]);
+  const novas = {};
+  if (completo) {
+    const ultima = Object.values(recep).reduce((m, v) => (quando(v.em) > quando(m.em) ? v : m));
+    Object.values(recep).forEach((v) => {
+      const id = v.colaboradorId || v.nome || "sem_id";
+      const atual = novas[id] || { nome: v.nome, colaboradorId: v.colaboradorId, em: ultima.em, por: ultima.por || "", auto: true, paxReservas: 0 };
+      atual.paxReservas += Number(v.pax) || 0;
+      if (ultima.lancado) Object.assign(atual, { lancado: true, horaManual: !!ultima.horaManual });
+      novas[id] = atual;
+    });
+  }
+  const marcasEtapa = {};
+  Object.keys(doc?.marcas?.[etapaId] || {}).forEach((k) => {
+    if (!novas[k]) marcasEtapa[k] = deleteField();
+  });
+  Object.assign(marcasEtapa, novas);
+  const resumo = herdado
+    ? { atualizadoEm: Timestamp.now() }
+    : {
+      data,
+      chave: grupo.chave,
+      veiculo: grupo.veiculo || "",
+      motorista: grupo.motorista || "",
+      voos: grupo.voos || [],
+      hora: grupo.hora || "",
+      pax: grupo.pax || 0,
+      reservas: (grupo.reservas || []).map(resumoReserva),
+      atualizadoEm: Timestamp.now(),
+    };
+  await setDoc(ref, { ...resumo, ...(Object.keys(mudancas).length ? { recepcoes: mudancas } : {}), marcas: { [etapaId]: marcasEtapa } }, { merge: true });
+  return completo;
+};
+
+// espera de UMA reserva: da recepção dela (ou do veículo) ao embarque do veículo
+export const esperaDaReserva = (doc, r, etapas = [], i = 0) => {
+  if (etapas.length < 2 || !doc) return null;
+  const fim = marcasDaEtapa(doc, etapas[etapas.length - 1].id)[0];
+  const rec = recepcaoDaReserva(doc, r, i);
+  const ini = rec ? { ...rec, data: quando(rec.em) } : marcasDaEtapa(doc, etapas[0].id)[0];
+  if (!ini || !fim) return null;
+  const confiavel = (m) => !m?.lancado || m?.horaManual === true;
+  const min = confiavel(ini) && confiavel(fim) && ini.data && fim.data ? Math.round((fim.data - ini.data) / 60000) : null;
+  return { inicio: ini, fim, min: min !== null && min >= 0 ? min : null, porReserva: !!rec };
+};
+
+/* Espera reserva a reserva no período (relatório detalhado).
+   { reservas: [{ doc, reserva, espera }], media, mediaPax, mediana, maior, faixas, semHorario } */
+export const resumoEsperasPorReserva = (docs = [], etapas = []) => {
+  const itens = [];
+  docs.forEach((doc) =>
+    (Array.isArray(doc.reservas) ? doc.reservas : []).forEach((r, i) => {
+      if (noShowDaReserva(doc, r, i)) return;
+      const espera = esperaDaReserva(doc, r, etapas, i);
+      if (espera) itens.push({ doc, reserva: r, espera });
+    }),
+  );
+  const com = itens.filter((x) => x.espera.min !== null);
+  const mins = com.map((x) => x.espera.min).sort((a, b) => a - b);
+  const pax = com.reduce((s, x) => s + (Number(x.reserva.pax) || 0), 0);
+  return {
+    reservas: itens.sort((a, b) => (b.espera.min ?? -1) - (a.espera.min ?? -1)),
+    media: mins.length ? mins.reduce((s, m) => s + m, 0) / mins.length : null,
+    mediaPax: pax ? com.reduce((s, x) => s + x.espera.min * (Number(x.reserva.pax) || 0), 0) / pax : null,
+    mediana: mins.length ? mins[Math.floor((mins.length - 1) / 2)] : null,
+    maior: com.length ? com.reduce((a, b) => (b.espera.min > a.espera.min ? b : a)) : null,
+    faixas: FAIXAS_ESPERA.map((f, i) => ({ ...f, veiculos: mins.filter((m) => m <= f.ate && (i === 0 || m > FAIXAS_ESPERA[i - 1].ate)).length })),
+    semHorario: itens.length - com.length,
   };
 };

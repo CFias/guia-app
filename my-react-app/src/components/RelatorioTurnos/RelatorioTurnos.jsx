@@ -36,10 +36,11 @@ import "./turnos.css";
    a equipe são configuráveis ("Configurar escala" → AssistenteEscala). */
 
 const MAX_DIAS = 93;
+// a escala vem primeiro (é a que abre); a demanda fica por último
 const VISOES = [
-  { value: "demanda", label: "Demanda" },
   { value: "escala", label: "Escala da equipe" },
   { value: "atendimento", label: "Atendimento no aeroporto" },
+  { value: "demanda", label: "Demanda" },
 ];
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
 
@@ -282,7 +283,7 @@ const RelatorioTurnos = () => {
   const [config, setConfig] = useState(null);
   const [excecoes, setExcecoes] = useState({ dias: {} });
   const [excecoesLidas, setExcecoesLidas] = useState(false);
-  const [visao, setVisao] = useState("demanda");
+  const [visao, setVisao] = useState("escala");
   const [configAberta, setConfigAberta] = useState(false);
   const [atalho, setAtalho] = useState("mesPassado");
   const [periodo, setPeriodo] = useState(() => ATALHOS.find((a) => a.value === "mesPassado").calc());

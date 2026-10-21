@@ -268,6 +268,9 @@ export const normalizarAtendimento = (a = {}) => {
     contagem: a?.contagem === "total" ? "total" : "dividir",
     // marcar só dentro do próprio turno (fora dele, o painel avisa e pede confirmação)
     avisarForaDoTurno: a?.avisarForaDoTurno !== false,
+    // veículo com mais de uma reserva: a recepção é marcada reserva a reserva
+    // (quando todas chegam, o veículo fica recepcionado sozinho)
+    recepcaoPorReserva: a?.recepcaoPorReserva !== false,
   };
 };
 

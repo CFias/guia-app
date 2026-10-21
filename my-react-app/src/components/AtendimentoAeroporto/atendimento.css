@@ -634,3 +634,122 @@
   text-decoration: line-through;
   opacity: 0.7;
 }
+
+/* Recepção por reserva */
+.atd-por-reserva {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.atd-por-reserva__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-2, var(--text));
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.atd-por-reserva__topo b {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft, #fdf3dc);
+  color: var(--warning, #a96a00);
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-por-reserva__topo b.is-ok {
+  background: color-mix(in srgb, var(--success, #1f7a4d) 15%, transparent);
+  color: var(--success, #1f7a4d);
+}
+
+.atd-por-reserva ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atd-por-reserva li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.atd-por-reserva li.is-ok {
+  background: color-mix(in srgb, var(--success, #1f7a4d) 10%, transparent);
+}
+
+.atd-por-reserva li.is-ns {
+  opacity: 0.55;
+}
+
+.atd-por-reserva li>button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.atd-por-reserva li.is-ok>button {
+  border-color: var(--success, #1f7a4d);
+  background: var(--success, #1f7a4d);
+  color: #fff;
+}
+
+.atd-por-reserva li>button:disabled {
+  cursor: default;
+}
+
+.atd-por-reserva__nome {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atd-por-reserva__nome b {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atd-por-reserva__nome small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.atd-por-reserva__quem {
+  flex: none;
+  color: var(--text-2, var(--text));
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.atd-reservas__recebida {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--success, #1f7a4d);
+  font-size: 12px;
+  font-weight: 700;
+}

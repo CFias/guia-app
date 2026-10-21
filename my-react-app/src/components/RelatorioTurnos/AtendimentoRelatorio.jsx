@@ -10,6 +10,7 @@ import {
   marcasDaEtapa,
   relatorioAtendimento,
   resumoEsperas,
+  resumoEsperasPorReserva,
   textoMinutos,
   nomeNoShow,
   textoPax,
@@ -57,27 +58,55 @@ const quemComHora = (doc, etapaId) =>
 /* Tempo entre a recepção (1ª etapa) e o embarque (última etapa) */
 const TempoEspera = ({ docs, etapas }) => {
   const [todos, setTodos] = useState(false);
-  const r = useMemo(() => resumoEsperas(docs, etapas), [docs, etapas]);
+  // "veiculo": enxuto (quando todos os pax do veículo foram recepcionados)
+  // "reserva": quanto cada reserva esperou de fato
+  const [modo, setModo] = useState("veiculo");
+  const porVeiculo = useMemo(() => resumoEsperas(docs, etapas), [docs, etapas]);
+  const porRes = useMemo(() => resumoEsperasPorReserva(docs, etapas), [docs, etapas]);
+  const ehReserva = modo === "reserva";
+  const r = ehReserva ? porRes : porVeiculo;
+  const itens = ehReserva ? porRes.reservas : porVeiculo.veiculos;
   const ini = etapas[0];
   const fim = etapas[etapas.length - 1];
   const maxFaixa = Math.max(1, ...r.faixas.map((f) => f.veiculos));
-  const lista = todos ? r.veiculos : r.veiculos.slice(0, VEICULOS_ESPERA);
+  const lista = todos ? itens : itens.slice(0, VEICULOS_ESPERA);
   const variosDias = new Set(docs.map((d) => d.data)).size > 1;
+  const unidade = ehReserva ? "reserva" : "veículo";
+  const quemHora = (m) => (m ? `${m.nome || ""} ${horaDe(m.em)}${m.lancado && !m.horaManual ? "*" : ""}` : "—");
   return (
     <Card>
       <CardHeader
         icon="clock"
         title={`Tempo entre ${ini.nome.toLowerCase()} e ${fim.nome.toLowerCase()}`}
-        subtitle={`Quanto cada veículo (e as reservas dele) esperou: do primeiro "${ini.acao || ini.nome}" ao primeiro "${fim.acao || fim.nome}".`}
+        subtitle={
+          ehReserva
+            ? `Quanto cada reserva esperou de fato: da hora em que ela foi ${ini.nome.toLowerCase()} até o "${fim.acao || fim.nome}" do veículo.`
+            : `Enxuto, por veículo: da hora em que todos os pax do veículo foram ${ini.nome.toLowerCase()}s até o "${fim.acao || fim.nome}".`
+        }
+        actions={
+          <Segmented
+            size="sm"
+            ariaLabel="Tempo de espera"
+            value={modo}
+            onChange={(v) => {
+              setModo(v);
+              setTodos(false);
+            }}
+            options={[
+              { value: "veiculo", label: "Por veículo", count: porVeiculo.veiculos.length },
+              { value: "reserva", label: "Por reserva", count: porRes.reservas.length },
+            ]}
+          />
+        }
       />
-      {r.veiculos.length === 0 ? (
-        <p className="rtn-atd__vazio">Nenhum veículo com as duas etapas marcadas neste período.</p>
+      {itens.length === 0 ? (
+        <p className="rtn-atd__vazio">Nenhum {unidade} com as duas etapas marcadas neste período.</p>
       ) : (
         <div className="rtn-esp">
           <div className="rtn-esp__kpis">
             <div>
               <b className="tabular">{textoMinutos(r.media)}</b>
-              <span>espera média por veículo</span>
+              <span>espera média por {unidade}</span>
             </div>
             <div>
               <b className="tabular">{textoMinutos(r.mediaPax)}</b>
@@ -85,12 +114,13 @@ const TempoEspera = ({ docs, etapas }) => {
             </div>
             <div>
               <b className="tabular">{textoMinutos(r.mediana)}</b>
-              <span>metade dos veículos esperou até</span>
+              <span>metade {ehReserva ? "das reservas" : "dos veículos"} esperou até</span>
             </div>
             <div>
               <b className="tabular">{textoMinutos(r.maior?.espera.min)}</b>
               <span>
-                maior espera{r.maior ? ` · ${(r.maior.doc.voos || []).join(", ") || r.maior.doc.veiculo || ""}` : ""}
+                maior espera
+                {r.maior ? ` · ${ehReserva ? r.maior.reserva.titular || r.maior.reserva.codigo : (r.maior.doc.voos || []).join(", ") || r.maior.doc.veiculo || ""}` : ""}
               </span>
             </div>
           </div>
@@ -111,7 +141,7 @@ const TempoEspera = ({ docs, etapas }) => {
             <table className="rtn-esp__tab">
               <thead>
                 <tr>
-                  <th>Voo / veículo</th>
+                  <th>{ehReserva ? "Reserva" : "Voo / veículo"}</th>
                   <th>Pax</th>
                   <th>{ini.nome}</th>
                   <th>{fim.nome}</th>
@@ -119,20 +149,33 @@ const TempoEspera = ({ docs, etapas }) => {
                 </tr>
               </thead>
               <tbody>
-                {lista.map(({ doc, espera }) => (
-                  <tr key={doc.id}>
+                {lista.map((x, k) => (
+                  <tr key={`${x.doc.id}-${k}`}>
                     <td>
-                      <b>
-                        {variosDias ? `${dataBr(doc.data).slice(0, 5)} ` : ""}
-                        {doc.hora || "--:--"} · {(doc.voos || []).join(", ") || "Sem voo"}
-                      </b>
-                      <small> · {doc.veiculo || "sem veículo"}</small>
+                      {ehReserva ? (
+                        <>
+                          <b>{x.reserva.titular || "Sem nome"}</b>
+                          <small>
+                            {" "}
+                            · {x.reserva.codigo || "sem código"} · {variosDias ? `${dataBr(x.doc.data).slice(0, 5)} ` : ""}
+                            {x.doc.hora || "--:--"} {(x.doc.voos || []).join(", ")}
+                          </small>
+                        </>
+                      ) : (
+                        <>
+                          <b>
+                            {variosDias ? `${dataBr(x.doc.data).slice(0, 5)} ` : ""}
+                            {x.doc.hora || "--:--"} · {(x.doc.voos || []).join(", ") || "Sem voo"}
+                          </b>
+                          <small> · {x.doc.veiculo || "sem veículo"}</small>
+                        </>
+                      )}
                     </td>
-                    <td className="tabular">{doc.pax}</td>
-                    <td>{quemComHora(doc, ini.id)}</td>
-                    <td>{quemComHora(doc, fim.id)}</td>
-                    <td className={`tabular ${espera.min > 60 ? "is-alerta" : espera.min > 30 ? "is-aviso" : ""}`}>
-                      <b>{espera.min === null ? "sem horário" : textoMinutos(espera.min)}</b>
+                    <td className="tabular">{ehReserva ? x.reserva.pax : x.doc.pax}</td>
+                    <td>{ehReserva ? quemHora(x.espera.inicio) : quemComHora(x.doc, ini.id)}</td>
+                    <td>{ehReserva ? quemHora(x.espera.fim) : quemComHora(x.doc, fim.id)}</td>
+                    <td className={`tabular ${x.espera.min > 60 ? "is-alerta" : x.espera.min > 30 ? "is-aviso" : ""}`}>
+                      <b>{x.espera.min === null ? "sem horário" : textoMinutos(x.espera.min)}</b>
                     </td>
                   </tr>
                 ))}
@@ -142,12 +185,12 @@ const TempoEspera = ({ docs, etapas }) => {
           <div className="rtn-esp__rodape">
             {r.semHorario > 0 && (
               <small>
-                * {r.semHorario} veículo(s) lançados pelo Operacional sem o horário da cartinha não entram no tempo de espera.
+                * {r.semHorario} {unidade}(s) lançado(s) pelo Operacional sem o horário da cartinha não entram no tempo de espera.
               </small>
             )}
-            {r.veiculos.length > VEICULOS_ESPERA && (
-              <Button size="sm" variant="ghost" onClick={() => setTodos((x) => !x)}>
-                {todos ? "Mostrar menos" : `Ver todos (${r.veiculos.length})`}
+            {itens.length > VEICULOS_ESPERA && (
+              <Button size="sm" variant="ghost" onClick={() => setTodos((v) => !v)}>
+                {todos ? "Mostrar menos" : `Ver todos (${itens.length})`}
               </Button>
             )}
           </div>
@@ -358,7 +401,12 @@ const BuscaReserva = ({ docs, chegadas, etapas, inicio, fim, equipe = [], onAbri
                   </div>
                   <dl className="rtn-busca__etapas">
                     {etapas.map((e) => {
-                      const q = a.doc ? quemComHora(a.doc, e.id) : "";
+                      const q =
+                        e.id === etapas[0]?.id && a.recepcao
+                          ? `${a.recepcao.nome} ${horaDe(a.recepcao.em)} (na reserva)`
+                          : a.doc
+                            ? quemComHora(a.doc, e.id)
+                            : "";
                       return (
                         <div key={e.id} className={`${e.id === ultima?.id ? "is-final" : ""} ${a.etapasDoColaborador.includes(e.id) ? "is-achado" : ""}`}>
                           <dt>{e.nome}</dt>

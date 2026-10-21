@@ -27,6 +27,8 @@ import {
   horaDe,
   marcarEtapa,
   marcarNoShow,
+  marcarRecepcaoReservas,
+  recepcaoDaReserva,
   noShowDaReserva,
   TIPOS_NO_SHOW,
   marcasDaEtapa,
@@ -158,6 +160,52 @@ const AtendimentoAeroporto = () => {
     return pessoas.get(quem.id) || null;
   }, [lista, etapas, regra, quem]);
 
+  // ---------- recepção por reserva (veículo com mais de uma) ----------
+  const etapaRecepcao = etapas[0];
+  const porReserva = (g) => config?.atendimento?.recepcaoPorReserva !== false && !!etapaRecepcao && g.reservas.length > 1;
+  const docDe = (g) => vinculos.get(g.chave)?.doc || null;
+  const estadoReservas = (g) => {
+    const doc = docDe(g);
+    const itens = g.reservas.map((r, i) => ({ r, i, ns: doc ? noShowDaReserva(doc, r, i) : null, rec: doc ? recepcaoDaReserva(doc, r, i) : null }));
+    const ativas = itens.filter((x) => !x.ns);
+    return { itens, ativas, feitas: ativas.filter((x) => x.rec).length };
+  };
+  const gravarRecepcao = async (g, alvo, marcar, docOverride) => {
+    const v = vinculos.get(g.chave);
+    return marcarRecepcaoReservas({
+      data,
+      grupo: g,
+      doc: docOverride || v?.doc || null,
+      docId: v?.id,
+      alvo,
+      marcar,
+      quem,
+      por: user?.uid,
+      etapaId: etapaRecepcao.id,
+      lancado: ehOperacional,
+      horaManual: ehOperacional ? horaManual : "",
+    });
+  };
+  const alternarReserva = async (g, r, i) => {
+    if (!quem) return;
+    const doc = docDe(g);
+    const rec = doc ? recepcaoDaReserva(doc, r, i) : null;
+    if (rec && rec.colaboradorId !== quem.id && !window.confirm(`${r.titular || r.codigo} foi recepcionada por ${rec.nome}. Desmarcar?`)) return;
+    if (!rec && config?.atendimento?.avisarForaDoTurno && janela && !dentro(g.min, janela.inicio, janela.fim)) {
+      if (!window.confirm(`Este veículo (${g.hora}) está fora do seu turno (${janela.inicio}–${janela.fim}). Marcar mesmo assim?`)) return;
+    }
+    setSalvando(`${g.chave}|rr|${i}`);
+    try {
+      const completou = await gravarRecepcao(g, [{ r, i }], !rec);
+      if (!rec) registrarAcao("atendimento_recepcao_reserva", "Recepção de reserva (aeroporto)", `${r.codigo || r.titular} · ${r.pax} pax${completou ? " · veículo completo" : ""}`);
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível salvar. Confira a conexão.");
+    } finally {
+      setSalvando("");
+    }
+  };
+
   // no show de uma reserva (tipo = null desfaz)
   const informarNoShow = async (g, r, i, tipo) => {
     if (!quem) return;
@@ -168,6 +216,14 @@ const AtendimentoAeroporto = () => {
     setSalvando(`${g.chave}|ns|${i}`);
     try {
       await marcarNoShow({ data, grupo: g, reserva: r, indice: i, tipo, quem, por: user?.uid, docId: v?.id });
+      // a reserva de no show não precisa ser recepcionada: confere se o veículo completou
+      if (porReserva(g) && v?.doc?.recepcoes) {
+        const chave = Object.keys(v.doc.noShow || {}).find((k) => v.doc.noShow[k]?.codigo === r.codigo) || null;
+        const noShow = { ...(v.doc.noShow || {}) };
+        if (tipo) noShow[chave || `_${i}`] = { tipo, codigo: r.codigo, titular: r.titular, pax: r.pax };
+        else if (chave) delete noShow[chave];
+        await gravarRecepcao(g, [], true, { ...v.doc, noShow });
+      }
       if (tipo) registrarAcao("atendimento_no_show", "No show (aeroporto)", `${r.codigo || r.titular} · ${tipo === "com_custo" ? "com custo" : "sem custo"}`);
     } catch (e) {
       console.error(e);
@@ -179,6 +235,23 @@ const AtendimentoAeroporto = () => {
 
   const alternar = async (g, etapa) => {
     if (!quem) return;
+    if (etapa.id === etapaRecepcao?.id && porReserva(g)) {
+      // botão principal: recebe todas as que faltam de uma vez (ou desfaz todas)
+      const { ativas, feitas } = estadoReservas(g);
+      const tudo = feitas === ativas.length && ativas.length > 0;
+      if (tudo && !window.confirm("Desmarcar a recepção de todas as reservas deste veículo?")) return;
+      setSalvando(`${g.chave}|${etapa.id}`);
+      try {
+        await gravarRecepcao(g, tudo ? ativas : ativas.filter((x) => !x.rec), !tudo);
+        if (!tudo) registrarAcao(`atendimento_${etapa.id}`, `${etapa.nome} (aeroporto)`, `${g.voos.join(", ")} · ${g.pax} pax`);
+      } catch (e) {
+        console.error(e);
+        alert("Não foi possível salvar. Confira a conexão.");
+      } finally {
+        setSalvando("");
+      }
+      return;
+    }
     const marcado = !!marcasDe(g)[etapa.id]?.[quem.id];
     if (!marcado && config?.atendimento?.avisarForaDoTurno && janela && !dentro(g.min, janela.inicio, janela.fim)) {
       if (!window.confirm(`Este veículo (${g.hora}) está fora do seu turno (${janela.inicio}–${janela.fim}). Marcar mesmo assim?`)) return;
@@ -418,6 +491,13 @@ const AtendimentoAeroporto = () => {
                           {(() => {
                             const ns = vinculos.get(g.chave)?.doc ? noShowDaReserva(vinculos.get(g.chave).doc, r, i) : null;
                             const ocupado = salvando === `${g.chave}|ns|${i}`;
+                            const recebida = vinculos.get(g.chave)?.doc ? recepcaoDaReserva(vinculos.get(g.chave).doc, r, i) : null;
+                            if (!ns && recebida)
+                              return (
+                                <small className="atd-reservas__recebida">
+                                  <Icon name="circleCheck" size={12} /> {etapaRecepcao?.nome || "Recepcionada"} · {recebida.nome} {horaDe(recebida.em)}
+                                </small>
+                              );
                             return ns ? (
                               <div className={`atd-noshow is-${ns.tipo}`}>
                                 <Icon name="alert" size={13} />
@@ -446,6 +526,41 @@ const AtendimentoAeroporto = () => {
                       ))}
                     </ul>
                   )}
+                  {porReserva(g) &&
+                    (() => {
+                      const { itens, ativas, feitas } = estadoReservas(g);
+                      return (
+                        <div className="atd-por-reserva">
+                          <div className="atd-por-reserva__topo">
+                            <span>{etapaRecepcao.nome} por reserva</span>
+                            <b className={feitas === ativas.length ? "is-ok" : ""}>
+                              {feitas} de {ativas.length}
+                            </b>
+                          </div>
+                          <ul>
+                            {itens.map(({ r, i, ns, rec }) => {
+                              const ocupado = salvando === `${g.chave}|rr|${i}`;
+                              return (
+                                <li key={`${r.codigo}-${i}`} className={rec ? "is-ok" : ns ? "is-ns" : ""}>
+                                  <button type="button" onClick={() => alternarReserva(g, r, i)} disabled={!quem || ocupado || !!ns} aria-pressed={!!rec} title={rec ? "Desmarcar" : `Marcar ${r.titular || r.codigo} como ${etapaRecepcao.nome.toLowerCase()}`}>
+                                    <Icon name={ocupado ? "loader" : rec ? "circleCheck" : "circle"} size={18} className={ocupado ? "ui-spin" : undefined} />
+                                  </button>
+                                  <span className="atd-por-reserva__nome">
+                                    <b>{r.titular || r.codigo || "Sem nome"}</b>
+                                    <small>
+                                      {r.pax} pax{r.codigo ? ` · ${r.codigo}` : ""}
+                                    </small>
+                                  </span>
+                                  <small className="atd-por-reserva__quem">
+                                    {ns ? "no show" : rec ? `${rec.nome} ${horaDe(rec.em)}` : "aguardando"}
+                                  </small>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })()}
                   <div className="atd-etapas">
                     {etapas.map((e) => {
                       const quemMarcou = marcasDaEtapa({ marcas: m }, e.id);
@@ -461,7 +576,12 @@ const AtendimentoAeroporto = () => {
                             aria-pressed={meu}
                           >
                             <Icon name={ocupado ? "loader" : meu ? "circleCheck" : "circle"} size={16} className={ocupado ? "ui-spin" : undefined} />
-                            {e.acao || e.nome}
+                            {e.id === etapaRecepcao?.id && porReserva(g)
+                              ? (() => {
+                                const { ativas, feitas } = estadoReservas(g);
+                                return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
+                              })()
+                              : e.acao || e.nome}
                           </button>
                           <small className="atd-etapa__quem">
                             {quemMarcou.length ? quemMarcou.map((x) => `${x.nome} ${horaDe(x.em)}`).join(", ") : "ninguém ainda"}
