@@ -26,6 +26,9 @@ import {
   esperaDoDoc,
   horaDe,
   marcarEtapa,
+  marcarNoShow,
+  noShowDaReserva,
+  TIPOS_NO_SHOW,
   marcasDaEtapa,
   textoMinutos,
   textoPax,
@@ -121,7 +124,7 @@ const AtendimentoAeroporto = () => {
   // quem está marcando
   const eu = ehOperacional
     ? equipe.find((c) => c.id === emNomeDe) || null
-    : // a conta é ligada à pessoa em Turnos e equipe (contaUid); contas antigas, pelo colaboradorId
+    : // a conta é ligada à pessoa em Configurar escala (contaUid); contas antigas, pelo colaboradorId
     equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
     equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
     (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
@@ -154,6 +157,25 @@ const AtendimentoAeroporto = () => {
     const { pessoas } = contarAtendimentos(lista, etapas, regra);
     return pessoas.get(quem.id) || null;
   }, [lista, etapas, regra, quem]);
+
+  // no show de uma reserva (tipo = null desfaz)
+  const informarNoShow = async (g, r, i, tipo) => {
+    if (!quem) return;
+    const v = vinculos.get(g.chave);
+    const atual = v?.doc ? noShowDaReserva(v.doc, r, i) : null;
+    if (tipo && atual?.tipo === tipo) return;
+    if (!tipo && !window.confirm(`Desfazer o no show de ${r.titular || r.codigo}?`)) return;
+    setSalvando(`${g.chave}|ns|${i}`);
+    try {
+      await marcarNoShow({ data, grupo: g, reserva: r, indice: i, tipo, quem, por: user?.uid, docId: v?.id });
+      if (tipo) registrarAcao("atendimento_no_show", "No show (aeroporto)", `${r.codigo || r.titular} · ${tipo === "com_custo" ? "com custo" : "sem custo"}`);
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível salvar o no show. Confira a conexão.");
+    } finally {
+      setSalvando("");
+    }
+  };
 
   const alternar = async (g, etapa) => {
     if (!quem) return;
@@ -194,7 +216,7 @@ const AtendimentoAeroporto = () => {
           </span>
           <div className="atd-topo__titulo">
             <strong>Atendimento no aeroporto</strong>
-            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : eu.turnoId ? " · folga neste dia" : " · ainda sem turno (Turnos e equipe)"}` : "Escolha em nome de quem marcar"}</small>
+            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : eu.turnoId ? " · folga neste dia" : " · ainda sem turno na escala"}` : "Escolha em nome de quem marcar"}</small>
           </div>
           <span className="atd-topo__acoes">
             <AvaliacaoSistema variante="botao" className="atd-btn-leve atd-avaliar" />
@@ -368,6 +390,11 @@ const AtendimentoAeroporto = () => {
                       {g.reservas.length > 3 ? ` · +${g.reservas.length - 3}` : ""}
                     </span>
                     <span className="atd-carro__reservas-acao">
+                      {(() => {
+                        const doc = vinculos.get(g.chave)?.doc;
+                        const n = doc ? g.reservas.filter((r, i) => noShowDaReserva(doc, r, i)).length : 0;
+                        return n ? <em className="atd-noshow-tag">{n} no show</em> : null;
+                      })()}
                       {g.reservas.length} reserva{g.reservas.length === 1 ? "" : "s"}
                       <Icon name="chevronDown" size={14} />
                     </span>
@@ -388,6 +415,33 @@ const AtendimentoAeroporto = () => {
                             {g.voos.length > 1 && r.voo && <span>Voo {r.voo}</span>}
                           </div>
                           <small className="atd-reservas__det">{textoPax(r)}</small>
+                          {(() => {
+                            const ns = vinculos.get(g.chave)?.doc ? noShowDaReserva(vinculos.get(g.chave).doc, r, i) : null;
+                            const ocupado = salvando === `${g.chave}|ns|${i}`;
+                            return ns ? (
+                              <div className={`atd-noshow is-${ns.tipo}`}>
+                                <Icon name="alert" size={13} />
+                                <span>
+                                  <b>{ns.tipo === "com_custo" ? "No show com custo" : "No show sem custo"}</b>
+                                  <small>
+                                    {ns.porNome || "—"}
+                                    {ns.em?.toDate ? ` · ${ns.em.toDate().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                                  </small>
+                                </span>
+                                <button type="button" onClick={() => informarNoShow(g, r, i, null)} disabled={!quem || ocupado}>
+                                  Desfazer
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="atd-noshow-btns">
+                                {TIPOS_NO_SHOW.map((t) => (
+                                  <button key={t.id} type="button" onClick={() => informarNoShow(g, r, i, t.id)} disabled={!quem || ocupado}>
+                                    {ocupado ? <Icon name="loader" size={12} className="ui-spin" /> : null} No show · {t.curto.toLowerCase()}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </li>
                       ))}
                     </ul>

@@ -24,7 +24,7 @@ import {
   textoEscala,
 } from "../../Services/Services/relatorioTurnos";
 import { baixarExcelTurnos, imprimirRelatorioTurnos, textoPico } from "./impressaoTurnos";
-import ConfigTurnosDrawer from "./ConfigTurnosDrawer";
+import AssistenteEscala from "./AssistenteEscala";
 import EscalaEquipe from "./EscalaEquipe";
 import AtendimentoRelatorio from "./AtendimentoRelatorio";
 import { CalendarioCalor, SemanaHoraCalor } from "./MapaCalor";
@@ -33,7 +33,7 @@ import "./turnos.css";
 /* Relatório "Demanda por turno" (pedido da gerência): quantas pessoas cada
    turno da equipe atende — chegadas, saídas, transfers e passeios do
    Phoenix — num período, com mapa de calor e detalhe por dia. Os turnos e
-   a equipe são configuráveis ("Turnos e equipe"). */
+   a equipe são configuráveis ("Configurar escala" → AssistenteEscala). */
 
 const MAX_DIAS = 93;
 const VISOES = [
@@ -383,7 +383,7 @@ const RelatorioTurnos = () => {
     const salva = await salvarConfigTurnos(nova);
     setConfig(salva);
     setConfigAberta(false);
-    mostrarToast("Turnos e equipe salvos");
+    mostrarToast("Escala salva");
   };
 
   const salvarEscala = async (novas) => {
@@ -408,7 +408,7 @@ const RelatorioTurnos = () => {
         actions={
           <>
             <Button icon="users" onClick={() => setConfigAberta(true)} disabled={!config}>
-              Turnos e equipe
+              Configurar escala
             </Button>
             {visao === "demanda" && (
               <Button variant="primary" icon="printer" onClick={() => imprimirRelatorioTurnos(dadosImpressao)} disabled={!relatorio || desatualizado}>
@@ -443,6 +443,7 @@ const RelatorioTurnos = () => {
             excecoes={excecoes}
             onSalvar={salvarEscala}
             onRemoverDaEquipe={removerDaEquipe}
+            onConfigurar={() => setConfigAberta(true)}
           />
         ) : (
           <p className="rtn-atd__carregando">
@@ -518,7 +519,7 @@ const RelatorioTurnos = () => {
           {!relatorio && !carregando && (
             <EmptyState icon="clock" title="Escolha o período e os serviços e clique em Gerar relatório">
               O sistema busca no Phoenix os serviços de cada dia e calcula quantas pessoas cada turno da equipe atende, com o mapa de calor do período. Os turnos
-              e a equipe ficam em “Turnos e equipe”.
+              e a equipe ficam em “Configurar escala”.
             </EmptyState>
           )}
 
@@ -714,7 +715,7 @@ const RelatorioTurnos = () => {
         </>
       )}
 
-      {configAberta && config && <ConfigTurnosDrawer open config={config} onClose={() => setConfigAberta(false)} onSalvar={salvarConfig} />}
+      {configAberta && config && <AssistenteEscala config={config} onClose={() => setConfigAberta(false)} onSalvar={salvarConfig} />}
       <DetalheDia detalhe={detalhe} onClose={() => setDiaSel(null)} grupo={grupo} />
     </div>
   );

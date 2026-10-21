@@ -188,6 +188,97 @@ export const marcarEtapa = async ({ data, grupo, etapa, quem, por, marcar, docId
   );
 };
 
+// ---------------------------------------------------------------------
+// NO SHOW (por reserva): "sem custo" ou "com custo" (cobrado do cliente /
+// operadora). Fica no documento do veículo, em noShow.{chave da reserva}.
+// Os pax do no show saem da contagem de quem recepcionou/embarcou.
+// ---------------------------------------------------------------------
+export const TIPOS_NO_SHOW = [
+  { id: "sem_custo", nome: "No show sem custo", curto: "Sem custo" },
+  { id: "com_custo", nome: "No show com custo", curto: "Com custo" },
+];
+export const nomeNoShow = (tipo) => TIPOS_NO_SHOW.find((t) => t.id === tipo)?.nome || "No show";
+export const chaveReserva = (r = {}, i = 0) => chaveSegura(r.codigo || `${r.titular || "reserva"}_${i}`);
+const entradasNoShow = (doc) => Object.entries(doc?.noShow || {}).filter(([, v]) => v && typeof v === "object" && v.tipo);
+export const paxNoShow = (doc) => entradasNoShow(doc).reduce((s, [, v]) => s + (Number(v.pax) || 0), 0);
+export const paxEfetivo = (doc) => Math.max(0, (Number(doc?.pax) || 0) - paxNoShow(doc));
+// no show de uma reserva (pelo código; sem código, pelo nome)
+export const noShowDaReserva = (doc, r, i = 0) => {
+  if (!doc?.noShow) return null;
+  const direto = doc.noShow[chaveReserva(r, i)];
+  if (direto?.tipo) return direto;
+  const achado = entradasNoShow(doc).find(([, v]) => (r.codigo && v.codigo === r.codigo) || (!r.codigo && v.titular === r.titular));
+  return achado ? achado[1] : null;
+};
+
+/* Marca (tipo) ou desmarca (tipo = null) o no show de uma reserva do veículo.
+   quem = { id, nome } de quem informou; docId: documento herdado (marcado antes da escala). */
+export const marcarNoShow = async ({ data, grupo, reserva, indice = 0, tipo, quem, por, docId }) => {
+  const proprio = idAtendimento(data, grupo.chave);
+  const herdado = docId && docId !== proprio;
+  const ref = docBase(COL_ATENDIMENTOS, herdado ? docId : proprio);
+  const resumo = herdado
+    ? { atualizadoEm: Timestamp.now() }
+    : {
+      data,
+      chave: grupo.chave,
+      veiculo: grupo.veiculo || "",
+      motorista: grupo.motorista || "",
+      voos: grupo.voos || [],
+      hora: grupo.hora || "",
+      pax: grupo.pax || 0,
+      reservas: (grupo.reservas || []).map(resumoReserva),
+      atualizadoEm: Timestamp.now(),
+    };
+  await setDoc(
+    ref,
+    {
+      ...resumo,
+      noShow: {
+        [chaveReserva(reserva, indice)]: tipo
+          ? {
+            tipo,
+            ...resumoReserva(reserva),
+            porNome: quem?.nome || "",
+            colaboradorId: quem?.id || "",
+            por: por || "",
+            em: Timestamp.now(),
+          }
+          : deleteField(),
+      },
+    },
+    { merge: true },
+  );
+};
+
+// todos os no shows dos documentos, para relatórios
+export const listaNoShow = (docs = []) =>
+  docs
+    .flatMap((d) =>
+      entradasNoShow(d).map(([chave, v]) => ({
+        ...v,
+        chave,
+        data: d.data,
+        hora: d.hora || "",
+        voos: d.voos || [],
+        veiculo: d.veiculo || "",
+        docId: d.id,
+      })),
+    )
+    .sort((a, b) => a.data.localeCompare(b.data) || String(a.hora).localeCompare(String(b.hora)));
+
+export const resumoNoShow = (docs = []) => {
+  const l = listaNoShow(docs);
+  const por = (tipo) => l.filter((n) => n.tipo === tipo);
+  return {
+    lista: l,
+    reservas: l.length,
+    pax: l.reduce((s, n) => s + (Number(n.pax) || 0), 0),
+    semCusto: { reservas: por("sem_custo").length, pax: por("sem_custo").reduce((s, n) => s + (Number(n.pax) || 0), 0) },
+    comCusto: { reservas: por("com_custo").length, pax: por("com_custo").reduce((s, n) => s + (Number(n.pax) || 0), 0) },
+  };
+};
+
 // atendimentos de um dia ou período (por data)
 export const listarAtendimentos = async (inicio, fim = inicio) => {
   const snap = await getDocs(query(colBase(COL_ATENDIMENTOS), where("data", ">=", inicio), where("data", "<=", fim)));
@@ -206,9 +297,9 @@ export const contarAtendimentos = (docs = [], etapas = [], regra = "dividir") =>
     etapas.forEach((e) => {
       const marcas = Object.entries(d.marcas?.[e.id] || {}).filter(([, v]) => v && typeof v === "object");
       if (!marcas.length) return;
-      porEtapa[e.id].pax += Number(d.pax) || 0;
+      porEtapa[e.id].pax += paxEfetivo(d);
       porEtapa[e.id].veiculos += 1;
-      const parte = regra === "total" ? Number(d.pax) || 0 : (Number(d.pax) || 0) / marcas.length;
+      const parte = regra === "total" ? paxEfetivo(d) : paxEfetivo(d) / marcas.length;
       marcas.forEach(([id, m]) => {
         const chave = m.colaboradorId || id;
         const p = pessoas.get(chave) || { id: chave, nome: m.nome || "Sem nome", colaboradorId: m.colaboradorId || "", etapas: {} };
@@ -259,8 +350,11 @@ export const relatorioAtendimento = ({ docs = [], etapas = [], regra = "dividir"
       grupos.forEach((g) => {
         phoenix.pax += g.pax;
         phoenix.veiculos += 1;
-        const marcas = mapa.get(g.chave)?.doc?.marcas || {};
-        const faltando = etapas.filter((x) => !Object.keys(marcas[x.id] || {}).length);
+        const doc = mapa.get(g.chave)?.doc;
+        const marcas = doc?.marcas || {};
+        // veículo em que todas as reservas foram no show: nada a marcar
+        const todosNoShow = doc && g.reservas.length > 0 && g.reservas.every((r, i) => noShowDaReserva(doc, r, i));
+        const faltando = todosNoShow ? [] : etapas.filter((x) => !Object.keys(marcas[x.id] || {}).length);
         etapas.forEach((x) => {
           if (!faltando.includes(x)) phoenix.porEtapa[x.id] += g.pax;
         });
@@ -269,7 +363,7 @@ export const relatorioAtendimento = ({ docs = [], etapas = [], regra = "dividir"
     });
     pendentes = pendentes.sort((a, b) => a.data.localeCompare(b.data) || a.min - b.min);
   }
-  return { linhas, porEtapa, phoenix, pendentes, regra };
+  return { linhas, porEtapa, phoenix, pendentes, regra, noShow: resumoNoShow(docs) };
 };
 
 // ---------------------------------------------------------------------
@@ -378,6 +472,7 @@ export const buscarReserva = ({ termo, docs = [], chegadas = null, etapas = [] }
       paxVeiculo: g.pax || doc?.pax || 0,
       reserva: r,
       doc: doc || null,
+      noShow: doc ? noShowDaReserva(doc, r) : null,
       espera: doc ? esperaDoDoc(doc, etapas) : null,
       // etapas em que o colaborador buscado aparece (quando a busca foi por ele)
       etapasDoColaborador: doc && !bateReserva(r) ? doColaborador(doc) : [],
@@ -413,10 +508,10 @@ export const relatorioDoColaborador = ({ docs = [], etapas = [], regra = "dividi
     etapas.forEach((e) => {
       const marcas = Object.entries(d.marcas?.[e.id] || {}).filter(([, v]) => v && typeof v === "object");
       if (!marcas.length) return;
-      totalEtapa[e.id] += Number(d.pax) || 0;
+      totalEtapa[e.id] += paxEfetivo(d);
       const minha = marcas.find(([k, v]) => (v.colaboradorId || k) === id);
       if (!minha) return;
-      const pax = regra === "total" ? Number(d.pax) || 0 : (Number(d.pax) || 0) / marcas.length;
+      const pax = regra === "total" ? paxEfetivo(d) : paxEfetivo(d) / marcas.length;
       porEtapa[e.id].pax += pax;
       porEtapa[e.id].veiculos += 1;
       const dia = dias.get(d.data) || { data: d.data, etapas: Object.fromEntries(etapas.map((x) => [x.id, { pax: 0, veiculos: 0 }])) };
@@ -434,5 +529,7 @@ export const relatorioDoColaborador = ({ docs = [], etapas = [], regra = "dividi
     veiculos: veiculos.sort((a, b) => a.doc.data.localeCompare(b.doc.data) || String(a.doc.hora).localeCompare(String(b.doc.hora))),
     esperaMedia: comEspera.length ? comEspera.reduce((s, v) => s + v.espera.min, 0) / comEspera.length : null,
     totalVeiculos: veiculos.length,
+    // no shows que esta pessoa informou
+    noShows: listaNoShow(docs).filter((n) => n.colaboradorId === id),
   };
 };

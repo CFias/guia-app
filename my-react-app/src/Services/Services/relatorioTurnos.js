@@ -140,7 +140,15 @@ export const normalizarConfig = (bruto) => {
       .map((f) => ({ id: String(f.id || novoId()), nome: String(f.nome).trim(), obs: String(f.obs || "").trim() })),
     atendimento: normalizarAtendimento(base.atendimento),
     funcoes: normalizarFuncoes(base.funcoes),
+    escalaBase: normalizarEscalaBase(base.escalaBase || modeloBaseInferido(base)),
   };
+};
+
+// configurações antigas (sem modelo da base): deduz pelo que a equipe usa
+const modeloBaseInferido = (base) => {
+  const modelos = (base?.turnos || []).flatMap((t) => (t.colaboradores || []).map((c) => c?.escala?.modelo).filter(Boolean));
+  const ciclo = modelos.find((m) => m && m !== "semanal");
+  return { modelo: ciclo && MODELOS_BASE.some((x) => x.id === ciclo) ? ciclo : "6x1" };
 };
 
 // Funções do setor (criadas pela equipe em Turnos e equipe)
@@ -186,7 +194,53 @@ export const normalizarEscala = (e = {}) => {
     trabalha: modelo === "ciclo" ? inteiroEntre(e?.trabalha, 1, 14, 1) : preset.trabalha,
     folga: modelo === "ciclo" ? inteiroEntre(e?.folga, 1, 14, 1) : preset.folga,
     referencia: ISO_RE.test(String(e?.referencia || "")) ? e.referencia : "",
+    // grupo do revezamento (0 = A, 1 = B…) e se a pessoa tem modelo próprio
+    // (diferente do modelo da base) — usados pelo assistente de escala
+    grupo: inteiroEntre(e?.grupo, 0, 13, 0),
+    propria: e?.propria === true,
   };
+};
+
+// ---------------------------------------------------------------------
+// MODELO DA BASE (assistente "Configurar escala")
+//   O modelo escolhido vale para toda a equipe; quem for diferente ganha
+//   modelo próprio. Nos modelos de revezamento, cada pessoa fica numa equipe
+//   (A, B, C…) e a equipe A começa no dia de início.
+// ---------------------------------------------------------------------
+export const MODELOS_BASE = [
+  { id: "6x1", nome: "6x1", titulo: "6 dias de trabalho, 1 folga", desc: "Cada pessoa tem um dia de folga fixa na semana.", tipo: "semanal", folgas: 1 },
+  { id: "5x2", nome: "5x2", titulo: "5 dias de trabalho, 2 folgas", desc: "Duas folgas fixas por semana (ex.: sábado e domingo).", tipo: "semanal", folgas: 2 },
+  { id: "12x36", nome: "12x36", titulo: "Plantão dia sim, dia não", desc: "Trabalha um dia, folga no outro. Duas equipes se revezam (A e B).", tipo: "ciclo", trabalha: 1, folga: 1 },
+  { id: "24x48", nome: "24x48", titulo: "Plantão de 24h, folga de 48h", desc: "Trabalha um dia, folga dois. Três equipes se revezam (A, B e C).", tipo: "ciclo", trabalha: 1, folga: 2 },
+  { id: "2x2", nome: "2x2", titulo: "2 dias de trabalho, 2 de folga", desc: "Duas equipes se revezam a cada dois dias.", tipo: "ciclo", trabalha: 2, folga: 2 },
+  { id: "ciclo", nome: "Personalizado", titulo: "Ciclo do seu jeito", desc: "Você define quantos dias trabalha e quantos folga (ex.: 4x2, 5x1).", tipo: "ciclo", trabalha: 4, folga: 2 },
+];
+export const LETRAS_GRUPO = "ABCDEFGHIJKLMN";
+export const normalizarEscalaBase = (b = {}) => {
+  const m = MODELOS_BASE.find((x) => x.id === b?.modelo) || MODELOS_BASE[0];
+  return {
+    modelo: m.id,
+    trabalha: m.id === "ciclo" ? inteiroEntre(b?.trabalha, 1, 14, m.trabalha) : m.trabalha || 0,
+    folga: m.id === "ciclo" ? inteiroEntre(b?.folga, 1, 14, m.folga) : m.folga || 0,
+    inicio: ISO_RE.test(String(b?.inicio || "")) ? b.inicio : "",
+  };
+};
+// quantas equipes (A, B…) o revezamento precisa para ter gente todo dia
+export const gruposDoCiclo = (base) => {
+  const m = MODELOS_BASE.find((x) => x.id === base?.modelo);
+  if (!m || m.tipo !== "ciclo") return 0;
+  return Math.max(1, Math.ceil((base.trabalha + base.folga) / base.trabalha));
+};
+/* Escala de uma pessoa pelo modelo da base (quando ela não tem modelo próprio).
+   Semanal: os dias de trabalho ficam em c.dias (a folga fixa). Revezamento:
+   a equipe (grupo) define o dia em que começa. */
+export const escalaPelaBase = (base, grupo = 0) => {
+  const b = normalizarEscalaBase(base);
+  const m = MODELOS_BASE.find((x) => x.id === b.modelo);
+  if (m.tipo === "semanal") return normalizarEscala({ modelo: "semanal", grupo: 0 });
+  const id = ["12x36", "24x48", "2x2"].includes(b.modelo) ? b.modelo : "ciclo";
+  const referencia = b.inicio ? somarDias(b.inicio, grupo * b.trabalha) : "";
+  return normalizarEscala({ modelo: id, trabalha: b.trabalha, folga: b.folga, referencia, grupo });
 };
 
 // ---------------------------------------------------------------------

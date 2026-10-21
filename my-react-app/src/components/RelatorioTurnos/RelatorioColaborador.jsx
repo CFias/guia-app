@@ -83,7 +83,7 @@ const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, eta
           <p className="rtn-atd__vazio">
             <Icon name="loader" size={16} className="ui-spin" /> Carregando…
           </p>
-        ) : r.totalVeiculos === 0 ? (
+        ) : r.totalVeiculos === 0 && r.noShows.length === 0 ? (
           <p className="rtn-atd__vazio">{pessoa.nome} não marcou nenhum atendimento neste período.</p>
         ) : (
           <>
@@ -106,6 +106,10 @@ const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, eta
                 <b className="tabular">{r.dias.length}</b>
                 <span>dia(s) com atendimento</span>
               </div>
+              <div>
+                <b className="tabular">{r.noShows.length}</b>
+                <span>no show(s) informado(s) · {r.noShows.filter((n) => n.tipo === "com_custo").length} com custo</span>
+              </div>
             </div>
 
             {r.dias.length > 1 && (
@@ -120,6 +124,27 @@ const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, eta
                       </div>
                       <div className="rtn-barras__trilho" aria-hidden="true">
                         <span style={{ width: `${((d.etapas[etapas[0].id]?.pax || 0) / maxDia) * 100}%`, background: pessoa.cor || "var(--accent)" }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {r.noShows.length > 0 && (
+              <section className="rtn-colab__sec">
+                <h4>No shows informados ({r.noShows.length})</h4>
+                <ul className="rtn-colab__veic">
+                  {r.noShows.map((n) => (
+                    <li key={`${n.docId}-${n.chave}`}>
+                      <div className="rtn-colab__veic-topo">
+                        <b className="tabular">
+                          {dataBr(n.data).slice(0, 5)} {n.hora || ""}
+                        </b>
+                        <span>
+                          {n.titular || "Sem nome"} · {n.codigo || "sem código"} · {n.pax} pax
+                        </span>
+                        <span className={`rtn-ns-tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
                       </div>
                     </li>
                   ))}

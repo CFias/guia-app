@@ -116,7 +116,7 @@ service cloud.firestore {
     function atendimentoValido() {
       return request.resource.data.keys().hasOnly([
           'data', 'chave', 'veiculo', 'motorista', 'voos', 'hora', 'pax',
-          'reservas', 'marcas', 'atualizadoEm'])
+          'reservas', 'marcas', 'noShow', 'atualizadoEm'])
         && request.resource.data.data is string
         && request.resource.data.marcas is map;
     }

@@ -529,7 +529,7 @@ const GerenciarUsuarios = () => {
 
           {form.role === ROLES.ATENDIMENTO && (
             <small className="usuarios-hint">
-              Depois de criar, defina a função, o turno e a folga fixa da pessoa em Demanda por turno → Turnos e equipe → Contas de atendimento.
+              Depois de criar, defina a função, o turno e a folga fixa da pessoa em Demanda por turno → Configurar escala → Equipe.
             </small>
           )}
 

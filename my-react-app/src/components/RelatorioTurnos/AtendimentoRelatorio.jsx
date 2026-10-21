@@ -11,6 +11,7 @@ import {
   relatorioAtendimento,
   resumoEsperas,
   textoMinutos,
+  nomeNoShow,
   textoPax,
 } from "../../Services/Services/atendimentoAeroporto";
 import { baixarExcelAtendimento, imprimirAtendimento } from "./impressaoAtendimento";
@@ -156,6 +157,97 @@ const TempoEspera = ({ docs, etapas }) => {
   );
 };
 
+/* No show do período: com custo / sem custo, por reserva */
+const NoShowCard = ({ resumo, variosDias }) => {
+  const [filtro, setFiltro] = useState("");
+  const lista = resumo.lista.filter((n) => !filtro || n.tipo === filtro);
+  return (
+    <Card>
+      <CardHeader
+        icon="x"
+        title={`No show (${resumo.reservas})`}
+        subtitle="Reservas informadas no painel do aeroporto. Os pax de no show não contam para quem recepcionou e embarcou."
+        actions={
+          resumo.reservas > 0 ? (
+            <Segmented
+              size="sm"
+              ariaLabel="Tipo de no show"
+              value={filtro}
+              onChange={setFiltro}
+              options={[
+                { value: "", label: "Todos", count: resumo.reservas },
+                { value: "com_custo", label: "Com custo", count: resumo.comCusto.reservas },
+                { value: "sem_custo", label: "Sem custo", count: resumo.semCusto.reservas },
+              ]}
+            />
+          ) : null
+        }
+      />
+      {resumo.reservas === 0 ? (
+        <p className="rtn-atd__vazio">Nenhum no show informado neste período.</p>
+      ) : (
+        <>
+          <div className="rtn-ns-resumo">
+            <span className="is-com_custo">
+              <b>{resumo.comCusto.reservas}</b> com custo · {resumo.comCusto.pax} pax
+            </span>
+            <span className="is-sem_custo">
+              <b>{resumo.semCusto.reservas}</b> sem custo · {resumo.semCusto.pax} pax
+            </span>
+          </div>
+          <div className="rtn-semana">
+            <table className="rtn-ns-tab">
+              <thead>
+                <tr>
+                  <th>{variosDias ? "Dia / hora" : "Hora"}</th>
+                  <th>Reserva</th>
+                  <th>Voo / veículo</th>
+                  <th>Pax</th>
+                  <th>Tipo</th>
+                  <th>Informado por</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map((n) => (
+                  <tr key={`${n.docId}-${n.chave}`}>
+                    <td className="tabular">
+                      {variosDias ? `${dataBr(n.data).slice(0, 5)} ` : ""}
+                      {n.hora || "--:--"}
+                    </td>
+                    <td>
+                      <b>{n.titular || "Sem nome"}</b>
+                      <small>
+                        {" "}
+                        · {n.codigo || "sem código"}
+                        {n.hotel ? ` · ${n.hotel}` : ""}
+                      </small>
+                    </td>
+                    <td>
+                      {(n.voos || []).join(", ") || n.voo || "—"}
+                      <small> · {n.veiculo || "sem veículo"}</small>
+                    </td>
+                    <td className="tabular">
+                      {n.pax}
+                      <small> ({textoPax(n)})</small>
+                    </td>
+                    <td>
+                      <span className={`rtn-ns-tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
+                    </td>
+                    <td>
+                      {n.porNome || "—"}
+                      <small> {horaDe(n.em)}</small>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+};
+
 /* Busca de reserva ou passageiro: no período escolhido ou no histórico */
 const BuscaReserva = ({ docs, chegadas, etapas, inicio, fim, equipe = [], onAbrirColaborador }) => {
   const [termo, setTermo] = useState("");
@@ -243,6 +335,11 @@ const BuscaReserva = ({ docs, chegadas, etapas, inicio, fim, equipe = [], onAbri
                   <div className="rtn-busca__topo">
                     <b>{a.reserva.titular || "Sem nome"}</b>
                     {a.reserva.codigo && <span className="rtn-busca__codigo">{a.reserva.codigo}</span>}
+                    {a.noShow && (
+                      <span className={`rtn-ns-tag is-${a.noShow.tipo}`}>
+                        {nomeNoShow(a.noShow.tipo)} · {a.noShow.porNome || "—"} {horaDe(a.noShow.em)}
+                      </span>
+                    )}
                     <span className="rtn-busca__quando">
                       {dataBr(a.data)} · {a.hora || "--:--"} · {a.voos.join(", ") || "sem voo"}
                     </span>
@@ -345,7 +442,7 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
   if (config && config.atendimento?.ativo === false) {
     return (
       <EmptyState icon="planeLanding" title="O painel do aeroporto está desligado">
-        Ligue em “Turnos e equipe” → Atendimento no aeroporto.
+        Ligue em “Configurar escala” → Aeroporto.
       </EmptyState>
     );
   }
@@ -425,6 +522,14 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
                 icon: "circleCheck",
               })),
               ...(rel.phoenix ? [{ key: "pend", label: "Veículos pendentes", value: rel.pendentes.length, hint: "sem alguma etapa marcada", icon: "alert", tone: rel.pendentes.length ? "warning" : undefined }] : []),
+              {
+                key: "ns",
+                label: "No show",
+                value: rel.noShow.reservas,
+                hint: rel.noShow.reservas ? `${rel.noShow.pax} pax · ${rel.noShow.comCusto.reservas} com custo · ${rel.noShow.semCusto.reservas} sem custo` : "nenhum no período",
+                icon: "x",
+                tone: rel.noShow.comCusto.reservas ? "alert" : undefined,
+              },
             ]}
           />
 
@@ -506,6 +611,8 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
               )}
             </Card>
           )}
+
+          <NoShowCard resumo={rel.noShow} variosDias={inicio !== fim} />
 
           {etapas.length > 1 && <TempoEspera docs={carga.docs} etapas={etapas} />}
 

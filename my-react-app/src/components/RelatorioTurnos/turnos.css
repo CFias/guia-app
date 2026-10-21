@@ -1933,3 +1933,57 @@ button.rtn-cal__dia:hover {
   top: 8px;
   transform: none;
 }
+
+/* ---------- No show ---------- */
+.rtn-ns-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.rtn-ns-resumo span {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+
+.rtn-ns-resumo span b {
+  font-size: 18px;
+}
+
+.rtn-ns-resumo .is-com_custo {
+  background: var(--alert-soft);
+}
+
+.rtn-ns-resumo .is-sem_custo {
+  background: var(--warning-soft);
+}
+
+.rtn-semana .rtn-ns-tab td,
+.rtn-semana .rtn-ns-tab th {
+  text-align: left;
+}
+
+.rtn-ns-tab td small {
+  color: var(--text-3);
+}
+
+.rtn-ns-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rtn-ns-tag.is-com_custo {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.rtn-ns-tag.is-sem_custo {
+  background: var(--warning-soft);
+  color: var(--warning);
+}

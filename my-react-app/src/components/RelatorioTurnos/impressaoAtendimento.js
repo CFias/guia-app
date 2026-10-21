@@ -12,6 +12,21 @@ import { registrarImpressao } from "../../Services/Services/atividadeRepository"
 import { CSS_IMPRESSAO, esc, imprimirHtml } from "./impressaoTurnos";
 import { esperaDoDoc, horaDe, marcasDaEtapa, resumoEsperas, textoMinutos, textoPax } from "../../Services/Services/atendimentoAeroporto";
 
+// tabela de no show (impressão)
+const htmlNoShow = (lista, titulo = "No show") =>
+  lista.length
+    ? `<h2>${esc(titulo)} (${lista.length})</h2><table class="pend"><thead><tr><th class="e">Dia</th><th class="e">Hora</th><th class="e">Reserva</th><th class="e">Passageiro</th><th class="e">Voo</th><th>Pax</th><th class="e">Tipo</th><th class="e">Informado por</th></tr></thead><tbody>${lista
+      .map(
+        (n) =>
+          `<tr><td>${esc(dataBr(n.data).slice(0, 5))}</td><td>${esc(n.hora || "")}</td><td>${esc(n.codigo || "—")}</td><td>${esc(n.titular || "")}</td><td>${esc((n.voos || []).join(", ") || n.voo || "")}</td><td style="text-align:right">${n.pax}</td><td><b>${n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</b></td><td>${esc(n.porNome || "")} ${esc(horaDe(n.em))}</td></tr>`,
+      )
+      .join("")}</tbody></table>`
+    : "";
+const linhasNoShowExcel = (lista) => [
+  ["Dia", "Hora", "Reserva", "Passageiro", "Hotel", "Voo", "Veículo", "Pax", "Detalhe", "Tipo", "Informado por", "Horário"],
+  ...lista.map((n) => [dataBr(n.data), n.hora || "", n.codigo || "", n.titular || "", n.hotel || "", (n.voos || []).join(", ") || n.voo || "", n.veiculo || "", Number(n.pax) || 0, textoPax(n), n.tipo === "com_custo" ? "Com custo" : "Sem custo", n.porNome || "", horaDe(n.em)]),
+];
+
 const quemComHora = (doc, etapaId) =>
   marcasDaEtapa(doc, etapaId)
     .map((m) => `${m.nome} ${horaDe(m.em)}`)
@@ -97,6 +112,7 @@ export const montarHtmlAtendimento = (r) => {
 <h2>Por colaborador</h2>
 <table class="atd-tab"><thead><tr><th class="e">Colaborador</th>${cab}</tr></thead><tbody>${linhas || `<tr><td class="e" colspan="${1 + etapas.length * 3}">Nenhuma marcação no período.</td></tr>`}${total}</tbody></table>
 ${espera}
+${rel.noShow?.reservas ? `<div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>No show</span><b>${rel.noShow.reservas}</b><small>${rel.noShow.pax} pax</small></div><div class="kpi"><span>Com custo</span><b>${rel.noShow.comCusto.reservas}</b><small>${rel.noShow.comCusto.pax} pax</small></div><div class="kpi"><span>Sem custo</span><b>${rel.noShow.semCusto.reservas}</b><small>${rel.noShow.semCusto.pax} pax</small></div></div>${htmlNoShow(rel.noShow.lista)}` : ""}
 ${pendentes}
 <div class="notas"><p>Pax = adultos + crianças + bebês do veículo no Phoenix. ${rel.regra === "total"
       ? "Regra: quando duas pessoas marcam a mesma etapa, cada uma conta o veículo inteiro (a soma passa de 100%)."
@@ -161,6 +177,7 @@ export const baixarExcelAtendimento = (r) => {
     ),
   );
   if (porReserva.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(porReserva), "Reservas");
+  if (rel.noShow?.reservas) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasNoShowExcel(rel.noShow.lista)), "No show");
   if (rel.pendentes.length) {
     const pend = [["Dia", "Hora", "Voo(s)", "Veículo", "Pax", "Falta"], ...rel.pendentes.map((g) => [dataBr(g.data), g.hora, g.voos.join(", "), g.veiculo || "", g.pax, g.faltando.join(", ")])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pend), "Pendentes");
@@ -205,6 +222,7 @@ export const montarHtmlColaborador = (x) => {
 <div class="gerado">Luck Receptivo ${esc(regiaoAtual().nome)}<br>Gerado em ${esc(gerado)}</div></header>
 <div class="kpis">${kpis}</div>
 ${dias}
+${htmlNoShow(r.noShows || [], "No shows informados")}
 <h2>Veículos atendidos (${r.veiculos.length})</h2>
 <table class="pend"><thead><tr><th class="e">Dia</th><th class="e">Hora</th><th class="e">Voo(s)</th><th class="e">Veículo</th><th>Pax</th><th class="e">O que marcou</th><th>Espera</th></tr></thead><tbody>${veic}</tbody></table>
 <div class="notas"><p>${x.regra === "total" ? "Regra: cada pessoa conta o veículo inteiro." : "Regra: quando duas pessoas marcam a mesma etapa, os pax do veículo são divididos entre elas."
@@ -252,6 +270,7 @@ export const baixarExcelColaborador = (x) => {
     ]),
   );
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(veic), "Veículos");
+  if (r.noShows?.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasNoShowExcel(r.noShows)), "No show");
   const nome = pessoa.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w]+/g, "-").toLowerCase();
   XLSX.writeFile(wb, `atendimento-${nome}-${x.inicio}${x.fim !== x.inicio ? `-a-${x.fim}` : ""}.xlsx`);
 };
