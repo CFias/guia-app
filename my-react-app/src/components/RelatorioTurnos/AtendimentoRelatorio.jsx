@@ -2,8 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Card, CardHeader, EmptyState, Field, Icon, KpiTiles, Segmented } from "../ui";
 import { dataBr, escalaDoDia, isoLocal, listarDatas, num, somarDias, todosDaEquipe } from "../../Services/Services/relatorioTurnos";
-import { buscarChegadasPorVeiculo, listarAtendimentos, relatorioAtendimento } from "../../Services/Services/atendimentoAeroporto";
+import {
+  buscarChegadasPorVeiculo,
+  buscarReserva,
+  horaDe,
+  listarAtendimentos,
+  marcasDaEtapa,
+  relatorioAtendimento,
+  resumoEsperas,
+  textoMinutos,
+  textoPax,
+} from "../../Services/Services/atendimentoAeroporto";
 import { baixarExcelAtendimento, imprimirAtendimento } from "./impressaoAtendimento";
+import RelatorioColaborador from "./RelatorioColaborador";
+
+const normal = (t = "") =>
+  String(t)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 /* Aba "Atendimento no aeroporto" da Demanda por turno: o que cada
    colaborador marcou no painel (Recepcionei / Embarquei), em pax e %,
@@ -26,12 +44,254 @@ const ATALHOS = [
   },
 ];
 const pct = (v) => `${num(v, v && v < 10 ? 1 : 0)}%`;
+const DIAS_HISTORICO = 90;
+const VEICULOS_ESPERA = 15;
+
+// "Edson 14:32 · Ingra 14:35"
+const quemComHora = (doc, etapaId) =>
+  marcasDaEtapa(doc, etapaId)
+    .map((m) => `${m.nome} ${horaDe(m.em)}${m.lancado && !m.horaManual ? "*" : ""}`)
+    .join(" · ");
+
+/* Tempo entre a recepção (1ª etapa) e o embarque (última etapa) */
+const TempoEspera = ({ docs, etapas }) => {
+  const [todos, setTodos] = useState(false);
+  const r = useMemo(() => resumoEsperas(docs, etapas), [docs, etapas]);
+  const ini = etapas[0];
+  const fim = etapas[etapas.length - 1];
+  const maxFaixa = Math.max(1, ...r.faixas.map((f) => f.veiculos));
+  const lista = todos ? r.veiculos : r.veiculos.slice(0, VEICULOS_ESPERA);
+  const variosDias = new Set(docs.map((d) => d.data)).size > 1;
+  return (
+    <Card>
+      <CardHeader
+        icon="clock"
+        title={`Tempo entre ${ini.nome.toLowerCase()} e ${fim.nome.toLowerCase()}`}
+        subtitle={`Quanto cada veículo (e as reservas dele) esperou: do primeiro "${ini.acao || ini.nome}" ao primeiro "${fim.acao || fim.nome}".`}
+      />
+      {r.veiculos.length === 0 ? (
+        <p className="rtn-atd__vazio">Nenhum veículo com as duas etapas marcadas neste período.</p>
+      ) : (
+        <div className="rtn-esp">
+          <div className="rtn-esp__kpis">
+            <div>
+              <b className="tabular">{textoMinutos(r.media)}</b>
+              <span>espera média por veículo</span>
+            </div>
+            <div>
+              <b className="tabular">{textoMinutos(r.mediaPax)}</b>
+              <span>espera média por passageiro</span>
+            </div>
+            <div>
+              <b className="tabular">{textoMinutos(r.mediana)}</b>
+              <span>metade dos veículos esperou até</span>
+            </div>
+            <div>
+              <b className="tabular">{textoMinutos(r.maior?.espera.min)}</b>
+              <span>
+                maior espera{r.maior ? ` · ${(r.maior.doc.voos || []).join(", ") || r.maior.doc.veiculo || ""}` : ""}
+              </span>
+            </div>
+          </div>
+          <ul className="rtn-barras rtn-esp__faixas">
+            {r.faixas.map((f) => (
+              <li key={f.id}>
+                <div className="rtn-barras__topo">
+                  <span>{f.nome}</span>
+                  <b className="tabular">{f.veiculos}</b>
+                </div>
+                <div className="rtn-barras__trilho" aria-hidden="true">
+                  <span style={{ width: `${(f.veiculos / maxFaixa) * 100}%`, background: f.id === "mais" ? "var(--alert)" : f.id === "60" ? "var(--warning)" : "var(--accent)" }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="rtn-semana">
+            <table className="rtn-esp__tab">
+              <thead>
+                <tr>
+                  <th>Voo / veículo</th>
+                  <th>Pax</th>
+                  <th>{ini.nome}</th>
+                  <th>{fim.nome}</th>
+                  <th>Espera</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map(({ doc, espera }) => (
+                  <tr key={doc.id}>
+                    <td>
+                      <b>
+                        {variosDias ? `${dataBr(doc.data).slice(0, 5)} ` : ""}
+                        {doc.hora || "--:--"} · {(doc.voos || []).join(", ") || "Sem voo"}
+                      </b>
+                      <small> · {doc.veiculo || "sem veículo"}</small>
+                    </td>
+                    <td className="tabular">{doc.pax}</td>
+                    <td>{quemComHora(doc, ini.id)}</td>
+                    <td>{quemComHora(doc, fim.id)}</td>
+                    <td className={`tabular ${espera.min > 60 ? "is-alerta" : espera.min > 30 ? "is-aviso" : ""}`}>
+                      <b>{espera.min === null ? "sem horário" : textoMinutos(espera.min)}</b>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="rtn-esp__rodape">
+            {r.semHorario > 0 && (
+              <small>
+                * {r.semHorario} veículo(s) lançados pelo Operacional sem o horário da cartinha não entram no tempo de espera.
+              </small>
+            )}
+            {r.veiculos.length > VEICULOS_ESPERA && (
+              <Button size="sm" variant="ghost" onClick={() => setTodos((x) => !x)}>
+                {todos ? "Mostrar menos" : `Ver todos (${r.veiculos.length})`}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+/* Busca de reserva ou passageiro: no período escolhido ou no histórico */
+const BuscaReserva = ({ docs, chegadas, etapas, inicio, fim, equipe = [], onAbrirColaborador }) => {
+  const [termo, setTermo] = useState("");
+  const [escopo, setEscopo] = useState("periodo");
+  const [hist, setHist] = useState({ chave: "", docs: [], erro: "" });
+  const fimHist = hoje();
+  const chaveHist = escopo === "historico" ? `${somarDias(fimHist, -DIAS_HISTORICO)}|${fimHist}` : "";
+
+  useEffect(() => {
+    if (!chaveHist) return;
+    let vivo = true;
+    const [a, b] = chaveHist.split("|");
+    listarAtendimentos(a, b)
+      .then((lista) => vivo && setHist({ chave: chaveHist, docs: lista, erro: "" }))
+      .catch((e) => {
+        console.error(e);
+        if (vivo) setHist({ chave: chaveHist, docs: [], erro: "Não foi possível ler o histórico." });
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [chaveHist]);
+
+  const carregandoHist = escopo === "historico" && hist.chave !== chaveHist;
+  const achados = useMemo(() => {
+    if (termo.trim().length < 2 || carregandoHist) return [];
+    return escopo === "historico"
+      ? buscarReserva({ termo, docs: hist.docs, etapas })
+      : buscarReserva({ termo, docs, chegadas, etapas });
+  }, [termo, escopo, hist, docs, chegadas, etapas, carregandoHist]);
+  const ultima = etapas[etapas.length - 1];
+  // o termo é o nome de alguém da equipe? oferece o relatório dele
+  const colaboradores = termo.trim().length >= 2 ? equipe.filter((c) => normal(c.nome).includes(normal(termo))) : [];
+
+  return (
+    <Card>
+      <CardHeader
+        icon="search"
+        title="Buscar reserva, passageiro ou colaborador"
+        subtitle={`Quem recepcionou e quem ${ultima ? ultima.nome.toLowerCase() : "embarcou"} cada reserva, com os horários.`}
+      />
+      <div className="rtn-busca">
+        <div className="rtn-busca__linha">
+          <label className="rtn-busca__campo">
+            <Icon name="search" size={15} />
+            <input type="search" value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Reserva, passageiro ou colaborador" />
+          </label>
+          <Segmented
+            size="sm"
+            ariaLabel="Onde buscar"
+            value={escopo}
+            onChange={setEscopo}
+            options={[
+              { value: "periodo", label: inicio === fim ? `Em ${dataBr(inicio).slice(0, 5)}` : "No período" },
+              { value: "historico", label: `Histórico (${DIAS_HISTORICO} dias)` },
+            ]}
+          />
+        </div>
+        {colaboradores.length > 0 && (
+          <div className="rtn-busca__colabs">
+            <span>Colaborador:</span>
+            {colaboradores.map((c) => (
+              <button key={c.id} type="button" className="rtn-chip is-on" onClick={() => onAbrirColaborador?.(c)}>
+                <Icon name="barChart" size={12} /> Relatório de {c.nome}
+              </button>
+            ))}
+          </div>
+        )}
+        {termo.trim().length >= 2 &&
+          (carregandoHist ? (
+            <p className="rtn-atd__vazio">
+              <Icon name="loader" size={16} className="ui-spin" /> Lendo o histórico…
+            </p>
+          ) : hist.erro && escopo === "historico" ? (
+            <p className="rtn-atd__vazio">{hist.erro}</p>
+          ) : achados.length === 0 ? (
+            <p className="rtn-atd__vazio">
+              Nada encontrado {escopo === "historico" ? `nos últimos ${DIAS_HISTORICO} dias` : "neste período"}.
+              {escopo === "periodo" && " Tente no histórico."}
+            </p>
+          ) : (
+            <ul className="rtn-busca__lista">
+              {achados.slice(0, 50).map((a, i) => (
+                <li key={`${a.data}-${a.reserva.codigo}-${i}`}>
+                  <div className="rtn-busca__topo">
+                    <b>{a.reserva.titular || "Sem nome"}</b>
+                    {a.reserva.codigo && <span className="rtn-busca__codigo">{a.reserva.codigo}</span>}
+                    <span className="rtn-busca__quando">
+                      {dataBr(a.data)} · {a.hora || "--:--"} · {a.voos.join(", ") || "sem voo"}
+                    </span>
+                  </div>
+                  <div className="rtn-busca__info">
+                    <span>
+                      <Icon name="mapPin" size={12} /> {a.reserva.hotel || "Hotel não informado"}
+                    </span>
+                    <span>
+                      <Icon name="users" size={12} /> {a.reserva.pax} pax ({textoPax(a.reserva)})
+                    </span>
+                    <span>
+                      <Icon name="truck" size={12} /> {a.veiculo || "sem veículo"}
+                      {a.motorista ? ` · ${a.motorista}` : ""}
+                    </span>
+                  </div>
+                  <dl className="rtn-busca__etapas">
+                    {etapas.map((e) => {
+                      const q = a.doc ? quemComHora(a.doc, e.id) : "";
+                      return (
+                        <div key={e.id} className={`${e.id === ultima?.id ? "is-final" : ""} ${a.etapasDoColaborador.includes(e.id) ? "is-achado" : ""}`}>
+                          <dt>{e.nome}</dt>
+                          <dd>{q || <em>não marcado</em>}</dd>
+                        </div>
+                      );
+                    })}
+                    {etapas.length > 1 && (
+                      <div>
+                        <dt>Espera</dt>
+                        <dd className="tabular">{a.espera?.min !== null && a.espera?.min !== undefined ? textoMinutos(a.espera.min) : "—"}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </li>
+              ))}
+              {achados.length > 50 && <li className="rtn-busca__mais">Mostrando 50 de {achados.length}. Refine a busca.</li>}
+            </ul>
+          ))}
+      </div>
+    </Card>
+  );
+};
 
 const AtendimentoRelatorio = ({ config, excecoes }) => {
   const [atalho, setAtalho] = useState("hoje");
   const [periodo, setPeriodo] = useState(() => ATALHOS[0].calc());
   const [recarregar, setRecarregar] = useState(0);
   const [carga, setCarga] = useState({ chave: "", docs: [], chegadas: null, erro: "" });
+  const [colabSel, setColabSel] = useState(null); // relatório de um colaborador
   const [inicio, fim] = periodo;
   const chave = `${inicio}|${fim}|${recarregar}`;
   const dias = listarDatas(inicio, fim);
@@ -109,6 +369,19 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
             <Icon name="smartphone" size={14} /> A equipe marca no celular, em <Link to="/atendimento">/atendimento</Link> (conta de nível Atendimento).
           </span>
           <span className="rtn-atd__acoes">
+            <select
+              className="ui-input rtn-atd__colab"
+              value=""
+              onChange={(e) => setColabSel(equipe.find((c) => c.id === e.target.value) || null)}
+              aria-label="Relatório de um colaborador"
+            >
+              <option value="">Relatório por colaborador…</option>
+              {equipe.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome} · {c.turnoNome}
+                </option>
+              ))}
+            </select>
             <Button size="sm" icon="refresh" onClick={() => setRecarregar((x) => x + 1)} loading={carregando} disabled={carregando}>
               Atualizar
             </Button>
@@ -159,9 +432,8 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
             <CardHeader
               icon="users"
               title="Por colaborador"
-              subtitle={`Pax e % de cada um em cada etapa (${dataBr(inicio)}${inicio !== fim ? ` a ${dataBr(fim)}` : ""}). ${
-                regra === "total" ? "Regra: cada um conta o veículo inteiro." : "Regra: 2 pessoas no mesmo veículo dividem os pax."
-              }`}
+              subtitle={`Pax e % de cada um em cada etapa (${dataBr(inicio)}${inicio !== fim ? ` a ${dataBr(fim)}` : ""}). ${regra === "total" ? "Regra: cada um conta o veículo inteiro." : "Regra: 2 pessoas no mesmo veículo dividem os pax."
+                }`}
             />
             {rel.linhas.length === 0 ? (
               <p className="rtn-atd__vazio">Ninguém marcou atendimento neste período.</p>
@@ -183,7 +455,9 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
                       <tr key={l.id} className={l.foraDaEquipe ? "is-fora" : ""}>
                         <td>
                           <i className="rtn-dot" style={{ background: l.cor }} />
-                          <b>{l.nome}</b>
+                          <button type="button" className="rtn-atd__nome" onClick={() => setColabSel(l)} title={`Relatório de ${l.nome}`}>
+                            <b>{l.nome}</b>
+                          </button>
                           <small> · {l.foraDaEquipe ? "fora da equipe" : l.turnoNome}</small>
                         </td>
                         {etapas.map((e, i) => {
@@ -232,7 +506,31 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
               )}
             </Card>
           )}
+
+          {etapas.length > 1 && <TempoEspera docs={carga.docs} etapas={etapas} />}
+
+          <BuscaReserva
+            docs={carga.docs}
+            chegadas={carga.chegadas}
+            etapas={etapas}
+            inicio={inicio}
+            fim={fim}
+            equipe={equipe}
+            onAbrirColaborador={setColabSel}
+          />
         </>
+      )}
+      {colabSel && (
+        <RelatorioColaborador
+          key={colabSel.id}
+          pessoa={colabSel}
+          docsFiltro={carga.docs}
+          inicioFiltro={inicio}
+          fimFiltro={fim}
+          etapas={etapas}
+          regra={regra}
+          onClose={() => setColabSel(null)}
+        />
       )}
     </div>
   );

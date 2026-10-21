@@ -43,7 +43,10 @@ const horaVooDo = (i) => {
   const h = hora(i?.fly_hour || i?.reserve?.flight_time || i?.reserve?.flight?.scheduled_time || i?.reserve?.arrival_flight_time || i?.flight_time || i?.flight?.scheduled_time);
   return h && h !== "00:00" ? h : hora(i?.presentation_hour || i?.schedule?.presentation_hour);
 };
-const paxDo = (i) => Number(i?.is_adult_count || 0) + Number(i?.is_child_count || 0) + Number(i?.is_baby_count || i?.is_infant_count || 0);
+const adtDo = (i) => Number(i?.is_adult_count || 0);
+const chdDo = (i) => Number(i?.is_child_count || 0);
+const infDo = (i) => Number(i?.is_baby_count || i?.is_infant_count || 0);
+const paxDo = (i) => adtDo(i) + chdDo(i) + infDo(i);
 const titularDo = (i) => texto(i?.reserve?.customer?.name || i?.customer?.name || i?.reserve?.holder_name || i?.passenger_name);
 const hotelDo = (i) => texto(i?.establishmentDestination?.name || i?.establishment_destination?.name || i?.destination?.name);
 const codigoDo = (i) => texto(i?.reserve?.code || i?.reserve_code || i?.code || i?.reserve?.id);
@@ -57,7 +60,8 @@ export const chaveSegura = (t = "") =>
     .slice(0, 80) || "sem_chave";
 
 /* Chegadas do dia agrupadas por veículo.
-   [{ chave, veiculo, motorista, voos[], hora, min, pax, reservas: [{ codigo, titular, pax, voo, hotel }] }] */
+   [{ chave, veiculo, motorista, voos[], hora, min, pax,
+      reservas: [{ codigo, titular, pax, adt, chd, inf, voo, hotel }] }] */
 export const buscarChegadasPorVeiculo = async (data) => {
   const p = new URLSearchParams();
   p.append("execution_date", data);
@@ -89,7 +93,7 @@ export const buscarChegadasPorVeiculo = async (data) => {
     if (voo) g.voos.add(voo);
     if (h && (!g.hora || h < g.hora)) g.hora = h;
     g.pax += pax;
-    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, voo, hotel: hotelDo(i) });
+    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, adt: adtDo(i), chd: chdDo(i), inf: infDo(i), voo, hotel: hotelDo(i) });
     grupos.set(chave, g);
   });
   return [...grupos.values()]
@@ -120,9 +124,34 @@ export const vincularDocs = (grupos = [], docs = [], data) => {
   return mapa;
 };
 
+// "2 ADT · 1 CHD · 1 INF"
+export const textoPax = (r = {}) =>
+  [
+    [r.adt, "ADT"],
+    [r.chd, "CHD"],
+    [r.inf, "INF"],
+  ]
+    .filter(([n]) => Number(n) > 0)
+    .map(([n, t]) => `${n} ${t}`)
+    .join(" · ") || `${r.pax || 0} pax`;
+
+// o que fica guardado de cada reserva (para a busca e o histórico)
+const resumoReserva = (r) => ({
+  codigo: r.codigo || "",
+  titular: r.titular || "",
+  hotel: r.hotel || "",
+  voo: r.voo || "",
+  pax: Number(r.pax) || 0,
+  adt: Number(r.adt) || 0,
+  chd: Number(r.chd) || 0,
+  inf: Number(r.inf) || 0,
+});
+
 // marca ou desmarca uma etapa para alguém (quem = { id, nome, colaboradorId }).
 // docId: grava num documento herdado (marcado antes da escala) — aí só as marcas mudam.
-export const marcarEtapa = async ({ data, grupo, etapa, quem, por, marcar, docId }) => {
+// lancado: o Operacional marcou em nome da pessoa; horaManual ("HH:MM"): o horário
+// real da cartinha (sem ele, o lançamento não entra no tempo de espera).
+export const marcarEtapa = async ({ data, grupo, etapa, quem, por, marcar, docId, lancado = false, horaManual = "" }) => {
   const proprio = idAtendimento(data, grupo.chave);
   const herdado = docId && docId !== proprio;
   const ref = docBase(COL_ATENDIMENTOS, herdado ? docId : proprio);
@@ -134,7 +163,7 @@ export const marcarEtapa = async ({ data, grupo, etapa, quem, por, marcar, docId
     voos: grupo.voos || [],
     hora: grupo.hora || "",
     pax: grupo.pax || 0,
-    reservas: grupo.reservas?.length || 0,
+    reservas: (grupo.reservas || []).map(resumoReserva),
     atualizadoEm: Timestamp.now(),
   };
   await setDoc(
@@ -144,7 +173,13 @@ export const marcarEtapa = async ({ data, grupo, etapa, quem, por, marcar, docId
       marcas: {
         [etapa]: {
           [quem.id]: marcar
-            ? { nome: quem.nome || "", colaboradorId: quem.colaboradorId || "", em: Timestamp.now(), por: por || "" }
+            ? {
+              nome: quem.nome || "",
+              colaboradorId: quem.colaboradorId || "",
+              em: horaManual ? Timestamp.fromDate(new Date(`${data}T${horaManual}:00`)) : Timestamp.now(),
+              por: por || "",
+              ...(lancado ? { lancado: true, horaManual: !!horaManual } : {}),
+            }
             : deleteField(),
         },
       },
@@ -235,4 +270,169 @@ export const relatorioAtendimento = ({ docs = [], etapas = [], regra = "dividir"
     pendentes = pendentes.sort((a, b) => a.data.localeCompare(b.data) || a.min - b.min);
   }
   return { linhas, porEtapa, phoenix, pendentes, regra };
+};
+
+// ---------------------------------------------------------------------
+// Horários das marcas e tempo de espera (recepção → embarque)
+// ---------------------------------------------------------------------
+const paraDate = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : v ? new Date(v) : null);
+export const horaDe = (v) => {
+  const d = paraDate(v);
+  return d ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+};
+// horário vale para a espera? (lançado pelo Operacional sem horário da cartinha = não)
+const horarioConfiavel = (m) => !m?.lancado || m?.horaManual === true;
+
+// quem marcou a etapa (o primeiro a marcar vale como o horário da etapa)
+export const marcasDaEtapa = (doc, etapaId) =>
+  Object.entries(doc?.marcas?.[etapaId] || {})
+    .filter(([, v]) => v && typeof v === "object")
+    .map(([id, v]) => ({ id, ...v, data: paraDate(v.em) }))
+    .sort((a, b) => (a.data?.getTime() || 0) - (b.data?.getTime() || 0));
+
+/* Espera de um veículo: da 1ª marca da primeira etapa (recepção) até a 1ª
+   marca da última etapa (embarque). null quando falta uma das duas. */
+export const esperaDoDoc = (doc, etapas = []) => {
+  if (etapas.length < 2) return null;
+  const ini = marcasDaEtapa(doc, etapas[0].id);
+  const fim = marcasDaEtapa(doc, etapas[etapas.length - 1].id);
+  if (!ini.length || !fim.length) return null;
+  const a = ini[0];
+  const b = fim[0];
+  const confiavel = horarioConfiavel(a) && horarioConfiavel(b) && a.data && b.data;
+  const min = confiavel ? Math.round((b.data - a.data) / 60000) : null;
+  return { inicio: a, fim: b, min: min !== null && min >= 0 ? min : null, quemInicio: ini, quemFim: fim };
+};
+
+export const FAIXAS_ESPERA = [
+  { id: "15", nome: "Até 15 min", ate: 15 },
+  { id: "30", nome: "15 a 30 min", ate: 30 },
+  { id: "60", nome: "30 a 60 min", ate: 60 },
+  { id: "mais", nome: "Mais de 1 hora", ate: Infinity },
+];
+
+/* Resumo do tempo de espera do período.
+   { veiculos: [{ doc, espera }], media, mediana, maior, faixas, semHorario } */
+export const resumoEsperas = (docs = [], etapas = []) => {
+  const veiculos = docs
+    .map((doc) => ({ doc, espera: esperaDoDoc(doc, etapas) }))
+    .filter((x) => x.espera);
+  const com = veiculos.filter((x) => x.espera.min !== null);
+  const mins = com.map((x) => x.espera.min).sort((a, b) => a - b);
+  const pax = com.reduce((s, x) => s + (Number(x.doc.pax) || 0), 0);
+  return {
+    veiculos: veiculos.sort((a, b) => (b.espera.min ?? -1) - (a.espera.min ?? -1)),
+    media: mins.length ? mins.reduce((s, m) => s + m, 0) / mins.length : null,
+    mediaPax: pax ? com.reduce((s, x) => s + x.espera.min * (Number(x.doc.pax) || 0), 0) / pax : null,
+    mediana: mins.length ? mins[Math.floor((mins.length - 1) / 2)] : null,
+    maior: com.length ? com.reduce((a, b) => (b.espera.min > a.espera.min ? b : a)) : null,
+    faixas: FAIXAS_ESPERA.map((f, i) => ({
+      ...f,
+      veiculos: mins.filter((m) => m <= f.ate && (i === 0 || m > FAIXAS_ESPERA[i - 1].ate)).length,
+    })),
+    semHorario: veiculos.length - com.length,
+  };
+};
+
+export const textoMinutos = (min) => {
+  if (min === null || min === undefined) return "—";
+  const m = Math.round(min);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+};
+
+// ---------------------------------------------------------------------
+// Busca de reserva / passageiro (período ou histórico)
+// ---------------------------------------------------------------------
+const semAcento = (t = "") =>
+  String(t)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+/* Procura por código da reserva ou nome do titular.
+   docs: atendimentos; chegadas (opcional): { data: grupos do Phoenix } — cobre
+   veículos ainda sem marcação e documentos antigos sem a lista de reservas.
+   Devolve [{ data, hora, voos, veiculo, motorista, reserva, doc, espera }] */
+export const buscarReserva = ({ termo, docs = [], chegadas = null, etapas = [] }) => {
+  const t = semAcento(termo);
+  if (t.length < 2) return [];
+  const bateReserva = (r) => semAcento(`${r.codigo} ${r.titular}`).includes(t);
+  // nome do colaborador: traz as reservas dos veículos que ele marcou
+  const doColaborador = (doc) =>
+    etapas.filter((e) => Object.values(doc?.marcas?.[e.id] || {}).some((m) => m && semAcento(m.nome).includes(t))).map((e) => e.id);
+  let docAtual = null;
+  const bate = (r) => bateReserva(r) || (docAtual && doColaborador(docAtual).length > 0);
+  const achados = [];
+  const vistos = new Set();
+  const incluir = (data, g, r, doc) => {
+    const chave = `${doc?.id || `${data}_${g.chave}`}|${r.codigo || r.titular}`;
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    achados.push({
+      data,
+      hora: g.hora || doc?.hora || "",
+      voos: g.voos || doc?.voos || [],
+      veiculo: g.veiculo || doc?.veiculo || "",
+      motorista: g.motorista || doc?.motorista || "",
+      paxVeiculo: g.pax || doc?.pax || 0,
+      reserva: r,
+      doc: doc || null,
+      espera: doc ? esperaDoDoc(doc, etapas) : null,
+      // etapas em que o colaborador buscado aparece (quando a busca foi por ele)
+      etapasDoColaborador: doc && !bateReserva(r) ? doColaborador(doc) : [],
+    });
+  };
+  Object.entries(chegadas || {}).forEach(([data, grupos]) => {
+    const mapa = vincularDocs(grupos, docs.filter((d) => d.data === data), data);
+    grupos.forEach((g) => {
+      docAtual = mapa.get(g.chave)?.doc || null;
+      g.reservas.filter(bate).forEach((r) => incluir(data, g, r, docAtual));
+    });
+  });
+  docs.forEach((d) => {
+    docAtual = d;
+    (Array.isArray(d.reservas) ? d.reservas : []).filter(bate).forEach((r) => incluir(d.data, {}, r, d));
+  });
+  return achados.sort((a, b) => b.data.localeCompare(a.data) || String(a.hora).localeCompare(String(b.hora)));
+};
+
+// ---------------------------------------------------------------------
+// Relatório de UM colaborador (período)
+// ---------------------------------------------------------------------
+/* id: colaboradorId (ou o id da marca). Devolve
+   { etapas: { e: { pax, veiculos, pct } }, dias: [{ data, etapas: { e: { pax, veiculos } } }],
+     veiculos: [{ doc, etapas: [{ id, pax, em, lancado }], espera }], esperaMedia, totalVeiculos } */
+export const relatorioDoColaborador = ({ docs = [], etapas = [], regra = "dividir", id }) => {
+  const porEtapa = Object.fromEntries(etapas.map((e) => [e.id, { pax: 0, veiculos: 0 }]));
+  const totalEtapa = Object.fromEntries(etapas.map((e) => [e.id, 0]));
+  const dias = new Map();
+  const veiculos = [];
+  docs.forEach((d) => {
+    const meu = [];
+    etapas.forEach((e) => {
+      const marcas = Object.entries(d.marcas?.[e.id] || {}).filter(([, v]) => v && typeof v === "object");
+      if (!marcas.length) return;
+      totalEtapa[e.id] += Number(d.pax) || 0;
+      const minha = marcas.find(([k, v]) => (v.colaboradorId || k) === id);
+      if (!minha) return;
+      const pax = regra === "total" ? Number(d.pax) || 0 : (Number(d.pax) || 0) / marcas.length;
+      porEtapa[e.id].pax += pax;
+      porEtapa[e.id].veiculos += 1;
+      const dia = dias.get(d.data) || { data: d.data, etapas: Object.fromEntries(etapas.map((x) => [x.id, { pax: 0, veiculos: 0 }])) };
+      dia.etapas[e.id].pax += pax;
+      dia.etapas[e.id].veiculos += 1;
+      dias.set(d.data, dia);
+      meu.push({ id: e.id, pax, em: minha[1].em, lancado: !!minha[1].lancado && !minha[1].horaManual, dividido: marcas.length > 1 });
+    });
+    if (meu.length) veiculos.push({ doc: d, etapas: meu, espera: esperaDoDoc(d, etapas) });
+  });
+  const comEspera = veiculos.filter((v) => v.espera?.min !== null && v.espera?.min !== undefined);
+  return {
+    etapas: Object.fromEntries(etapas.map((e) => [e.id, { ...porEtapa[e.id], pct: totalEtapa[e.id] ? (porEtapa[e.id].pax / totalEtapa[e.id]) * 100 : 0 }])),
+    dias: [...dias.values()].sort((a, b) => a.data.localeCompare(b.data)),
+    veiculos: veiculos.sort((a, b) => a.doc.data.localeCompare(b.doc.data) || String(a.doc.hora).localeCompare(String(b.doc.hora))),
+    esperaMedia: comEspera.length ? comEspera.reduce((s, v) => s + v.espera.min, 0) / comEspera.length : null,
+    totalVeiculos: veiculos.length,
+  };
 };

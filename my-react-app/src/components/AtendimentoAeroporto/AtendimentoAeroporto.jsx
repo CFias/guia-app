@@ -19,7 +19,18 @@ import {
   somarDias,
   todosDaEquipe,
 } from "../../Services/Services/relatorioTurnos";
-import { COL_ATENDIMENTOS, buscarChegadasPorVeiculo, contarAtendimentos, marcarEtapa, vincularDocs } from "../../Services/Services/atendimentoAeroporto";
+import {
+  COL_ATENDIMENTOS,
+  buscarChegadasPorVeiculo,
+  contarAtendimentos,
+  esperaDoDoc,
+  horaDe,
+  marcarEtapa,
+  marcasDaEtapa,
+  textoMinutos,
+  textoPax,
+  vincularDocs,
+} from "../../Services/Services/atendimentoAeroporto";
 import "./atendimento.css";
 
 /* PAINEL DO AEROPORTO (conta "Atendimento" ou Operacional).
@@ -50,6 +61,15 @@ const AtendimentoAeroporto = () => {
   const [filtro, setFiltro] = useState("pendentes"); // pendentes | todos | meus
   const [busca, setBusca] = useState("");
   const [emNomeDe, setEmNomeDe] = useState(""); // operacional: colaborador escolhido
+  const [horaManual, setHoraManual] = useState(""); // operacional: horário da cartinha
+  const [abertos, setAbertos] = useState(() => new Set()); // veículos com as reservas abertas
+  const alternarAberto = (chave) =>
+    setAbertos((a) => {
+      const n = new Set(a);
+      if (n.has(chave)) n.delete(chave);
+      else n.add(chave);
+      return n;
+    });
   const [salvando, setSalvando] = useState("");
   const [recarregar, setRecarregar] = useState(0);
 
@@ -140,7 +160,17 @@ const AtendimentoAeroporto = () => {
     }
     setSalvando(`${g.chave}|${etapa.id}`);
     try {
-      await marcarEtapa({ data, grupo: g, etapa: etapa.id, quem, por: user?.uid, marcar: !marcado, docId: vinculos.get(g.chave)?.id });
+      await marcarEtapa({
+        data,
+        grupo: g,
+        etapa: etapa.id,
+        quem,
+        por: user?.uid,
+        marcar: !marcado,
+        docId: vinculos.get(g.chave)?.id,
+        lancado: ehOperacional,
+        horaManual: ehOperacional ? horaManual : "",
+      });
       if (!marcado) registrarAcao(`atendimento_${etapa.id}`, `${etapa.nome} (aeroporto)`, `${g.voos.join(", ")} · ${g.pax} pax`);
     } catch (e) {
       console.error(e);
@@ -191,6 +221,20 @@ const AtendimentoAeroporto = () => {
                 </option>
               ))}
             </select>
+          </label>
+        )}
+        {ehOperacional && (
+          <label className="atd-em-nome atd-hora-manual">
+            <span>Horário da cartinha (opcional)</span>
+            <span className="atd-hora-manual__linha">
+              <input type="time" className="ui-input" value={horaManual} onChange={(e) => setHoraManual(e.target.value)} />
+              {horaManual && (
+                <button type="button" className="atd-btn-leve" onClick={() => setHoraManual("")}>
+                  Agora
+                </button>
+              )}
+            </span>
+            <small>Sem horário, a marca fica com a hora do lançamento e não entra no tempo de espera.</small>
           </label>
         )}
 
@@ -307,16 +351,47 @@ const AtendimentoAeroporto = () => {
                       <Icon name="info" size={12} /> Marcado pelo voo, antes de o Phoenix escalar o veículo
                     </small>
                   )}
-                  <p className="atd-carro__nomes">
-                    {g.reservas
-                      .slice(0, 4)
-                      .map((r) => `${r.titular || r.codigo}${r.pax > 1 ? ` (${r.pax})` : ""}`)
-                      .join(" · ")}
-                    {g.reservas.length > 4 ? ` · +${g.reservas.length - 4}` : ""}
-                  </p>
+                  <button
+                    type="button"
+                    className={`atd-carro__reservas-btn ${abertos.has(g.chave) ? "is-aberto" : ""}`}
+                    onClick={() => alternarAberto(g.chave)}
+                    aria-expanded={abertos.has(g.chave)}
+                  >
+                    <span className="atd-carro__nomes">
+                      {g.reservas
+                        .slice(0, 3)
+                        .map((r) => `${r.titular || r.codigo}${r.pax > 1 ? ` (${r.pax})` : ""}`)
+                        .join(" · ")}
+                      {g.reservas.length > 3 ? ` · +${g.reservas.length - 3}` : ""}
+                    </span>
+                    <span className="atd-carro__reservas-acao">
+                      {g.reservas.length} reserva{g.reservas.length === 1 ? "" : "s"}
+                      <Icon name="chevronDown" size={14} />
+                    </span>
+                  </button>
+                  {abertos.has(g.chave) && (
+                    <ul className="atd-reservas">
+                      {g.reservas.map((r, i) => (
+                        <li key={`${r.codigo}-${i}`}>
+                          <div className="atd-reservas__topo">
+                            <b>{r.titular || "Sem nome"}</b>
+                            <span className="atd-reservas__pax">{r.pax} pax</span>
+                          </div>
+                          <div className="atd-reservas__info">
+                            {r.codigo && <span className="atd-reservas__codigo">{r.codigo}</span>}
+                            <span>
+                              <Icon name="mapPin" size={12} /> {r.hotel || "Hotel não informado"}
+                            </span>
+                            {g.voos.length > 1 && r.voo && <span>Voo {r.voo}</span>}
+                          </div>
+                          <small className="atd-reservas__det">{textoPax(r)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="atd-etapas">
                     {etapas.map((e) => {
-                      const quemMarcou = Object.values(m[e.id] || {});
+                      const quemMarcou = marcasDaEtapa({ marcas: m }, e.id);
                       const meu = !!(quem && m[e.id]?.[quem.id]);
                       const ocupado = salvando === `${g.chave}|${e.id}`;
                       return (
@@ -332,12 +407,20 @@ const AtendimentoAeroporto = () => {
                             {e.acao || e.nome}
                           </button>
                           <small className="atd-etapa__quem">
-                            {quemMarcou.length ? quemMarcou.map((x) => x.nome).join(", ") : "ninguém ainda"}
+                            {quemMarcou.length ? quemMarcou.map((x) => `${x.nome} ${horaDe(x.em)}`).join(", ") : "ninguém ainda"}
                           </small>
                         </div>
                       );
                     })}
                   </div>
+                  {(() => {
+                    const esp = esperaDoDoc({ marcas: m }, etapas);
+                    return esp?.min !== null && esp?.min !== undefined ? (
+                      <small className="atd-carro__espera">
+                        <Icon name="clock" size={12} /> {textoMinutos(esp.min)} entre {etapas[0].nome.toLowerCase()} e {etapas[etapas.length - 1].nome.toLowerCase()}
+                      </small>
+                    ) : null;
+                  })()}
                 </li>
               );
             })}
