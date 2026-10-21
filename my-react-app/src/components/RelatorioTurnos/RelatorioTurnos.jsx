@@ -7,6 +7,7 @@ import {
   buscarServicosPeriodo,
   calcularRelatorio,
   carregarConfigTurnos,
+  carregarExcecoes,
   dataBr,
   detalharDia,
   diaDaSemana,
@@ -18,11 +19,14 @@ import {
   nomeTipo,
   num,
   salvarConfigTurnos,
+  salvarExcecoes,
   somarDias,
-  textoDias,
+  textoEscala,
 } from "../../Services/Services/relatorioTurnos";
 import { baixarExcelTurnos, imprimirRelatorioTurnos, textoPico } from "./impressaoTurnos";
 import ConfigTurnosDrawer from "./ConfigTurnosDrawer";
+import EscalaEquipe from "./EscalaEquipe";
+import AtendimentoRelatorio from "./AtendimentoRelatorio";
 import { CalendarioCalor, SemanaHoraCalor } from "./MapaCalor";
 import "./turnos.css";
 
@@ -32,6 +36,11 @@ import "./turnos.css";
    a equipe são configuráveis ("Turnos e equipe"). */
 
 const MAX_DIAS = 93;
+const VISOES = [
+  { value: "demanda", label: "Demanda" },
+  { value: "escala", label: "Escala da equipe" },
+  { value: "atendimento", label: "Atendimento no aeroporto" },
+];
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
 
 const ontem = () => somarDias(isoLocal(new Date()), -1);
@@ -130,7 +139,7 @@ const Equipe = ({ t }) => (
         <span>
           {c.papel === "sinergia" ? "sinergia" : "principal"}
           {c.obs ? ` · ${c.obs}` : ""}
-          {c.dias?.length ? ` · ${textoDias(c.dias)}` : ""}
+          {c.dias?.length || (c.escala?.modelo && c.escala.modelo !== "semanal") ? ` · ${textoEscala(c)}` : ""}
           {c.inicio && c.fim ? ` · ${horaTexto(c.inicio)}–${horaTexto(c.fim)}` : ""}
         </span>
       </li>
@@ -271,6 +280,9 @@ const DetalheDia = ({ detalhe, onClose, grupo }) => {
 const RelatorioTurnos = () => {
   const { mostrarToast } = useToast();
   const [config, setConfig] = useState(null);
+  const [excecoes, setExcecoes] = useState({ dias: {} });
+  const [excecoesLidas, setExcecoesLidas] = useState(false);
+  const [visao, setVisao] = useState("demanda");
   const [configAberta, setConfigAberta] = useState(false);
   const [atalho, setAtalho] = useState("mesPassado");
   const [periodo, setPeriodo] = useState(() => ATALHOS.find((a) => a.value === "mesPassado").calc());
@@ -289,6 +301,13 @@ const RelatorioTurnos = () => {
         console.error(e);
         if (vivo) setConfig(normalizarConfig(configPadraoDaRegiao()));
       });
+    carregarExcecoes()
+      .then((x) => {
+        if (!vivo) return;
+        setExcecoes(x);
+        setExcecoesLidas(true);
+      })
+      .catch((e) => console.error("Erro ao ler as exceções da escala:", e));
     return () => {
       vivo = false;
     };
@@ -304,8 +323,8 @@ const RelatorioTurnos = () => {
   const relatorio = useMemo(() => {
     if (!dados || !config) return null;
     const registros = verEfetivo === "todos" ? dados.registros : dados.registros.filter((r) => r.tipo === verEfetivo);
-    return calcularRelatorio({ registros, inicio: dados.inicio, fim: dados.fim, config });
-  }, [dados, config, verEfetivo]);
+    return calcularRelatorio({ registros, inicio: dados.inicio, fim: dados.fim, config, excecoes });
+  }, [dados, config, verEfetivo, excecoes]);
 
   const totaisPorTipo = useMemo(() => {
     const m = {};
@@ -357,6 +376,13 @@ const RelatorioTurnos = () => {
     mostrarToast("Turnos e equipe salvos");
   };
 
+  const salvarEscala = async (novas) => {
+    const salvas = await salvarExcecoes(novas);
+    setExcecoes(salvas);
+    mostrarToast("Escala salva");
+    return salvas;
+  };
+
   const desatualizado = relatorio && (relatorio.inicio !== inicio || relatorio.fim !== fim);
   const principais = relatorio ? relatorio.turnos.filter((t) => !t.apoio) : [];
   const maisMov = principais.length ? [...principais].sort((a, b) => b.mediaPax - a.mediaPax)[0] : null;
@@ -368,26 +394,57 @@ const RelatorioTurnos = () => {
     <div className="rtn">
       <PageHeader
         title="Demanda por turno"
-        description="Quantas pessoas cada turno atende — chegadas, saídas, transfers e passeios do Phoenix — no período escolhido."
+        description="Quantas pessoas cada turno atende — chegadas, saídas, transfers e passeios do Phoenix —, a escala da equipe e quem recepcionou e embarcou no aeroporto."
         actions={
           <>
             <Button icon="users" onClick={() => setConfigAberta(true)} disabled={!config}>
               Turnos e equipe
             </Button>
-            <Button variant="primary" icon="printer" onClick={() => imprimirRelatorioTurnos(dadosImpressao)} disabled={!relatorio || desatualizado}>
-              Imprimir / PDF
-            </Button>
+            {visao === "demanda" && (
+              <Button variant="primary" icon="printer" onClick={() => imprimirRelatorioTurnos(dadosImpressao)} disabled={!relatorio || desatualizado}>
+                Imprimir / PDF
+              </Button>
+            )}
           </>
         }
-        more={[
-          {
-            label: "Exportar Excel",
-            icon: "download",
-            onClick: () => baixarExcelTurnos(dadosImpressao),
-            disabled: !relatorio || desatualizado,
-          },
-        ]}
+        more={
+          visao === "demanda"
+            ? [
+                {
+                  label: "Exportar Excel",
+                  icon: "download",
+                  onClick: () => baixarExcelTurnos(dadosImpressao),
+                  disabled: !relatorio || desatualizado,
+                },
+              ]
+            : undefined
+        }
       />
+
+      <div className="rtn-visoes">
+        <Segmented ariaLabel="Visão" value={visao} onChange={setVisao} options={VISOES} />
+      </div>
+
+      {visao === "escala" &&
+        (config ? (
+          <EscalaEquipe key={excecoesLidas ? "lida" : "lendo"} config={config} excecoes={excecoes} onSalvar={salvarEscala} />
+        ) : (
+          <p className="rtn-atd__carregando">
+            <Icon name="loader" size={16} className="ui-spin" /> Carregando a equipe…
+          </p>
+        ))}
+
+      {visao === "atendimento" &&
+        (config ? (
+          <AtendimentoRelatorio config={config} excecoes={excecoes} />
+        ) : (
+          <p className="rtn-atd__carregando">
+            <Icon name="loader" size={16} className="ui-spin" /> Carregando a equipe…
+          </p>
+        ))}
+
+      {visao === "demanda" && (
+      <>
 
       <Card className="rtn-filtro">
         <div className="rtn-filtro__linha">
@@ -608,7 +665,7 @@ const RelatorioTurnos = () => {
                       <td className="tabular">
                         {horaTexto(c.janela.inicio)}–{horaTexto(c.janela.fim)}
                       </td>
-                      <td>{textoDias(c.dias)}</td>
+                      <td>{textoEscala(c)}</td>
                       <td className="tabular">
                         <b>{num(c.mediaPax)}</b>
                       </td>
@@ -636,6 +693,9 @@ const RelatorioTurnos = () => {
             </p>
           </Card>
         </>
+      )}
+
+      </>
       )}
 
       {configAberta && config && <ConfigTurnosDrawer open config={config} onClose={() => setConfigAberta(false)} onSalvar={salvarConfig} />}

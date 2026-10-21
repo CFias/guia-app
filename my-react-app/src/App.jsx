@@ -24,6 +24,7 @@ import RoboConferenteVoos from "./components/RoboConferenteVoos/RoboConferenteVo
 import FaqComercial from "./components/FaqComercial/FaqComercial";
 import FaqAdmin from "./components/FaqAdmin/FaqAdmin";
 import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponibilidade";
+import AtendimentoAeroporto from "./components/AtendimentoAeroporto/AtendimentoAeroporto";
 import Sobre from "./components/Sobre/Sobre";
 import Login from "./pages/Login/Login";
 import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
@@ -47,44 +48,44 @@ function App() {
         <Route path="/" element={<Dashboard />}>
           {/* ---- Telas do OPERACIONAL ---- */}
           <Route element={<RequireRole roles={ACESSO.painel} />}>
-          <Route element={<RequireArea />}>
-            <Route index element={<Home />} />
-            <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
-            <Route path="previas" element={<PreviaTransfers />} />
-            {/* Planilha operacional: a mesma tela da Prévia, aberta na planilha */}
-            <Route
-              path="planilha"
-              element={<PreviaTransfers secao="planilha" />}
-            />
-            {/* Cadastros: as 3 telas de cadastro viram abas (mesmos paths) */}
-            <Route
-              path="register-fornecedores"
-              element={<Cadastros aba="fornecedores" />}
-            />
-            <Route path="op" element={<PainelOperacionalUnificado />} />
-            <Route
-              path="servicos-fornecedor"
-              element={<ServicosFornecedor />}
-            />
-            <Route path="custos" element={<CustosOperacionais />} />
-            <Route path="recepcao-turnos" element={<RelatorioTurnos />} />
-            <Route path="chegadas" element={<PainelChegadas />} />
-            <Route path="outs" element={<PainelOuts />} />
-            <Route path="register-guias" element={<Cadastros aba="guias" />} />
-            <Route path="register-tours" element={<RegisterTours />} />
-            <Route path="resumo" element={<ResumoOperacionalGuias />} />
-            <Route
-              path="disponibilidade-guia"
-              element={<DisponibilidadeGuia />}
-            />
-            <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
-            <Route path="conferencia" element={<RoboConferenteVoos />} />
-            <Route path="faqadmin" element={<FaqAdmin />} />
-            <Route path="usuarios" element={<Cadastros aba="usuarios" />} />
-            {/* rotas futuras */}
-            <Route path="guias" element={<ListaGuias />} />
-            <Route path="passeios" element={<ListaPasseios />} />
-          </Route>
+            <Route element={<RequireArea />}>
+              <Route index element={<Home />} />
+              <Route path="mapear-guias" element={<MapaAfinidadeGuias />} />
+              <Route path="previas" element={<PreviaTransfers />} />
+              {/* Planilha operacional: a mesma tela da Prévia, aberta na planilha */}
+              <Route
+                path="planilha"
+                element={<PreviaTransfers secao="planilha" />}
+              />
+              {/* Cadastros: as 3 telas de cadastro viram abas (mesmos paths) */}
+              <Route
+                path="register-fornecedores"
+                element={<Cadastros aba="fornecedores" />}
+              />
+              <Route path="op" element={<PainelOperacionalUnificado />} />
+              <Route
+                path="servicos-fornecedor"
+                element={<ServicosFornecedor />}
+              />
+              <Route path="custos" element={<CustosOperacionais />} />
+              <Route path="recepcao-turnos" element={<RelatorioTurnos />} />
+              <Route path="chegadas" element={<PainelChegadas />} />
+              <Route path="outs" element={<PainelOuts />} />
+              <Route path="register-guias" element={<Cadastros aba="guias" />} />
+              <Route path="register-tours" element={<RegisterTours />} />
+              <Route path="resumo" element={<ResumoOperacionalGuias />} />
+              <Route
+                path="disponibilidade-guia"
+                element={<DisponibilidadeGuia />}
+              />
+              <Route path="escala-semanal" element={<GerarEscalaSemanal />} />
+              <Route path="conferencia" element={<RoboConferenteVoos />} />
+              <Route path="faqadmin" element={<FaqAdmin />} />
+              <Route path="usuarios" element={<Cadastros aba="usuarios" />} />
+              {/* rotas futuras */}
+              <Route path="guias" element={<ListaGuias />} />
+              <Route path="passeios" element={<ListaPasseios />} />
+            </Route>
             {/* Controle de acessos: a própria tela decide (gerência / ativação) */}
             <Route path="acessos" element={<ControleAcessos />} />
             {/* Regiões (bases Luck): só a gerência — a própria tela confere */}
@@ -118,6 +119,12 @@ function App() {
         <Route path="/minha-disponibilidade" element={<MinhaDisponibilidade />} />
         {/* Sobre a FiaSystem na versão da área do guia (sem menu lateral) */}
         <Route path="/guia/sobre" element={<Sobre modo="guia" />} />
+      </Route>
+
+      {/* ===== ATENDIMENTO NO AEROPORTO: painel das cartinhas (sem menu lateral) ===== */}
+      <Route element={<RequireRole roles={ACESSO.atendimentoAeroporto} />}>
+        <Route path="/atendimento" element={<AtendimentoAeroporto />} />
+        <Route path="/atendimento/sobre" element={<Sobre modo="guia" voltar="/atendimento" textoVoltar="Voltar para o atendimento" />} />
       </Route>
 
       {/* Qualquer outra URL volta pra home do nível de cada um */}

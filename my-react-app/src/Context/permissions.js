@@ -10,20 +10,23 @@ export const ROLES = {
   OPERACIONAL: "operacional",
   COMERCIAL: "comercial",
   GUIA: "guia",
+  // equipe do aeroporto: só o painel de atendimento (recepcionou / embarcou)
+  ATENDIMENTO: "atendimento",
 };
 
 export const ROLE_LABELS = {
   [ROLES.OPERACIONAL]: "Operacional",
   [ROLES.COMERCIAL]: "Comercial",
   [ROLES.GUIA]: "Guia",
+  [ROLES.ATENDIMENTO]: "Atendimento (aeroporto)",
 };
 
 export const ROLE_DESCRIPTIONS = {
   [ROLES.OPERACIONAL]:
     "Telas do operacional — a gerência escolhe quais em Controle de acessos.",
-  [ROLES.COMERCIAL]:
-    "Somente as telas de teor comercial (Central de Informações).",
+  [ROLES.COMERCIAL]: "Somente as telas de teor comercial (Central de Informações).",
   [ROLES.GUIA]: "Somente a tela para preencher a própria disponibilidade.",
+  [ROLES.ATENDIMENTO]: "Somente o painel do aeroporto: marca quem recepcionou e embarcou cada veículo.",
 };
 
 /* Quem pode abrir cada área. Pra liberar uma tela nova ao Comercial,
@@ -36,10 +39,12 @@ export const ACESSO = {
   painel: [ROLES.OPERACIONAL], // todas as telas operacionais
   faqComercial: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   minhaDisponibilidade: [ROLES.GUIA],
+  // painel do aeroporto: a equipe de atendimento e o operacional (que pode marcar em nome de alguém)
+  atendimentoAeroporto: [ROLES.ATENDIMENTO, ROLES.OPERACIONAL],
   // Configurações: o comercial só vê a aba Tema (tema, cor e tamanho do texto)
   configuracoes: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   // página "Sobre a FiaSystem": todos os perfis
-  sobre: [ROLES.OPERACIONAL, ROLES.COMERCIAL, ROLES.GUIA],
+  sobre: [ROLES.OPERACIONAL, ROLES.COMERCIAL, ROLES.GUIA, ROLES.ATENDIMENTO],
 };
 
 /* Para onde cada nível cai depois do login. Cada destino precisa
@@ -48,4 +53,5 @@ export const HOME_BY_ROLE = {
   [ROLES.OPERACIONAL]: "/",
   [ROLES.COMERCIAL]: "/faqcomercial",
   [ROLES.GUIA]: "/minha-disponibilidade",
+  [ROLES.ATENDIMENTO]: "/atendimento",
 };

@@ -16,7 +16,7 @@ import "./acessos.css";
    mexe aqui. As regras de segurança do banco seguem a mesma marcação.
    ========================================================= */
 
-const ORDEM_NIVEL = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.COMERCIAL]: 2, [ROLES.GUIA]: 3 };
+const ORDEM_NIVEL = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.COMERCIAL]: 3, [ROLES.GUIA]: 4 };
 const nivelDaConta = (u) => (u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role);
 const rotuloNivel = (n) => (n === "gerencia" ? "Gerência" : ROLE_LABELS[n] || n);
 

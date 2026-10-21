@@ -329,6 +329,11 @@
   border-color: color-mix(in srgb, var(--warning) 40%, transparent 60%);
 }
 
+.usuarios-badge.role-atendimento {
+  color: var(--success, #1f7a4d);
+  border-color: color-mix(in srgb, var(--success, #1f7a4d) 40%, transparent 60%);
+}
+
 .usuarios-badge.gerencia {
   color: var(--on-accent, #fff);
   background: var(--accent);

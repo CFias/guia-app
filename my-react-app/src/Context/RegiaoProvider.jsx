@@ -22,7 +22,8 @@ const lerEscolha = (uid) => {
    neste navegador. */
 const RegiaoProvider = ({ children }) => {
   const { user, perfil, role } = useAuth();
-  const operacional = role === ROLES.OPERACIONAL;
+  // contas que têm base (região): o Operacional e a equipe de atendimento do aeroporto
+  const operacional = role === ROLES.OPERACIONAL || role === ROLES.ATENDIMENTO;
   const gerencia = ehGerencia(perfil);
 
   const [regioes, setRegioes] = useState([]);

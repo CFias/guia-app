@@ -4,8 +4,15 @@ import {
   configPadraoDaRegiao,
   CORES_TURNO,
   DIAS_SEMANA_CURTO,
+  ETAPAS_PADRAO,
+  MODELOS_ESCALA,
   PAPEIS,
+  dataBr,
+  isoLocal,
   normalizarConfig,
+  normalizarEscala,
+  somarDias,
+  trabalhaPeloModelo,
   novoId,
   validarConfig,
 } from "../../Services/Services/relatorioTurnos";
@@ -13,15 +20,80 @@ import { ehSede } from "../../Services/Services/regiaoAtiva";
 
 /* Painel "Turnos e equipe": cria/edita os turnos (nome, horário, cor) e os
    colaboradores de cada um — papel no setor (função principal ou suporte em
-   sinergia), dias da semana e horário próprio quando diferente do turno. */
+   sinergia), modelo de escala (dias da semana, 12x36, 24x48, 2x2 ou ciclo),
+   horário próprio quando diferente do turno — e as regras do painel do
+   aeroporto (etapas que cada um marca e como os pax são contados). */
 
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
 
 const novoColaborador = () => ({ id: novoId(), nome: "", papel: "principal", dias: [], inicio: "", fim: "", obs: "" });
 
+const hojeIso = () => isoLocal(new Date());
+
+// os próximos 14 dias, para conferir o ciclo (12x36, 2x2…)
+const ProximosDias = ({ c }) => {
+  const hoje = hojeIso();
+  const dias = Array.from({ length: 14 }, (_, i) => somarDias(hoje, i));
+  return (
+    <div className="rtc-ciclo" aria-label="Próximos 14 dias">
+      {dias.map((d) => {
+        const sim = trabalhaPeloModelo(c, d);
+        return (
+          <span key={d} className={sim ? "is-on" : ""} title={`${dataBr(d)} · ${sim ? "trabalha" : "folga"}`}>
+            {DIAS_SEMANA_CURTO[new Date(`${d}T12:00:00`).getDay()].slice(0, 1)}
+            <small>{d.slice(8)}</small>
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+const Escala = ({ c, onChange }) => {
+  const e = normalizarEscala(c.escala);
+  const mudar = (novo) => onChange({ ...c, escala: normalizarEscala({ ...e, ...novo }) });
+  return (
+    <div className="rtc-escala">
+      <div className="rtc-colab__linha">
+        <select className="ui-input" value={e.modelo} onChange={(ev) => mudar({ modelo: ev.target.value })} aria-label="Modelo de escala">
+          {MODELOS_ESCALA.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </select>
+        {e.modelo !== "semanal" && (
+          <label className="rtc-ref">
+            <span>Trabalha em</span>
+            <input
+              type="date"
+              className="ui-input"
+              value={e.referencia}
+              onChange={(ev) => mudar({ referencia: ev.target.value })}
+              aria-label="Um dia em que trabalha (início do ciclo)"
+            />
+          </label>
+        )}
+      </div>
+      {e.modelo === "ciclo" && (
+        <div className="rtc-colab__linha rtc-ciclo-num">
+          <label>
+            <input type="number" min={1} max={14} className="ui-input" value={e.trabalha} onChange={(ev) => mudar({ trabalha: ev.target.value })} /> dia(s) de trabalho
+          </label>
+          <label>
+            <input type="number" min={1} max={14} className="ui-input" value={e.folga} onChange={(ev) => mudar({ folga: ev.target.value })} /> dia(s) de folga
+          </label>
+        </div>
+      )}
+      {e.modelo !== "semanal" && (e.referencia ? <ProximosDias c={{ ...c, escala: e }} /> : <small className="rtc-ajuda">Escolha um dia em que a pessoa trabalha — o ciclo é contado a partir dele.</small>)}
+    </div>
+  );
+};
+
 const Colaborador = ({ c, onChange, onRemover }) => {
   const [horarioProprio, setHorarioProprio] = useState(!!(c.inicio || c.fim));
   const set = (campo) => (e) => onChange({ ...c, [campo]: e.target.value });
+  const modelo = normalizarEscala(c.escala).modelo;
   const alternarDia = (d) => {
     const atuais = c.dias.length ? c.dias : [0, 1, 2, 3, 4, 5, 6];
     const prox = atuais.includes(d) ? atuais.filter((x) => x !== d) : [...atuais, d];
@@ -42,13 +114,16 @@ const Colaborador = ({ c, onChange, onRemover }) => {
         </select>
         <Button variant="ghost" iconOnly icon="trash" size="sm" onClick={onRemover} title="Remover colaborador" aria-label="Remover colaborador" />
       </div>
-      <div className="rtc-dias" role="group" aria-label="Dias que trabalha">
-        {ORDEM_SEMANA.map((d) => (
-          <button key={d} type="button" className={`rtc-dia ${ativo(d) ? "is-on" : ""}`} aria-pressed={ativo(d)} onClick={() => alternarDia(d)}>
-            {DIAS_SEMANA_CURTO[d]}
-          </button>
-        ))}
-      </div>
+      <Escala c={c} onChange={onChange} />
+      {modelo === "semanal" && (
+        <div className="rtc-dias" role="group" aria-label="Dias que trabalha">
+          {ORDEM_SEMANA.map((d) => (
+            <button key={d} type="button" className={`rtc-dia ${ativo(d) ? "is-on" : ""}`} aria-pressed={ativo(d)} onClick={() => alternarDia(d)}>
+              {DIAS_SEMANA_CURTO[d]}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="rtc-colab__linha rtc-colab__extra">
         <label className="rtc-check">
           <input
@@ -71,6 +146,71 @@ const Colaborador = ({ c, onChange, onRemover }) => {
       </div>
       <input className="ui-input rtc-obs" placeholder="Observação (ex.: Jovem Aprendiz, sempre que necessário)" value={c.obs} onChange={set("obs")} />
     </div>
+  );
+};
+
+/* Regras do painel do aeroporto (cartinhas) */
+const Atendimento = ({ atendimento, onChange }) => {
+  const a = atendimento || { ativo: true, etapas: ETAPAS_PADRAO, contagem: "dividir", avisarForaDoTurno: true };
+  const set = (campo, valor) => onChange({ ...a, [campo]: valor });
+  const mudarEtapa = (id, novo) => set("etapas", a.etapas.map((x) => (x.id === id ? { ...x, ...novo } : x)));
+  return (
+    <section className="rtc-folg rtc-atd">
+      <h4>
+        <Icon name="planeLanding" size={15} /> Atendimento no aeroporto
+      </h4>
+      <p className="rtc-ajuda">
+        No celular, cada colaborador marca por veículo as etapas que fez (o verso da cartinha). As contas são criadas em Usuários, nível <b>Atendimento</b>.
+      </p>
+      <label className="rtc-check">
+        <input type="checkbox" checked={a.ativo} onChange={(e) => set("ativo", e.target.checked)} />
+        Painel ativo
+      </label>
+      <div className="rtc-etapas">
+        <span className="rtc-etapas__cab">
+          <small>No relatório</small>
+          <small>No botão</small>
+        </span>
+        {a.etapas.map((x) => (
+          <div key={x.id} className="rtc-colab__linha">
+            <input className="ui-input" value={x.nome} placeholder="Ex.: Recepcionou" onChange={(e) => mudarEtapa(x.id, { nome: e.target.value })} aria-label="Nome da etapa no relatório" />
+            <input className="ui-input" value={x.acao} placeholder="Ex.: Recepcionei" onChange={(e) => mudarEtapa(x.id, { acao: e.target.value })} aria-label="Texto do botão" />
+            <Button
+              variant="ghost"
+              iconOnly
+              icon="trash"
+              size="sm"
+              disabled={a.etapas.length <= 1}
+              onClick={() => window.confirm(`Remover a etapa ${x.nome}? As marcas já feitas nela deixam de contar.`) && set("etapas", a.etapas.filter((y) => y.id !== x.id))}
+              aria-label="Remover etapa"
+              title="Remover etapa"
+            />
+          </div>
+        ))}
+        {a.etapas.length < 4 && (
+          <Button size="sm" icon="plus" onClick={() => set("etapas", [...a.etapas, { id: novoId(), nome: "", acao: "" }])}>
+            Adicionar etapa
+          </Button>
+        )}
+      </div>
+      <div className="rtc-contagem" role="radiogroup" aria-label="Quando duas pessoas marcam o mesmo veículo">
+        <span>Quando 2 ou mais pessoas marcam a mesma etapa do veículo:</span>
+        <label className={a.contagem === "dividir" ? "is-on" : ""}>
+          <input type="radio" name="contagem" checked={a.contagem === "dividir"} onChange={() => set("contagem", "dividir")} />
+          <b>Dividir os pax</b>
+          <small>10 pax com 2 pessoas = 5 para cada. A soma bate com o total do dia.</small>
+        </label>
+        <label className={a.contagem === "total" ? "is-on" : ""}>
+          <input type="radio" name="contagem" checked={a.contagem === "total"} onChange={() => set("contagem", "total")} />
+          <b>Cada um conta tudo</b>
+          <small>10 pax com 2 pessoas = 10 para cada (como na cartinha). A soma passa de 100%.</small>
+        </label>
+      </div>
+      <label className="rtc-check">
+        <input type="checkbox" checked={a.avisarForaDoTurno} onChange={(e) => set("avisarForaDoTurno", e.target.checked)} />
+        Avisar quando alguém marcar um veículo fora do próprio turno
+      </label>
+    </section>
   );
 };
 
@@ -245,6 +385,8 @@ const ConfigTurnosDrawer = ({ open, config, onClose, onSalvar }) => {
             Adicionar folguista
           </Button>
         </section>
+
+        <Atendimento atendimento={rascunho.atendimento} onChange={(a) => setRascunho((r) => ({ ...r, atendimento: a }))} />
 
         <button
           type="button"

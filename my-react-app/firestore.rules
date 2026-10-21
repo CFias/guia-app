@@ -105,6 +105,22 @@ service cloud.firestore {
       );
     }
 
+    // ---------- Atendimento no aeroporto (cartinhas) ----------
+    // Conta "atendimento": só o painel do aeroporto da própria base. Lê e grava
+    // as marcas (Recepcionei / Embarquei) em atendimentos[__base].
+    function isAtendimento() { return roleIs('atendimento'); }
+    function colecaoAtendimentos(col) {
+      return (minhaRegiao() == 'ssa' && col == 'atendimentos')
+        || col == 'atendimentos__' + minhaRegiao();
+    }
+    function atendimentoValido() {
+      return request.resource.data.keys().hasOnly([
+          'data', 'chave', 'veiculo', 'motorista', 'voos', 'hora', 'pax',
+          'reservas', 'marcas', 'atualizadoEm'])
+        && request.resource.data.data is string
+        && request.resource.data.marcas is map;
+    }
+
     // Balanço de uso: gerência + contas marcadas pela gerência
     function podeVerBalanco() {
       return ativo() && (isGerencia() || meuPerfil().get('verBalanco', false) == true);
@@ -203,19 +219,21 @@ service cloud.firestore {
       // Operacional/gerência e não mexe em gerência nem em acessos.
       allow read: if podeArea('usuarios') && daSede();
       allow create: if podeArea('usuarios') && daSede()
-        && request.resource.data.role in ['comercial', 'guia']
+        && request.resource.data.role in ['comercial', 'guia', 'atendimento']
         && request.resource.data.keys().hasOnly([
              'nome', 'email', 'role', 'ativo', 'guideId', 'guideName',
+             'colaboradorId', 'colaboradorNome',
              'createdAt', 'createdBy', 'senhaTemporaria'
            ]);
       allow update: if podeArea('usuarios') && daSede()
-        && resource.data.role in ['comercial', 'guia']
+        && resource.data.role in ['comercial', 'guia', 'atendimento']
         && resource.data.get('gerencia', false) != true
-        && request.resource.data.role in ['comercial', 'guia']
+        && request.resource.data.role in ['comercial', 'guia', 'atendimento']
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName', 'updatedAt']);
+             .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName',
+                       'colaboradorId', 'colaboradorNome', 'updatedAt']);
       allow delete: if podeArea('usuarios') && daSede()
-        && resource.data.role in ['comercial', 'guia'];
+        && resource.data.role in ['comercial', 'guia', 'atendimento'];
       // NINGUÉM se promove a gerência: o campo `gerencia` só muda pela
       // própria gerência (regra acima). A primeira gerência é definida pelo
       // administrador direto no console do Firebase.
@@ -358,6 +376,12 @@ service cloud.firestore {
     match /{colecao}/{docId}/{resto=**} {
       allow read: if podeLerColecao(colecao, docId);
       allow write: if podeGravarColecao(colecao, docId);
+    }
+    // conta Atendimento: só as marcas do aeroporto da própria base (não apaga)
+    match /{colecao}/{docId} {
+      allow read: if isAtendimento() && colecaoAtendimentos(colecao);
+      allow create, update: if isAtendimento() && colecaoAtendimentos(colecao)
+        && atendimentoValido();
     }
   }
 }

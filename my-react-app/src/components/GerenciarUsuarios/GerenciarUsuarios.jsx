@@ -26,6 +26,7 @@ import {
 import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
+import { carregarConfigTurnos, todosDaEquipe } from "../../Services/Services/relatorioTurnos";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { Segmented } from "../ui";
@@ -78,13 +79,16 @@ const ROTULO_GRUPO = {
   [ROLES.OPERACIONAL]: ROLE_LABELS[ROLES.OPERACIONAL],
   [ROLES.COMERCIAL]: ROLE_LABELS[ROLES.COMERCIAL],
   [ROLES.GUIA]: ROLE_LABELS[ROLES.GUIA],
+  [ROLES.ATENDIMENTO]: "Atendimento",
   desativadas: "Desativadas",
 };
 
 // Filtro por grupo: gerência, operacional, comercial, guia ou desativadas
 const grupoDaConta = (u) =>
   u.ativo === false ? "desativadas" : u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role;
-const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.COMERCIAL]: 2, [ROLES.GUIA]: 3, desativadas: 4 };
+const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.COMERCIAL]: 3, [ROLES.GUIA]: 4, desativadas: 5 };
+// contas que pertencem a uma base (Operacional e Atendimento)
+const TEM_BASE = [ROLES.OPERACIONAL, ROLES.ATENDIMENTO];
 
 // "Último acesso: hoje 14:32" / "Nunca entrou"
 const paraData = (v) => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
@@ -104,8 +108,32 @@ const FORM_VAZIO = {
   senha: "",
   role: ROLES.GUIA,
   guideId: "",
+  colaboradorId: "",
   regiao: ID_SEDE,
 };
+
+/* Conta "Atendimento": qual colaborador da Demanda por turno ela representa
+   (é por ele que os pax recepcionados/embarcados entram no relatório). */
+const CampoColaborador = ({ value, onChange, equipe, ocupados, donoAtual, disabled }) => (
+  <label className="usuarios-field">
+    <span>Colaborador da equipe</span>
+    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+      <option value="">Selecionar colaborador</option>
+      {equipe.map((c) => {
+        const ocupado = ocupados.has(c.id) && ocupados.get(c.id) !== donoAtual;
+        return (
+          <option key={c.id} value={c.id} disabled={ocupado}>
+            {c.nome} · {c.turnoNome}
+            {ocupado ? " (já tem acesso)" : ""}
+          </option>
+        );
+      })}
+    </select>
+    <small className="usuarios-hint">
+      A equipe vem de Demanda por turno → Turnos e equipe. A pessoa marca, no celular, os veículos que recepcionou e embarcou.
+    </small>
+  </label>
+);
 
 /* Campo "Base" (região) das contas do Operacional — só a gerência escolhe.
    Salvador é a sede (tudo); as outras bases vêm de Gestão → Regiões. */
@@ -130,7 +158,7 @@ const GerenciarUsuarios = () => {
   // Contas do Operacional (e a gerência) só a gerência cria ou altera — a
   // regra também está no firestore.rules. Os demais criam/editam comercial e guia.
   const souGerencia = ehGerencia(perfil);
-  const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA];
+  const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA, ROLES.ATENDIMENTO];
   const podeEditar = (u) => souGerencia || (u.role !== ROLES.OPERACIONAL && !u.gerencia);
 
   const { regioes } = useRegiao();
@@ -140,6 +168,7 @@ const GerenciarUsuarios = () => {
 
   const [usuarios, setUsuarios] = useState([]);
   const [guias, setGuias] = useState([]);
+  const [equipes, setEquipes] = useState({}); // base → colaboradores (Demanda por turno)
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState(() => ({
@@ -192,6 +221,31 @@ const GerenciarUsuarios = () => {
     carregar();
   }, [carregar]);
 
+  // equipe da Demanda por turno da base escolhida (para contas de Atendimento)
+  const equipeDe = (regiaoId) => equipes[regiaoId || ID_SEDE] || [];
+  const baseDoForm = souGerencia ? form.regiao : perfil?.regiao || ID_SEDE;
+  // bases cuja equipe precisa estar carregada: a do formulário e a da conta em edição
+  const baseEditando = editando ? editando.regiao || ID_SEDE : "";
+  useEffect(() => {
+    const precisa = [form.role === ROLES.ATENDIMENTO ? baseDoForm : "", baseEditando].filter((b) => b && !equipes[b]);
+    if (!precisa.length) return;
+    let vivo = true;
+    precisa.forEach((b) => {
+      const r = opcoesRegiao.find((x) => x.id === b);
+      carregarConfigTurnos(r)
+        .then((c) => vivo && setEquipes((p) => ({ ...p, [b]: todosDaEquipe(c) })))
+        .catch(() => vivo && setEquipes((p) => ({ ...p, [b]: [] })));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [form.role, baseDoForm, baseEditando, equipes, opcoesRegiao]);
+  const colaboradoresVinculados = useMemo(() => {
+    const mapa = new Map();
+    usuarios.forEach((u) => u.role === ROLES.ATENDIMENTO && u.colaboradorId && mapa.set(u.colaboradorId, u.id));
+    return mapa;
+  }, [usuarios]);
+
   const guiasVinculados = useMemo(() => {
     const mapa = new Map();
     usuarios.forEach((u) => u.guideId && mapa.set(u.guideId, u.id));
@@ -207,12 +261,12 @@ const GerenciarUsuarios = () => {
     [busca],
   );
   const passaBase = useCallback(
-    (u) => filtroBase === "todas" || (u.role === ROLES.OPERACIONAL && (u.regiao || ID_SEDE) === filtroBase),
+    (u) => filtroBase === "todas" || (TEM_BASE.includes(u.role) && (u.regiao || ID_SEDE) === filtroBase),
     [filtroBase],
   );
   // contagem de cada grupo já com a busca e a base aplicadas
   const contagem = useMemo(() => {
-    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, desativadas: 0 };
+    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.ATENDIMENTO]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, desativadas: 0 };
     usuarios.filter((u) => passaBusca(u) && passaBase(u)).forEach((u) => {
       c.todos += 1;
       c[grupoDaConta(u)] = (c[grupoDaConta(u)] || 0) + 1;
@@ -269,8 +323,13 @@ const GerenciarUsuarios = () => {
       });
       return;
     }
+    if (form.role === ROLES.ATENDIMENTO && !form.colaboradorId) {
+      setMsg({ tipo: "erro", texto: "Escolha qual colaborador da equipe essa conta representa." });
+      return;
+    }
 
     const guia = guias.find((g) => g.id === form.guideId);
+    const colaborador = equipeDe(baseDoForm).find((c) => c.id === form.colaboradorId);
     const secondaryAuth = getSecondaryAuth();
     let cred = null;
     let criado = false;
@@ -292,7 +351,10 @@ const GerenciarUsuarios = () => {
         ...(form.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : {}),
-        ...(souGerencia && form.role === ROLES.OPERACIONAL && form.regiao && form.regiao !== ID_SEDE
+        ...(form.role === ROLES.ATENDIMENTO && colaborador
+          ? { colaboradorId: colaborador.id, colaboradorNome: colaborador.nome }
+          : {}),
+        ...(souGerencia && TEM_BASE.includes(form.role) && form.regiao && form.regiao !== ID_SEDE
           ? { regiao: form.regiao }
           : {}),
         // primeiro acesso: a pessoa troca a senha temporária pela dela (DefinirSenha)
@@ -307,16 +369,16 @@ const GerenciarUsuarios = () => {
 
       // Se a conta de login chegou a ser criada mas o perfil não foi salvo,
       // desfaz — senão sobra uma conta "órfã" que bloqueia o e-mail.
-      if (cred?.user) await deleteUser(cred.user).catch(() => {});
+      if (cred?.user) await deleteUser(cred.user).catch(() => { });
 
       setMsg({ tipo: "erro", texto: mensagemErroAuth(err.code) });
     } finally {
-      await signOut(secondaryAuth).catch(() => {});
+      await signOut(secondaryAuth).catch(() => { });
       setSalvando(false);
     }
 
     if (criado) {
-      const base = form.role === ROLES.OPERACIONAL ? regiaoPorId(form.regiao)?.nome || SEDE.nome : SEDE.nome;
+      const base = TEM_BASE.includes(form.role) ? regiaoPorId(baseDoForm)?.nome || SEDE.nome : SEDE.nome;
       setCredenciais({ nome, email, senha: form.senha, base });
       setForm({ ...FORM_VAZIO, senha: gerarSenha() });
       await carregar();
@@ -349,6 +411,7 @@ const GerenciarUsuarios = () => {
         return false;
       }
       const guia = guias.find((g) => g.id === dados.guideId);
+      const colaborador = equipeDe(dados.regiao).find((c) => c.id === dados.colaboradorId);
 
       await updateDoc(doc(db, "users", dados.id), {
         nome,
@@ -357,11 +420,14 @@ const GerenciarUsuarios = () => {
         ...(dados.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : { guideId: deleteField(), guideName: deleteField() }),
+        ...(dados.role === ROLES.ATENDIMENTO && dados.colaboradorId
+          ? { colaboradorId: dados.colaboradorId, colaboradorNome: colaborador?.nome || dados.colaboradorNome || "" }
+          : { colaboradorId: deleteField(), colaboradorNome: deleteField() }),
         // quem vê o Balanço de uso: só a gerência marca
         ...(souGerencia ? { verBalanco: !!dados.verBalanco } : {}),
         // base: só a gerência mexe (a regra do banco não deixa os demais)
         ...(souGerencia
-          ? { regiao: dados.role === ROLES.OPERACIONAL && dados.regiao && dados.regiao !== ID_SEDE ? dados.regiao : deleteField() }
+          ? { regiao: TEM_BASE.includes(dados.role) && dados.regiao && dados.regiao !== ID_SEDE ? dados.regiao : deleteField() }
           : {}),
         updatedAt: Timestamp.now(),
       });
@@ -513,11 +579,21 @@ const GerenciarUsuarios = () => {
             </div>
           </div>
 
-          {mostrarRegiao && form.role === ROLES.OPERACIONAL && (
+          {mostrarRegiao && TEM_BASE.includes(form.role) && (
             <CampoRegiao
               value={form.regiao}
               onChange={(v) => setCampo("regiao", v)}
               opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa)}
+              disabled={salvando}
+            />
+          )}
+
+          {form.role === ROLES.ATENDIMENTO && (
+            <CampoColaborador
+              value={form.colaboradorId}
+              onChange={(v) => setCampo("colaboradorId", v)}
+              equipe={equipeDe(baseDoForm)}
+              ocupados={colaboradoresVinculados}
               disabled={salvando}
             />
           )}
@@ -596,6 +672,9 @@ const GerenciarUsuarios = () => {
                 { value: "todos", label: "Todos", count: contagem.todos },
                 { value: "gerencia", label: "Gerência", count: contagem.gerencia },
                 { value: ROLES.OPERACIONAL, label: ROLE_LABELS[ROLES.OPERACIONAL], count: contagem[ROLES.OPERACIONAL] },
+                ...(contagem[ROLES.ATENDIMENTO] || filtroRole === ROLES.ATENDIMENTO
+                  ? [{ value: ROLES.ATENDIMENTO, label: "Atendimento", count: contagem[ROLES.ATENDIMENTO] }]
+                  : []),
                 { value: ROLES.COMERCIAL, label: ROLE_LABELS[ROLES.COMERCIAL], count: contagem[ROLES.COMERCIAL] },
                 { value: ROLES.GUIA, label: ROLE_LABELS[ROLES.GUIA], count: contagem[ROLES.GUIA] },
                 { value: "desativadas", label: "Desativadas", count: contagem.desativadas },
@@ -629,83 +708,86 @@ const GerenciarUsuarios = () => {
             <ul className="usuarios-lista">
               {usuariosVisiveis.map((u, i) => (
                 <Fragment key={u.id}>
-                {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
-                  <li className="usuarios-grupo" aria-hidden="true">
-                    {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
-                  </li>
-                )}
-                <li className={u.ativo === false ? "inativo" : ""}>
-                  <div className="usuarios-item-info">
-                    <strong>
-                      {u.nome}
-                      {u.id === usuarioLogado.uid && (
-                        <span className="usuarios-voce"> (você)</span>
+                  {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
+                    <li className="usuarios-grupo" aria-hidden="true">
+                      {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
+                    </li>
+                  )}
+                  <li className={u.ativo === false ? "inativo" : ""}>
+                    <div className="usuarios-item-info">
+                      <strong>
+                        {u.nome}
+                        {u.id === usuarioLogado.uid && (
+                          <span className="usuarios-voce"> (você)</span>
+                        )}
+                      </strong>
+                      <span>{u.email}</span>
+                      <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
+                      {u.role === ROLES.GUIA && (
+                        <span className="usuarios-vinculo">
+                          Guia: {u.guideName || "—"}
+                        </span>
                       )}
-                    </strong>
-                    <span>{u.email}</span>
-                    <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
-                    {u.role === ROLES.GUIA && (
-                      <span className="usuarios-vinculo">
-                        Guia: {u.guideName || "—"}
-                      </span>
-                    )}
-                  </div>
+                      {u.role === ROLES.ATENDIMENTO && (
+                        <span className="usuarios-vinculo">Colaborador: {u.colaboradorNome || "—"}</span>
+                      )}
+                    </div>
 
-                  <div className="usuarios-item-tags">
-                    <span className={`usuarios-badge role-${u.role}`}>
-                      {ROLE_LABELS[u.role] || u.role}
-                    </span>
-                    {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
-                      <span className="usuarios-badge gerencia">Gerência</span>
-                    )}
-                    {u.role === ROLES.OPERACIONAL && u.regiao && u.regiao !== ID_SEDE && (
-                      <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
-                        {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
+                    <div className="usuarios-item-tags">
+                      <span className={`usuarios-badge role-${u.role}`}>
+                        {ROLE_LABELS[u.role] || u.role}
                       </span>
-                    )}
-                    {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
-                      <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
-                        {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
-                      </span>
-                    )}
-                    {u.ativo === false && (
-                      <span className="usuarios-badge desativado">Desativado</span>
-                    )}
-                    {u.senhaTemporaria === true && u.ativo !== false && (
-                      <span className="usuarios-badge pendente" title="Ainda não entrou para criar a própria senha">
-                        1º acesso pendente
-                      </span>
-                    )}
-                    {u.verBalanco === true && !u.gerencia && (
-                      <span className="usuarios-badge balanco" title="Pode ver o Balanço de uso">
-                        Vê o balanço
-                      </span>
-                    )}
-                  </div>
+                      {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
+                        <span className="usuarios-badge gerencia">Gerência</span>
+                      )}
+                      {TEM_BASE.includes(u.role) && u.regiao && u.regiao !== ID_SEDE && (
+                        <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
+                          {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
+                        </span>
+                      )}
+                      {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
+                        <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
+                          {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                        </span>
+                      )}
+                      {u.ativo === false && (
+                        <span className="usuarios-badge desativado">Desativado</span>
+                      )}
+                      {u.senhaTemporaria === true && u.ativo !== false && (
+                        <span className="usuarios-badge pendente" title="Ainda não entrou para criar a própria senha">
+                          1º acesso pendente
+                        </span>
+                      )}
+                      {u.verBalanco === true && !u.gerencia && (
+                        <span className="usuarios-badge balanco" title="Pode ver o Balanço de uso">
+                          Vê o balanço
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="usuarios-item-acoes">
-                    <button
-                      type="button"
-                      className="usuarios-icon-btn"
-                      title="Enviar link de nova senha"
-                      onClick={() => enviarRedefinicao(u)}
-                    >
-                      <Icon name="key" size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="usuarios-icon-btn"
-                      title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
-                      disabled={!podeEditar(u)}
-                      onClick={() => {
-                        setMsg(null);
-                        setEditando(u);
-                      }}
-                    >
-                      <Icon name="pencil" size={16} />
-                    </button>
-                  </div>
-                </li>
+                    <div className="usuarios-item-acoes">
+                      <button
+                        type="button"
+                        className="usuarios-icon-btn"
+                        title="Enviar link de nova senha"
+                        onClick={() => enviarRedefinicao(u)}
+                      >
+                        <Icon name="key" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="usuarios-icon-btn"
+                        title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
+                        disabled={!podeEditar(u)}
+                        onClick={() => {
+                          setMsg(null);
+                          setEditando(u);
+                        }}
+                      >
+                        <Icon name="pencil" size={16} />
+                      </button>
+                    </div>
+                  </li>
                 </Fragment>
               ))}
             </ul>
@@ -731,6 +813,8 @@ const GerenciarUsuarios = () => {
           usuario={editando}
           guias={guias}
           guiasVinculados={guiasVinculados}
+          equipe={equipeDe(baseEditando)}
+          colaboradoresVinculados={colaboradoresVinculados}
           ehVoce={editando.id === usuarioLogado.uid}
           rolesPermitidos={rolesPermitidos}
           opcoesRegiao={mostrarRegiao ? opcoesRegiao : null}
@@ -750,6 +834,8 @@ const EditarUsuarioModal = ({
   usuario,
   guias,
   guiasVinculados,
+  equipe = [],
+  colaboradoresVinculados = new Map(),
   ehVoce,
   rolesPermitidos = Object.values(ROLES),
   opcoesRegiao = null,
@@ -763,6 +849,8 @@ const EditarUsuarioModal = ({
     role: usuario.role || ROLES.GUIA,
     ativo: usuario.ativo !== false,
     guideId: usuario.guideId || "",
+    colaboradorId: usuario.colaboradorId || "",
+    colaboradorNome: usuario.colaboradorNome || "",
     regiao: usuario.regiao || ID_SEDE,
     verBalanco: usuario.verBalanco === true,
   });
@@ -774,6 +862,10 @@ const EditarUsuarioModal = ({
     e.preventDefault();
     if (dados.role === ROLES.GUIA && !dados.guideId) {
       alert("Escolha qual guia essa conta representa.");
+      return;
+    }
+    if (dados.role === ROLES.ATENDIMENTO && !dados.colaboradorId) {
+      alert("Escolha qual colaborador da equipe essa conta representa.");
       return;
     }
     setSalvando(true);
@@ -815,12 +907,26 @@ const EditarUsuarioModal = ({
           </select>
         </label>
 
-        {opcoesRegiao && dados.role === ROLES.OPERACIONAL && !usuario.gerencia && (
+        {opcoesRegiao && TEM_BASE.includes(dados.role) && !usuario.gerencia && (
           <CampoRegiao
             value={dados.regiao}
             onChange={(v) => set("regiao", v)}
             opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa || r.id === dados.regiao)}
             disabled={ehVoce}
+          />
+        )}
+
+        {dados.role === ROLES.ATENDIMENTO && (
+          <CampoColaborador
+            value={dados.colaboradorId}
+            onChange={(v) => set("colaboradorId", v)}
+            equipe={
+              dados.colaboradorId && !equipe.some((c) => c.id === dados.colaboradorId)
+                ? [{ id: dados.colaboradorId, nome: dados.colaboradorNome || dados.colaboradorId, turnoNome: "fora da equipe atual" }, ...equipe]
+                : equipe
+            }
+            ocupados={colaboradoresVinculados}
+            donoAtual={usuario.id}
           />
         )}
 

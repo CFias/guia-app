@@ -128,11 +128,73 @@ export const normalizarConfig = (bruto) => {
             inicio: horaValida(c.inicio) ? c.inicio : "",
             fim: horaValida(c.fim) ? c.fim : "",
             obs: String(c.obs || "").trim(),
+            escala: normalizarEscala(c.escala),
           })),
       })),
     folguistas: (Array.isArray(base.folguistas) ? base.folguistas : [])
       .filter((f) => f && String(f.nome || "").trim())
       .map((f) => ({ id: String(f.id || novoId()), nome: String(f.nome).trim(), obs: String(f.obs || "").trim() })),
+    atendimento: normalizarAtendimento(base.atendimento),
+  };
+};
+
+// ---------------------------------------------------------------------
+// MODELOS DE ESCALA (por colaborador)
+//   semanal   → trabalha nos dias da semana marcados (c.dias; vazio = todos)
+//   ciclo     → trabalha N dias e folga M, a partir de um dia em que trabalha
+//               (12x36 = 1/1 · plantão 24x48 = 1/2 · 2x2 = 2/2 · personalizado)
+// Folguistas não têm dia fixo: entram pela grade da semana ("cobre").
+// Folgas, trocas e coberturas do dia a dia ficam nas EXCEÇÕES
+// (settings/turnos_excecoes[__base]) e valem por cima do modelo.
+// ---------------------------------------------------------------------
+export const MODELOS_ESCALA = [
+  { id: "semanal", nome: "Dias da semana (folga fixa)", trabalha: 0, folga: 0 },
+  { id: "12x36", nome: "12x36 (dia sim, dia não)", trabalha: 1, folga: 1 },
+  { id: "24x48", nome: "Plantão 24x48", trabalha: 1, folga: 2 },
+  { id: "2x2", nome: "2x2 (2 dias sim, 2 não)", trabalha: 2, folga: 2 },
+  { id: "ciclo", nome: "Ciclo personalizado", trabalha: 0, folga: 0 },
+];
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+const inteiroEntre = (v, min, max, padrao) => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n >= min && n <= max ? n : padrao;
+};
+export const normalizarEscala = (e = {}) => {
+  const modelo = MODELOS_ESCALA.some((m) => m.id === e?.modelo) ? e.modelo : "semanal";
+  const preset = MODELOS_ESCALA.find((m) => m.id === modelo);
+  return {
+    modelo,
+    trabalha: modelo === "ciclo" ? inteiroEntre(e?.trabalha, 1, 14, 1) : preset.trabalha,
+    folga: modelo === "ciclo" ? inteiroEntre(e?.folga, 1, 14, 1) : preset.folga,
+    referencia: ISO_RE.test(String(e?.referencia || "")) ? e.referencia : "",
+  };
+};
+
+// ---------------------------------------------------------------------
+// ATENDIMENTO NO AEROPORTO (painel do colaborador)
+//   etapas: o que cada colaborador marca por veículo (padrão: recepcionou
+//           e embarcou — o verso da "cartinha")
+//   contagem: "dividir" (2 pessoas na mesma etapa dividem os pax do veículo)
+//             ou "total" (cada uma conta o veículo inteiro, como na cartinha)
+// ---------------------------------------------------------------------
+export const ETAPAS_PADRAO = [
+  { id: "recepcao", nome: "Recepcionou", acao: "Recepcionei" },
+  { id: "embarque", nome: "Embarcou", acao: "Embarquei" },
+];
+export const normalizarAtendimento = (a = {}) => {
+  const etapas = (Array.isArray(a?.etapas) ? a.etapas : ETAPAS_PADRAO)
+    .map((x, i) => ({
+      id: String(x?.id || `etapa${i + 1}`).replace(/[^\w-]/g, "").slice(0, 24) || `etapa${i + 1}`,
+      nome: String(x?.nome || "").trim().slice(0, 30),
+      acao: String(x?.acao || x?.nome || "").trim().slice(0, 30),
+    }))
+    .filter((x) => x.nome);
+  return {
+    ativo: a?.ativo !== false,
+    etapas: etapas.length ? etapas : ETAPAS_PADRAO,
+    contagem: a?.contagem === "total" ? "total" : "dividir",
+    // marcar só dentro do próprio turno (fora dele, o painel avisa e pede confirmação)
+    avisarForaDoTurno: a?.avisarForaDoTurno !== false,
   };
 };
 
@@ -140,6 +202,7 @@ export const normalizarConfig = (bruto) => {
 export const validarConfig = (config) => {
   const erros = [];
   if (!config.turnos.length) erros.push("Cadastre pelo menos um turno.");
+  if (config.atendimento && !config.atendimento.etapas.some((e) => e.nome.trim())) erros.push("Atendimento: informe pelo menos uma etapa.");
   config.turnos.forEach((t, i) => {
     const nome = t.nome?.trim() || `Turno ${i + 1}`;
     if (!t.nome?.trim()) erros.push(`O turno ${i + 1} está sem nome.`);
@@ -150,6 +213,9 @@ export const validarConfig = (config) => {
       if ((c.inicio || c.fim) && !(horaValida(c.inicio) && horaValida(c.fim))) {
         erros.push(`${nome}: horário próprio de ${c.nome || "colaborador"} incompleto.`);
       }
+      if (c.escala && c.escala.modelo !== "semanal" && !c.escala.referencia) {
+        erros.push(`${nome}: informe um dia em que ${c.nome || "o colaborador"} trabalha (escala ${c.escala.modelo}).`);
+      }
     });
   });
   return erros;
@@ -157,7 +223,7 @@ export const validarConfig = (config) => {
 
 // Cada base tem a sua equipe: Salvador em settings/turnos_equipe, as outras
 // em settings/turnos_equipe__<id> (regiaoAtiva.js → idPorRegiao).
-const REF_CONFIG = () => doc(db, "settings", idPorRegiao("turnos_equipe"));
+const REF_CONFIG = (r) => doc(db, "settings", r ? idPorRegiao("turnos_equipe", r) : idPorRegiao("turnos_equipe"));
 
 // Base nova começa com os mesmos horários, sem ninguém na equipe.
 export const configPadraoDaRegiao = () =>
@@ -165,8 +231,9 @@ export const configPadraoDaRegiao = () =>
     ? CONFIG_PADRAO
     : { turnos: CONFIG_PADRAO.turnos.map((t) => ({ ...t, colaboradores: [] })), folguistas: [] };
 
-export const carregarConfigTurnos = async () => {
-  const snap = await getDoc(REF_CONFIG());
+// r (opcional): outra base — ex.: a gerência criando conta de Atendimento
+export const carregarConfigTurnos = async (r) => {
+  const snap = await getDoc(REF_CONFIG(r));
   return normalizarConfig(snap.exists() ? snap.data() : configPadraoDaRegiao());
 };
 
@@ -234,6 +301,14 @@ export const duracaoMin = (inicio, fim) => {
   return b > a ? b - a : 24 * 60 - a + b;
 };
 
+// "seg a sex" (dias da semana) ou o nome do modelo (12x36, 2x2…)
+export const textoEscala = (c = {}) => {
+  const m = c.escala?.modelo;
+  if (!m || m === "semanal") return textoDias(c.dias || []);
+  if (m === "ciclo") return `${c.escala.trabalha}x${c.escala.folga} (ciclo)`;
+  return m === "24x48" ? "plantão 24x48" : m;
+};
+
 export const textoDias = (dias = []) => {
   if (!dias.length || dias.length === 7) return "todos os dias";
   const seq = [...dias].sort((a, b) => a - b);
@@ -259,11 +334,11 @@ const hora = (valor) => {
 const horaDoVooInformada = (item) => {
   const h = hora(
     item?.fly_hour ||
-    item?.reserve?.flight_time ||
-    item?.reserve?.flight?.scheduled_time ||
-    item?.reserve?.arrival_flight_time ||
-    item?.flight_time ||
-    item?.flight?.scheduled_time,
+      item?.reserve?.flight_time ||
+      item?.reserve?.flight?.scheduled_time ||
+      item?.reserve?.arrival_flight_time ||
+      item?.flight_time ||
+      item?.flight?.scheduled_time,
   );
   return h && h !== "00:00" ? h : "";
 };
@@ -274,12 +349,12 @@ const horaApresentacao = (item) =>
 const numeroVoo = (item) =>
   String(
     item?.schedule?.name ||
-    item?.reserve?.flight_code ||
-    item?.reserve?.flight?.code ||
-    item?.reserve?.arrival_flight_code ||
-    item?.flight_code ||
-    item?.flight?.code ||
-    "",
+      item?.reserve?.flight_code ||
+      item?.reserve?.flight?.code ||
+      item?.reserve?.arrival_flight_code ||
+      item?.flight_code ||
+      item?.flight?.code ||
+      "",
   )
     .trim()
     .toUpperCase();
@@ -378,9 +453,83 @@ export const ehApoio = (turno) => !turno.colaboradores.some((c) => c.papel === "
 // janela de trabalho de um colaborador (a dele ou a do turno)
 export const janelaDo = (c, turno) => (c.inicio && c.fim ? { inicio: c.inicio, fim: c.fim } : { inicio: turno.inicio, fim: turno.fim });
 
-const trabalhaNoDia = (c, diaSemana) => !c.dias?.length || c.dias.includes(diaSemana);
+// diferença em dias entre duas datas ISO
+const diasEntre = (a, b) => Math.round((paraData(b) - paraData(a)) / 86400000);
 
-export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
+// pelo MODELO de escala (sem exceções)
+export const trabalhaPeloModelo = (c, data) => {
+  const e = c?.escala || { modelo: "semanal" };
+  if (e.modelo === "semanal") return !c.dias?.length || c.dias.includes(diaDaSemana(data));
+  if (!e.referencia) return false;
+  const ciclo = e.trabalha + e.folga;
+  const pos = ((diasEntre(e.referencia, data) % ciclo) + ciclo) % ciclo;
+  return pos < e.trabalha;
+};
+
+// exceção do dia para o colaborador: { tipo: "folga" } | { tipo: "trabalha" } | { tipo: "cobre", turnoId }
+const excecaoDe = (excecoes, data, id) => excecoes?.dias?.[data]?.[id] || null;
+
+// trabalha neste dia? (modelo + exceção)
+export const trabalhaNaData = (c, data, excecoes) => {
+  const x = excecaoDe(excecoes, data, c.id);
+  if (x?.tipo === "folga") return false;
+  if (x?.tipo === "trabalha") return true;
+  // cobrindo outro turno: neste dia está lá (escalaDoDia põe no turno coberto)
+  if (x?.tipo === "cobre") return false;
+  return trabalhaPeloModelo(c, data);
+};
+
+/* Escala de um dia: quem trabalha em cada turno (com folguistas cobrindo).
+   [{ turno, pessoas: [{ id, nome, papel, janela, cobrindo, folguista }] }] */
+export const escalaDoDia = (config, excecoes, data) =>
+  config.turnos.map((t) => {
+    const pessoas = t.colaboradores
+      .filter((c) => trabalhaNaData(c, data, excecoes))
+      .map((c) => ({ id: c.id, nome: c.nome, papel: c.papel, janela: janelaDo(c, t), cobrindo: "", folguista: false }));
+    (config.folguistas || []).forEach((f) => {
+      const x = excecaoDe(excecoes, data, f.id);
+      if (x?.tipo === "cobre" && x.turnoId === t.id) {
+        pessoas.push({ id: f.id, nome: f.nome, papel: "principal", janela: { inicio: t.inicio, fim: t.fim }, cobrindo: x.cobrindo || "", folguista: true });
+      }
+    });
+    // colaborador de outro turno cobrindo este (troca de turno)
+    config.turnos.forEach((outro) =>
+      outro.colaboradores.forEach((c) => {
+        const x = excecaoDe(excecoes, data, c.id);
+        if (outro.id !== t.id && x?.tipo === "cobre" && x.turnoId === t.id) {
+          pessoas.push({ id: c.id, nome: c.nome, papel: c.papel, janela: { inicio: t.inicio, fim: t.fim }, cobrindo: x.cobrindo || "", folguista: false });
+        }
+      }),
+    );
+    return { turno: t, pessoas };
+  });
+
+// todos (colaboradores + folguistas), para listas e contas de atendimento
+export const todosDaEquipe = (config) => [
+  ...config.turnos.flatMap((t) => t.colaboradores.map((c) => ({ ...c, turnoId: t.id, turnoNome: t.nome, cor: t.cor, folguista: false }))),
+  ...(config.folguistas || []).map((f) => ({ ...f, papel: "principal", turnoId: "", turnoNome: "Folguista", cor: "#64748b", folguista: true })),
+];
+
+// ---------- exceções da escala (folgas, trocas, coberturas) ----------
+const REF_EXCECOES = () => doc(db, "settings", idPorRegiao("turnos_excecoes"));
+export const carregarExcecoes = async () => {
+  const snap = await getDoc(REF_EXCECOES());
+  const d = snap.exists() ? snap.data() : {};
+  return { dias: d?.dias && typeof d.dias === "object" ? d.dias : {} };
+};
+// guarda só os últimos 120 dias e os futuros
+export const salvarExcecoes = async (excecoes) => {
+  const limite = somarDias(isoLocal(new Date()), -120);
+  const dias = Object.fromEntries(
+    Object.entries(excecoes?.dias || {})
+      .filter(([d, v]) => d >= limite && v && Object.keys(v).length)
+      .map(([d, v]) => [d, v]),
+  );
+  await setDoc(REF_EXCECOES(), { dias, updatedAt: new Date() });
+  return { dias };
+};
+
+export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoes = null }) => {
   const turnos = config.turnos;
   const dias = listarDatas(inicio, fim);
   const noPeriodo = new Set(dias);
@@ -439,7 +588,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
     colabs.forEach((x) => {
       if (!dentro(reg.min, x.janela.inicio, x.janela.fim)) return;
       const dia = diaDoTurno(reg, x.janela);
-      if (!noPeriodo.has(dia) || !trabalhaNoDia(x.c, diaDaSemana(dia))) return;
+      if (!noPeriodo.has(dia) || !trabalhaNaData(x.c, dia, excecoes)) return;
       x.pax += reg.pax;
     });
   });
@@ -451,8 +600,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
   const resumoTurnos = turnos.map((t) => {
     const serie = dias.map((d) => {
       const a = porTurnoDia[t.id][d];
-      const w = diaDaSemana(d);
-      const principaisNoDia = t.colaboradores.filter((c) => c.papel === "principal" && trabalhaNoDia(c, w)).length;
+      const principaisNoDia = t.colaboradores.filter((c) => c.papel === "principal" && trabalhaNaData(c, d, excecoes)).length;
       return { data: d, pax: a.pax, reservas: a.reservas, grupos: a.grupos.size, principais: principaisNoDia };
     });
     const soma = serie.reduce((acc, s) => ({ pax: acc.pax + s.pax, reservas: acc.reservas + s.reservas, grupos: acc.grupos + s.grupos }), {
@@ -489,7 +637,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
   });
 
   const colaboradores = colabs.map((x) => {
-    const diasTrab = dias.filter((d) => trabalhaNoDia(x.c, diaDaSemana(d))).length;
+    const diasTrab = dias.filter((d) => trabalhaNaData(x.c, d, excecoes)).length;
     return {
       id: x.c.id,
       nome: x.c.nome,
@@ -500,6 +648,7 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config }) => {
       cor: x.t.cor,
       janela: x.janela,
       dias: x.c.dias,
+      escala: x.c.escala,
       diasNoPeriodo: diasTrab,
       totalPax: x.pax,
       mediaPax: media(x.pax, diasTrab),

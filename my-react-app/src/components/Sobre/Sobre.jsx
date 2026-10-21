@@ -49,7 +49,7 @@ const PRINCIPIOS = [
   { icone: "globe", titulo: "Para todos da equipe" },
 ];
 
-const Sobre = ({ modo }) => {
+const Sobre = ({ modo, voltar = "/minha-disponibilidade", textoVoltar = "Voltar para minha disponibilidade" }) => {
   const ehGuia = modo === "guia";
 
   // dentro do menu lateral o título da aba vem do próprio layout
@@ -60,9 +60,9 @@ const Sobre = ({ modo }) => {
   return (
     <div className={`ui-page sobre ${ehGuia ? "sobre--guia" : ""}`}>
       {ehGuia && (
-        <Link to="/minha-disponibilidade" className="sobre-voltar">
+        <Link to={voltar} className="sobre-voltar">
           <Icon name="chevronLeft" size={16} />
-          Voltar para minha disponibilidade
+          {textoVoltar}
         </Link>
       )}
 
