@@ -682,3 +682,198 @@
 .atv-convite__nunca:hover {
   color: var(--text);
 }
+
+/* horário de uso (tempo por hora do dia) */
+.atv-horas {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3px;
+  align-items: end;
+  height: 150px;
+  margin: 6px 16px 30px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.atv-horas__col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+
+.atv-horas__barra {
+  width: min(100%, 18px);
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.atv-horas__col.is-pico .atv-horas__barra {
+  background: var(--accent);
+}
+
+.atv-horas__col:hover .atv-horas__barra {
+  opacity: 0.75;
+}
+
+.atv-horas__h {
+  position: absolute;
+  bottom: -18px;
+  color: var(--text-3);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.atv-horas__col.is-pico .atv-horas__h {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* avaliações: card resumido + painel com todas */
+.atv-aval__recentes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.atv-aval__titulo {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.atv-aval__recentes .atv-aval__lista {
+  max-height: none;
+  overflow: visible;
+}
+
+.atv-ver-todas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.atv-todas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.atv-todas__filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.atv-todas__linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 8px;
+}
+
+.atv-todas__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.atv-todas__check input {
+  accent-color: var(--accent);
+}
+
+.atv-todas__qtd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.atv-todas__qtd button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.atv-aval__lista--toda {
+  max-height: none;
+  overflow: visible;
+}
+
+.atv-aval__dist li>button {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.atv-aval__dist li>button:hover:not(:disabled) {
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+}
+
+.atv-aval__dist li>button.is-on {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.atv-aval__dist li>button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* resumo da pessoa (tempo por tela) */
+.atv-pessoa-tempo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 8px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.atv-barras--compacta {
+  padding: 0;
+  gap: 5px;
+}
+
+.atv-barras--compacta li {
+  grid-template-rows: auto;
+}
+
+.atv-aval__dist--filtro li {
+  display: block;
+}
+
+.atv-aval__dist--filtro {
+  max-width: 360px;
+}

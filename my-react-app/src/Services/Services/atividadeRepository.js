@@ -127,6 +127,53 @@ const gravar = async ({ tipo, chave, rotulo, detalhe = "" }) => {
 
 export const registrarTela = (rota, rotulo) =>
   gravar({ tipo: "tela", chave: rota, rotulo });
+
+// TEMPO DE USO: segundos com a tela aberta, a aba visível e a pessoa
+// mexendo no sistema (sem interação por 15 min, para de contar). O
+// RegistroAtividade junta os segundos e grava a cada ~2 min, de uma vez:
+//   trechos = [{ rota, rotulo, segundos }]
+// Grava também a hora do dia (horas.{"14"}) e a base em uso (tempoBase.{nat}).
+const horaLocal = () =>
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date());
+export const registrarTempo = async (trechos = [], baseEmUso = "ssa") => {
+  if (!atual) return;
+  const validos = trechos.filter((t) => t.segundos > 0);
+  if (!validos.length) return;
+  const total = Math.round(validos.reduce((s, t) => s + t.segundos, 0));
+  const dia = diaLocal();
+  const tempo = {};
+  const rotulos = {};
+  validos.forEach((t) => {
+    const k = chaveSegura(t.rota);
+    tempo[k] = increment(Math.round(t.segundos));
+    rotulos[k] = String(t.rotulo || t.rota).slice(0, 80);
+  });
+  try {
+    await setDoc(
+      doc(db, COL_ATIVIDADE, `${atual.uid}__${dia}`),
+      {
+        uid: atual.uid,
+        nome: atual.nome || "",
+        role: atual.role || "",
+        regiao: atual.regiao || "ssa",
+        dia,
+        ultimo: Timestamp.now(),
+        tempoTotal: increment(total),
+        tempo,
+        rotulos,
+        horas: { [horaLocal()]: increment(total) },
+        tempoBase: { [String(baseEmUso || "ssa")]: increment(total) },
+      },
+      { merge: true },
+    );
+  } catch {
+    /* sem rede: perde só este trecho */
+  }
+};
 // impressões / PDFs / relatórios: registrarImpressao("placas_colecao", "Placas coleção", "23 placas")
 export const registrarImpressao = (chave, rotulo, detalhe) =>
   gravar({ tipo: "impressao", chave, rotulo, detalhe });
