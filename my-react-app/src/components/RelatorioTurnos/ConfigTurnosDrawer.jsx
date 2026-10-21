@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Drawer, Icon } from "../ui";
 import {
   configPadraoDaRegiao,
@@ -7,6 +7,7 @@ import {
   ETAPAS_PADRAO,
   MODELOS_ESCALA,
   PAPEIS,
+  carregarContasAtendimento,
   dataBr,
   isoLocal,
   normalizarConfig,
@@ -90,7 +91,35 @@ const Escala = ({ c, onChange }) => {
   );
 };
 
-const Colaborador = ({ c, onChange, onRemover }) => {
+// a pessoa da equipe é desta conta? (contas antigas: pelo colaboradorId)
+const ehDaConta = (c, conta) => c.contaUid === conta.uid || c.id === conta.uid || (!!conta.colaboradorId && c.id === conta.colaboradorId);
+
+// Função no setor: escolhe da lista ou cria uma nova
+const SeletorFuncao = ({ valor, funcoes, onChange, onCriar, className = "" }) => (
+  <select
+    className={`ui-input ${className}`}
+    value={valor || ""}
+    onChange={(e) => {
+      if (e.target.value === "__nova__") {
+        const nome = window.prompt("Nome da nova função (ex.: Recepção, Embarque, Supervisão):");
+        if (nome && nome.trim()) onChange(onCriar(nome.trim()));
+        return;
+      }
+      onChange(e.target.value);
+    }}
+    aria-label="Função"
+  >
+    <option value="">Sem função</option>
+    {funcoes.map((f) => (
+      <option key={f.id} value={f.id}>
+        {f.nome}
+      </option>
+    ))}
+    <option value="__nova__">+ Criar função…</option>
+  </select>
+);
+
+const Colaborador = ({ c, onChange, onRemover, funcoes = [], onCriarFuncao }) => {
   const [horarioProprio, setHorarioProprio] = useState(!!(c.inicio || c.fim));
   const set = (campo) => (e) => onChange({ ...c, [campo]: e.target.value });
   const modelo = normalizarEscala(c.escala).modelo;
@@ -113,6 +142,14 @@ const Colaborador = ({ c, onChange, onRemover }) => {
           ))}
         </select>
         <Button variant="ghost" iconOnly icon="trash" size="sm" onClick={onRemover} title="Remover colaborador" aria-label="Remover colaborador" />
+      </div>
+      <div className="rtc-colab__linha">
+        <SeletorFuncao valor={c.funcao} funcoes={funcoes} onChange={(v) => onChange({ ...c, funcao: v })} onCriar={onCriarFuncao} className="rtc-colab__funcao" />
+        {c.contaUid && (
+          <span className="rtc-conta-tag" title="Tem conta de Atendimento: marca no celular">
+            <Icon name="smartphone" size={12} /> conta de atendimento
+          </span>
+        )}
       </div>
       <Escala c={c} onChange={onChange} />
       {modelo === "semanal" && (
@@ -214,10 +251,169 @@ const Atendimento = ({ atendimento, onChange }) => {
   );
 };
 
+/* Contas de Atendimento (criadas em Usuários): aqui cada pessoa ganha a
+   função, o turno e a folga fixa — e passa a fazer parte da equipe. */
+const ContasAtendimento = ({ contas, turnos, funcoes, daConta, onMudar, onCriarFuncao, onRemoverFuncao }) => (
+  <section className="rtc-folg rtc-contas">
+    <h4>
+      <Icon name="smartphone" size={15} /> Contas de atendimento
+    </h4>
+    <p className="rtc-ajuda">
+      As contas de nível <b>Atendimento</b> criadas em Usuários aparecem aqui. Escolha a função, o turno e a folga fixa de cada pessoa — é isso que vale no
+      painel do aeroporto e no relatório.
+    </p>
+    {contas === null ? (
+      <p className="rtc-ajuda">
+        <Icon name="loader" size={14} className="ui-spin" /> Carregando as contas…
+      </p>
+    ) : contas.length === 0 ? (
+      <p className="rtc-ajuda">Nenhuma conta de Atendimento nesta base ainda. Crie em Gestão → Cadastros → Usuários e acessos.</p>
+    ) : (
+      <ul className="rtc-contas__lista">
+        {contas.map((conta) => {
+          const atual = daConta(conta);
+          const dias = atual?.c.dias || [];
+          const folga = (d) => dias.length > 0 && !dias.includes(d);
+          const alternarFolga = (d) => {
+            const trabalha = dias.length ? dias : [0, 1, 2, 3, 4, 5, 6];
+            const prox = trabalha.includes(d) ? trabalha.filter((x) => x !== d) : [...trabalha, d].sort();
+            if (!prox.length) return; // pelo menos um dia de trabalho
+            onMudar(conta, { dias: prox.length === 7 ? [] : prox, ...(atual ? {} : { turnoId: turnos[0]?.id || "" }) });
+          };
+          const modelo = atual?.c.escala?.modelo && atual.c.escala.modelo !== "semanal";
+          return (
+            <li key={conta.uid} className={`rtc-conta ${atual ? "is-na-equipe" : ""}`} style={atual ? { "--c": atual.turno.cor } : undefined}>
+              <div className="rtc-conta__topo">
+                <span className="rtc-conta__nome">
+                  <b>{conta.nome || "Sem nome"}</b>
+                  <small>{conta.email}</small>
+                </span>
+                {!atual && <span className="rtc-conta__novo">fora da equipe</span>}
+              </div>
+              <div className="rtc-colab__linha">
+                <SeletorFuncao valor={atual?.c.funcao} funcoes={funcoes} onChange={(v) => onMudar(conta, { funcao: v, ...(atual ? {} : { turnoId: turnos[0]?.id || "" }) })} onCriar={onCriarFuncao} className="rtc-colab__funcao" />
+                <select className="ui-input" value={atual?.turno.id || ""} onChange={(e) => onMudar(conta, { turnoId: e.target.value })} aria-label="Turno">
+                  <option value="">Fora da equipe</option>
+                  {turnos.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome} ({t.inicio}–{t.fim})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {modelo ? (
+                <small className="rtc-ajuda">Escala {atual.c.escala.modelo}: ajuste no card da pessoa, no turno {atual.turno.nome}.</small>
+              ) : (
+                <div className="rtc-folga-fixa">
+                  <span>Folga fixa</span>
+                  <div className="rtc-dias" role="group" aria-label={`Folga fixa de ${conta.nome}`}>
+                    {ORDEM_SEMANA.map((d) => (
+                      <button key={d} type="button" className={`rtc-dia rtc-dia--folga ${folga(d) ? "is-on" : ""}`} aria-pressed={folga(d)} onClick={() => alternarFolga(d)}>
+                        {DIAS_SEMANA_CURTO[d]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    )}
+    {funcoes.length > 0 && (
+      <div className="rtc-funcoes">
+        <span>Funções:</span>
+        {funcoes.map((f) => (
+          <span key={f.id} className="rtc-funcao">
+            {f.nome}
+            <button type="button" onClick={() => window.confirm(`Excluir a função ${f.nome}? Quem tinha essa função fica sem função.`) && onRemoverFuncao(f.id)} aria-label={`Excluir a função ${f.nome}`} title="Excluir função">
+              <Icon name="x" size={11} />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          className="rtc-funcao rtc-funcao--nova"
+          onClick={() => {
+            const nome = window.prompt("Nome da nova função:");
+            if (nome && nome.trim()) onCriarFuncao(nome.trim());
+          }}
+        >
+          + Criar função
+        </button>
+      </div>
+    )}
+  </section>
+);
+
 const ConfigTurnosDrawer = ({ open, config, onClose, onSalvar }) => {
   const [rascunho, setRascunho] = useState(() => normalizarConfig(config));
   const [salvando, setSalvando] = useState(false);
   const [erros, setErros] = useState([]);
+  const [contas, setContas] = useState(null); // contas de Atendimento da base
+  useEffect(() => {
+    let vivo = true;
+    carregarContasAtendimento()
+      .then((l) => vivo && setContas(l))
+      .catch((e) => {
+        console.error("Contas de atendimento:", e);
+        if (vivo) setContas([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  // funções do setor
+  const criarFuncao = (nome) => {
+    const existente = (rascunho.funcoes || []).find((f) => f.nome.toLowerCase() === nome.toLowerCase());
+    if (existente) return existente.id;
+    const id = `f_${novoId()}`;
+    setRascunho((r) => ({ ...r, funcoes: [...(r.funcoes || []), { id, nome }] }));
+    return id;
+  };
+  const removerFuncao = (id) =>
+    setRascunho((r) => ({
+      ...r,
+      funcoes: (r.funcoes || []).filter((f) => f.id !== id),
+      turnos: r.turnos.map((t) => ({ ...t, colaboradores: t.colaboradores.map((c) => (c.funcao === id ? { ...c, funcao: "" } : c)) })),
+    }));
+
+  // a pessoa de uma conta na equipe (em qual turno está)
+  const daConta = (conta) => {
+    for (const t of rascunho.turnos) {
+      const c = t.colaboradores.find((x) => ehDaConta(x, conta));
+      if (c) return { turno: t, c };
+    }
+    return null;
+  };
+  // muda função / turno / folga da conta: cria, move ou tira da equipe
+  const mudarConta = (conta, parcial) =>
+    setRascunho((r) => {
+      let atual = null;
+      let turnoAtual = "";
+      r.turnos.forEach((t) =>
+        t.colaboradores.forEach((c) => {
+          if (ehDaConta(c, conta)) {
+            atual = c;
+            turnoAtual = t.id;
+          }
+        }),
+      );
+      const novoTurno = parcial.turnoId !== undefined ? parcial.turnoId : turnoAtual;
+      const base = atual || { ...novoColaborador(), id: conta.uid, nome: conta.nome || conta.email || "Atendimento" };
+      const pessoa = { ...base, contaUid: conta.uid, ...(parcial.funcao !== undefined ? { funcao: parcial.funcao } : {}), ...(parcial.dias !== undefined ? { dias: parcial.dias } : {}) };
+      return {
+        ...r,
+        turnos: r.turnos.map((t) => {
+          const sem = t.colaboradores.filter((c) => !ehDaConta(c, conta));
+          if (t.id !== novoTurno) return { ...t, colaboradores: sem };
+          const idx = t.colaboradores.findIndex((c) => ehDaConta(c, conta));
+          if (idx >= 0) return { ...t, colaboradores: t.colaboradores.map((c, i) => (i === idx ? pessoa : c)) };
+          return { ...t, colaboradores: [...t.colaboradores, pessoa] };
+        }),
+      };
+    });
 
   const mudarTurno = (id, novo) => setRascunho((r) => ({ ...r, turnos: r.turnos.map((t) => (t.id === id ? novo : t)) }));
   const removerTurno = (id) => setRascunho((r) => ({ ...r, turnos: r.turnos.filter((t) => t.id !== id) }));
@@ -276,6 +472,16 @@ const ConfigTurnosDrawer = ({ open, config, onClose, onSalvar }) => {
           <Icon name="info" size={14} /> <b>Função principal</b>: o colaborador é do setor e divide a demanda do turno. <b>Suporte (sinergia)</b>: ajuda quando
           necessário — aparece no relatório, mas não divide a conta. Um turno só com sinergia vira uma <b>janela de apoio</b>.
         </p>
+
+        <ContasAtendimento
+          contas={contas}
+          turnos={rascunho.turnos}
+          funcoes={rascunho.funcoes || []}
+          daConta={daConta}
+          onMudar={mudarConta}
+          onCriarFuncao={criarFuncao}
+          onRemoverFuncao={removerFuncao}
+        />
 
         {rascunho.turnos.map((t, i) => (
           <section key={t.id} className="rtc-turno" style={{ "--c": t.cor }}>
@@ -336,6 +542,8 @@ const ConfigTurnosDrawer = ({ open, config, onClose, onSalvar }) => {
                 <Colaborador
                   key={c.id}
                   c={c}
+                  funcoes={rascunho.funcoes || []}
+                  onCriarFuncao={criarFuncao}
                   onChange={(novo) => mudarTurno(t.id, { ...t, colaboradores: t.colaboradores.map((x) => (x.id === c.id ? novo : x)) })}
                   onRemover={() => mudarTurno(t.id, { ...t, colaboradores: t.colaboradores.filter((x) => x.id !== c.id) })}
                 />

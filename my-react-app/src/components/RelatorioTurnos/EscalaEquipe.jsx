@@ -22,7 +22,7 @@ const hojeIso = () => isoLocal(new Date());
 const segundaDa = (iso) => somarDias(iso, -((diaDaSemana(iso) + 6) % 7));
 const nomeModelo = (c) => (c.folguista ? "Folguista" : MODELOS_ESCALA.find((m) => m.id === (c.escala?.modelo || "semanal"))?.nome.split(" (")[0]);
 
-const EscalaEquipe = ({ config, excecoes, onSalvar }) => {
+const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe }) => {
   const [semana, setSemana] = useState(() => segundaDa(hojeIso()));
   const [rascunho, setRascunho] = useState(excecoes);
   const [salvando, setSalvando] = useState(false);
@@ -32,6 +32,36 @@ const EscalaEquipe = ({ config, excecoes, onSalvar }) => {
   const equipe = useMemo(() => todosDaEquipe(config), [config]);
   const turnoPorId = useMemo(() => new Map(config.turnos.map((t) => [t.id, t])), [config]);
   const hoje = hojeIso();
+
+  // ---------- excluir escala ----------
+  // tira as exceções (folga, extra, cobertura) que batem com o filtro
+  const limparOnde = (filtro) =>
+    setRascunho((r) => {
+      const novo = {};
+      Object.entries(r.dias || {}).forEach(([d, pessoas]) => {
+        const resto = Object.fromEntries(Object.entries(pessoas || {}).filter(([id]) => !filtro(d, id)));
+        if (Object.keys(resto).length) novo[d] = resto;
+      });
+      return { ...r, dias: novo };
+    });
+  const naSemana = (d) => d >= dias[0] && d <= dias[6];
+  const excecoesDe = (id) => dias.filter((d) => rascunho.dias?.[d]?.[id]).length;
+  const excecoesDoDia = (d) => Object.keys(rascunho.dias?.[d] || {}).length;
+  const excecoesDaSemana = dias.reduce((n, d) => n + excecoesDoDia(d), 0);
+  const totalExcecoes = Object.values(rascunho.dias || {}).reduce((n, p) => n + Object.keys(p || {}).length, 0);
+  const limparPessoa = (c) => limparOnde((d, id) => naSemana(d) && id === c.id);
+  const limparDia = (d) => limparOnde((dia) => dia === d);
+  const limparSemana = () => window.confirm(`Excluir as ${excecoesDaSemana} exceções lançadas nesta semana? A escala volta a ser a do modelo de cada um.`) && limparOnde((d) => naSemana(d));
+  const excluirTudo = () =>
+    window.confirm(`Excluir toda a escala lançada (${totalExcecoes} exceções, em todas as semanas)? Folgas, dias extras e coberturas voltam ao modelo de cada um.`) &&
+    setRascunho((r) => ({ ...r, dias: {} }));
+  const tirarDaEquipe = async (c) => {
+    if (!onRemoverDaEquipe) return;
+    if (!window.confirm(`Tirar ${c.nome} da equipe? A escala e as exceções dele(a) são excluídas. As marcações já feitas no aeroporto continuam no relatório.`)) return;
+    const semEle = { ...rascunho, dias: Object.fromEntries(Object.entries(rascunho.dias || {}).map(([d, p]) => [d, Object.fromEntries(Object.entries(p || {}).filter(([id]) => id !== c.id))])) };
+    await onRemoverDaEquipe(c);
+    setRascunho(await onSalvar(semEle));
+  };
 
   const definir = (data, id, valor) =>
     setRascunho((r) => {
@@ -126,6 +156,11 @@ const EscalaEquipe = ({ config, excecoes, onSalvar }) => {
                 <th key={d} className={d === hoje ? "is-hoje" : ""}>
                   {DIAS_SEMANA_CURTO[diaDaSemana(d)]}
                   <small>{dataBr(d).slice(0, 5)}</small>
+                  {excecoesDoDia(d) > 0 && (
+                    <button type="button" className="rtn-esc__limpar" onClick={() => limparDia(d)} title={`Excluir as exceções de ${dataBr(d)}`} aria-label={`Excluir as exceções de ${dataBr(d)}`}>
+                      <Icon name="x" size={11} />
+                    </button>
+                  )}
                 </th>
               ))}
             </tr>
@@ -134,10 +169,23 @@ const EscalaEquipe = ({ config, excecoes, onSalvar }) => {
             {equipe.map((c) => (
               <tr key={c.id}>
                 <td className="rtn-esc__nome">
+                  <span className="rtn-esc__acoes">
+                    {excecoesDe(c.id) > 0 && (
+                      <button type="button" onClick={() => limparPessoa(c)} title={`Excluir as exceções de ${c.nome} nesta semana`} aria-label={`Limpar a semana de ${c.nome}`}>
+                        <Icon name="refresh" size={12} />
+                      </button>
+                    )}
+                    {onRemoverDaEquipe && (
+                      <button type="button" className="is-perigo" onClick={() => tirarDaEquipe(c)} title={`Tirar ${c.nome} da equipe`} aria-label={`Tirar ${c.nome} da equipe`}>
+                        <Icon name="trash" size={12} />
+                      </button>
+                    )}
+                  </span>
                   <i className="rtn-dot" style={{ background: c.cor }} />
                   <b>{c.nome}</b>
                   <small>
-                    {c.turnoNome} · {nomeModelo(c)}
+                    {c.turnoNome}
+                    {c.funcaoNome ? ` · ${c.funcaoNome}` : ""} · {nomeModelo(c)}
                   </small>
                 </td>
                 {dias.map((d) => celula(c, d))}
@@ -172,6 +220,14 @@ const EscalaEquipe = ({ config, excecoes, onSalvar }) => {
         </table>
       </div>
       <div className="rtn-esc__rodape">
+        <span className="rtn-esc__excluir">
+          <Button variant="ghost" size="sm" icon="trash" onClick={limparSemana} disabled={!excecoesDaSemana}>
+            Excluir escala da semana{excecoesDaSemana ? ` (${excecoesDaSemana})` : ""}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={excluirTudo} disabled={!totalExcecoes}>
+            Excluir toda a escala lançada
+          </Button>
+        </span>
         <span className="rtn-esc__leg">
           <i className="is-trab" /> trabalha <i className="is-folga" /> folga <i className="is-exc" /> exceção lançada
         </span>

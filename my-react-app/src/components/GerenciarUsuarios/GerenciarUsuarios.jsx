@@ -26,7 +26,6 @@ import {
 import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
-import { carregarConfigTurnos, todosDaEquipe } from "../../Services/Services/relatorioTurnos";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { Segmented } from "../ui";
@@ -108,32 +107,8 @@ const FORM_VAZIO = {
   senha: "",
   role: ROLES.GUIA,
   guideId: "",
-  colaboradorId: "",
   regiao: ID_SEDE,
 };
-
-/* Conta "Atendimento": qual colaborador da Demanda por turno ela representa
-   (é por ele que os pax recepcionados/embarcados entram no relatório). */
-const CampoColaborador = ({ value, onChange, equipe, ocupados, donoAtual, disabled }) => (
-  <label className="usuarios-field">
-    <span>Colaborador da equipe</span>
-    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-      <option value="">Selecionar colaborador</option>
-      {equipe.map((c) => {
-        const ocupado = ocupados.has(c.id) && ocupados.get(c.id) !== donoAtual;
-        return (
-          <option key={c.id} value={c.id} disabled={ocupado}>
-            {c.nome} · {c.turnoNome}
-            {ocupado ? " (já tem acesso)" : ""}
-          </option>
-        );
-      })}
-    </select>
-    <small className="usuarios-hint">
-      A equipe vem de Demanda por turno → Turnos e equipe. A pessoa marca, no celular, os veículos que recepcionou e embarcou.
-    </small>
-  </label>
-);
 
 /* Campo "Base" (região) das contas do Operacional — só a gerência escolhe.
    Salvador é a sede (tudo); as outras bases vêm de Gestão → Regiões. */
@@ -168,7 +143,6 @@ const GerenciarUsuarios = () => {
 
   const [usuarios, setUsuarios] = useState([]);
   const [guias, setGuias] = useState([]);
-  const [equipes, setEquipes] = useState({}); // base → colaboradores (Demanda por turno)
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState(() => ({
@@ -221,30 +195,7 @@ const GerenciarUsuarios = () => {
     carregar();
   }, [carregar]);
 
-  // equipe da Demanda por turno da base escolhida (para contas de Atendimento)
-  const equipeDe = (regiaoId) => equipes[regiaoId || ID_SEDE] || [];
   const baseDoForm = souGerencia ? form.regiao : perfil?.regiao || ID_SEDE;
-  // bases cuja equipe precisa estar carregada: a do formulário e a da conta em edição
-  const baseEditando = editando ? editando.regiao || ID_SEDE : "";
-  useEffect(() => {
-    const precisa = [form.role === ROLES.ATENDIMENTO ? baseDoForm : "", baseEditando].filter((b) => b && !equipes[b]);
-    if (!precisa.length) return;
-    let vivo = true;
-    precisa.forEach((b) => {
-      const r = opcoesRegiao.find((x) => x.id === b);
-      carregarConfigTurnos(r)
-        .then((c) => vivo && setEquipes((p) => ({ ...p, [b]: todosDaEquipe(c) })))
-        .catch(() => vivo && setEquipes((p) => ({ ...p, [b]: [] })));
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [form.role, baseDoForm, baseEditando, equipes, opcoesRegiao]);
-  const colaboradoresVinculados = useMemo(() => {
-    const mapa = new Map();
-    usuarios.forEach((u) => u.role === ROLES.ATENDIMENTO && u.colaboradorId && mapa.set(u.colaboradorId, u.id));
-    return mapa;
-  }, [usuarios]);
 
   const guiasVinculados = useMemo(() => {
     const mapa = new Map();
@@ -323,13 +274,8 @@ const GerenciarUsuarios = () => {
       });
       return;
     }
-    if (form.role === ROLES.ATENDIMENTO && !form.colaboradorId) {
-      setMsg({ tipo: "erro", texto: "Escolha qual colaborador da equipe essa conta representa." });
-      return;
-    }
 
     const guia = guias.find((g) => g.id === form.guideId);
-    const colaborador = equipeDe(baseDoForm).find((c) => c.id === form.colaboradorId);
     const secondaryAuth = getSecondaryAuth();
     let cred = null;
     let criado = false;
@@ -350,9 +296,6 @@ const GerenciarUsuarios = () => {
         ativo: true,
         ...(form.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
-          : {}),
-        ...(form.role === ROLES.ATENDIMENTO && colaborador
-          ? { colaboradorId: colaborador.id, colaboradorNome: colaborador.nome }
           : {}),
         ...(souGerencia && TEM_BASE.includes(form.role) && form.regiao && form.regiao !== ID_SEDE
           ? { regiao: form.regiao }
@@ -411,7 +354,6 @@ const GerenciarUsuarios = () => {
         return false;
       }
       const guia = guias.find((g) => g.id === dados.guideId);
-      const colaborador = equipeDe(dados.regiao).find((c) => c.id === dados.colaboradorId);
 
       await updateDoc(doc(db, "users", dados.id), {
         nome,
@@ -420,9 +362,6 @@ const GerenciarUsuarios = () => {
         ...(dados.role === ROLES.GUIA && guia
           ? { guideId: guia.id, guideName: guia.nome }
           : { guideId: deleteField(), guideName: deleteField() }),
-        ...(dados.role === ROLES.ATENDIMENTO && dados.colaboradorId
-          ? { colaboradorId: dados.colaboradorId, colaboradorNome: colaborador?.nome || dados.colaboradorNome || "" }
-          : { colaboradorId: deleteField(), colaboradorNome: deleteField() }),
         // quem vê o Balanço de uso: só a gerência marca
         ...(souGerencia ? { verBalanco: !!dados.verBalanco } : {}),
         // base: só a gerência mexe (a regra do banco não deixa os demais)
@@ -589,13 +528,9 @@ const GerenciarUsuarios = () => {
           )}
 
           {form.role === ROLES.ATENDIMENTO && (
-            <CampoColaborador
-              value={form.colaboradorId}
-              onChange={(v) => setCampo("colaboradorId", v)}
-              equipe={equipeDe(baseDoForm)}
-              ocupados={colaboradoresVinculados}
-              disabled={salvando}
-            />
+            <small className="usuarios-hint">
+              Depois de criar, defina a função, o turno e a folga fixa da pessoa em Demanda por turno → Turnos e equipe → Contas de atendimento.
+            </small>
           )}
 
           {form.role === ROLES.GUIA && (
@@ -728,9 +663,7 @@ const GerenciarUsuarios = () => {
                           Guia: {u.guideName || "—"}
                         </span>
                       )}
-                      {u.role === ROLES.ATENDIMENTO && (
-                        <span className="usuarios-vinculo">Colaborador: {u.colaboradorNome || "—"}</span>
-                      )}
+
                     </div>
 
                     <div className="usuarios-item-tags">
@@ -813,8 +746,6 @@ const GerenciarUsuarios = () => {
           usuario={editando}
           guias={guias}
           guiasVinculados={guiasVinculados}
-          equipe={equipeDe(baseEditando)}
-          colaboradoresVinculados={colaboradoresVinculados}
           ehVoce={editando.id === usuarioLogado.uid}
           rolesPermitidos={rolesPermitidos}
           opcoesRegiao={mostrarRegiao ? opcoesRegiao : null}
@@ -834,8 +765,6 @@ const EditarUsuarioModal = ({
   usuario,
   guias,
   guiasVinculados,
-  equipe = [],
-  colaboradoresVinculados = new Map(),
   ehVoce,
   rolesPermitidos = Object.values(ROLES),
   opcoesRegiao = null,
@@ -849,8 +778,6 @@ const EditarUsuarioModal = ({
     role: usuario.role || ROLES.GUIA,
     ativo: usuario.ativo !== false,
     guideId: usuario.guideId || "",
-    colaboradorId: usuario.colaboradorId || "",
-    colaboradorNome: usuario.colaboradorNome || "",
     regiao: usuario.regiao || ID_SEDE,
     verBalanco: usuario.verBalanco === true,
   });
@@ -862,10 +789,6 @@ const EditarUsuarioModal = ({
     e.preventDefault();
     if (dados.role === ROLES.GUIA && !dados.guideId) {
       alert("Escolha qual guia essa conta representa.");
-      return;
-    }
-    if (dados.role === ROLES.ATENDIMENTO && !dados.colaboradorId) {
-      alert("Escolha qual colaborador da equipe essa conta representa.");
       return;
     }
     setSalvando(true);
@@ -913,20 +836,6 @@ const EditarUsuarioModal = ({
             onChange={(v) => set("regiao", v)}
             opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa || r.id === dados.regiao)}
             disabled={ehVoce}
-          />
-        )}
-
-        {dados.role === ROLES.ATENDIMENTO && (
-          <CampoColaborador
-            value={dados.colaboradorId}
-            onChange={(v) => set("colaboradorId", v)}
-            equipe={
-              dados.colaboradorId && !equipe.some((c) => c.id === dados.colaboradorId)
-                ? [{ id: dados.colaboradorId, nome: dados.colaboradorNome || dados.colaboradorId, turnoNome: "fora da equipe atual" }, ...equipe]
-                : equipe
-            }
-            ocupados={colaboradoresVinculados}
-            donoAtual={usuario.id}
           />
         )}
 

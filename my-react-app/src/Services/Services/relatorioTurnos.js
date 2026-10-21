@@ -23,8 +23,8 @@
 //   às 02h do dia 15 é do turno da noite do dia 14). A busca pega um dia a
 //   mais no fim do período por isso.
 
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { ehSede, idPorRegiao, phoenixReserveService } from "./regiaoAtiva";
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { ID_SEDE, ehSede, idPorRegiao, phoenixReserveService, regiaoAtual } from "./regiaoAtiva";
 import { db } from "./firebase";
 import { EXPAND } from "./plannerUtils";
 import { extrairListaResposta } from "./plannerApi";
@@ -129,14 +129,33 @@ export const normalizarConfig = (bruto) => {
             fim: horaValida(c.fim) ? c.fim : "",
             obs: String(c.obs || "").trim(),
             escala: normalizarEscala(c.escala),
+            // função no setor (lista criada em Turnos e equipe) e a conta de
+            // Atendimento ligada a esta pessoa (uid), quando houver
+            funcao: String(c.funcao || ""),
+            contaUid: String(c.contaUid || ""),
           })),
       })),
     folguistas: (Array.isArray(base.folguistas) ? base.folguistas : [])
       .filter((f) => f && String(f.nome || "").trim())
       .map((f) => ({ id: String(f.id || novoId()), nome: String(f.nome).trim(), obs: String(f.obs || "").trim() })),
     atendimento: normalizarAtendimento(base.atendimento),
+    funcoes: normalizarFuncoes(base.funcoes),
   };
 };
+
+// Funções do setor (criadas pela equipe em Turnos e equipe)
+export const FUNCOES_PADRAO = [
+  { id: "recepcao", nome: "Recepção" },
+  { id: "embarque", nome: "Embarque" },
+  { id: "recepcao_embarque", nome: "Recepção e embarque" },
+];
+export const normalizarFuncoes = (lista) => {
+  const l = (Array.isArray(lista) ? lista : FUNCOES_PADRAO)
+    .map((f) => ({ id: String(f?.id || "").replace(/[^\w-]/g, "").slice(0, 30), nome: String(f?.nome || "").trim().slice(0, 40) }))
+    .filter((f) => f.id && f.nome);
+  return Array.isArray(lista) ? l : FUNCOES_PADRAO;
+};
+export const nomeDaFuncao = (config, id) => config?.funcoes?.find((f) => f.id === id)?.nome || "";
 
 // ---------------------------------------------------------------------
 // MODELOS DE ESCALA (por colaborador)
@@ -334,11 +353,11 @@ const hora = (valor) => {
 const horaDoVooInformada = (item) => {
   const h = hora(
     item?.fly_hour ||
-      item?.reserve?.flight_time ||
-      item?.reserve?.flight?.scheduled_time ||
-      item?.reserve?.arrival_flight_time ||
-      item?.flight_time ||
-      item?.flight?.scheduled_time,
+    item?.reserve?.flight_time ||
+    item?.reserve?.flight?.scheduled_time ||
+    item?.reserve?.arrival_flight_time ||
+    item?.flight_time ||
+    item?.flight?.scheduled_time,
   );
   return h && h !== "00:00" ? h : "";
 };
@@ -349,12 +368,12 @@ const horaApresentacao = (item) =>
 const numeroVoo = (item) =>
   String(
     item?.schedule?.name ||
-      item?.reserve?.flight_code ||
-      item?.reserve?.flight?.code ||
-      item?.reserve?.arrival_flight_code ||
-      item?.flight_code ||
-      item?.flight?.code ||
-      "",
+    item?.reserve?.flight_code ||
+    item?.reserve?.flight?.code ||
+    item?.reserve?.arrival_flight_code ||
+    item?.flight_code ||
+    item?.flight?.code ||
+    "",
   )
     .trim()
     .toUpperCase();
@@ -506,7 +525,9 @@ export const escalaDoDia = (config, excecoes, data) =>
 
 // todos (colaboradores + folguistas), para listas e contas de atendimento
 export const todosDaEquipe = (config) => [
-  ...config.turnos.flatMap((t) => t.colaboradores.map((c) => ({ ...c, turnoId: t.id, turnoNome: t.nome, cor: t.cor, folguista: false }))),
+  ...config.turnos.flatMap((t) =>
+    t.colaboradores.map((c) => ({ ...c, turnoId: t.id, turnoNome: t.nome, cor: t.cor, folguista: false, funcaoNome: nomeDaFuncao(config, c.funcao) })),
+  ),
   ...(config.folguistas || []).map((f) => ({ ...f, papel: "principal", turnoId: "", turnoNome: "Folguista", cor: "#64748b", folguista: true })),
 ];
 
@@ -700,4 +721,17 @@ export const detalharDia = (relatorio, data) => {
     voos: agrupar((r) => (r.voo ? `${r.voo}` : "")),
     turnos: relatorio.turnos.map((t) => ({ id: t.id, nome: t.nome, cor: t.cor, inicio: t.inicio, fim: t.fim, pax: dia.porTurno[t.id] || 0 })),
   };
+};
+
+// ---------- contas de Atendimento (para montar a equipe) ----------
+// A conta é criada em Usuários sem vínculo; aqui (Turnos e equipe) a pessoa
+// ganha função, turno e folga fixa. Lê só contas de nível "atendimento" da base.
+export const carregarContasAtendimento = async () => {
+  const filtros = [where("role", "==", "atendimento")];
+  if (!ehSede()) filtros.push(where("regiao", "==", regiaoAtual().id));
+  const snap = await getDocs(query(collection(db, "users"), ...filtros));
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((u) => u.ativo !== false && (!ehSede() || !u.regiao || u.regiao === ID_SEDE))
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
 };

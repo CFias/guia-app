@@ -211,6 +211,10 @@ service cloud.firestore {
              .hasOnly(['senhaTemporaria', 'senhaDefinidaEm']);
       // quem vê o Balanço de uso enxerga a lista de contas (nome, nível, último acesso)
       allow read: if podeVerBalanco();
+      // Demanda por turno (Turnos e equipe): lista as contas de Atendimento da
+      // própria base para montar a equipe (função, turno e folga fixa)
+      allow read: if podeArea('demandaTurnos') && resource.data.role == 'atendimento'
+        && (daSede() || resource.data.get('regiao', 'ssa') == minhaRegiao());
       // GERÊNCIA: cria, edita, lista e remove qualquer perfil — inclusive
       // contas do Operacional, a marcação de gerência e os acessos por tela.
       allow read, write: if isGerencia();

@@ -1702,3 +1702,234 @@ button.rtn-cal__dia:hover {
   color: var(--text-3);
   font-size: var(--fs-xs);
 }
+
+/* ---------- Contas de atendimento (Turnos e equipe) ---------- */
+.rtc-contas h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rtc-contas__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rtc-conta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.rtc-conta.is-na-equipe {
+  border-style: solid;
+  border-left: 4px solid var(--c);
+}
+
+.rtc-conta__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rtc-conta__nome {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rtc-conta__nome small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rtc-conta__novo {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.rtc-conta .rtc-colab__linha select {
+  flex: 1 1 180px;
+}
+
+.rtc-folga-fixa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtc-dia--folga.is-on {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.rtc-colab__funcao {
+  flex: 1 1 180px;
+}
+
+.rtc-conta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.rtc-funcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.rtc-funcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.rtc-funcao button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.rtc-funcao button:hover {
+  background: var(--raised);
+  color: var(--alert);
+}
+
+.rtc-funcao--nova {
+  padding: 2px 10px;
+  border-style: dashed;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- Excluir escala ---------- */
+.rtn-esc th {
+  position: relative;
+}
+
+.rtn-esc__limpar {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.rtn-esc__limpar:hover {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.rtn-esc__nome {
+  position: relative;
+}
+
+.rtn-esc__acoes {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: inline-flex;
+  gap: 2px;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rtn-esc tbody tr:hover .rtn-esc__acoes,
+.rtn-esc__acoes:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rtn-esc__acoes {
+    opacity: 1;
+  }
+}
+
+.rtn-esc__acoes button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.rtn-esc__acoes button.is-perigo:hover {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.rtn-esc__excluir {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rtn-semana .rtn-esc tbody td.rtn-esc__nome {
+  padding-right: 60px;
+}
+
+.rtn-esc__acoes {
+  top: 8px;
+  transform: none;
+}

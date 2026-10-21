@@ -121,7 +121,10 @@ const AtendimentoAeroporto = () => {
   // quem está marcando
   const eu = ehOperacional
     ? equipe.find((c) => c.id === emNomeDe) || null
-    : equipe.find((c) => c.id === perfil?.colaboradorId) || (perfil?.colaboradorId ? { id: perfil.colaboradorId, nome: perfil.colaboradorNome || perfil.nome } : null);
+    : // a conta é ligada à pessoa em Turnos e equipe (contaUid); contas antigas, pelo colaboradorId
+    equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
+    equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
+    (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
   const quem = eu ? { id: eu.id, nome: eu.nome, colaboradorId: eu.id } : null;
 
   // meu turno no dia
@@ -191,7 +194,7 @@ const AtendimentoAeroporto = () => {
           </span>
           <div className="atd-topo__titulo">
             <strong>Atendimento no aeroporto</strong>
-            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : " · sem turno neste dia"}` : ehOperacional ? "Escolha em nome de quem marcar" : "Conta sem colaborador vinculado"}</small>
+            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : eu.turnoId ? " · folga neste dia" : " · ainda sem turno (Turnos e equipe)"}` : "Escolha em nome de quem marcar"}</small>
           </div>
           <span className="atd-topo__acoes">
             <AvaliacaoSistema variante="botao" className="atd-btn-leve atd-avaliar" />
