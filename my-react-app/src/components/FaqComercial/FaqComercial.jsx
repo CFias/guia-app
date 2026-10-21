@@ -1251,11 +1251,6 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
         ) : (
           <SemFotoIlustrada item={item} formato={FORMATOS.VEICULO} tom={tom} />
         )}
-        {item.giro360?.arquivoId && !item.veiculoForaCatalogo && (
-          <span className="giro-selo" title="Tem giro 360º">
-            <Icon name="refresh" size={11} /> 360º
-          </span>
-        )}
         <div className="faq-cat-veiculo-selos">
           {moto ? (
             <span className="faq-cat-foto-selo is-motoguia">
@@ -1271,10 +1266,20 @@ const CardVeiculo = ({ item, onAbrir, onCopiar, copiado, selo, config, tom }) =>
             </span>
           )}
         </div>
-        {imagens.length > 1 && (
-          <span className="faq-cat-foto-contagem">
-            <Icon name="image" size={12} />
-            {imagens.length}
+        {/* canto de baixo: 360º e quantidade de fotos, lado a lado */}
+        {((item.giro360?.arquivoId && !item.veiculoForaCatalogo) || imagens.length > 1) && (
+          <span className="faq-cat-foto-cantos">
+            {item.giro360?.arquivoId && !item.veiculoForaCatalogo && (
+              <span className="giro-selo" title="Tem giro 360º">
+                <Icon name="refresh" size={11} /> 360º
+              </span>
+            )}
+            {imagens.length > 1 && (
+              <span className="faq-cat-foto-contagem">
+                <Icon name="image" size={12} />
+                {imagens.length}
+              </span>
+            )}
           </span>
         )}
         {selo && (
