@@ -753,3 +753,52 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+/* marcação por reserva dentro da lista */
+.atd-reservas li.com-marca {
+  position: relative;
+  padding-left: 56px;
+  min-height: 44px;
+}
+
+.atd-reservas__marca {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.atd-reservas__marca.is-ok {
+  border-color: var(--success, #1f7a4d);
+  background: var(--success, #1f7a4d);
+  color: #fff;
+}
+
+.atd-reservas__marca:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.atd-rec-tag {
+  margin-right: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--warning-soft, #fdf3dc);
+  color: var(--warning, #a96a00);
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-rec-tag.is-ok {
+  background: color-mix(in srgb, var(--success, #1f7a4d) 15%, transparent);
+  color: var(--success, #1f7a4d);
+}

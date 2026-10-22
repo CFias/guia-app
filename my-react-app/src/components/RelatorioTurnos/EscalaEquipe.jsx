@@ -6,8 +6,12 @@ import {
   MODELOS_ESCALA,
   dataBr,
   diaDaSemana,
+  ehDomingoDoMes,
   escalaDoDia,
+  feriadoDoDia,
+  janelaDo,
   isoLocal,
+  nomeDaFuncao,
   somarDias,
   todosDaEquipe,
   trabalhaPeloModelo,
@@ -49,20 +53,57 @@ const situacao = (c, data, rascunho, turnoPorId) => {
   const x = rascunho.dias?.[data]?.[c.id] || null;
   const base = !c.folguista && trabalhaPeloModelo(c, data);
   const proprio = turnoPorId.get(c.turnoId);
-  const janela = (t) => (c.inicio && c.fim && t?.id === c.turnoId ? `${c.inicio}–${c.fim}` : t ? `${t.inicio}–${t.fim}` : "");
+  // horário do dia: o da pessoa no turno dela (com fim de semana e feriado) ou o do turno coberto
+  const janela = (t) => {
+    if (!t) return "";
+    const j = t.id === c.turnoId ? janelaDo(c, t, data) : { inicio: t.inicio, fim: t.fim };
+    return `${j.inicio}–${j.fim}`;
+  };
   if (x?.tipo === "folga") return { trabalha: false, exc: "folga", rotulo: "Folga", detalhe: "lançada" };
   if (x?.tipo === "trabalha") return { trabalha: true, exc: "extra", turno: proprio, rotulo: proprio?.nome || "Extra", detalhe: "dia extra" };
   if (x?.tipo === "cobre") {
     const t = turnoPorId.get(x.turnoId);
     return { trabalha: true, exc: "cobre", turno: t, rotulo: t?.nome || "Cobre", detalhe: `cobrindo · ${janela(t)}` };
   }
-  return base ? { trabalha: true, turno: proprio, rotulo: proprio?.nome || "Trabalha", detalhe: janela(proprio) } : { trabalha: false, rotulo: "Folga" };
+  const fer = c.feriadosDela?.[data];
+  if (base) return { trabalha: true, turno: proprio, rotulo: proprio?.nome || "Trabalha", detalhe: janela(proprio), rev: !fer && !!c.fds && [0, 6].includes(diaDaSemana(data)), feriado: !!fer };
+  if (fer) return { trabalha: false, rotulo: "Folga", detalhe: "feriado", feriado: true };
+  if (c.domingoFolga && ehDomingoDoMes(data, c.domingoFolga)) return { trabalha: false, rotulo: "Folga", detalhe: "domingo do mês", domingo: true };
+  if (c.fds && [0, 6].includes(diaDaSemana(data))) return { trabalha: false, rotulo: "Folga", detalhe: "revezamento" };
+  return { trabalha: false, rotulo: "Folga" };
 };
 
 // ---------- impressão (mural) ----------
-const htmlEscala = ({ config, equipe, dias, rascunho, turnoPorId }) => {
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const nomeMes = (iso) => `${MESES[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
+// sábados e domingos do mês de uma data
+const fimDeSemanaDoMes = (iso) => {
+  const ini = `${iso.slice(0, 8)}01`;
+  const out = [];
+  for (let d = ini; d.slice(0, 7) === iso.slice(0, 7); d = somarDias(d, 1)) if ([0, 6].includes(diaDaSemana(d))) out.push(d);
+  return out;
+};
+
+const sabadoDe = (d) => (diaDaSemana(d) === 6 ? d : somarDias(d, -1));
+// fins de semana do período (sábado → [sábado, domingo]) para os chips de escolha
+const ehFdsLista = (dias, modo, sabadoDe) => {
+  if (modo !== "fds") return [];
+  const m = new Map();
+  dias.forEach((d) => {
+    const k = sabadoDe(d);
+    m.set(k, [...(m.get(k) || []), d]);
+  });
+  return [...m.entries()].map(([sab, ds]) => ({ sab, dias: ds }));
+};
+
+const htmlEscala = ({ config, equipe, dias, rascunho, turnoPorId, titulo = "Escala da equipe", subtitulo, comHorario = false }) => {
   const agora = new Date();
-  const cab = dias.map((d) => `<th>${esc(DIAS_SEMANA_CURTO[diaDaSemana(d)])}<br><small>${esc(dataBr(d).slice(0, 5))}</small></th>`).join("");
+  const cab = dias
+    .map((d) => {
+      const fer = feriadoDoDia(config, d);
+      return `<th>${esc(DIAS_SEMANA_CURTO[diaDaSemana(d)])}<br><small>${esc(dataBr(d).slice(0, 5))}</small>${fer ? `<br><small style="color:#b45309;font-weight:700">${esc(fer.nome)}</small>` : ""}</th>`;
+    })
+    .join("");
   const grupos = [
     ...config.turnos.map((t) => ({ t, pessoas: equipe.filter((c) => c.turnoId === t.id) })),
     { t: { nome: "Folguistas", cor: "#64748b", inicio: "", fim: "" }, pessoas: equipe.filter((c) => c.folguista) },
@@ -78,8 +119,10 @@ const htmlEscala = ({ config, equipe, dias, rascunho, turnoPorId }) => {
                 .map((d) => {
                   const s = situacao(c, d, rascunho, turnoPorId);
                   return s.trabalha
-                    ? `<td class="t" style="--c:${s.turno?.cor || "#1f2328"}">${esc(s.exc === "cobre" ? `Cobre ${s.rotulo}` : s.exc === "extra" ? "Extra" : s.rotulo)}</td>`
-                    : `<td class="f">Folga</td>`;
+                    ? `<td class="t" style="--c:${s.turno?.cor || "#1f2328"}">${esc(s.exc === "cobre" ? `Cobre ${s.rotulo}` : s.exc === "extra" ? "Extra" : s.rotulo)}${
+                        comHorario && s.detalhe && !s.exc ? `<br><small>${esc(s.detalhe)}</small>` : ""
+                      }</td>`
+                    : `<td class="f">${s.domingo ? "Folga<br><small>dom. do mês</small>" : "Folga"}</td>`;
                 })
                 .join("")}</tr>`,
           )
@@ -96,9 +139,84 @@ const htmlEscala = ({ config, equipe, dias, rascunho, turnoPorId }) => {
 .esc td.f { color: #8c959f; font-size: 9px; background: repeating-linear-gradient(135deg, #fff 0 4px, #f3f4f6 4px 8px); }
 .esc tr.g td { text-align: left; font-weight: 800; background: #f6f8fa; border-left: 4px solid var(--c); }
 </style></head><body>
-<header class="topo"><div><h1>Escala da equipe</h1><p>${esc(dataBr(dias[0]))} a ${esc(dataBr(dias[dias.length - 1]))}</p></div>
+<header class="topo"><div><h1>${esc(titulo)}</h1><p>${esc(subtitulo || `${dataBr(dias[0])} a ${dataBr(dias[dias.length - 1])}`)}</p></div>
 <div class="gerado">Luck Receptivo ${esc(regiaoAtual().nome)}<br>Gerado em ${esc(agora.toLocaleDateString("pt-BR"))}</div></header>
 <table class="esc" style="margin-top:10px"><thead><tr><th class="e">Pessoa</th>${cab}</tr></thead><tbody>${linhas}</tbody></table>
+</body></html>`;
+};
+
+// ---------- impressão do plantão de fim de semana (por setor) ----------
+// Liderança no topo; depois um bloco por setor (a função da pessoa). Cada dia
+// mostra só o horário daquele dia ou FOLGA — sem o turno.
+const EH_LIDERANCA = /l[ií]der|lideran|coorden|supervis|geren/i;
+const CORES_SETOR = ["#0f766e", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f", "#a16207", "#475569"];
+const faixa = (j) => (j?.inicio && j?.fim ? `${j.inicio}–${j.fim}` : "");
+
+// horário de uma pessoa num dia: { horario, nota } ou null (folga)
+const horarioDoDia = (c, d, rascunho, turnoPorId) => {
+  const s = situacao(c, d, rascunho, turnoPorId);
+  if (!s.trabalha) return null;
+  if (s.exc === "cobre") return { horario: faixa(s.turno), nota: `cobre ${s.turno?.nome || ""}`.trim() };
+  const t = s.turno || turnoPorId.get(c.turnoId);
+  const horario = t ? faixa(janelaDo(c, t, d)) : faixa(c);
+  return { horario: horario || "Trabalha", nota: s.exc === "extra" ? "dia extra" : "" };
+};
+
+const htmlPlantao = ({ config, equipe, dias, rascunho, turnoPorId, subtitulo }) => {
+  const agora = new Date();
+  const setorDe = (c) => c.funcaoNome || nomeDaFuncao(config, c.funcao) || "";
+  const lideres = equipe.filter((c) => EH_LIDERANCA.test(setorDe(c)));
+  const demais = equipe.filter((c) => !lideres.includes(c));
+  // ordem dos setores: a das funções cadastradas; sem setor por último
+  const ordem = (config.funcoes || []).map((f) => f.nome);
+  const pos = (n) => (n ? ordem.indexOf(n) + 1 || 900 : 999);
+  const nomes = [...new Set(demais.map(setorDe))].sort((a, b) => pos(a) - pos(b) || a.localeCompare(b));
+  // dentro do setor: quem começa mais cedo primeiro
+  const cedo = (c) => dias.map((d) => horarioDoDia(c, d, rascunho, turnoPorId)?.horario || "99").sort()[0];
+  const ordenar = (lista) => [...lista].sort((a, b) => cedo(a).localeCompare(cedo(b)) || a.nome.localeCompare(b.nome));
+  const blocos = [
+    ...(lideres.length ? [{ nome: "Liderança de plantão", cor: "#2563eb", pessoas: ordenar(lideres), lider: true }] : []),
+    ...nomes.map((n, i) => ({ nome: n || "Outros", cor: CORES_SETOR[i % CORES_SETOR.length], pessoas: ordenar(demais.filter((c) => setorDe(c) === n)) })),
+  ];
+  const cab = dias
+    .map((d) => {
+      const fer = feriadoDoDia(config, d);
+      return `<th>${esc(DIAS_SEMANA_CURTO[diaDaSemana(d)])}<br><small>${esc(dataBr(d).slice(0, 5))}</small>${fer ? `<br><small style="color:#b45309;font-weight:700">${esc(fer.nome)}</small>` : ""}</th>`;
+    })
+    .join("");
+  const linhas = blocos
+    .map(
+      (b) =>
+        `<tr class="g"><td colspan="${dias.length + 1}" style="--c:${b.cor}"><span class="dot" style="--c:${b.cor}"></span>${esc(b.nome)}</td></tr>` +
+        b.pessoas
+          .map(
+            (c) =>
+              `<tr><td class="e"><b>${esc(c.nome)}</b>${b.lider && setorDe(c) ? `<br><small>${esc(setorDe(c))}</small>` : ""}</td>${dias
+                .map((d) => {
+                  const h = horarioDoDia(c, d, rascunho, turnoPorId);
+                  return h
+                    ? `<td class="t" style="--c:${b.cor}">${esc(h.horario)}${h.nota ? `<br><small>${esc(h.nota)}</small>` : ""}</td>`
+                    : `<td class="f">Folga</td>`;
+                })
+                .join("")}</tr>`,
+          )
+          .join(""),
+    )
+    .join("");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Escala de fim de semana ${esc(dataBr(dias[0]))} a ${esc(dataBr(dias[dias.length - 1]))}</title><style>${CSS_IMPRESSAO}
+@page { size: A4 landscape; margin: 10mm; }
+.esc td, .esc th { text-align: center; border: 1px solid #d0d7de; padding: 5px 3px; }
+.esc th small { font-weight: 400; color: #57606a; }
+.esc td.e { text-align: left; min-width: 120px; }
+.esc td.e small { color: #57606a; font-size: 8.5px; }
+.esc td.t { background: color-mix(in srgb, var(--c) 10%, #fff); font-weight: 700; font-size: 10px; font-variant-numeric: tabular-nums; }
+.esc td.t small { font-weight: 400; color: #57606a; font-size: 8.5px; }
+.esc td.f { color: #8c959f; font-size: 9px; background: repeating-linear-gradient(135deg, #fff 0 4px, #f3f4f6 4px 8px); }
+.esc tr.g td { text-align: left; font-weight: 800; background: #f6f8fa; border-left: 4px solid var(--c); }
+</style></head><body>
+<header class="topo"><div><h1>Escala de fim de semana</h1><p>${esc(subtitulo || `${dataBr(dias[0])} a ${dataBr(dias[dias.length - 1])}`)}</p></div>
+<div class="gerado">Luck Receptivo ${esc(regiaoAtual().nome)}<br>Gerado em ${esc(agora.toLocaleDateString("pt-BR"))}</div></header>
+<table class="esc" style="margin-top:10px"><thead><tr><th class="e">Colaborador</th>${cab}</tr></thead><tbody>${linhas}</tbody></table>
 </body></html>`;
 };
 
@@ -112,7 +230,31 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
   const [menu, setMenu] = useState(null); // { tipo: "dia"|"pessoa"|"coluna", c?, data?, x, y }
   const mudou = rascunho !== excecoes;
 
-  const dias = useMemo(() => Array.from({ length: 7 * nSemanas }, (_, i) => somarDias(semana, i)), [semana, nSemanas]);
+  // nSemanas: 1, 2 ou "fds" (sábados e domingos do mês)
+  const ehFds = nSemanas === "fds";
+  const mesRef = somarDias(semana, 3);
+  const diasDoPeriodo = useMemo(
+    () => (nSemanas === "fds" ? fimDeSemanaDoMes(somarDias(semana, 3)) : Array.from({ length: 7 * nSemanas }, (_, i) => somarDias(semana, i))),
+    [semana, nSemanas],
+  );
+  // Fins de semana: escolher quais mostrar/imprimir (chave = sábado do fim de semana)
+  const [fdsOcultos, setFdsOcultos] = useState(() => new Set());
+  const finsDoMes = ehFdsLista(diasDoPeriodo, nSemanas, sabadoDe);
+  const dias = useMemo(
+    () => (nSemanas === "fds" ? diasDoPeriodo.filter((d) => !fdsOcultos.has(sabadoDe(d))) : diasDoPeriodo),
+    [diasDoPeriodo, nSemanas, fdsOcultos],
+  );
+  const mudarPeriodo = (sentido) => {
+    setFdsOcultos(new Set());
+    setSemana((s0) => {
+      if (!ehFds) return somarDias(s0, sentido * 7 * nSemanas);
+      const ref = somarDias(s0, 3);
+      const y = Number(ref.slice(0, 4));
+      const m = Number(ref.slice(5, 7)) - 1 + sentido;
+      // a segunda da semana do dia 4: somando 3 dias, cai sempre dentro do mês
+      return segundaDa(isoLocal(new Date(y, m, 4, 12)));
+    });
+  };
   const equipe = useMemo(() => todosDaEquipe(config), [config]);
   const turnoPorId = useMemo(() => new Map(config.turnos.map((t) => [t.id, t])), [config]);
   const hoje = hojeIso();
@@ -232,7 +374,20 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
 
   const imprimir = () => {
     registrarImpressao("escala_equipe", "Escala da equipe (impressão)", `${dataBr(dias[0])} a ${dataBr(ultimo)}`);
-    imprimirHtml(htmlEscala({ config, equipe: equipe.filter((c) => visiveis.some((g) => g.pessoas.includes(c))), dias, rascunho, turnoPorId }));
+    const dados = { config, equipe: equipe.filter((c) => visiveis.some((g) => g.pessoas.includes(c))), dias, rascunho, turnoPorId };
+    imprimirHtml(
+      ehFds
+        ? htmlPlantao({
+            ...dados,
+            subtitulo: fdsOcultos.size
+              ? `Fim de semana: ${finsDoMes
+                  .filter((f) => !fdsOcultos.has(f.sab))
+                  .map((f) => f.dias.map((d) => dataBr(d).slice(0, 5)).join(" e "))
+                  .join(" · ")}`
+              : `Sábados e domingos de ${nomeMes(mesRef)}`,
+          })
+        : htmlEscala(dados),
+    );
   };
 
   // ---------- célula ----------
@@ -251,11 +406,13 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
           {s.exc && <i className="esc-cel__marca" aria-hidden="true" />}
           {s.trabalha && !s.exc ? (
             // dentro do grupo do turno, o nome dele já está no cabeçalho: mostra o horário
-            <b className="tabular">{nSemanas === 1 ? s.detalhe || s.rotulo : (s.detalhe || "").slice(0, 5) || s.rotulo}</b>
+            <b className="tabular">{nSemanas !== 2 ? s.detalhe || s.rotulo : (s.detalhe || "").slice(0, 5) || s.rotulo}</b>
           ) : (
             <b>{s.exc === "cobre" ? `↪ ${s.rotulo}` : s.exc === "extra" ? "+ Extra" : s.rotulo}</b>
           )}
-          {s.exc && nSemanas === 1 && <small>{s.exc === "extra" ? `dia extra · ${s.rotulo}` : s.exc === "cobre" ? "cobrindo" : "lançada"}</small>}
+          {s.exc && nSemanas !== 2 && <small>{s.exc === "extra" ? `dia extra · ${s.rotulo}` : s.exc === "cobre" ? "cobrindo" : "lançada"}</small>}
+          {!s.exc && !s.trabalha && s.detalhe && nSemanas !== 2 && <small>{s.detalhe}</small>}
+          {!s.exc && s.rev && nSemanas !== 2 && <small className="esc-cel__rev">revezamento</small>}
         </button>
       </td>
     );
@@ -353,7 +510,10 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
           <b>
             {DIAS_SEMANA_LONGO[diaDaSemana(data)]}, {dataBr(data)}
           </b>
-          <small>{n ? `${n} exceção(ões) lançada(s)` : "como no modelo"}</small>
+          <small>
+            {feriadoDoDia(config, data) ? `Feriado · ${feriadoDoDia(config, data).nome} · ` : ""}
+            {n ? `${n} exceção(ões) lançada(s)` : "como no modelo"}
+          </small>
         </div>
         <ul className="esc-menu__lista">
           {comGente
@@ -394,7 +554,7 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
     );
   }
 
-  const periodo = `${dataBr(dias[0]).slice(0, 5)} a ${dataBr(ultimo).slice(0, 5)}`;
+  const periodo = ehFds ? `Fins de semana · ${nomeMes(mesRef)}` : `${dataBr(dias[0]).slice(0, 5)} a ${dataBr(ultimo).slice(0, 5)}`;
   const doHoje = kpis.hojeNoPeriodo ? "hoje" : `em ${dataBr(kpis.dia).slice(0, 5)}`;
 
   return (
@@ -419,9 +579,9 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
       <Card className="esc-card">
         <div className="esc-barra">
           <div className="esc-barra__nav">
-            <Button variant="ghost" iconOnly size="sm" icon="chevronLeft" onClick={() => setSemana((s) => somarDias(s, -7 * nSemanas))} aria-label="Anterior" />
+            <Button variant="ghost" iconOnly size="sm" icon="chevronLeft" onClick={() => mudarPeriodo(-1)} aria-label="Anterior" />
             <b className="esc-barra__periodo">{periodo}</b>
-            <Button variant="ghost" iconOnly size="sm" icon="chevronRight" onClick={() => setSemana((s) => somarDias(s, 7 * nSemanas))} aria-label="Próxima" />
+            <Button variant="ghost" iconOnly size="sm" icon="chevronRight" onClick={() => mudarPeriodo(1)} aria-label="Próxima" />
             <Button variant="ghost" size="sm" onClick={() => setSemana(segundaDa(hoje))} disabled={semana === segundaDa(hoje)}>
               Hoje
             </Button>
@@ -433,6 +593,7 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
               options={[
                 { value: 1, label: "Semana" },
                 { value: 2, label: "2 semanas" },
+                { value: "fds", label: "Fins de semana" },
               ]}
             />
           </div>
@@ -450,10 +611,43 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
               ))}
             </select>
             <Button size="sm" icon="printer" onClick={imprimir}>
-              Imprimir
+              {ehFds ? "Imprimir fins de semana" : "Imprimir"}
             </Button>
           </div>
         </div>
+
+        {ehFds && finsDoMes.length > 0 && (
+          <div className="esc-fds-escolha" role="group" aria-label="Fins de semana">
+            <span>Mostrar e imprimir:</span>
+            {finsDoMes.map((f) => {
+              const on = !fdsOcultos.has(f.sab);
+              return (
+                <button
+                  key={f.sab}
+                  type="button"
+                  className={on ? "is-on" : ""}
+                  aria-pressed={on}
+                  onClick={() =>
+                    setFdsOcultos((o) => {
+                      const n = new Set(o);
+                      if (n.has(f.sab)) n.delete(f.sab);
+                      else n.add(f.sab);
+                      return n.size >= finsDoMes.length ? o : n; // pelo menos um
+                    })
+                  }
+                >
+                  {on && <Icon name="check" size={12} />}
+                  {f.dias.map((d) => d.slice(8)).join(" e ")}/{f.sab.slice(5, 7)}
+                </button>
+              );
+            })}
+            {fdsOcultos.size > 0 && (
+              <button type="button" className="esc-fds-escolha__todos" onClick={() => setFdsOcultos(new Set())}>
+                Todos
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="esc-tabela-wrap">
           <table className={`esc-tabela ${nSemanas === 2 ? "is-compacta" : ""}`}>
@@ -466,6 +660,11 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
                       <span>{DIAS_SEMANA_CURTO[diaDaSemana(d)]}</span>
                       <b>{d.slice(8)}</b>
                       {excecoesDoDia(d) > 0 && <i className="esc-dia__exc" aria-label={`${excecoesDoDia(d)} exceção(ões)`} />}
+                      {feriadoDoDia(config, d) && (
+                        <em className="esc-dia__fer" title={feriadoDoDia(config, d).nome}>
+                          {feriadoDoDia(config, d).nome}
+                        </em>
+                      )}
                     </button>
                   </th>
                 ))}

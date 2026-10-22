@@ -23,8 +23,22 @@
 //   às 02h do dia 15 é do turno da noite do dia 14). A busca pega um dia a
 //   mais no fim do período por isso.
 
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
-import { ID_SEDE, ehSede, idPorRegiao, phoenixReserveService, regiaoAtual } from "./regiaoAtiva";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import {
+  ID_SEDE,
+  ehSede,
+  idPorRegiao,
+  phoenixReserveService,
+  regiaoAtual,
+} from "./regiaoAtiva";
 import { db } from "./firebase";
 import { EXPAND } from "./plannerUtils";
 import { extrairListaResposta } from "./plannerApi";
@@ -34,12 +48,31 @@ import { extrairListaResposta } from "./plannerApi";
 // ---------------------------------------------------------------------
 export const TIPOS_SERVICO = [
   { id: "in", nome: "Chegadas", curto: "IN", serviceType: "1", grupo: "Voos" },
-  { id: "out", nome: "Saídas (OUT)", curto: "OUT", serviceType: "2", grupo: "Voos" },
-  { id: "transfer", nome: "Transfers entre hotéis", curto: "Transfer", serviceType: "4", grupo: "Serviços" },
-  { id: "passeio", nome: "Passeios", curto: "Passeios", serviceType: "3", grupo: "Serviços" },
+  {
+    id: "out",
+    nome: "Saídas (OUT)",
+    curto: "OUT",
+    serviceType: "2",
+    grupo: "Voos",
+  },
+  {
+    id: "transfer",
+    nome: "Transfers entre hotéis",
+    curto: "Transfer",
+    serviceType: "4",
+    grupo: "Serviços",
+  },
+  {
+    id: "passeio",
+    nome: "Passeios",
+    curto: "Passeios",
+    serviceType: "3",
+    grupo: "Serviços",
+  },
 ];
 
-export const nomeTipo = (id) => TIPOS_SERVICO.find((t) => t.id === id)?.nome || id;
+export const nomeTipo = (id) =>
+  TIPOS_SERVICO.find((t) => t.id === id)?.nome || id;
 
 // ---------------------------------------------------------------------
 // Configuração de turnos e equipe
@@ -49,14 +82,39 @@ export const PAPEIS = [
   { id: "sinergia", nome: "Suporte (sinergia)", curto: "Sinergia" },
 ];
 
-export const CORES_TURNO = ["#2563eb", "#d97706", "#7c3aed", "#0d9488", "#db2777", "#65a30d"];
+export const CORES_TURNO = [
+  "#2563eb",
+  "#d97706",
+  "#7c3aed",
+  "#0d9488",
+  "#db2777",
+  "#65a30d",
+];
 
-export const DIAS_SEMANA_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-export const DIAS_SEMANA_LONGO = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+export const DIAS_SEMANA_CURTO = [
+  "Dom",
+  "Seg",
+  "Ter",
+  "Qua",
+  "Qui",
+  "Sex",
+  "Sáb",
+];
+export const DIAS_SEMANA_LONGO = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
 export const TODOS_OS_DIAS = [0, 1, 2, 3, 4, 5, 6];
 
 export const novoId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
 
 export const CONFIG_PADRAO = {
   turnos: [
@@ -66,7 +124,17 @@ export const CONFIG_PADRAO = {
       inicio: "06:20",
       fim: "14:40",
       cor: CORES_TURNO[0],
-      colaboradores: [{ id: "edson", nome: "Edson", papel: "principal", dias: [], inicio: "", fim: "", obs: "" }],
+      colaboradores: [
+        {
+          id: "edson",
+          nome: "Edson",
+          papel: "principal",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "",
+        },
+      ],
     },
     {
       id: "tarde",
@@ -75,8 +143,24 @@ export const CONFIG_PADRAO = {
       fim: "22:00",
       cor: CORES_TURNO[1],
       colaboradores: [
-        { id: "emerson", nome: "Emerson", papel: "principal", dias: [], inicio: "", fim: "", obs: "" },
-        { id: "ariana", nome: "Ariana", papel: "principal", dias: [2, 3, 4, 5], inicio: "13:00", fim: "17:00", obs: "Jovem Aprendiz" },
+        {
+          id: "emerson",
+          nome: "Emerson",
+          papel: "principal",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "",
+        },
+        {
+          id: "ariana",
+          nome: "Ariana",
+          papel: "principal",
+          dias: [2, 3, 4, 5],
+          inicio: "13:00",
+          fim: "17:00",
+          obs: "Jovem Aprendiz",
+        },
       ],
     },
     {
@@ -85,7 +169,17 @@ export const CONFIG_PADRAO = {
       inicio: "22:00",
       fim: "06:20",
       cor: CORES_TURNO[2],
-      colaboradores: [{ id: "ingra", nome: "Ingra", papel: "principal", dias: [], inicio: "", fim: "", obs: "" }],
+      colaboradores: [
+        {
+          id: "ingra",
+          nome: "Ingra",
+          papel: "principal",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "",
+        },
+      ],
     },
     {
       id: "suporte",
@@ -94,9 +188,33 @@ export const CONFIG_PADRAO = {
       fim: "17:00",
       cor: CORES_TURNO[3],
       colaboradores: [
-        { id: "nathalia", nome: "Nathalia", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
-        { id: "luanaf", nome: "Luana Fabiana", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
-        { id: "tharcisio", nome: "Tharcisio", papel: "sinergia", dias: [], inicio: "", fim: "", obs: "Sempre que necessário" },
+        {
+          id: "nathalia",
+          nome: "Nathalia",
+          papel: "sinergia",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "Sempre que necessário",
+        },
+        {
+          id: "luanaf",
+          nome: "Luana Fabiana",
+          papel: "sinergia",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "Sempre que necessário",
+        },
+        {
+          id: "tharcisio",
+          nome: "Tharcisio",
+          papel: "sinergia",
+          dias: [],
+          inicio: "",
+          fim: "",
+          obs: "Sempre que necessário",
+        },
       ],
     },
   ],
@@ -109,7 +227,7 @@ export const horaValida = (h) => HORA_RE.test(String(h || ""));
 // Deixa a configuração lida do Firestore sempre no formato esperado.
 export const normalizarConfig = (bruto) => {
   const base = bruto && Array.isArray(bruto.turnos) ? bruto : CONFIG_PADRAO;
-  return {
+  return aplicarFimDeSemana({
     turnos: base.turnos
       .filter((t) => t && horaValida(t.inicio) && horaValida(t.fim))
       .map((t, i) => ({
@@ -124,7 +242,9 @@ export const normalizarConfig = (bruto) => {
             id: String(c.id || novoId()),
             nome: String(c.nome).trim(),
             papel: c.papel === "sinergia" ? "sinergia" : "principal",
-            dias: Array.isArray(c.dias) ? c.dias.map(Number).filter((d) => d >= 0 && d <= 6) : [],
+            dias: Array.isArray(c.dias)
+              ? c.dias.map(Number).filter((d) => d >= 0 && d <= 6)
+              : [],
             inicio: horaValida(c.inicio) ? c.inicio : "",
             fim: horaValida(c.fim) ? c.fim : "",
             obs: String(c.obs || "").trim(),
@@ -133,22 +253,187 @@ export const normalizarConfig = (bruto) => {
             // Atendimento ligada a esta pessoa (uid), quando houver
             funcao: String(c.funcao || ""),
             contaUid: String(c.contaUid || ""),
+            // domingo de folga do mês: 1º a 4º, 5 = último (0 = nenhum)
+            domingoFolga: [0, 1, 2, 3, 4, 5].includes(Number(c.domingoFolga))
+              ? Number(c.domingoFolga)
+              : 0,
+            // horário próprio no sábado e no domingo (ex.: liderança)
+            horarioFds:
+              horaValida(c.horarioFds?.inicio) && horaValida(c.horarioFds?.fim)
+                ? { inicio: c.horarioFds.inicio, fim: c.horarioFds.fim }
+                : null,
           })),
       })),
     folguistas: (Array.isArray(base.folguistas) ? base.folguistas : [])
       .filter((f) => f && String(f.nome || "").trim())
-      .map((f) => ({ id: String(f.id || novoId()), nome: String(f.nome).trim(), obs: String(f.obs || "").trim() })),
+      .map((f) => ({
+        id: String(f.id || novoId()),
+        nome: String(f.nome).trim(),
+        obs: String(f.obs || "").trim(),
+      })),
     atendimento: normalizarAtendimento(base.atendimento),
     funcoes: normalizarFuncoes(base.funcoes),
-    escalaBase: normalizarEscalaBase(base.escalaBase || modeloBaseInferido(base)),
+    escalaBase: normalizarEscalaBase(
+      base.escalaBase || modeloBaseInferido(base),
+    ),
+    revezamentos: normalizarRevezamentos(base.revezamentos),
+    feriados: normalizarFeriados(base.feriados),
+  });
+};
+
+// ---------------------------------------------------------------------
+// FIM DE SEMANA
+//   Revezamento de sábado e domingo: um grupo (ex.: líder e coordenadora)
+//   divide o fim de semana. Na semana do "inicio" (um sábado), o 1º do grupo
+//   trabalha no sábado e o 2º no domingo; na semana seguinte, inverte (com
+//   mais gente, roda: sábado = k-ésimo, domingo = o seguinte). Quem é do
+//   grupo só trabalha no sábado/domingo que é dele.
+//   Domingo de folga do mês: cada pessoa pode ter o seu (1º, 2º, 3º, 4º ou
+//   último domingo) — nesse domingo ela folga, seja qual for o modelo.
+// ---------------------------------------------------------------------
+export const DOMINGOS_DO_MES = [
+  { value: 0, label: "Nenhum" },
+  { value: 1, label: "1º domingo" },
+  { value: 2, label: "2º domingo" },
+  { value: 3, label: "3º domingo" },
+  { value: 4, label: "4º domingo" },
+  { value: 5, label: "Último domingo" },
+];
+export const normalizarRevezamentos = (lista) =>
+  (Array.isArray(lista) ? lista : [])
+    .map((r, i) => ({
+      id: String(r?.id || `rev${i + 1}`),
+      nome: String(r?.nome || "")
+        .trim()
+        .slice(0, 40),
+      membros: (Array.isArray(r?.membros) ? r.membros : [])
+        .map(String)
+        .filter(Boolean),
+      inicio: /^\d{4}-\d{2}-\d{2}$/.test(String(r?.inicio || ""))
+        ? r.inicio
+        : "",
+    }))
+    // 1 pessoa = alterna sozinha (uma semana sábado, outra domingo)
+    .filter((r) => r.membros.length >= 1 && r.inicio);
+
+// ---------------------------------------------------------------------
+// FERIADOS: cada feriado tem a sua escala — quem trabalha e em que horário.
+//   { data, nome, equipe: { [pessoa]: { trabalha, inicio, fim } } }
+//   Quem não está na lista do feriado segue a escala normal do dia.
+// ---------------------------------------------------------------------
+export const normalizarFeriados = (lista) =>
+  (Array.isArray(lista) ? lista : [])
+    .filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(String(f?.data || "")))
+    .map((f) => ({
+      data: f.data,
+      nome:
+        String(f.nome || "Feriado")
+          .trim()
+          .slice(0, 50) || "Feriado",
+      equipe: Object.fromEntries(
+        Object.entries(
+          f.equipe && typeof f.equipe === "object" ? f.equipe : {},
+        ).map(([id, v]) => [
+          id,
+          {
+            trabalha: v?.trabalha === true,
+            inicio: horaValida(v?.inicio) ? v.inicio : "",
+            fim: horaValida(v?.fim) ? v.fim : "",
+          },
+        ]),
+      ),
+    }))
+    .sort((a, b) => a.data.localeCompare(b.data));
+export const feriadoDoDia = (config, data) =>
+  (config?.feriados || []).find((f) => f.data === data) || null;
+// sugestões de feriados de data fixa (nacionais + Bahia)
+export const FERIADOS_FIXOS = [
+  ["01-01", "Confraternização Universal"],
+  ["04-21", "Tiradentes"],
+  ["05-01", "Dia do Trabalho"],
+  ["07-02", "Independência da Bahia"],
+  ["09-07", "Independência do Brasil"],
+  ["10-12", "Nossa Senhora Aparecida"],
+  ["11-02", "Finados"],
+  ["11-15", "Proclamação da República"],
+  ["11-20", "Consciência Negra"],
+  ["12-25", "Natal"],
+];
+// coloca em cada pessoa do revezamento a posição dela (usada no cálculo do dia)
+// campos calculados em cada pessoa (não são gravados): posição no
+// revezamento (fds) e a escala dela nos feriados (feriadosDela)
+const aplicarFimDeSemana = (config) => {
+  const fds = new Map();
+  config.revezamentos.forEach((r) =>
+    r.membros.forEach((id, posicao) =>
+      fds.set(id, {
+        grupo: r.id,
+        inicio: r.inicio,
+        posicao,
+        tamanho: r.membros.length,
+      }),
+    ),
+  );
+  const feriadosDe = (id) => {
+    const m = {};
+    config.feriados.forEach((f) => {
+      if (f.equipe[id]) m[f.data] = { nome: f.nome, ...f.equipe[id] };
+    });
+    return Object.keys(m).length ? m : null;
   };
+  return {
+    ...config,
+    turnos: config.turnos.map((t) => ({
+      ...t,
+      colaboradores: t.colaboradores.map((c) => ({
+        ...c,
+        fds: fds.get(c.id) || null,
+        feriadosDela: feriadosDe(c.id),
+      })),
+    })),
+  };
+};
+// tira os campos calculados antes de gravar
+const semCalculados = (config) => ({
+  ...config,
+  turnos: config.turnos.map((t) => ({
+    ...t,
+    colaboradores: t.colaboradores.map((c) => {
+      const { fds: _fds, feriadosDela: _fer, ...resto } = c;
+      return resto;
+    }),
+  })),
+});
+// é o n-ésimo domingo do mês? (5 = último)
+export const ehDomingoDoMes = (data, n) => {
+  if (!n || diaDaSemana(data) !== 0) return false;
+  const dia = Number(data.slice(8));
+  if (n === 5)
+    return Number(somarDias(data, 7).slice(5, 7)) !== Number(data.slice(5, 7));
+  return Math.ceil(dia / 7) === n;
+};
+// no revezamento, quem fica com o sábado (slot 0) e o domingo (slot 1) desta semana
+export const turnoDoRevezamento = (fds, data) => {
+  const dow = diaDaSemana(data);
+  if (!fds || (dow !== 6 && dow !== 0)) return null;
+  const sabado = dow === 6 ? data : somarDias(data, -1);
+  const k = Math.round(diasEntre(fds.inicio, sabado) / 7);
+  // sozinho: na semana do início trabalha no sábado (folga no domingo); na seguinte, inverte
+  if (fds.tamanho === 1) return ((k % 2) + 2) % 2 === (dow === 6 ? 0 : 1);
+  const vez =
+    (((k + (dow === 0 ? 1 : 0)) % fds.tamanho) + fds.tamanho) % fds.tamanho;
+  return vez === fds.posicao;
 };
 
 // configurações antigas (sem modelo da base): deduz pelo que a equipe usa
 const modeloBaseInferido = (base) => {
-  const modelos = (base?.turnos || []).flatMap((t) => (t.colaboradores || []).map((c) => c?.escala?.modelo).filter(Boolean));
+  const modelos = (base?.turnos || []).flatMap((t) =>
+    (t.colaboradores || []).map((c) => c?.escala?.modelo).filter(Boolean),
+  );
   const ciclo = modelos.find((m) => m && m !== "semanal");
-  return { modelo: ciclo && MODELOS_BASE.some((x) => x.id === ciclo) ? ciclo : "6x1" };
+  return {
+    modelo: ciclo && MODELOS_BASE.some((x) => x.id === ciclo) ? ciclo : "6x1",
+  };
 };
 
 // Funções do setor (criadas pela equipe em Turnos e equipe)
@@ -159,11 +444,19 @@ export const FUNCOES_PADRAO = [
 ];
 export const normalizarFuncoes = (lista) => {
   const l = (Array.isArray(lista) ? lista : FUNCOES_PADRAO)
-    .map((f) => ({ id: String(f?.id || "").replace(/[^\w-]/g, "").slice(0, 30), nome: String(f?.nome || "").trim().slice(0, 40) }))
+    .map((f) => ({
+      id: String(f?.id || "")
+        .replace(/[^\w-]/g, "")
+        .slice(0, 30),
+      nome: String(f?.nome || "")
+        .trim()
+        .slice(0, 40),
+    }))
     .filter((f) => f.id && f.nome);
   return Array.isArray(lista) ? l : FUNCOES_PADRAO;
 };
-export const nomeDaFuncao = (config, id) => config?.funcoes?.find((f) => f.id === id)?.nome || "";
+export const nomeDaFuncao = (config, id) =>
+  config?.funcoes?.find((f) => f.id === id)?.nome || "";
 
 // ---------------------------------------------------------------------
 // MODELOS DE ESCALA (por colaborador)
@@ -187,11 +480,16 @@ const inteiroEntre = (v, min, max, padrao) => {
   return Number.isFinite(n) && n >= min && n <= max ? n : padrao;
 };
 export const normalizarEscala = (e = {}) => {
-  const modelo = MODELOS_ESCALA.some((m) => m.id === e?.modelo) ? e.modelo : "semanal";
+  const modelo = MODELOS_ESCALA.some((m) => m.id === e?.modelo)
+    ? e.modelo
+    : "semanal";
   const preset = MODELOS_ESCALA.find((m) => m.id === modelo);
   return {
     modelo,
-    trabalha: modelo === "ciclo" ? inteiroEntre(e?.trabalha, 1, 14, 1) : preset.trabalha,
+    trabalha:
+      modelo === "ciclo"
+        ? inteiroEntre(e?.trabalha, 1, 14, 1)
+        : preset.trabalha,
     folga: modelo === "ciclo" ? inteiroEntre(e?.folga, 1, 14, 1) : preset.folga,
     referencia: ISO_RE.test(String(e?.referencia || "")) ? e.referencia : "",
     // grupo do revezamento (0 = A, 1 = B…) e se a pessoa tem modelo próprio
@@ -208,20 +506,70 @@ export const normalizarEscala = (e = {}) => {
 //   (A, B, C…) e a equipe A começa no dia de início.
 // ---------------------------------------------------------------------
 export const MODELOS_BASE = [
-  { id: "6x1", nome: "6x1", titulo: "6 dias de trabalho, 1 folga", desc: "Cada pessoa tem um dia de folga fixa na semana.", tipo: "semanal", folgas: 1 },
-  { id: "5x2", nome: "5x2", titulo: "5 dias de trabalho, 2 folgas", desc: "Duas folgas fixas por semana (ex.: sábado e domingo).", tipo: "semanal", folgas: 2 },
-  { id: "12x36", nome: "12x36", titulo: "Plantão dia sim, dia não", desc: "Trabalha um dia, folga no outro. Duas equipes se revezam (A e B).", tipo: "ciclo", trabalha: 1, folga: 1 },
-  { id: "24x48", nome: "24x48", titulo: "Plantão de 24h, folga de 48h", desc: "Trabalha um dia, folga dois. Três equipes se revezam (A, B e C).", tipo: "ciclo", trabalha: 1, folga: 2 },
-  { id: "2x2", nome: "2x2", titulo: "2 dias de trabalho, 2 de folga", desc: "Duas equipes se revezam a cada dois dias.", tipo: "ciclo", trabalha: 2, folga: 2 },
-  { id: "ciclo", nome: "Personalizado", titulo: "Ciclo do seu jeito", desc: "Você define quantos dias trabalha e quantos folga (ex.: 4x2, 5x1).", tipo: "ciclo", trabalha: 4, folga: 2 },
+  {
+    id: "6x1",
+    nome: "6x1",
+    titulo: "6 dias de trabalho, 1 folga",
+    desc: "Cada pessoa tem um dia de folga fixa na semana.",
+    tipo: "semanal",
+    folgas: 1,
+  },
+  {
+    id: "5x2",
+    nome: "5x2",
+    titulo: "5 dias de trabalho, 2 folgas",
+    desc: "Duas folgas fixas por semana (ex.: sábado e domingo).",
+    tipo: "semanal",
+    folgas: 2,
+  },
+  {
+    id: "12x36",
+    nome: "12x36",
+    titulo: "Plantão dia sim, dia não",
+    desc: "Trabalha um dia, folga no outro. Duas equipes se revezam (A e B).",
+    tipo: "ciclo",
+    trabalha: 1,
+    folga: 1,
+  },
+  {
+    id: "24x48",
+    nome: "24x48",
+    titulo: "Plantão de 24h, folga de 48h",
+    desc: "Trabalha um dia, folga dois. Três equipes se revezam (A, B e C).",
+    tipo: "ciclo",
+    trabalha: 1,
+    folga: 2,
+  },
+  {
+    id: "2x2",
+    nome: "2x2",
+    titulo: "2 dias de trabalho, 2 de folga",
+    desc: "Duas equipes se revezam a cada dois dias.",
+    tipo: "ciclo",
+    trabalha: 2,
+    folga: 2,
+  },
+  {
+    id: "ciclo",
+    nome: "Personalizado",
+    titulo: "Ciclo do seu jeito",
+    desc: "Você define quantos dias trabalha e quantos folga (ex.: 4x2, 5x1).",
+    tipo: "ciclo",
+    trabalha: 4,
+    folga: 2,
+  },
 ];
 export const LETRAS_GRUPO = "ABCDEFGHIJKLMN";
 export const normalizarEscalaBase = (b = {}) => {
   const m = MODELOS_BASE.find((x) => x.id === b?.modelo) || MODELOS_BASE[0];
   return {
     modelo: m.id,
-    trabalha: m.id === "ciclo" ? inteiroEntre(b?.trabalha, 1, 14, m.trabalha) : m.trabalha || 0,
-    folga: m.id === "ciclo" ? inteiroEntre(b?.folga, 1, 14, m.folga) : m.folga || 0,
+    trabalha:
+      m.id === "ciclo"
+        ? inteiroEntre(b?.trabalha, 1, 14, m.trabalha)
+        : m.trabalha || 0,
+    folga:
+      m.id === "ciclo" ? inteiroEntre(b?.folga, 1, 14, m.folga) : m.folga || 0,
     inicio: ISO_RE.test(String(b?.inicio || "")) ? b.inicio : "",
   };
 };
@@ -237,10 +585,17 @@ export const gruposDoCiclo = (base) => {
 export const escalaPelaBase = (base, grupo = 0) => {
   const b = normalizarEscalaBase(base);
   const m = MODELOS_BASE.find((x) => x.id === b.modelo);
-  if (m.tipo === "semanal") return normalizarEscala({ modelo: "semanal", grupo: 0 });
+  if (m.tipo === "semanal")
+    return normalizarEscala({ modelo: "semanal", grupo: 0 });
   const id = ["12x36", "24x48", "2x2"].includes(b.modelo) ? b.modelo : "ciclo";
   const referencia = b.inicio ? somarDias(b.inicio, grupo * b.trabalha) : "";
-  return normalizarEscala({ modelo: id, trabalha: b.trabalha, folga: b.folga, referencia, grupo });
+  return normalizarEscala({
+    modelo: id,
+    trabalha: b.trabalha,
+    folga: b.folga,
+    referencia,
+    grupo,
+  });
 };
 
 // ---------------------------------------------------------------------
@@ -257,9 +612,16 @@ export const ETAPAS_PADRAO = [
 export const normalizarAtendimento = (a = {}) => {
   const etapas = (Array.isArray(a?.etapas) ? a.etapas : ETAPAS_PADRAO)
     .map((x, i) => ({
-      id: String(x?.id || `etapa${i + 1}`).replace(/[^\w-]/g, "").slice(0, 24) || `etapa${i + 1}`,
-      nome: String(x?.nome || "").trim().slice(0, 30),
-      acao: String(x?.acao || x?.nome || "").trim().slice(0, 30),
+      id:
+        String(x?.id || `etapa${i + 1}`)
+          .replace(/[^\w-]/g, "")
+          .slice(0, 24) || `etapa${i + 1}`,
+      nome: String(x?.nome || "")
+        .trim()
+        .slice(0, 30),
+      acao: String(x?.acao || x?.nome || "")
+        .trim()
+        .slice(0, 30),
     }))
     .filter((x) => x.nome);
   return {
@@ -278,19 +640,28 @@ export const normalizarAtendimento = (a = {}) => {
 export const validarConfig = (config) => {
   const erros = [];
   if (!config.turnos.length) erros.push("Cadastre pelo menos um turno.");
-  if (config.atendimento && !config.atendimento.etapas.some((e) => e.nome.trim())) erros.push("Atendimento: informe pelo menos uma etapa.");
+  if (
+    config.atendimento &&
+    !config.atendimento.etapas.some((e) => e.nome.trim())
+  )
+    erros.push("Atendimento: informe pelo menos uma etapa.");
   config.turnos.forEach((t, i) => {
     const nome = t.nome?.trim() || `Turno ${i + 1}`;
     if (!t.nome?.trim()) erros.push(`O turno ${i + 1} está sem nome.`);
-    if (!horaValida(t.inicio) || !horaValida(t.fim)) erros.push(`${nome}: horário inválido.`);
+    if (!horaValida(t.inicio) || !horaValida(t.fim))
+      erros.push(`${nome}: horário inválido.`);
     else if (t.inicio === t.fim) erros.push(`${nome}: início e fim iguais.`);
     t.colaboradores.forEach((c) => {
       if (!c.nome?.trim()) erros.push(`${nome}: tem colaborador sem nome.`);
       if ((c.inicio || c.fim) && !(horaValida(c.inicio) && horaValida(c.fim))) {
-        erros.push(`${nome}: horário próprio de ${c.nome || "colaborador"} incompleto.`);
+        erros.push(
+          `${nome}: horário próprio de ${c.nome || "colaborador"} incompleto.`,
+        );
       }
       if (c.escala && c.escala.modelo !== "semanal" && !c.escala.referencia) {
-        erros.push(`${nome}: informe um dia em que ${c.nome || "o colaborador"} trabalha (escala ${c.escala.modelo}).`);
+        erros.push(
+          `${nome}: informe um dia em que ${c.nome || "o colaborador"} trabalha (escala ${c.escala.modelo}).`,
+        );
       }
     });
   });
@@ -299,13 +670,21 @@ export const validarConfig = (config) => {
 
 // Cada base tem a sua equipe: Salvador em settings/turnos_equipe, as outras
 // em settings/turnos_equipe__<id> (regiaoAtiva.js → idPorRegiao).
-const REF_CONFIG = (r) => doc(db, "settings", r ? idPorRegiao("turnos_equipe", r) : idPorRegiao("turnos_equipe"));
+const REF_CONFIG = (r) =>
+  doc(
+    db,
+    "settings",
+    r ? idPorRegiao("turnos_equipe", r) : idPorRegiao("turnos_equipe"),
+  );
 
 // Base nova começa com os mesmos horários, sem ninguém na equipe.
 export const configPadraoDaRegiao = () =>
   ehSede()
     ? CONFIG_PADRAO
-    : { turnos: CONFIG_PADRAO.turnos.map((t) => ({ ...t, colaboradores: [] })), folguistas: [] };
+    : {
+        turnos: CONFIG_PADRAO.turnos.map((t) => ({ ...t, colaboradores: [] })),
+        folguistas: [],
+      };
 
 // r (opcional): outra base — ex.: a gerência criando conta de Atendimento
 export const carregarConfigTurnos = async (r) => {
@@ -315,7 +694,10 @@ export const carregarConfigTurnos = async (r) => {
 
 export const salvarConfigTurnos = async (config) => {
   const limpo = normalizarConfig(config);
-  await setDoc(REF_CONFIG(), { ...limpo, updatedAt: new Date() });
+  await setDoc(REF_CONFIG(), {
+    ...semCalculados(limpo),
+    updatedAt: new Date(),
+  });
   return limpo;
 };
 
@@ -390,11 +772,16 @@ export const textoDias = (dias = []) => {
   const seq = [...dias].sort((a, b) => a - b);
   const consecutivo = seq.every((d, i) => i === 0 || d === seq[i - 1] + 1);
   const curto = seq.map((d) => DIAS_SEMANA_CURTO[d].toLowerCase());
-  return consecutivo && seq.length > 2 ? `${curto[0]} a ${curto[curto.length - 1]}` : curto.join(", ");
+  return consecutivo && seq.length > 2
+    ? `${curto[0]} a ${curto[curto.length - 1]}`
+    : curto.join(", ");
 };
 
 export const num = (v, casas = 1) =>
-  Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: casas });
+  Number(v || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: casas,
+  });
 
 // ---------------------------------------------------------------------
 // Leitura dos serviços do Phoenix
@@ -410,39 +797,52 @@ const hora = (valor) => {
 const horaDoVooInformada = (item) => {
   const h = hora(
     item?.fly_hour ||
-    item?.reserve?.flight_time ||
-    item?.reserve?.flight?.scheduled_time ||
-    item?.reserve?.arrival_flight_time ||
-    item?.flight_time ||
-    item?.flight?.scheduled_time,
+      item?.reserve?.flight_time ||
+      item?.reserve?.flight?.scheduled_time ||
+      item?.reserve?.arrival_flight_time ||
+      item?.flight_time ||
+      item?.flight?.scheduled_time,
   );
   return h && h !== "00:00" ? h : "";
 };
 
 const horaApresentacao = (item) =>
-  hora(item?.presentation_hour || item?.presentation_hour_end || item?.schedule?.presentation_hour || "");
+  hora(
+    item?.presentation_hour ||
+      item?.presentation_hour_end ||
+      item?.schedule?.presentation_hour ||
+      "",
+  );
 
 const numeroVoo = (item) =>
   String(
     item?.schedule?.name ||
-    item?.reserve?.flight_code ||
-    item?.reserve?.flight?.code ||
-    item?.reserve?.arrival_flight_code ||
-    item?.flight_code ||
-    item?.flight?.code ||
-    "",
+      item?.reserve?.flight_code ||
+      item?.reserve?.flight?.code ||
+      item?.reserve?.arrival_flight_code ||
+      item?.flight_code ||
+      item?.flight?.code ||
+      "",
   )
     .trim()
     .toUpperCase();
 
 const nomeServico = (item) =>
-  String(item?.service?.name || item?.service_name || item?.serviceName || item?.name || "Serviço")
+  String(
+    item?.service?.name ||
+      item?.service_name ||
+      item?.serviceName ||
+      item?.name ||
+      "Serviço",
+  )
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
 
 const paxDoItem = (item) =>
-  Number(item?.is_adult_count || 0) + Number(item?.is_child_count || 0) + Number(item?.is_baby_count || item?.is_infant_count || 0);
+  Number(item?.is_adult_count || 0) +
+  Number(item?.is_child_count || 0) +
+  Number(item?.is_baby_count || item?.is_infant_count || 0);
 
 export const lerRegistro = (item, dataExecucao, tipo) => {
   const horaVoo = tipo === "in" ? horaDoVooInformada(item) : "";
@@ -475,9 +875,17 @@ const urlServico = (data, serviceType) => {
 };
 
 // Busca os tipos escolhidos em todas as datas (+1 dia no fim).
-export const buscarServicosPeriodo = async (inicio, fim, tipos, onProgresso, paralelo = 4) => {
+export const buscarServicosPeriodo = async (
+  inicio,
+  fim,
+  tipos,
+  onProgresso,
+  paralelo = 4,
+) => {
   const datas = listarDatas(inicio, somarDias(fim, 1));
-  const tarefas = datas.flatMap((data) => tipos.map((tipo) => ({ data, tipo })));
+  const tarefas = datas.flatMap((data) =>
+    tipos.map((tipo) => ({ data, tipo })),
+  );
   const registros = [];
   const falhas = new Set();
   let erros = 0;
@@ -490,7 +898,9 @@ export const buscarServicosPeriodo = async (inicio, fim, tipos, onProgresso, par
       proxima += 1;
       const st = TIPOS_SERVICO.find((t) => t.id === tipo)?.serviceType;
       try {
-        const r = await fetch(urlServico(data, st), { headers: { Accept: "application/json" } });
+        const r = await fetch(urlServico(data, st), {
+          headers: { Accept: "application/json" },
+        });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         extrairListaResposta(await r.json()).forEach((item) => {
           const reg = lerRegistro(item, data, tipo);
@@ -506,7 +916,9 @@ export const buscarServicosPeriodo = async (inicio, fim, tipos, onProgresso, par
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(paralelo, tarefas.length) }, trabalhar));
+  await Promise.all(
+    Array.from({ length: Math.min(paralelo, tarefas.length) }, trabalhar),
+  );
   if (tarefas.length && erros === tarefas.length) {
     throw new Error("O Phoenix não respondeu em nenhuma data.");
   }
@@ -520,22 +932,43 @@ const passaMeiaNoite = (t) => paraMinutos(t.fim) < paraMinutos(t.inicio);
 
 // Dia em que começa o turno (ou a janela) que atendeu o registro
 const diaDoTurno = (reg, janela) =>
-  passaMeiaNoite(janela) && reg.min < paraMinutos(janela.fim) ? somarDias(reg.data, -1) : reg.data;
+  passaMeiaNoite(janela) && reg.min < paraMinutos(janela.fim)
+    ? somarDias(reg.data, -1)
+    : reg.data;
 
 const media = (n, d) => (d ? n / d : 0);
 
-export const ehApoio = (turno) => !turno.colaboradores.some((c) => c.papel === "principal");
+export const ehApoio = (turno) =>
+  !turno.colaboradores.some((c) => c.papel === "principal");
 
 // janela de trabalho de um colaborador (a dele ou a do turno)
-export const janelaDo = (c, turno) => (c.inicio && c.fim ? { inicio: c.inicio, fim: c.fim } : { inicio: turno.inicio, fim: turno.fim });
+// horário da pessoa (no dia, quando informado: feriado e fim de semana têm horário próprio)
+export const janelaDo = (c, turno, data) => {
+  if (data) {
+    const fer = c.feriadosDela?.[data];
+    if (fer?.trabalha && fer.inicio && fer.fim)
+      return { inicio: fer.inicio, fim: fer.fim };
+    if (c.horarioFds && [0, 6].includes(diaDaSemana(data)))
+      return { ...c.horarioFds };
+  }
+  return c.inicio && c.fim
+    ? { inicio: c.inicio, fim: c.fim }
+    : { inicio: turno.inicio, fim: turno.fim };
+};
 
 // diferença em dias entre duas datas ISO
 const diasEntre = (a, b) => Math.round((paraData(b) - paraData(a)) / 86400000);
 
 // pelo MODELO de escala (sem exceções)
 export const trabalhaPeloModelo = (c, data) => {
+  const fer = c?.feriadosDela?.[data];
+  if (fer) return fer.trabalha;
+  if (c?.domingoFolga && ehDomingoDoMes(data, c.domingoFolga)) return false;
+  const rev = turnoDoRevezamento(c?.fds, data);
+  if (rev !== null) return rev;
   const e = c?.escala || { modelo: "semanal" };
-  if (e.modelo === "semanal") return !c.dias?.length || c.dias.includes(diaDaSemana(data));
+  if (e.modelo === "semanal")
+    return !c.dias?.length || c.dias.includes(diaDaSemana(data));
   if (!e.referencia) return false;
   const ciclo = e.trabalha + e.folga;
   const pos = ((diasEntre(e.referencia, data) % ciclo) + ciclo) % ciclo;
@@ -561,11 +994,25 @@ export const escalaDoDia = (config, excecoes, data) =>
   config.turnos.map((t) => {
     const pessoas = t.colaboradores
       .filter((c) => trabalhaNaData(c, data, excecoes))
-      .map((c) => ({ id: c.id, nome: c.nome, papel: c.papel, janela: janelaDo(c, t), cobrindo: "", folguista: false }));
+      .map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        papel: c.papel,
+        janela: janelaDo(c, t, data),
+        cobrindo: "",
+        folguista: false,
+      }));
     (config.folguistas || []).forEach((f) => {
       const x = excecaoDe(excecoes, data, f.id);
       if (x?.tipo === "cobre" && x.turnoId === t.id) {
-        pessoas.push({ id: f.id, nome: f.nome, papel: "principal", janela: { inicio: t.inicio, fim: t.fim }, cobrindo: x.cobrindo || "", folguista: true });
+        pessoas.push({
+          id: f.id,
+          nome: f.nome,
+          papel: "principal",
+          janela: { inicio: t.inicio, fim: t.fim },
+          cobrindo: x.cobrindo || "",
+          folguista: true,
+        });
       }
     });
     // colaborador de outro turno cobrindo este (troca de turno)
@@ -573,7 +1020,14 @@ export const escalaDoDia = (config, excecoes, data) =>
       outro.colaboradores.forEach((c) => {
         const x = excecaoDe(excecoes, data, c.id);
         if (outro.id !== t.id && x?.tipo === "cobre" && x.turnoId === t.id) {
-          pessoas.push({ id: c.id, nome: c.nome, papel: c.papel, janela: { inicio: t.inicio, fim: t.fim }, cobrindo: x.cobrindo || "", folguista: false });
+          pessoas.push({
+            id: c.id,
+            nome: c.nome,
+            papel: c.papel,
+            janela: { inicio: t.inicio, fim: t.fim },
+            cobrindo: x.cobrindo || "",
+            folguista: false,
+          });
         }
       }),
     );
@@ -583,9 +1037,23 @@ export const escalaDoDia = (config, excecoes, data) =>
 // todos (colaboradores + folguistas), para listas e contas de atendimento
 export const todosDaEquipe = (config) => [
   ...config.turnos.flatMap((t) =>
-    t.colaboradores.map((c) => ({ ...c, turnoId: t.id, turnoNome: t.nome, cor: t.cor, folguista: false, funcaoNome: nomeDaFuncao(config, c.funcao) })),
+    t.colaboradores.map((c) => ({
+      ...c,
+      turnoId: t.id,
+      turnoNome: t.nome,
+      cor: t.cor,
+      folguista: false,
+      funcaoNome: nomeDaFuncao(config, c.funcao),
+    })),
   ),
-  ...(config.folguistas || []).map((f) => ({ ...f, papel: "principal", turnoId: "", turnoNome: "Folguista", cor: "#64748b", folguista: true })),
+  ...(config.folguistas || []).map((f) => ({
+    ...f,
+    papel: "principal",
+    turnoId: "",
+    turnoNome: "Folguista",
+    cor: "#64748b",
+    folguista: true,
+  })),
 ];
 
 // ---------- exceções da escala (folgas, trocas, coberturas) ----------
@@ -607,23 +1075,46 @@ export const salvarExcecoes = async (excecoes) => {
   return { dias };
 };
 
-export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoes = null }) => {
+export const calcularRelatorio = ({
+  registros = [],
+  inicio,
+  fim,
+  config,
+  excecoes = null,
+}) => {
   const turnos = config.turnos;
   const dias = listarDatas(inicio, fim);
   const noPeriodo = new Set(dias);
   const nDias = dias.length;
   const vazio = () => ({ pax: 0, reservas: 0, grupos: new Set() });
 
-  const porTurnoDia = Object.fromEntries(turnos.map((t) => [t.id, Object.fromEntries(dias.map((d) => [d, vazio()]))]));
+  const porTurnoDia = Object.fromEntries(
+    turnos.map((t) => [
+      t.id,
+      Object.fromEntries(dias.map((d) => [d, vazio()])),
+    ]),
+  );
   const porDia = Object.fromEntries(
-    dias.map((d) => [d, { pax: 0, reservas: 0, porTipo: {}, porHora: Array(24).fill(0), porTurno: {}, registros: [] }]),
+    dias.map((d) => [
+      d,
+      {
+        pax: 0,
+        reservas: 0,
+        porTipo: {},
+        porHora: Array(24).fill(0),
+        porTurno: {},
+        registros: [],
+      },
+    ]),
   );
   const porHora = Array(24).fill(0);
   const semanaHora = Array.from({ length: 7 }, () => Array(24).fill(0));
   const porTipo = {};
   const colabs = [];
   turnos.forEach((t) =>
-    t.colaboradores.forEach((c) => colabs.push({ c, t, janela: janelaDo(c, t), pax: 0 })),
+    t.colaboradores.forEach((c) =>
+      colabs.push({ c, t, janela: janelaDo(c, t), pax: 0 }),
+    ),
   );
   let troca = 0;
   let pelaApresentacao = 0;
@@ -678,14 +1169,29 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoe
   const resumoTurnos = turnos.map((t) => {
     const serie = dias.map((d) => {
       const a = porTurnoDia[t.id][d];
-      const principaisNoDia = t.colaboradores.filter((c) => c.papel === "principal" && trabalhaNaData(c, d, excecoes)).length;
-      return { data: d, pax: a.pax, reservas: a.reservas, grupos: a.grupos.size, principais: principaisNoDia };
+      const principaisNoDia = t.colaboradores.filter(
+        (c) => c.papel === "principal" && trabalhaNaData(c, d, excecoes),
+      ).length;
+      return {
+        data: d,
+        pax: a.pax,
+        reservas: a.reservas,
+        grupos: a.grupos.size,
+        principais: principaisNoDia,
+      };
     });
-    const soma = serie.reduce((acc, s) => ({ pax: acc.pax + s.pax, reservas: acc.reservas + s.reservas, grupos: acc.grupos + s.grupos }), {
-      pax: 0,
-      reservas: 0,
-      grupos: 0,
-    });
+    const soma = serie.reduce(
+      (acc, s) => ({
+        pax: acc.pax + s.pax,
+        reservas: acc.reservas + s.reservas,
+        grupos: acc.grupos + s.grupos,
+      }),
+      {
+        pax: 0,
+        reservas: 0,
+        grupos: 0,
+      },
+    );
     const ordenada = [...serie].sort((a, b) => b.pax - a.pax);
     const horas = duracaoMin(t.inicio, t.fim) / 60;
     const semana = Array.from({ length: 7 }, () => ({ pax: 0, n: 0 }));
@@ -705,7 +1211,10 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoe
       mediaReservas: media(soma.reservas, nDias),
       mediaGrupos: media(soma.grupos, nDias),
       paxPorHora: media(media(soma.pax, nDias), horas),
-      porPrincipal: comPrincipal.length ? comPrincipal.reduce((a, s) => a + s.pax / s.principais, 0) / comPrincipal.length : null,
+      porPrincipal: comPrincipal.length
+        ? comPrincipal.reduce((a, s) => a + s.pax / s.principais, 0) /
+          comPrincipal.length
+        : null,
       horas,
       maior: ordenada[0] || null,
       menor: ordenada[ordenada.length - 1] || null,
@@ -715,7 +1224,9 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoe
   });
 
   const colaboradores = colabs.map((x) => {
-    const diasTrab = dias.filter((d) => trabalhaNaData(x.c, d, excecoes)).length;
+    const diasTrab = dias.filter((d) =>
+      trabalhaNaData(x.c, d, excecoes),
+    ).length;
     return {
       id: x.c.id,
       nome: x.c.nome,
@@ -750,7 +1261,9 @@ export const calcularRelatorio = ({ registros = [], inicio, fim, config, excecoe
     folguistas: config.folguistas,
     troca: { pax: troca, mediaPax: media(troca, nDias) },
     porHora: porHora.map((p) => media(p, nDias)),
-    semanaHora: semanaHora.map((linha, w) => linha.map((p) => (ocorrencias[w] ? p / ocorrencias[w] : null))),
+    semanaHora: semanaHora.map((linha, w) =>
+      linha.map((p) => (ocorrencias[w] ? p / ocorrencias[w] : null)),
+    ),
     calendario,
   };
 };
@@ -764,7 +1277,13 @@ export const detalharDia = (relatorio, data) => {
     dia.registros.forEach((r) => {
       const k = chave(r);
       if (!k) return;
-      const a = m.get(k) || { nome: k, pax: 0, reservas: 0, tipo: r.tipo, hora: r.hora };
+      const a = m.get(k) || {
+        nome: k,
+        pax: 0,
+        reservas: 0,
+        tipo: r.tipo,
+        hora: r.hora,
+      };
       a.pax += r.pax;
       a.reservas += 1;
       if (r.hora < a.hora) a.hora = r.hora;
@@ -776,19 +1295,43 @@ export const detalharDia = (relatorio, data) => {
     ...dia,
     servicos: agrupar((r) => r.servico),
     voos: agrupar((r) => (r.voo ? `${r.voo}` : "")),
-    turnos: relatorio.turnos.map((t) => ({ id: t.id, nome: t.nome, cor: t.cor, inicio: t.inicio, fim: t.fim, pax: dia.porTurno[t.id] || 0 })),
+    turnos: relatorio.turnos.map((t) => ({
+      id: t.id,
+      nome: t.nome,
+      cor: t.cor,
+      inicio: t.inicio,
+      fim: t.fim,
+      pax: dia.porTurno[t.id] || 0,
+    })),
   };
 };
 
-// ---------- contas de Atendimento (para montar a equipe) ----------
-// A conta é criada em Usuários sem vínculo; aqui (Turnos e equipe) a pessoa
-// ganha função, turno e folga fixa. Lê só contas de nível "atendimento" da base.
-export const carregarContasAtendimento = async () => {
-  const filtros = [where("role", "==", "atendimento")];
-  if (!ehSede()) filtros.push(where("regiao", "==", regiaoAtual().id));
-  const snap = await getDocs(query(collection(db, "users"), ...filtros));
-  return snap.docs
-    .map((d) => ({ uid: d.id, ...d.data() }))
-    .filter((u) => u.ativo !== false && (!ehSede() || !u.regiao || u.regiao === ID_SEDE))
-    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+// ---------- contas que podem entrar na escala ----------
+// Operacional (inclui a gerência) e Atendimento, da base em uso. Guia e
+// Comercial não entram. Reaproveita a conta que a pessoa já tem: não é
+// preciso criar outra só para a escala.
+export const NIVEIS_ESCALA = ["operacional", "atendimento"];
+export const carregarContasEquipe = async () => {
+  const listas = await Promise.all(
+    NIVEIS_ESCALA.map((role) => {
+      const filtros = [where("role", "==", role)];
+      if (!ehSede()) filtros.push(where("regiao", "==", regiaoAtual().id));
+      return getDocs(query(collection(db, "users"), ...filtros)).catch((e) => {
+        console.error(`Contas (${role}):`, e);
+        return { docs: [] };
+      });
+    }),
+  );
+  return listas
+    .flatMap((snap) => snap.docs.map((d) => ({ uid: d.id, ...d.data() })))
+    .filter(
+      (u) =>
+        u.ativo !== false &&
+        (!ehSede() || !u.regiao || u.regiao === ID_SEDE || u.gerencia === true),
+    )
+    .sort((a, b) =>
+      String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"),
+    );
 };
+// compatibilidade (nome antigo)
+export const carregarContasAtendimento = carregarContasEquipe;

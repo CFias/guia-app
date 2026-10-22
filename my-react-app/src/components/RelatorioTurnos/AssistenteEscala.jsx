@@ -3,11 +3,15 @@ import { Button, Drawer, Icon } from "../ui";
 import {
   CORES_TURNO,
   DIAS_SEMANA_CURTO,
+  DOMINGOS_DO_MES,
+  ehDomingoDoMes,
+  turnoDoRevezamento,
+  FERIADOS_FIXOS,
   ETAPAS_PADRAO,
   LETRAS_GRUPO,
   MODELOS_BASE,
   MODELOS_ESCALA,
-  carregarContasAtendimento,
+  carregarContasEquipe,
   dataBr,
   diaDaSemana,
   escalaDoDia,
@@ -39,10 +43,26 @@ const ETAPAS = [
   { id: "modelo", nome: "Modelo", icone: "calendar" },
   { id: "turnos", nome: "Turnos", icone: "clock" },
   { id: "equipe", nome: "Equipe", icone: "users" },
+  { id: "fds", nome: "Fim de semana", icone: "calendar" },
+  { id: "feriados", nome: "Feriados", icone: "star" },
   { id: "aeroporto", nome: "Aeroporto", icone: "planeLanding" },
   { id: "conferir", nome: "Conferir", icone: "circleCheck" },
 ];
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
+// o sábado desta semana (domingo conta como a semana que termina nele)
+const sabadoAtual = (hoje) => {
+  const dow = diaDaSemana(hoje);
+  return dow === 0 ? somarDias(hoje, -1) : somarDias(hoje, 6 - dow);
+};
+// datas do n-ésimo domingo (5 = último) nos próximos meses
+const proximosDomingos = (n, desde, meses = 3) => {
+  if (!n) return [];
+  const out = [];
+  let d = desde;
+  while (diaDaSemana(d) !== 0) d = somarDias(d, 1);
+  for (let i = 0; i < meses * 6 && out.length < meses; i += 1, d = somarDias(d, 7)) if (ehDomingoDoMes(d, n)) out.push(d);
+  return out;
+};
 const FOLGUISTA = "__folguista__";
 const hojeIso = () => isoLocal(new Date());
 const paraMin = (h) => (horaValida(h) ? Number(h.slice(0, 2)) * 60 + Number(h.slice(3)) : 0);
@@ -81,8 +101,8 @@ const FaixaModelo = ({ modelo, trabalha, folga }) => {
     m?.tipo === "semanal"
       ? [Array.from({ length: 14 }, (_, i) => (m.folgas === 1 ? i % 7 !== 6 : i % 7 < 5))]
       : Array.from({ length: Math.min(3, Math.max(1, Math.ceil((trabalha + folga) / trabalha))) }, (_, g) =>
-        Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
-      );
+          Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
+        );
   return (
     <div className="aes-faixa" aria-hidden="true">
       {linhas.map((l, g) => (
@@ -126,6 +146,81 @@ const LinhaDoTempo = ({ turnos }) => (
   </div>
 );
 
+// ---------- busca de contas (reaproveita a conta que a pessoa já tem) ----------
+const semAcento = (t = "") =>
+  String(t)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+const nivelDaConta = (u) => (u.role === "operacional" ? (u.gerencia === true ? "Gerência" : "Operacional") : "Atendimento");
+const BuscaContas = ({ contas, situacaoDe, onEscolher }) => {
+  const [termo, setTermo] = useState("");
+  const [aberta, setAberta] = useState(false);
+  const t = semAcento(termo);
+  const lista = (contas || []).filter((u) => !t || semAcento(`${u.nome} ${u.email} ${nivelDaConta(u)}`).includes(t));
+  const disponiveis = lista.filter((u) => situacaoDe(u).tipo !== "dentro");
+  return (
+    <div className="aes-busca-contas">
+      <label className="aes-busca-contas__campo">
+        <Icon name="search" size={15} />
+        <input
+          type="search"
+          value={termo}
+          placeholder={contas === null ? "Carregando as contas…" : `Adicionar conta à equipe — buscar nome ou e-mail (${(contas || []).length} contas)`}
+          onChange={(e) => {
+            setTermo(e.target.value);
+            setAberta(true);
+          }}
+          onFocus={() => setAberta(true)}
+          onBlur={() => setTimeout(() => setAberta(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && disponiveis[0]) {
+              e.preventDefault();
+              onEscolher(disponiveis[0]);
+              setTermo("");
+            }
+            if (e.key === "Escape") setAberta(false);
+          }}
+          disabled={contas === null}
+          aria-label="Buscar conta"
+        />
+      </label>
+      {aberta && contas && (
+        <ul className="aes-busca-contas__lista" role="listbox">
+          {lista.length === 0 && <li className="aes-busca-contas__vazio">Nenhuma conta com “{termo}”.</li>}
+          {lista.slice(0, 60).map((u) => {
+            const sit = situacaoDe(u);
+            return (
+              <li key={u.uid}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  disabled={sit.tipo === "dentro"}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onEscolher(u);
+                    setTermo("");
+                  }}
+                >
+                  <span className="aes-busca-contas__avatar">{String(u.nome || u.email || "?").slice(0, 1).toUpperCase()}</span>
+                  <span className="aes-busca-contas__info">
+                    <b>{u.nome || "Sem nome"}</b>
+                    <small>{u.email}</small>
+                  </span>
+                  <span className={`aes-nivel is-${nivelDaConta(u).toLowerCase()}`}>{nivelDaConta(u)}</span>
+                  <span className={`aes-busca-contas__acao is-${sit.tipo}`}>{sit.texto}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 // função: escolhe ou cria
 const SelectFuncao = ({ valor, funcoes, onChange, onCriar }) => (
   <select
@@ -164,7 +259,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
 
   useEffect(() => {
     let vivo = true;
-    carregarContasAtendimento()
+    carregarContasEquipe()
       .then((l) => vivo && setContas(l))
       .catch(() => vivo && setContas([]));
     return () => {
@@ -234,8 +329,20 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
   const removerPessoa = (id) =>
     setR((x) => ({ ...x, turnos: x.turnos.map((t) => ({ ...t, colaboradores: t.colaboradores.filter((c) => c.id !== id) })), folguistas: (x.folguistas || []).filter((f) => f.id !== id) }));
 
-  const naEquipe = (conta) => pessoas.some(({ c }) => c.contaUid === conta.uid || c.id === conta.uid || (conta.colaboradorId && c.id === conta.colaboradorId));
-  const contasFora = (contas || []).filter((ct) => !naEquipe(ct));
+  // situação de cada conta: já na equipe, dá para vincular a alguém com o mesmo nome, ou adicionar
+  const situacaoConta = (conta) => {
+    const dentro = pessoas.find(({ c }) => c.contaUid === conta.uid || c.id === conta.uid || (conta.colaboradorId && c.id === conta.colaboradorId));
+    if (dentro) return { tipo: "dentro", texto: `na equipe · ${r.turnos.find((tt) => tt.id === dentro.turnoId)?.nome || "folguista"}` };
+    const mesmoNome = pessoas.find(({ c }) => !c.contaUid && semAcento(c.nome) && semAcento(c.nome) === semAcento(conta.nome));
+    if (mesmoNome) return { tipo: "vincular", texto: `vincular a ${mesmoNome.c.nome}`, pessoa: mesmoNome.c };
+    return { tipo: "novo", texto: "+ adicionar" };
+  };
+  const adicionarConta = (conta) => {
+    const sit = situacaoConta(conta);
+    if (sit.tipo === "dentro") return;
+    if (sit.tipo === "vincular") mudarPessoa(sit.pessoa.id, { contaUid: conta.uid });
+    else adicionarPessoa({ id: conta.uid, nome: conta.nome || conta.email, contaUid: conta.uid });
+  };
 
   const criarFuncao = (nome) => {
     const existe = (r.funcoes || []).find((f) => f.nome.toLowerCase() === nome.toLowerCase());
@@ -404,7 +511,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
               <Icon name="users" size={12} /> {t.colaboradores.length}
             </span>
             <span className="aes-turnos__acoes">
-              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos];[l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
+              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
               <Button variant="ghost" iconOnly size="sm" icon="trash" disabled={r.turnos.length <= 1} onClick={() => removerTurno(t)} aria-label={`Remover ${t.nome}`} />
             </span>
           </li>
@@ -549,23 +656,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
         )}
       </header>
 
-      {contasFora.length > 0 && (
-        <div className="aes-contas">
-          <span>
-            <Icon name="smartphone" size={14} /> Contas de atendimento fora da equipe:
-          </span>
-          {contasFora.map((ct) => (
-            <button key={ct.uid} type="button" className="aes-chip" onClick={() => adicionarPessoa({ id: ct.uid, nome: ct.nome || ct.email, contaUid: ct.uid })}>
-              <Icon name="plus" size={12} /> {ct.nome || ct.email}
-            </button>
-          ))}
-          {contasFora.length > 1 && (
-            <button type="button" className="aes-link" onClick={() => contasFora.forEach((ct) => adicionarPessoa({ id: ct.uid, nome: ct.nome || ct.email, contaUid: ct.uid }))}>
-              Adicionar todas
-            </button>
-          )}
-        </div>
-      )}
+      <BuscaContas contas={contas} situacaoDe={situacaoConta} onEscolher={adicionarConta} />
 
       <div className="aes-tabela-wrap">
         <table className="aes-tabela">
@@ -595,7 +686,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
                     <td className="aes-tabela__nome">
                       <input className="ui-input" value={c.nome} placeholder="Nome" onChange={(e) => mudarPessoa(c.id, { nome: e.target.value })} aria-label="Nome" />
                       {c.contaUid && (
-                        <span className="aes-conta" title="Tem conta de atendimento (marca no celular)">
+                        <span className="aes-conta" title="Ligada a uma conta do sistema (marca no painel do aeroporto)">
                           <Icon name="smartphone" size={11} />
                         </span>
                       )}
@@ -675,6 +766,361 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
           </button>
         </span>
       </div>
+    </div>
+  );
+
+  // ---------- fim de semana ----------
+  const doTurno = r.turnos.flatMap((tt) => tt.colaboradores.map((c) => ({ c, t: tt })));
+  const nomeDe = (id) => doTurno.find((x) => x.c.id === id)?.c.nome || "—";
+  const revs = r.revezamentos || [];
+  const sab = sabadoAtual(hojeIso());
+  const emRevezamento = new Set(revs.flatMap((x) => x.membros));
+  const mudarRev = (id, p) => setR((x) => ({ ...x, revezamentos: (x.revezamentos || []).map((y) => (y.id === id ? { ...y, ...p } : y)) }));
+  const fdsDe = (rev, id) => ({ grupo: rev.id, inicio: rev.inicio || sab, posicao: rev.membros.indexOf(id), tamanho: rev.membros.length });
+  const quemNoDia = (rev, d) => rev.membros.find((id) => turnoDoRevezamento(fdsDe(rev, id), d)) || "";
+  // "no sábado dd/mm trabalha X": X vira o 1º da roda a partir deste sábado
+  const definirSabado = (rev, id) => {
+    const atual = rev.membros.indexOf(id);
+    if (atual < 0) return;
+    mudarRev(rev.id, { membros: [...rev.membros.slice(atual), ...rev.membros.slice(0, atual)], inicio: sab });
+  };
+  const etapaFds = (
+    <div className="aes-etapa">
+      <header className="aes-cab">
+        <h3>Fim de semana</h3>
+        <p>Revezamento de sábado e domingo (quem trabalha no sábado folga no domingo, e vice-versa, alternando a cada semana) e o domingo de folga de cada pessoa no mês.</p>
+      </header>
+
+      <section className="aes-bloco">
+        <h4>Revezamento de sábado e domingo</h4>
+        {revs.length === 0 && <p className="aes-muted">Nenhum revezamento ainda. Ex.: Líder e Coordenadora — quando um trabalha no sábado, o outro trabalha no domingo.</p>}
+        <div className="aes-revs">
+          {revs.map((rev) => {
+            const livres = doTurno.filter((x) => !emRevezamento.has(x.c.id));
+            const fins = Array.from({ length: 4 }, (_, k) => somarDias(sab, 7 * k));
+            const noSabado = quemNoDia(rev, sab);
+            return (
+              <div key={rev.id} className="aes-rev">
+                <div className="aes-rev__topo">
+                  <input className="ui-input" value={rev.nome} placeholder="Nome do revezamento (ex.: Liderança)" onChange={(e) => mudarRev(rev.id, { nome: e.target.value })} />
+                  <Button
+                    variant="ghost"
+                    iconOnly
+                    size="sm"
+                    icon="trash"
+                    onClick={() => window.confirm("Excluir este revezamento?") && setR((x) => ({ ...x, revezamentos: x.revezamentos.filter((y) => y.id !== rev.id) }))}
+                    aria-label="Excluir revezamento"
+                  />
+                </div>
+                <div className="aes-rev__membros">
+                  {rev.membros.map((id) => (
+                    <span key={id} className="aes-funcao">
+                      {nomeDe(id)}
+                      <button type="button" onClick={() => mudarRev(rev.id, { membros: rev.membros.filter((m) => m !== id) })} aria-label={`Tirar ${nomeDe(id)}`}>
+                        <Icon name="x" size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  {livres.length > 0 && (
+                    <select className="ui-input aes-rev__add" value="" onChange={(e) => e.target.value && mudarRev(rev.id, { membros: [...rev.membros, e.target.value], inicio: rev.inicio || sab })} aria-label="Adicionar pessoa">
+                      <option value="">+ Adicionar pessoa…</option>
+                      {livres.map(({ c, t: tt }) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome} · {tt.nome}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                {rev.membros.length === 1 ? (
+                  <>
+                    <label className="aes-inline">
+                      Alterna sozinho(a). No sábado {dataBr(sab).slice(0, 5)}, {nomeDe(rev.membros[0])}:
+                      <select
+                        className="ui-input"
+                        value={turnoDoRevezamento(fdsDe(rev, rev.membros[0]), sab) ? "trabalha" : "folga"}
+                        onChange={(e) => mudarRev(rev.id, { inicio: e.target.value === "trabalha" ? sab : somarDias(sab, -7) })}
+                      >
+                        <option value="trabalha">trabalha (folga no domingo)</option>
+                        <option value="folga">folga (trabalha no domingo)</option>
+                      </select>
+                    </label>
+                    <div className="aes-rev__fins">
+                      {fins.map((d) => (
+                        <div key={d}>
+                          <small>
+                            {dataBr(d).slice(0, 5)} e {dataBr(somarDias(d, 1)).slice(0, 5)}
+                          </small>
+                          <span>
+                            <b>Sáb</b> {turnoDoRevezamento(fdsDe(rev, rev.membros[0]), d) ? "trabalha" : "folga"}
+                          </span>
+                          <span>
+                            <b>Dom</b> {turnoDoRevezamento(fdsDe(rev, rev.membros[0]), somarDias(d, 1)) ? "trabalha" : "folga"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : rev.membros.length >= 2 ? (
+                  <>
+                    <label className="aes-inline">
+                      No sábado {dataBr(sab).slice(0, 5)}, quem trabalha?
+                      <select className="ui-input" value={noSabado} onChange={(e) => definirSabado(rev, e.target.value)}>
+                        {rev.membros.map((id) => (
+                          <option key={id} value={id}>
+                            {nomeDe(id)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="aes-rev__fins">
+                      {fins.map((d) => (
+                        <div key={d}>
+                          <small>
+                            {dataBr(d).slice(0, 5)} e {dataBr(somarDias(d, 1)).slice(0, 5)}
+                          </small>
+                          <span>
+                            <b>Sáb</b> {nomeDe(quemNoDia(rev, d))}
+                          </span>
+                          <span>
+                            <b>Dom</b> {nomeDe(quemNoDia(rev, somarDias(d, 1)))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="aes-muted">Adicione 1 pessoa (alterna sozinha: uma semana sábado, outra domingo) ou 2 ou mais (revezam entre si).</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <span className="aes-acoes-linha">
+          <Button size="sm" icon="plus" onClick={() => setR((x) => ({ ...x, revezamentos: [...(x.revezamentos || []), { id: `rev_${novoId()}`, nome: "", membros: [], inicio: sab }] }))}>
+            Novo revezamento (2 ou mais pessoas)
+          </Button>
+          <Button size="sm" icon="plus" onClick={() => setR((x) => ({ ...x, revezamentos: [...(x.revezamentos || []), { id: `rev_${novoId()}`, nome: "Alternado", membros: [], inicio: sab }] }))}>
+            Alternado sozinho (sábado ou domingo)
+          </Button>
+        </span>
+      </section>
+
+      <section className="aes-bloco">
+        <div className="aes-bloco__topo">
+          <h4>Por pessoa: domingo de folga e horário no fim de semana</h4>
+          <Button
+            size="sm"
+            icon="refresh"
+            onClick={() =>
+              setR((x) => ({
+                ...x,
+                turnos: x.turnos.map((tt) => {
+                  let i = 0;
+                  return { ...tt, colaboradores: tt.colaboradores.map((c) => (c.papel === "sinergia" ? c : { ...c, domingoFolga: (i++ % 4) + 1 })) };
+                }),
+              }))
+            }
+          >
+            Distribuir 1º a 4º em cada turno
+          </Button>
+        </div>
+        <p className="aes-muted">
+          No domingo de folga a pessoa folga, qualquer que seja o modelo (distribuir em cada turno evita que todos folguem no mesmo domingo). O horário de fim de semana vale
+          para sábado e domingo de quem tiver um diferente (ex.: liderança).
+        </p>
+        <div className="aes-tabela-wrap">
+          <table className="aes-tabela aes-tabela--dom">
+            <thead>
+              <tr>
+                <th>Pessoa</th>
+                <th>Turno</th>
+                <th>Domingo de folga</th>
+                <th>Próximos</th>
+                <th>Horário no fim de semana</th>
+              </tr>
+            </thead>
+            <tbody>
+              {doTurno.map(({ c, t: tt }) => (
+                <tr key={c.id} style={{ "--c": tt.cor }}>
+                  <td>
+                    <b>{c.nome || "Sem nome"}</b>
+                  </td>
+                  <td>{tt.nome}</td>
+                  <td>
+                    <select className="ui-input" value={c.domingoFolga || 0} onChange={(e) => mudarPessoa(c.id, { domingoFolga: Number(e.target.value) })} aria-label={`Domingo de folga de ${c.nome}`}>
+                      {DOMINGOS_DO_MES.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="aes-muted">
+                    {proximosDomingos(c.domingoFolga, hojeIso())
+                      .map((d) => dataBr(d).slice(0, 5))
+                      .join(" · ") || "—"}
+                  </td>
+                  <td>
+                    {c.horarioFds ? (
+                      <span className="aes-inline">
+                        <input type="time" className="ui-input" value={c.horarioFds.inicio} onChange={(e) => mudarPessoa(c.id, { horarioFds: { ...c.horarioFds, inicio: e.target.value } })} aria-label="Início no fim de semana" />
+                        às
+                        <input type="time" className="ui-input" value={c.horarioFds.fim} onChange={(e) => mudarPessoa(c.id, { horarioFds: { ...c.horarioFds, fim: e.target.value } })} aria-label="Fim no fim de semana" />
+                        <button type="button" className="aes-link" onClick={() => mudarPessoa(c.id, { horarioFds: null })} title="Usar o horário de sempre">
+                          <Icon name="x" size={12} />
+                        </button>
+                      </span>
+                    ) : (
+                      <button type="button" className="aes-link" onClick={() => mudarPessoa(c.id, { horarioFds: { inicio: c.inicio || tt.inicio, fim: c.fim || tt.fim } })}>
+                        + horário diferente
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+
+  // ---------- feriados ----------
+  const feriados = r.feriados || [];
+  const [novoFer, setNovoFer] = useState({ data: "", nome: "", base: "normal" });
+  const [ferAberto, setFerAberto] = useState("");
+  const anoAtual = hojeIso().slice(0, 4);
+  const sugestoes = FERIADOS_FIXOS.flatMap(([md, nome]) => [`${anoAtual}-${md}`, `${Number(anoAtual) + 1}-${md}`].map((data) => ({ data, nome })))
+    .filter((f) => f.data >= hojeIso() && !feriados.some((x) => x.data === f.data))
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(0, 6);
+  // quem trabalha no feriado começa como na escala normal daquele dia (ou ninguém)
+  const criarFeriado = ({ data, nome, base }) => {
+    if (!data) return;
+    const cfgSemFeriado = normalizarConfig({ ...final, feriados: (final.feriados || []).filter((f) => f.data !== data) });
+    const equipe = Object.fromEntries(
+      cfgSemFeriado.turnos.flatMap((tt) =>
+        tt.colaboradores.map((c) => {
+          const janela = tt.inicio ? (c.inicio && c.fim ? { inicio: c.inicio, fim: c.fim } : { inicio: tt.inicio, fim: tt.fim }) : { inicio: "", fim: "" };
+          return [c.id, { trabalha: base === "normal" ? trabalhaPeloModelo(c, data) : false, ...janela }];
+        }),
+      ),
+    );
+    setR((x) => ({ ...x, feriados: [...(x.feriados || []).filter((f) => f.data !== data), { data, nome: nome || "Feriado", equipe }].sort((a, b) => a.data.localeCompare(b.data)) }));
+    setFerAberto(data);
+    setNovoFer({ data: "", nome: "", base: "normal" });
+  };
+  const mudarFer = (data, p) => setR((x) => ({ ...x, feriados: x.feriados.map((f) => (f.data === data ? { ...f, ...p } : f)) }));
+  const mudarFerPessoa = (data, id, p) =>
+    setR((x) => ({ ...x, feriados: x.feriados.map((f) => (f.data === data ? { ...f, equipe: { ...f.equipe, [id]: { ...(f.equipe[id] || { trabalha: false, inicio: "", fim: "" }), ...p } } } : f)) }));
+  const etapaFeriados = (
+    <div className="aes-etapa">
+      <header className="aes-cab">
+        <h3>Feriados</h3>
+        <p>Em cada feriado, defina quem trabalha e em que horário. Quem não tiver Sim ou Não marcado segue a escala normal do dia.</p>
+      </header>
+      <section className="aes-bloco">
+        <h4>Novo feriado</h4>
+        <div className="aes-mais__linha">
+          <input type="date" className="ui-input aes-fer__data" value={novoFer.data} onChange={(e) => setNovoFer((f) => ({ ...f, data: e.target.value }))} aria-label="Data" />
+          <input className="ui-input" value={novoFer.nome} placeholder="Nome (ex.: Natal)" onChange={(e) => setNovoFer((f) => ({ ...f, nome: e.target.value }))} aria-label="Nome do feriado" />
+          <select className="ui-input aes-fer__base" value={novoFer.base} onChange={(e) => setNovoFer((f) => ({ ...f, base: e.target.value }))} aria-label="Começar de">
+            <option value="normal">Começar pela escala normal do dia</option>
+            <option value="ninguem">Começar sem ninguém</option>
+          </select>
+          <Button size="sm" variant="primary" icon="plus" disabled={!novoFer.data} onClick={() => criarFeriado(novoFer)}>
+            Adicionar feriado
+          </Button>
+        </div>
+        {sugestoes.length > 0 && (
+          <div className="aes-funcoes">
+            Próximos:
+            {sugestoes.map((f) => (
+              <button key={f.data} type="button" className="aes-chip" onClick={() => setNovoFer((x) => ({ ...x, data: f.data, nome: f.nome }))}>
+                {dataBr(f.data).slice(0, 5)} {f.nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+      {feriados.length === 0 && <p className="aes-muted">Nenhum feriado configurado.</p>}
+      {feriados.map((f) => {
+        const aberto = ferAberto === f.data;
+        const trabalham = Object.values(f.equipe).filter((v) => v.trabalha).length;
+        return (
+          <section key={f.data} className={`aes-bloco aes-fer ${f.data < hojeIso() ? "is-passado" : ""}`}>
+            <div className="aes-bloco__topo">
+              <button type="button" className="aes-fer__cab" onClick={() => setFerAberto(aberto ? "" : f.data)} aria-expanded={aberto}>
+                <Icon name="star" size={15} />
+                <b>
+                  {DIAS_SEMANA_CURTO[diaDaSemana(f.data)]} {dataBr(f.data)}
+                </b>
+                <span>{f.nome}</span>
+                <small>
+                  {trabalham} pessoa(s) trabalham
+                </small>
+                <Icon name={aberto ? "chevronUp" : "chevronDown"} size={14} />
+              </button>
+              <Button variant="ghost" iconOnly size="sm" icon="trash" onClick={() => window.confirm(`Excluir o feriado ${f.nome} (${dataBr(f.data)})?`) && setR((x) => ({ ...x, feriados: x.feriados.filter((y) => y.data !== f.data) }))} aria-label="Excluir feriado" />
+            </div>
+            {aberto && (
+              <>
+                <input className="ui-input" value={f.nome} onChange={(e) => mudarFer(f.data, { nome: e.target.value })} aria-label="Nome do feriado" />
+                <div className="aes-tabela-wrap">
+                  <table className="aes-tabela aes-tabela--dom">
+                    <thead>
+                      <tr>
+                        <th>Pessoa</th>
+                        <th>Turno</th>
+                        <th>Trabalha?</th>
+                        <th>Horário no feriado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {doTurno.map(({ c, t: tt }) => {
+                        const marcado = !!f.equipe[c.id];
+                        const v = f.equipe[c.id] || { trabalha: false, inicio: tt.inicio, fim: tt.fim };
+                        return (
+                          <tr key={c.id} style={{ "--c": tt.cor }}>
+                            <td>
+                              <b>{c.nome || "Sem nome"}</b>
+                            </td>
+                            <td>{tt.nome}</td>
+                            <td>
+                              <span className="aes-grupos">
+                                <button type="button" className={marcado && v.trabalha ? "is-on" : ""} onClick={() => mudarFerPessoa(f.data, c.id, { trabalha: true, inicio: v.inicio || tt.inicio, fim: v.fim || tt.fim })}>
+                                  Sim
+                                </button>
+                                <button type="button" className={marcado && !v.trabalha ? "is-on is-nao" : ""} onClick={() => mudarFerPessoa(f.data, c.id, { trabalha: false })}>
+                                  Não
+                                </button>
+                              </span>
+                            </td>
+                            <td>
+                              {!marcado ? (
+                                <span className="aes-muted">escala normal do dia</span>
+                              ) : v.trabalha ? (
+                                <span className="aes-inline">
+                                  <input type="time" className="ui-input" value={v.inicio} onChange={(e) => mudarFerPessoa(f.data, c.id, { inicio: e.target.value })} aria-label="Início" />
+                                  às
+                                  <input type="time" className="ui-input" value={v.fim} onChange={(e) => mudarFerPessoa(f.data, c.id, { fim: e.target.value })} aria-label="Fim" />
+                                </span>
+                              ) : (
+                                <span className="aes-muted">folga</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 
@@ -812,7 +1258,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
     </div>
   );
 
-  const conteudo = [etapaModelo, etapaTurnos, etapaEquipe, etapaAeroporto, etapaConferir][etapa];
+  const conteudo = [etapaModelo, etapaTurnos, etapaEquipe, etapaFds, etapaFeriados, etapaAeroporto, etapaConferir][etapa];
   const ultima = etapa === ETAPAS.length - 1;
 
   return (

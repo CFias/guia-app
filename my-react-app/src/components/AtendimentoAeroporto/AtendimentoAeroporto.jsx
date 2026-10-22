@@ -56,6 +56,7 @@ const pl = (n, um, varios) => `${num(n, 0)} ${Math.round(n) === 1 ? um : varios}
 const AtendimentoAeroporto = () => {
   const { user, perfil, role, logout } = useAuth();
   const ehOperacional = role === ROLES.OPERACIONAL;
+  const uid = user?.uid || "";
   const [data, setData] = useState(hoje);
   const [config, setConfig] = useState(null);
   const [excecoes, setExcecoes] = useState({ dias: {} });
@@ -90,12 +91,17 @@ const AtendimentoAeroporto = () => {
         if (!vivo) return;
         setConfig(c);
         setExcecoes(e);
+        // conta do Operacional que está na escala: já começa marcando em nome dela
+        if (ehOperacional && uid) {
+          const eu = todosDaEquipe(c).find((x) => x.contaUid === uid || x.id === uid);
+          if (eu) setEmNomeDe((atual) => atual || eu.id);
+        }
       })
       .catch(() => vivo && setConfig(null));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [ehOperacional, uid]);
 
   // chegadas do Phoenix (por veículo)
   useEffect(() => {
@@ -127,9 +133,9 @@ const AtendimentoAeroporto = () => {
   const eu = ehOperacional
     ? equipe.find((c) => c.id === emNomeDe) || null
     : // a conta é ligada à pessoa em Configurar escala (contaUid); contas antigas, pelo colaboradorId
-    equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
-    equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
-    (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
+      equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
+      equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
+      (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
   const quem = eu ? { id: eu.id, nome: eu.nome, colaboradorId: eu.id } : null;
 
   // meu turno no dia
@@ -468,6 +474,15 @@ const AtendimentoAeroporto = () => {
                         const n = doc ? g.reservas.filter((r, i) => noShowDaReserva(doc, r, i)).length : 0;
                         return n ? <em className="atd-noshow-tag">{n} no show</em> : null;
                       })()}
+                      {porReserva(g) &&
+                        (() => {
+                          const { ativas, feitas } = estadoReservas(g);
+                          return (
+                            <em className={`atd-rec-tag ${feitas === ativas.length && ativas.length ? "is-ok" : ""}`}>
+                              {etapaRecepcao.nome.slice(0, 5)}. {feitas}/{ativas.length}
+                            </em>
+                          );
+                        })()}
                       {g.reservas.length} reserva{g.reservas.length === 1 ? "" : "s"}
                       <Icon name="chevronDown" size={14} />
                     </span>
@@ -475,7 +490,26 @@ const AtendimentoAeroporto = () => {
                   {abertos.has(g.chave) && (
                     <ul className="atd-reservas">
                       {g.reservas.map((r, i) => (
-                        <li key={`${r.codigo}-${i}`}>
+                        <li key={`${r.codigo}-${i}`} className={porReserva(g) ? "com-marca" : ""}>
+                          {porReserva(g) &&
+                            (() => {
+                              const doc = docDe(g);
+                              const rec = doc ? recepcaoDaReserva(doc, r, i) : null;
+                              const ns = doc ? noShowDaReserva(doc, r, i) : null;
+                              const ocupado = salvando === `${g.chave}|rr|${i}`;
+                              return (
+                                <button
+                                  type="button"
+                                  className={`atd-reservas__marca ${rec ? "is-ok" : ""}`}
+                                  onClick={() => alternarReserva(g, r, i)}
+                                  disabled={!quem || ocupado || !!ns}
+                                  aria-pressed={!!rec}
+                                  title={ns ? "No show" : rec ? `${rec.nome} ${horaDe(rec.em)} — tocar para desmarcar` : `Marcar como ${etapaRecepcao.nome.toLowerCase()}`}
+                                >
+                                  <Icon name={ocupado ? "loader" : rec ? "circleCheck" : ns ? "x" : "circle"} size={18} className={ocupado ? "ui-spin" : undefined} />
+                                </button>
+                              );
+                            })()}
                           <div className="atd-reservas__topo">
                             <b>{r.titular || "Sem nome"}</b>
                             <span className="atd-reservas__pax">{r.pax} pax</span>
@@ -526,41 +560,6 @@ const AtendimentoAeroporto = () => {
                       ))}
                     </ul>
                   )}
-                  {porReserva(g) &&
-                    (() => {
-                      const { itens, ativas, feitas } = estadoReservas(g);
-                      return (
-                        <div className="atd-por-reserva">
-                          <div className="atd-por-reserva__topo">
-                            <span>{etapaRecepcao.nome} por reserva</span>
-                            <b className={feitas === ativas.length ? "is-ok" : ""}>
-                              {feitas} de {ativas.length}
-                            </b>
-                          </div>
-                          <ul>
-                            {itens.map(({ r, i, ns, rec }) => {
-                              const ocupado = salvando === `${g.chave}|rr|${i}`;
-                              return (
-                                <li key={`${r.codigo}-${i}`} className={rec ? "is-ok" : ns ? "is-ns" : ""}>
-                                  <button type="button" onClick={() => alternarReserva(g, r, i)} disabled={!quem || ocupado || !!ns} aria-pressed={!!rec} title={rec ? "Desmarcar" : `Marcar ${r.titular || r.codigo} como ${etapaRecepcao.nome.toLowerCase()}`}>
-                                    <Icon name={ocupado ? "loader" : rec ? "circleCheck" : "circle"} size={18} className={ocupado ? "ui-spin" : undefined} />
-                                  </button>
-                                  <span className="atd-por-reserva__nome">
-                                    <b>{r.titular || r.codigo || "Sem nome"}</b>
-                                    <small>
-                                      {r.pax} pax{r.codigo ? ` · ${r.codigo}` : ""}
-                                    </small>
-                                  </span>
-                                  <small className="atd-por-reserva__quem">
-                                    {ns ? "no show" : rec ? `${rec.nome} ${horaDe(rec.em)}` : "aguardando"}
-                                  </small>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      );
-                    })()}
                   <div className="atd-etapas">
                     {etapas.map((e) => {
                       const quemMarcou = marcasDaEtapa({ marcas: m }, e.id);
@@ -578,9 +577,9 @@ const AtendimentoAeroporto = () => {
                             <Icon name={ocupado ? "loader" : meu ? "circleCheck" : "circle"} size={16} className={ocupado ? "ui-spin" : undefined} />
                             {e.id === etapaRecepcao?.id && porReserva(g)
                               ? (() => {
-                                const { ativas, feitas } = estadoReservas(g);
-                                return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
-                              })()
+                                  const { ativas, feitas } = estadoReservas(g);
+                                  return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
+                                })()
                               : e.acao || e.nome}
                           </button>
                           <small className="atd-etapa__quem">

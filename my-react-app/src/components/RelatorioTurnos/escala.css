@@ -19,8 +19,7 @@
     border-bottom: 1px solid var(--divider);
 }
 
-.esc-barra__nav,
-.esc-barra__filtros {
+.esc-barra__nav, .esc-barra__filtros {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -79,8 +78,7 @@
     min-width: 1180px;
 }
 
-.esc-tabela th,
-.esc-tabela td {
+.esc-tabela th, .esc-tabela td {
     border-bottom: 1px solid var(--divider);
 }
 
@@ -365,13 +363,11 @@ th.is-hoje .esc-dia span {
     border: 1.5px dashed color-mix(in srgb, var(--warning) 70%, transparent);
 }
 
-.esc-cel__btn:hover,
-.esc-cel__btn.is-ativo {
+.esc-cel__btn:hover, .esc-cel__btn.is-ativo {
     box-shadow: 0 0 0 2px var(--accent);
 }
 
-.esc-cel__btn.is-trab:hover,
-.esc-cel__btn.is-trab.is-ativo {
+.esc-cel__btn.is-trab:hover, .esc-cel__btn.is-trab.is-ativo {
     box-shadow: inset 3px 0 0 var(--c), 0 0 0 2px var(--accent);
 }
 
@@ -612,4 +608,60 @@ th.is-hoje .esc-dia span {
     color: var(--alert);
     font-style: normal;
     font-weight: 700;
+}
+
+.esc-cel__rev {
+    color: var(--accent-text) !important;
+    font-weight: 700;
+}
+
+.esc-dia__fer {
+    max-width: 100%;
+    overflow: hidden;
+    margin-top: 2px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--warning-soft);
+    color: var(--warning);
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.esc-fds-escolha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--divider);
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+}
+
+.esc-fds-escolha button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--divider);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.esc-fds-escolha button.is-on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+}
+
+.esc-fds-escolha__todos {
+    border-style: dashed !important;
 }
