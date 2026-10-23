@@ -7,13 +7,17 @@ import {
   NOME_ALTERACAO,
   TIPOS_ALTERACAO,
   compararComFoto,
+  conferenciaSuspeita,
   normalizarAuditoria,
   textoDaMudanca,
 } from "../../Services/Services/auditoriaAlteracoes";
 import { NOME_CATEGORIA, NOME_TIPO, formatarReais } from "../../Services/Services/custosCalculo";
+import BalancoAlteracoes from "./BalancoAlteracoes";
 import {
   calcularLinhasDoDia,
   chaveDaVista,
+  descartarDoHistorico,
+  gravarResumoDoBalanco,
   ouvirAuditoria,
   registrarNoHistorico,
   rodarAuditoriaAutomatica,
@@ -48,6 +52,7 @@ const sinal = (v) => (v > 0 ? `+${formatarReais(v)}` : v < 0 ? `−${formatarRea
 const ATUALIZAR_MS = 5 * 60 * 1000;
 const ORIGEM = {
   "meia-noite": "guardada à meia-noite",
+  vespera: "a última versão montada na véspera",
   atrasada: "guardada depois da meia-noite (ninguém estava com o sistema aberto na virada)",
   antecipada: "guardada antes do dia",
   manual: "guardada à mão",
@@ -146,11 +151,33 @@ const TabelaRegras = ({ config, onFechar }) => {
   );
 };
 
-const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
+// Dia (o auditor) | Balanço do período
+const AuditorAlteracoes = (props) => {
+  const [visao, setVisao] = useState("dia");
+  return (
+    <div className="aud-raiz">
+      <div className="aud-visoes" role="tablist" aria-label="Auditor">
+        {[
+          ["dia", "calendar", "Alterações do dia"],
+          ["balanco", "barChart", "Balanço do período"],
+        ].map(([v, ic, r]) => (
+          <button key={v} type="button" role="tab" aria-selected={visao === v} className={visao === v ? "is-on" : ""} onClick={() => setVisao(v)}>
+            <Icon name={ic} size={14} /> {r}
+          </button>
+        ))}
+      </div>
+      {visao === "dia" ? <AuditorDoDia {...props} /> : <BalancoAlteracoes />}
+    </div>
+  );
+};
+
+const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const { perfil } = useAuth();
+  const { mostrarToast } = useToast();
+  const [verVoltaram, setVerVoltaram] = useState(false);
   const [data, setData] = useState(hojeIso);
   const [recarga, setRecarga] = useState(0);
-  const [atual, setAtual] = useState({ chave: "", linhas: [], estado: "carregando", erro: "" });
+  const [atual, setAtual] = useState({ chave: "", data: "", linhas: [], estado: "carregando", erro: "" });
   const [aud, setAud] = useState({ data: "", doc: undefined });
   const [filtroTipo, setFiltroTipo] = useState("");
   const [regrasAbertas, setRegrasAbertas] = useState(false);
@@ -167,8 +194,9 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
     let vivo = true;
     const ch = `${data}|${recarga}`;
     calcularLinhasDoDia(data, { config, vinculos, fornecedores })
-      .then((linhas) => vivo && setAtual({ chave: ch, linhas, estado: "ok", erro: "" }))
-      .catch((e) => vivo && setAtual({ chave: ch, linhas: [], estado: "erro", erro: e?.message || "O Phoenix não respondeu." }));
+      .then((linhas) => vivo && setAtual({ chave: ch, data, linhas, estado: "ok", erro: "" }))
+      // erro numa atualização não apaga o que já estava na tela
+      .catch((e) => vivo && setAtual((x) => (x.data === data && x.estado === "ok" ? { ...x, chave: ch, erroAtualizar: e?.message || "O Phoenix não respondeu." } : { chave: ch, data, linhas: [], estado: "erro", erro: e?.message || "O Phoenix não respondeu." })));
     return () => {
       vivo = false;
     };
@@ -191,14 +219,28 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
   const doc = aud.data === data ? aud.doc : undefined;
   const foto = doc?.foto || null;
   const carregando = doc === undefined || atual.chave !== chave;
-  const rel = useMemo(() => (foto && atual.estado === "ok" ? compararComFoto(foto, atual.linhas, config.auditoria || normalizarAuditoria()) : null), [foto, atual, config.auditoria]);
+  // só compara a programação com o Phoenix DO MESMO DIA (ao trocar de dia, a
+  // tela não mistura a foto de um dia com os serviços de outro)
+  const doDia = atual.data === data && atual.estado === "ok";
+  const suspeita = !!(foto && doDia && conferenciaSuspeita(foto, atual.linhas));
+  const rel = useMemo(
+    () => (foto && doDia && !suspeita ? compararComFoto(foto, atual.linhas, config.auditoria || normalizarAuditoria()) : null),
+    [foto, doDia, suspeita, atual, config.auditoria],
+  );
 
-  // o que aparecer de novo vai para o histórico (com a hora)
+  // o que aparecer de novo vai para o histórico (com a hora) e o resumo do
+  // dia vai para o Balanço
+  const resumoGravado = doc?.resumo;
   useEffect(() => {
-    if (!rel || !doc || data !== hoje) return;
-    const hist = doc.historico || {};
-    if (rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist).catch((e) => console.error("Histórico:", e));
-  }, [rel, doc, data, hoje]);
+    if (!rel || !doc) return;
+    if (data === hoje) {
+      const hist = doc.historico || {};
+      const mudou = !resumoGravado || resumoGravado.alteracoes !== rel.alteracoes.length || resumoGravado.impacto !== rel.totais.impacto;
+      if (mudou || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel).catch((e) => console.error("Histórico:", e));
+    } else if (data < hoje && !resumoGravado) {
+      gravarResumoDoBalanco(data, rel).catch((e) => console.error("Resumo do balanço:", e));
+    }
+  }, [rel, doc, data, hoje, resumoGravado]);
 
   const lista = rel ? rel.alteracoes.filter((a) => !filtroTipo || a.mudancas.some((m) => m.tipo === filtroTipo)) : [];
   const historico = useMemo(() => doc?.historico || {}, [doc]);
@@ -213,6 +255,20 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
       .map(([k, v]) => ({ k, ...v }))
       .sort((a, b) => (a.em?.toMillis?.() || 0) - (b.em?.toMillis?.() || 0));
   }, [rel, historico]);
+  const [descartando, setDescartando] = useState(false);
+  const descartarVoltaram = async () => {
+    if (!window.confirm(`Apagar os ${voltaram.length} registro(s) que voltaram atrás? As alterações de agora continuam.`)) return;
+    setDescartando(true);
+    try {
+      await descartarDoHistorico(data, voltaram.map((v) => v.k));
+      mostrarToast("Registros apagados");
+    } catch (e) {
+      console.error(e);
+      window.alert("Não foi possível apagar.");
+    } finally {
+      setDescartando(false);
+    }
+  };
 
   const baixarExcel = () => {
     if (!rel) return;
@@ -259,7 +315,7 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
             </Button>
           </span>
           <span className="aud-barra__acoes">
-            <Button size="sm" icon="refresh" onClick={() => setRecarga((x) => x + 1)} loading={carregando && !!foto} disabled={carregando}>
+            <Button size="sm" icon="refresh" onClick={() => setRecarga((x) => x + 1)} loading={carregando && !!foto && doDia} disabled={carregando}>
               Atualizar
             </Button>
             <Button size="sm" icon="download" onClick={baixarExcel} disabled={!rel}>
@@ -300,7 +356,12 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
                 : "A programação só é guardada com alguém com acesso a Custos usando o sistema naquele dia."}
           </EmptyState>
         </Card>
-      ) : atual.estado === "erro" && atual.chave === chave ? (
+      ) : suspeita ? (
+        <div className="cst-faixa cst-faixa--alerta" role="alert">
+          <Icon name="alert" size={16} />
+          <span>O Phoenix devolveu bem menos serviços do que a programação tinha (resposta incompleta). O sistema não registrou nada desta conferência — tente “Atualizar” em instantes.</span>
+        </div>
+      ) : atual.estado === "erro" && atual.data === data ? (
         <div className="cst-faixa cst-faixa--alerta" role="alert">
           <Icon name="alert" size={16} /> <span>{atual.erro}</span>
         </div>
@@ -350,7 +411,7 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
 
           {lista.length === 0 ? (
             <Card>
-              <EmptyState icon="circleCheck" title={rel.alteracoes.length ? "Nenhuma alteração desse tipo." : "Nada mudou desde a programação da meia-noite."}>
+              <EmptyState icon="circleCheck" title={rel.alteracoes.length ? "Nenhuma alteração desse tipo." : "Nada mudou desde a programação guardada."}>
                 {data === hoje ? "O sistema confere o Phoenix sozinho a cada 10 minutos." : ""}
               </EmptyState>
             </Card>
@@ -454,29 +515,40 @@ const AuditorAlteracoes = ({ config, pronto, vinculos, fornecedores }) => {
 
           {voltaram.length > 0 && (
             <Card className="aud-voltaram">
-              <CardHeader
-                icon="refresh"
-                title={`Voltaram atrás ou mudaram de novo (${voltaram.length})`}
-                subtitle="Alterações que o sistema registrou durante o dia e que não estão mais assim no Phoenix. Não entram no impacto de agora."
-              />
-              <ul>
-                {voltaram.map((v) => (
-                  <li key={v.k}>
-                    <time>{horaDe(v.em)}</time>
-                    <span className={`cst-tipo cst-tipo--${v.tipoServico}`}>{NOME_TIPO[v.tipoServico] || v.tipoServico}</span>
-                    <b>{v.hora}</b>
-                    <span className="aud-voltaram__veic">{v.veiculoDepois || v.veiculoAntes || "—"}</span>
-                    <span className="aud-mudancas">
-                      {(v.mudancas || []).map((m) => (
-                        <span key={m.tipo} className={`aud-mud is-${m.tipo}`}>
-                          <b>{CURTO_ALTERACAO[m.tipo]}</b> {textoMudanca(m)}
-                        </span>
-                      ))}
-                    </span>
-                    <span className={`aud-impacto ${v.impacto > 0 ? "is-mais" : v.impacto < 0 ? "is-menos" : ""}`}>{sinal(v.impacto || 0)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="aud-voltaram__topo">
+                <button type="button" className="aud-voltaram__abrir" onClick={() => setVerVoltaram((x) => !x)} aria-expanded={verVoltaram}>
+                  <Icon name={verVoltaram ? "chevronDown" : "chevronRight"} size={15} />
+                  <span>
+                    <b>Voltaram atrás ou mudaram de novo · {voltaram.length}</b>
+                    <small>Registradas durante o dia e que não estão mais assim no Phoenix. Não entram no impacto.</small>
+                  </span>
+                </button>
+                {verVoltaram && (
+                  <Button size="sm" variant="ghost" icon="trash" onClick={descartarVoltaram} loading={descartando} disabled={descartando}>
+                    Limpar registros
+                  </Button>
+                )}
+              </div>
+              {verVoltaram && (
+                <ul>
+                  {voltaram.map((v) => (
+                    <li key={v.k}>
+                      <time>{horaDe(v.em)}</time>
+                      <span className={`cst-tipo cst-tipo--${v.tipoServico}`}>{NOME_TIPO[v.tipoServico] || v.tipoServico}</span>
+                      <b>{v.hora}</b>
+                      <span className="aud-voltaram__veic">{v.veiculoDepois || v.veiculoAntes || "—"}</span>
+                      <span className="aud-mudancas">
+                        {(v.mudancas || []).map((m) => (
+                          <span key={m.tipo} className={`aud-mud is-${m.tipo}`}>
+                            <b>{CURTO_ALTERACAO[m.tipo]}</b> {textoMudanca(m)}
+                          </span>
+                        ))}
+                      </span>
+                      <span className={`aud-impacto ${v.impacto > 0 ? "is-mais" : v.impacto < 0 ? "is-menos" : ""}`}>{sinal(v.impacto || 0)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Card>
           )}
         </>

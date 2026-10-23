@@ -379,6 +379,7 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
         idiomas: {},
         excluidas: [],
         restricoes: [],
+        codigos: [],
       });
     }
     const s = mapa.get(chave);
@@ -388,6 +389,9 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
     if (!conta) return;
     s.reservas += 1;
     s.pax += paxDo(item);
+    // reservas da escala: o auditor reconhece a troca de veículo mesmo quando o Phoenix cria outra escala
+    const cod = String(codigoReserva(item) || "").trim();
+    if (cod && !s.codigos.includes(cod)) s.codigos.push(cod);
     // idioma dos passageiros (só os estrangeiros: português não entra)
     acumularIdiomas(s.idiomas, extrairIdiomasDoItem(item, { nomeServico: nomeServico(item) }).ids, paxDo(item));
     if (!s.guiaPhoenix) s.guiaPhoenix = extrairGuia(item);

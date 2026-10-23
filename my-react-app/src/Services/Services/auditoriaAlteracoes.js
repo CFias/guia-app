@@ -68,6 +68,7 @@ export const fotoDaLinha = (l) => ({
   pax: Number(l.pax) || 0,
   reservas: Number(l.reservas) || 0,
   regioes: Array.isArray(l.regioes) ? l.regioes.slice(0, 4) : [],
+  codigos: Array.isArray(l.codigos) ? l.codigos.slice(0, 60).map(String) : [],
   valorFornecedor: Number(l.valorFornecedor) || 0,
   guiaValor: Number(l.guiaValor) || 0,
   total: Number(l.total) || 0,
@@ -111,14 +112,56 @@ export const custoDaRegra = (m, antes, depois, regras) => {
    Devolve { alteracoes: [...], totais }. Cada alteração:
    { id, chave, hora, tipoServico, servico, antes, depois, mudancas: [{ tipo, de, para, qtd, custo }],
      deltaTabela, custoRegras, impacto } */
+/* Quando o Phoenix troca o veículo, muitas vezes ele apaga a escala e cria
+   outra (a chave muda). Sem isto, a troca apareceria como "cancelado" +
+   "novo". Junta os pares: mesmo tipo de serviço e as mesmas reservas (ou,
+   na foto antiga sem reservas, mesmo serviço e mesmo horário, sem empate). */
+const juntarTrocas = (sumiram, entraram) => {
+  const pares = [];
+  const livres = new Set(entraram.map((d) => d.chave));
+  sumiram.forEach((a) => {
+    let melhor = null;
+    let nota = 0;
+    entraram.forEach((d) => {
+      if (!livres.has(d.chave) || (a.tipo || "") !== (d.tipo || "")) return;
+      const ca = new Set(a.codigos || []);
+      const comum = (d.codigos || []).filter((c) => ca.has(c)).length;
+      // metade ou mais das reservas da foto foram para a escala nova
+      const n = ca.size && comum ? comum / ca.size : 0;
+      if (n >= 0.5 && n > nota) {
+        melhor = d;
+        nota = n;
+      }
+    });
+    if (!melhor && !(a.codigos || []).length) {
+      const mesmos = entraram.filter((d) => livres.has(d.chave) && (d.tipo || "") === (a.tipo || "") && iguais(d.servicoNome, a.servicoNome) && d.hora === a.hora);
+      const rivais = sumiram.filter((x) => (x.tipo || "") === (a.tipo || "") && iguais(x.servicoNome, a.servicoNome) && x.hora === a.hora);
+      if (mesmos.length === 1 && rivais.length === 1) melhor = mesmos[0];
+    }
+    if (melhor) {
+      livres.delete(melhor.chave);
+      pares.push([a, melhor]);
+    }
+  });
+  return pares;
+};
+
 export const compararComFoto = (foto, atuais = [], config = normalizarAuditoria()) => {
   const base = foto?.linhas || {};
   const agora = new Map(atuais.map((l) => [l.chave, fotoDaLinha(l)]));
-  const chaves = [...new Set([...Object.keys(base), ...agora.keys()])];
+  const sumiram = Object.values(base).filter((a) => !agora.has(a.chave));
+  const entraram = [...agora.values()].filter((d) => !base[d.chave]);
+  const pares = juntarTrocas(sumiram, entraram);
+  const parDe = new Map(pares.map(([a, d]) => [a.chave, d]));
+  const jaUsada = new Set(pares.map(([, d]) => d.chave));
+  const casos = [
+    ...Object.keys(base).map((chave) => [base[chave], parDe.get(chave) || agora.get(chave) || null]),
+    ...[...agora.values()].filter((d) => !base[d.chave] && !jaUsada.has(d.chave)).map((d) => [null, d]),
+  ];
   const alteracoes = [];
-  chaves.forEach((chave) => {
-    const antes = base[chave] || null;
-    const depois = agora.get(chave) || null;
+  casos.forEach(([antes, depois]) => {
+    const chave = depois?.chave || antes?.chave;
+    const trocouEscala = !!(antes && depois && antes.chave !== depois.chave);
     const mudancas = mudancasDoServico(antes, depois);
     if (!mudancas.length) return;
     mudancas.forEach((m) => {
@@ -128,8 +171,9 @@ export const compararComFoto = (foto, atuais = [], config = normalizarAuditoria(
     const custoRegras = Math.round(mudancas.reduce((s, m) => s + m.custo, 0) * 100) / 100;
     const ref = depois || antes;
     alteracoes.push({
-      id: `${chave}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
+      id: `${trocouEscala ? `${antes.chave}>` : ""}${chave}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
       chave,
+      trocouEscala,
       hora: ref.hora || "",
       tipoServico: ref.tipo || "",
       servico: ref.servicoNome || "",
@@ -188,3 +232,48 @@ export const linhaDaAlteracao = (a) =>
   `${a.hora || "--:--"} ${NOME_TIPO_SERV[a.tipoServico] || a.tipoServico || ""} · ${(a.depois || a.antes)?.veiculo || a.veiculoDepois || a.veiculoAntes || "—"}: ${(a.mudancas || [])
     .map((m) => `${CURTO_ALTERACAO[m.tipo] || m.tipo} ${textoDaMudanca(m)}`)
     .join(" · ")}`;
+
+/* Resumo do dia para o BALANÇO (fica no auditoria_dia de cada dia e é
+   atualizado a cada conferência): quantas alterações, quanto aumentou e
+   quanto reduziu o custo, por tipo. */
+export const resumoDoBalanco = (rel) => {
+  const t = rel?.totais || {};
+  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const porTipo = Object.fromEntries(Object.entries(t.porTipo || {}).map(([k, v]) => [k, { n: v.n || 0, custo: r2(v.custo) }]));
+  const alteracoes = rel?.alteracoes || [];
+  return {
+    alteracoes: alteracoes.length,
+    mudancas: alteracoes.reduce((s, a) => s + a.mudancas.length, 0),
+    comAumento: alteracoes.filter((a) => a.impacto > 0).length,
+    comReducao: alteracoes.filter((a) => a.impacto < 0).length,
+    servicosFoto: t.servicosFoto || 0,
+    servicosAgora: t.servicosAgora || 0,
+    totalFoto: r2(t.totalFoto),
+    totalAgora: r2(t.totalAgora),
+    deltaTabela: r2(t.deltaTabela),
+    custoRegras: r2(t.custoRegras),
+    aumentos: r2(t.aumentos),
+    reducoes: r2(t.reducoes),
+    impacto: r2(t.impacto),
+    porTipo,
+  };
+};
+
+/* Conferência que não dá para confiar: o Phoenix devolveu bem menos serviços
+   do que a programação tinha (falha de rede, resposta pela metade, outro dia).
+   Nesse caso o sistema não grava nada no histórico. */
+export const conferenciaSuspeita = (foto, atuais = []) => {
+  const nFoto = Object.keys(foto?.linhas || {}).length;
+  if (nFoto < 6) return false;
+  if (!atuais.length) return true;
+  // pelas reservas (a escala pode ter sido refeita com outros números)
+  const codFoto = new Set(Object.values(foto.linhas).flatMap((l) => l.codigos || []));
+  if (codFoto.size >= 10) {
+    const codAgora = new Set(atuais.flatMap((l) => (l.codigos || []).map(String)));
+    const ficaram = [...codFoto].filter((c) => codAgora.has(c)).length;
+    return ficaram / codFoto.size < 0.4;
+  }
+  const agora = new Set(atuais.map((l) => l.chave));
+  const sumiram = Object.keys(foto.linhas).filter((k) => !agora.has(k)).length;
+  return sumiram / nFoto > 0.6;
+};

@@ -3077,3 +3077,252 @@
     display: none;
   }
 }
+
+/* ---------- auditor: Dia | Balanço ---------- */
+.aud-raiz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.aud-visoes {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.aud-visoes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2, var(--text));
+  font: inherit;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aud-visoes button.is-on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* voltaram atrás: recolhido */
+.aud-voltaram {
+  padding: 0;
+}
+
+.aud-voltaram__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.aud-voltaram__abrir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.aud-voltaram__abrir span {
+  display: flex;
+  flex-direction: column;
+}
+
+.aud-voltaram__abrir b {
+  font-size: var(--fs-sm, 13px);
+}
+
+.aud-voltaram__abrir small {
+  color: var(--text-3);
+  font-size: var(--fs-xs, 12px);
+}
+
+/* balanço */
+.bal-alt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bal-alt__periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bal-alt__periodo label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-3);
+}
+
+.bal-alt__periodo input {
+  width: 150px;
+}
+
+.bal-alt__presets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bal-alt__presets button {
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2, var(--text));
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bal-alt__presets button.is-on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.bal-alt__card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bal-alt__tipos {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-4) 8px;
+}
+
+.bal-alt__tipos li {
+  display: grid;
+  grid-template-columns: 96px 1fr 60px 130px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-sm, 13px);
+}
+
+.bal-alt__tipos li:last-child {
+  border-bottom: 0;
+}
+
+.bal-alt__tipos li>b {
+  text-align: right;
+  font-size: 15px;
+}
+
+.bal-alt__tipo-custo {
+  text-align: right;
+  color: var(--text-3);
+}
+
+.bal-alt__tabela {
+  overflow-x: auto;
+  padding: 0 var(--space-4) 10px;
+}
+
+.bal-alt__tabela table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: var(--fs-sm, 13px);
+}
+
+.bal-alt__tabela th {
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.bal-alt__tabela td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--divider);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bal-alt__tabela tr:last-child td {
+  border-bottom: 0;
+}
+
+.bal-alt__tabela .e {
+  text-align: left;
+}
+
+.bal-alt__tabela td small {
+  color: var(--text-3);
+}
+
+.bal-alt__col-barra {
+  width: 32%;
+}
+
+.bal-alt__barra {
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.bal-alt__barra::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--text) 25%, transparent);
+}
+
+.bal-alt__barra i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.bal-alt__barra i.is-menos {
+  right: 50%;
+  border-radius: 99px 0 0 99px;
+  background: #16a34a;
+}
+
+.bal-alt__barra i.is-mais {
+  left: 50%;
+  border-radius: 0 99px 99px 0;
+  background: #dc2626;
+}
+
+.bal-alt__sem {
+  color: var(--text-3);
+  font-style: italic;
+}
