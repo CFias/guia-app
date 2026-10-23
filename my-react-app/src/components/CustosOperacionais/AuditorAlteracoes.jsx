@@ -1,22 +1,26 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles, Table, TableExpansion, TableHead, TableRow, useToast } from "../ui";
+import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles, useToast } from "../ui";
 import { useAuth } from "../../Context/AuthContext";
 import {
+  CLASSES_ATUALIZACAO,
   CURTO_ALTERACAO,
+  ITENS_OBSERVADOS,
+  NOME_CLASSE,
   NOME_ALTERACAO,
+  nomeDoVeiculo,
   TIPOS_ALTERACAO,
   compararComFoto,
   conferenciaSuspeita,
   normalizarAuditoria,
   textoDaMudanca,
 } from "../../Services/Services/auditoriaAlteracoes";
-import { NOME_CATEGORIA, NOME_TIPO, formatarReais } from "../../Services/Services/custosCalculo";
+import { NOME_TIPO, formatarReais } from "../../Services/Services/custosCalculo";
 import BalancoAlteracoes from "./BalancoAlteracoes";
+import { CSS_IMPRESSAO, esc, imprimirHtml } from "../RelatorioTurnos/impressaoTurnos";
 import {
   calcularLinhasDoDia,
   chaveDaVista,
-  descartarDoHistorico,
   gravarResumoDoBalanco,
   ouvirAuditoria,
   registrarNoHistorico,
@@ -51,9 +55,9 @@ const horaDe = (ts) => {
 const sinal = (v) => (v > 0 ? `+${formatarReais(v)}` : v < 0 ? `−${formatarReais(-v)}` : formatarReais(0));
 const ATUALIZAR_MS = 5 * 60 * 1000;
 const ORIGEM = {
-  "meia-noite": "guardada à meia-noite",
-  vespera: "a última versão montada na véspera",
-  atrasada: "guardada depois da meia-noite (ninguém estava com o sistema aberto na virada)",
+  "meia-noite": "fechada na virada do dia",
+  vespera: "fechada com a última versão montada na véspera",
+  atrasada: "guardada só depois da meia-noite (ninguém estava com o sistema aberto na virada) — o que mudou antes disso não aparece",
   antecipada: "guardada antes do dia",
   manual: "guardada à mão",
   automatica: "guardada automaticamente",
@@ -61,6 +65,61 @@ const ORIGEM = {
 };
 
 const textoMudanca = textoDaMudanca;
+
+/* ---------- o que o auditor observa (configurável) ---------- */
+const OQueObservar = ({ config, onFechar }) => {
+  const { mostrarToast } = useToast();
+  const [o, setO] = useState(() => normalizarAuditoria(config.auditoria).observar);
+  const [salvando, setSalvando] = useState(false);
+  const salvar = async () => {
+    setSalvando(true);
+    try {
+      await salvarConfigCustos({ auditoria: { ...normalizarAuditoria(config.auditoria), observar: o } });
+      mostrarToast("O auditor vai observar só o que está marcado");
+      onFechar?.();
+    } catch (e) {
+      console.error(e);
+      window.alert("Não foi possível salvar.");
+    } finally {
+      setSalvando(false);
+    }
+  };
+  return (
+    <Card className="aud-obs">
+      <CardHeader
+        icon="eye"
+        title="O que o auditor observa"
+        subtitle="Tudo vem do Phoenix e é comparado com a programação fechada à meia-noite. Desmarcado, o auditor ignora aquele tipo de mudança: não mostra, não conta no custo e não avisa no sino."
+      />
+      <div className="aud-obs__lista">
+        {ITENS_OBSERVADOS.map((i) => (
+          <label key={i.id} className={`aud-obs__item ${o[i.id] ? "is-on" : ""}`}>
+            <input type="checkbox" checked={!!o[i.id]} onChange={(e) => setO((x) => ({ ...x, [i.id]: e.target.checked }))} />
+            <span>
+              <b>{i.nome}</b>
+              <small>{i.dica}</small>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="aud-obs__nota">
+        <Icon name="info" size={14} />
+        <span>
+          Como o auditor reconhece o mesmo grupo de passageiros: pelas <b>reservas</b> de cada veículo. Se a escala for refeita no mesmo veículo (o número muda, o resto
+          não), ele sabe que é a mesma logística e não conta como troca.
+        </span>
+      </p>
+      <div className="aud-regras__acoes">
+        <Button variant="ghost" size="sm" onClick={onFechar} disabled={salvando}>
+          Fechar
+        </Button>
+        <Button variant="primary" size="sm" icon="save" onClick={salvar} loading={salvando} disabled={salvando}>
+          Salvar
+        </Button>
+      </div>
+    </Card>
+  );
+};
 
 /* ---------- tabela de custos das alterações (configurável) ---------- */
 const TabelaRegras = ({ config, onFechar }) => {
@@ -158,7 +217,7 @@ const AuditorAlteracoes = (props) => {
     <div className="aud-raiz">
       <div className="aud-visoes" role="tablist" aria-label="Auditor">
         {[
-          ["dia", "calendar", "Alterações do dia"],
+          ["dia", "calendar", "Atualizações do dia"],
           ["balanco", "barChart", "Balanço do período"],
         ].map(([v, ic, r]) => (
           <button key={v} type="button" role="tab" aria-selected={visao === v} className={visao === v ? "is-on" : ""} onClick={() => setVisao(v)}>
@@ -173,15 +232,14 @@ const AuditorAlteracoes = (props) => {
 
 const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const { perfil } = useAuth();
-  const { mostrarToast } = useToast();
-  const [verVoltaram, setVerVoltaram] = useState(false);
   const [data, setData] = useState(hojeIso);
   const [recarga, setRecarga] = useState(0);
   const [atual, setAtual] = useState({ chave: "", data: "", linhas: [], estado: "carregando", erro: "" });
   const [aud, setAud] = useState({ data: "", doc: undefined });
   const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroImpacto, setFiltroImpacto] = useState("");
   const [regrasAbertas, setRegrasAbertas] = useState(false);
-  const [aberta, setAberta] = useState(null);
+  const [obsAberto, setObsAberto] = useState(false);
   const hoje = hojeIso();
   const chave = `${data}|${recarga}`;
 
@@ -242,64 +300,76 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     }
   }, [rel, doc, data, hoje, resumoGravado]);
 
-  const lista = rel ? rel.alteracoes.filter((a) => !filtroTipo || a.mudancas.some((m) => m.tipo === filtroTipo)) : [];
   const historico = useMemo(() => doc?.historico || {}, [doc]);
-  // hora em que a alteração apareceu (histórico; "vistas" é o formato antigo)
+  // hora em que a atualização apareceu pela primeira vez
   const vistoEm = (id) => historico[chaveDaVista(id)]?.em || doc?.vistas?.[chaveDaVista(id)] || null;
-  // alterações registradas que não estão mais assim (voltaram atrás ou mudaram de novo)
-  const voltaram = useMemo(() => {
-    if (!rel) return [];
-    const atuais = new Set(rel.alteracoes.map((a) => chaveDaVista(a.id)));
-    return Object.entries(historico)
-      .filter(([k]) => !atuais.has(k))
-      .map(([k, v]) => ({ k, ...v }))
-      .sort((a, b) => (a.em?.toMillis?.() || 0) - (b.em?.toMillis?.() || 0));
-  }, [rel, historico]);
-  const [descartando, setDescartando] = useState(false);
-  const descartarVoltaram = async () => {
-    if (!window.confirm(`Apagar os ${voltaram.length} registro(s) que voltaram atrás? As alterações de agora continuam.`)) return;
-    setDescartando(true);
-    try {
-      await descartarDoHistorico(data, voltaram.map((v) => v.k));
-      mostrarToast("Registros apagados");
-    } catch (e) {
-      console.error(e);
-      window.alert("Não foi possível apagar.");
-    } finally {
-      setDescartando(false);
-    }
-  };
+  const passaFiltro = (a) =>
+    (!filtroTipo || a.classe === filtroTipo) &&
+    (!filtroImpacto || (filtroImpacto === "mais" ? a.impacto > 0 : filtroImpacto === "menos" ? a.impacto < 0 : a.impacto === 0));
+  const lista = rel ? rel.alteracoes.filter(passaFiltro) : [];
+  const nImpacto = (f) => (rel ? rel.alteracoes.filter((a) => (f === "mais" ? a.impacto > 0 : f === "menos" ? a.impacto < 0 : a.impacto === 0)).length : 0);
 
   const baixarExcel = () => {
     if (!rel) return;
     const linhas = [
-      [`Auditor de alterações · ${dataBr(data)}`],
-      [`Programação: ${quando(foto.em)} (${ORIGEM[foto.origem] || foto.origem})`],
+      [`Auditor da programação · ${dataBr(data)}`],
+      [`Programação fechada: ${quando(foto.em)} (${ORIGEM[foto.origem] || foto.origem})`],
       [],
-      ["Hora", "Tipo", "Serviço", "Veículo (programação)", "Veículo (agora)", "Alterações", "Custo programado", "Custo agora", "Diferença da tabela", "Custos das alterações", "Impacto", "Visto às"],
+      ["Hora", "Tipo", "Atualização", "Serviço", "Programado", "Agora", "Detalhes", "Custo programado", "Custo agora", "Diferença da tabela", "Tabela das alterações", "Impacto", "Resultado", "Visto às"],
       ...rel.alteracoes.map((a) => [
         a.hora,
         NOME_TIPO[a.tipoServico] || a.tipoServico,
+        a.titulo,
         a.servico,
-        a.antes?.veiculo || "",
-        a.depois?.veiculo || "",
-        a.mudancas.map((m) => `${NOME_ALTERACAO[m.tipo]}: ${textoMudanca(m)}`).join(" | "),
-        a.antes?.total ?? "",
-        a.depois?.total ?? "",
+        a.veiculosAntes || "—",
+        a.veiculosDepois || "—",
+        a.mudancas.filter((m) => m.tipo !== "novo" && m.tipo !== "cancelado").map((m) => `${NOME_ALTERACAO[m.tipo]}: ${textoMudanca(m)}`).join(" | "),
+        a.totalAntes,
+        a.totalDepois,
         a.deltaTabela,
         a.custoRegras,
         a.impacto,
+        a.impacto > 0 ? "Custo maior" : a.impacto < 0 ? "Custo enxugado" : "Sem impacto",
         horaDe(vistoEm(a.id)),
       ]),
       [],
-      ["", "", "", "", "", "Total", rel.totais.totalFoto, rel.totais.totalAgora, rel.totais.deltaTabela, rel.totais.custoRegras, rel.totais.impacto],
-      ...(voltaram.length
-        ? [[], ["Alterações que voltaram atrás"], ...voltaram.map((v) => [v.hora, NOME_TIPO[v.tipoServico] || v.tipoServico, v.servico, v.veiculoAntes, v.veiculoDepois, (v.mudancas || []).map((m) => `${NOME_ALTERACAO[m.tipo]}: ${textoMudanca(m)}`).join(" | "), "", "", v.deltaTabela, v.custoRegras, v.impacto, horaDe(v.em)])]
-        : []),
+      ["", "", "", "", "", "", "Total do dia", rel.totais.totalFoto, rel.totais.totalAgora, rel.totais.deltaTabela, rel.totais.custoRegras, rel.totais.impacto],
     ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), "Alterações");
-    XLSX.writeFile(wb, `auditor-alteracoes-${data}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), "Atualizações");
+    XLSX.writeFile(wb, `auditor-programacao-${data}.xlsx`);
+  };
+
+  // relatório do dia (imprimir ou salvar em PDF)
+  const imprimirDia = () => {
+    if (!rel) return;
+    const t = rel.totais;
+    const cls = (v) => (v > 0 ? "mais" : v < 0 ? "menos" : "");
+    const lado = (l) => (l.length ? l.map((x) => esc(nomeDoVeiculo(x))).join("<br>") : "<i>—</i>");
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Auditor da programação ${esc(dataBr(data))}</title><style>${CSS_IMPRESSAO}
+.mais { color: #b42318; font-weight: 700; } .menos { color: #067647; font-weight: 700; }
+td { vertical-align: top; } td.e { white-space: normal !important; } .det { color: #57606a; font-size: 9.5px; }
+</style></head><body>
+<div class="topo"><div><h1>Auditor da programação · ${esc(dataBr(data))}</h1><p>Programação ${esc(ORIGEM[foto.origem] || foto.origem)} (${esc(quando(foto.em))}) · ${t.servicosFoto} serviço(s)</p></div><div class="gerado">Gerado em ${esc(new Date().toLocaleString("pt-BR"))}</div></div>
+<div class="kpis">
+<div class="kpi"><span>Atualizações no dia</span><b>${rel.alteracoes.length}</b><small>${t.servicosFoto} → ${t.servicosAgora} serviço(s)</small></div>
+<div class="kpi"><span>Custo maior</span><b class="mais">${esc(sinal(t.aumentos))}</b><small>${nImpacto("mais")} atualização(ões)</small></div>
+<div class="kpi"><span>Custo enxugado</span><b class="menos">${esc(sinal(t.reducoes))}</b><small>${nImpacto("menos")} atualização(ões)</small></div>
+<div class="kpi"><span>Saldo do dia</span><b class="${cls(t.impacto)}">${esc(sinal(t.impacto))}</b><small>programado ${esc(formatarReais(t.totalFoto, { semCentavos: true }))} → agora ${esc(formatarReais(t.totalAgora, { semCentavos: true }))}</small></div>
+</div>
+<h2>Atualizações</h2>
+${
+  rel.alteracoes.length
+    ? `<table><thead><tr><th class="e">Hora</th><th class="e">Atualização</th><th class="e">Programado</th><th class="e">Agora</th><th>Antes</th><th>Agora</th><th>Impacto</th></tr></thead><tbody>${rel.alteracoes
+        .map((a) => {
+          const det = a.mudancas.filter((m) => m.tipo !== "novo" && m.tipo !== "cancelado").map((m) => `${CURTO_ALTERACAO[m.tipo]} ${textoMudanca(m)}`).join(" · ");
+          return `<tr><td class="e"><b>${esc(a.hora || "--:--")}</b><br><span class="det">${esc(NOME_TIPO[a.tipoServico] || a.tipoServico)}</span></td><td class="e"><b>${esc(a.titulo || NOME_CLASSE[a.classe] || "")}</b><br><span class="det">${esc(a.servico)}${det ? `<br>${esc(det)}` : ""}</span></td><td class="e">${lado(a.antesLista || [])}</td><td class="e">${lado(a.depoisLista || [])}</td><td>${esc(formatarReais(a.totalAntes))}</td><td>${esc(formatarReais(a.totalDepois))}</td><td class="${cls(a.impacto)}">${esc(sinal(a.impacto))}</td></tr>`;
+        })
+        .join("")}</tbody></table>`
+    : "<p>Nenhuma atualização desde a programação fechada.</p>"
+}
+</body></html>`;
+    imprimirHtml(html);
   };
 
   return (
@@ -321,6 +391,12 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
             <Button size="sm" icon="download" onClick={baixarExcel} disabled={!rel}>
               Excel
             </Button>
+            <Button size="sm" icon="printer" onClick={imprimirDia} disabled={!rel}>
+              Relatório
+            </Button>
+            <Button size="sm" icon="eye" onClick={() => setObsAberto((x) => !x)}>
+              O que observar
+            </Button>
             <Button size="sm" icon="tag" onClick={() => setRegrasAbertas((x) => !x)}>
               Tabela de custos
             </Button>
@@ -332,25 +408,31 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
             {foto ? (
               <span>
                 <b>Programação de {dataBr(data).slice(0, 5)}</b> · {ORIGEM[foto.origem] || foto.origem} ({quando(foto.em)}) · {foto.servicos} serviço(s)
+                {rel ? <> · {formatarReais(rel.totais.totalFoto, { semCentavos: true })}</> : null}
                 {doc?.ultimaVerificacao ? <> · conferida às {horaDe(doc.ultimaVerificacao)}</> : null}
               </span>
             ) : (
               <span>
                 <b>Programação de {dataBr(data).slice(0, 5)}</b> ·{" "}
-                {data > hoje ? "será guardada sozinha à meia-noite do dia." : data === hoje ? "guardando agora…" : "não foi guardada (o sistema não estava aberto nesse dia)."}
+                {data > hoje
+                  ? `em montagem — fecha às 23:59 e, a partir da meia-noite, cada atualização aparece aqui.${doc?.previa?.em ? ` Última leitura às ${horaDe(doc.previa.em)} · ${doc.previa.servicos} serviço(s).` : ""}`
+                  : data === hoje
+                    ? "guardando agora…"
+                    : "não foi guardada (o sistema não estava aberto nesse dia)."}
               </span>
             )}
           </span>
         </div>
       </Card>
 
+      {obsAberto && <OQueObservar config={config} onFechar={() => setObsAberto(false)} />}
       {regrasAbertas && <TabelaRegras config={config} onFechar={() => setRegrasAbertas(false)} />}
 
       {!foto && doc !== undefined ? (
         <Card>
           <EmptyState icon="clock" title={data > hoje ? `A programação de ${dataBr(data)} ainda não foi guardada.` : data === hoje ? "Guardando a programação de hoje…" : `Sem programação guardada de ${dataBr(data)}.`}>
             {data > hoje
-              ? "À meia-noite o sistema guarda a programação do dia e, a partir daí, registra cada alteração."
+              ? "A montagem de hoje não entra no auditor. À meia-noite a programação fecha e, a partir daí, cada atualização do dia é registrada com o custo antes e depois."
               : data === hoje
                 ? "Leva alguns segundos (busca o Phoenix)."
                 : "A programação só é guardada com alguém com acesso a Custos usando o sistema naquele dia."}
@@ -375,181 +457,116 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
         <>
           <KpiTiles
             items={[
-              { key: "foto", label: "Custo programado", value: formatarReais(rel.totais.totalFoto, { semCentavos: true }), hint: `${rel.totais.servicosFoto} serviço(s) na virada do dia`, icon: "calendar" },
-              { key: "agora", label: "Custo agora", value: formatarReais(rel.totais.totalAgora, { semCentavos: true }), hint: `${rel.totais.servicosAgora} serviço(s) no Phoenix`, icon: "coins" },
+              { key: "n", label: "Atualizações no dia", value: rel.alteracoes.length, hint: `desde a programação fechada · ${rel.totais.servicosFoto} → ${rel.totais.servicosAgora} serviço(s)`, icon: "listCheck" },
+              { key: "mais", label: "Custo maior", value: sinal(rel.totais.aumentos), hint: `${nImpacto("mais")} atualização(ões) encareceram`, icon: "trendingUp", tone: rel.totais.aumentos > 0 ? "alert" : undefined },
+              { key: "menos", label: "Custo enxugado", value: sinal(rel.totais.reducoes), hint: `${nImpacto("menos")} atualização(ões) economizaram`, icon: "trendingDown" },
               {
-                key: "imp",
-                label: "Impacto das alterações",
+                key: "saldo",
+                label: "Saldo do dia",
                 value: sinal(rel.totais.impacto),
-                hint: `${sinal(rel.totais.aumentos)} de aumento · ${sinal(rel.totais.reducoes)} de redução`,
+                hint: `programado ${formatarReais(rel.totais.totalFoto, { semCentavos: true })} → agora ${formatarReais(rel.totais.totalAgora, { semCentavos: true })}`,
                 icon: "activity",
                 tone: rel.totais.impacto > 0 ? "alert" : undefined,
-              },
-              {
-                key: "n",
-                label: "Alterações",
-                value: rel.alteracoes.length,
-                hint: rel.totais.custoRegras ? `${formatarReais(rel.totais.custoRegras)} pela tabela de custos das alterações` : "serviços que mudaram desde a meia-noite",
-                icon: "listCheck",
               },
             ]}
           />
 
-          {Object.keys(rel.totais.porTipo).length > 0 && (
-            <div className="aud-tipos" role="group" aria-label="Filtrar por tipo de alteração">
-              <button type="button" className={!filtroTipo ? "is-on" : ""} onClick={() => setFiltroTipo("")}>
-                Todas · {rel.alteracoes.length}
-              </button>
-              {TIPOS_ALTERACAO.filter((t) => rel.totais.porTipo[t.id]).map((t) => (
-                <button key={t.id} type="button" className={`is-${t.id} ${filtroTipo === t.id ? "is-on" : ""}`} onClick={() => setFiltroTipo(filtroTipo === t.id ? "" : t.id)}>
-                  {t.curto} · {rel.totais.porTipo[t.id].n}
-                  {rel.totais.porTipo[t.id].custo ? <small> · {formatarReais(rel.totais.porTipo[t.id].custo, { semCentavos: true })}</small> : null}
-                </button>
-              ))}
+          {rel.alteracoes.length > 0 && (
+            <div className="aud-filtros">
+              <div className="aud-tipos" role="group" aria-label="Filtrar pelo custo">
+                {[
+                  ["", `Todas · ${rel.alteracoes.length}`],
+                  ["mais", `Custo maior · ${nImpacto("mais")}`],
+                  ["menos", `Custo enxugado · ${nImpacto("menos")}`],
+                  ["zero", `Sem impacto · ${nImpacto("zero")}`],
+                ].map(([v, r]) => (
+                  <button key={v || "todas"} type="button" className={`${v ? `is-imp-${v}` : ""} ${filtroImpacto === v ? "is-on" : ""}`} onClick={() => setFiltroImpacto(v)}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {Object.keys(rel.totais.porClasse).length > 1 && (
+                <select className="ui-input aud-filtro-classe" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} aria-label="Tipo de atualização">
+                  <option value="">Todos os tipos</option>
+                  {CLASSES_ATUALIZACAO.filter((c) => rel.totais.porClasse[c.id]).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome} · {rel.totais.porClasse[c.id].n}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
           {lista.length === 0 ? (
             <Card>
-              <EmptyState icon="circleCheck" title={rel.alteracoes.length ? "Nenhuma alteração desse tipo." : "Nada mudou desde a programação guardada."}>
+              <EmptyState icon="circleCheck" title={rel.alteracoes.length ? "Nenhuma atualização com esse filtro." : "Nenhuma atualização desde a programação fechada."}>
                 {data === hoje ? "O sistema confere o Phoenix sozinho a cada 10 minutos." : ""}
               </EmptyState>
             </Card>
           ) : (
-            <Card className="aud-lista">
-              <Table columns="20px 62px minmax(190px,1.3fr) minmax(220px,1.6fr) 110px 110px 116px 78px" minWidth={1000}>
-                <TableHead>
-                  <span />
-                  <span>Hora</span>
-                  <span>Serviço</span>
-                  <span>O que mudou</span>
-                  <span className="ui-cell-end">Programado</span>
-                  <span className="ui-cell-end">Agora</span>
-                  <span className="ui-cell-end">Impacto</span>
-                  <span className="ui-cell-end">Visto às</span>
-                </TableHead>
-                {lista.map((a) => {
-                  const ref = a.depois || a.antes;
-                  const aberto = aberta === a.id;
-                  return (
-                    <Fragment key={a.id}>
-                      <TableRow expandable expanded={aberto} onToggle={() => setAberta(aberto ? null : a.id)} className={a.impacto > 0 ? "aud-linha--mais" : a.impacto < 0 ? "aud-linha--menos" : ""}>
-                        <span className="tabular aud-hora">{a.hora || "—"}</span>
-                        <span>
-                          <span className="ui-cell-main">
-                            <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span> {ref.veiculo || "—"}
-                          </span>
-                          <span className="ui-cell-sub">
-                            {[ref.fornecedor, ref.servicoNome].filter(Boolean).join(" · ")}
-                          </span>
-                        </span>
-                        <span className="aud-mudancas">
-                          {a.mudancas.map((m) => (
-                            <span key={m.tipo} className={`aud-mud is-${m.tipo}`} title={`${NOME_ALTERACAO[m.tipo]}${m.custo ? ` · ${formatarReais(m.custo)} pela tabela de custos` : ""}`}>
+            <ul className="aud-ats">
+              {lista.map((a) => {
+                const det = a.mudancas.filter((m) => m.tipo !== "novo" && m.tipo !== "cancelado");
+                const res = a.impacto > 0 ? "mais" : a.impacto < 0 ? "menos" : "zero";
+                return (
+                  <li key={a.id} className={`aud-at is-${res}`}>
+                    <div className="aud-at__hora">
+                      <b className="tabular">{a.hora || "--:--"}</b>
+                      <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
+                    </div>
+                    <div className="aud-at__corpo">
+                      <div className="aud-at__titulo">
+                        <b>{a.titulo}</b>
+                        {a.servico ? <span>{a.servico}</span> : null}
+                      </div>
+                      <div className="aud-at__fluxo">
+                        {[
+                          ["Programado", a.antesLista, a.contagemAntes, a.paxAntes, a.totalAntes],
+                          ["Agora", a.depoisLista, a.contagemDepois, a.paxDepois, a.totalDepois],
+                        ].map(([rot, l, cont, pax, tot], k) => (
+                          <Fragment key={rot}>
+                            {k === 1 && <Icon name="arrowRight" size={16} className="aud-at__seta" />}
+                            <div className={`aud-at__lado ${k ? "is-agora" : ""}`}>
+                              <small>
+                                {rot}
+                                {l.length ? ` · ${cont} · ${pax} pax` : ""}
+                              </small>
+                              {l.length ? (
+                                l.map((x) => (
+                                  <span key={x.chave} className="aud-at__veic">
+                                    {nomeDoVeiculo(x)}
+                                    {x.fornecedor ? <i>{x.fornecedor}</i> : null}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="aud-at__vazio">{k ? "saiu da escala" : "não estava na programação"}</span>
+                              )}
+                              <em className="tabular">{formatarReais(tot)}</em>
+                            </div>
+                          </Fragment>
+                        ))}
+                      </div>
+                      {det.length > 0 && (
+                        <div className="aud-mudancas">
+                          {det.map((m, i) => (
+                            <span key={`${m.tipo}${i}`} className={`aud-mud is-${m.tipo}`} title={NOME_ALTERACAO[m.tipo]}>
                               <b>{CURTO_ALTERACAO[m.tipo]}</b> {textoMudanca(m)}
                             </span>
                           ))}
-                        </span>
-                        <span className="ui-cell-end tabular">{a.antes ? formatarReais(a.antes.total, { semCentavos: true }) : "—"}</span>
-                        <span className="ui-cell-end tabular">{a.depois ? formatarReais(a.depois.total, { semCentavos: true }) : "—"}</span>
-                        <span className={`ui-cell-end tabular aud-impacto ${a.impacto > 0 ? "is-mais" : a.impacto < 0 ? "is-menos" : ""}`}>{sinal(a.impacto)}</span>
-                        <span className="ui-cell-end tabular aud-visto">{horaDe(vistoEm(a.id)) || "agora"}</span>
-                      </TableRow>
-                      {aberto && (
-                        <TableExpansion>
-                          <div className="aud-detalhe">
-                            <dl>
-                              <div>
-                                <dt>Diferença da tabela</dt>
-                                <dd className="tabular">{sinal(a.deltaTabela)}</dd>
-                              </div>
-                              {a.mudancas
-                                .filter((m) => m.custo)
-                                .map((m) => (
-                                  <div key={m.tipo}>
-                                    <dt>{NOME_ALTERACAO[m.tipo]}</dt>
-                                    <dd className="tabular">{sinal(m.custo)}</dd>
-                                  </div>
-                                ))}
-                              <div className="is-total">
-                                <dt>Impacto</dt>
-                                <dd className="tabular">{sinal(a.impacto)}</dd>
-                              </div>
-                            </dl>
-                            <div className="aud-detalhe__comp">
-                              {[
-                                ["Programado", a.antes],
-                                ["Agora", a.depois],
-                              ].map(([rot, l]) => (
-                                <div key={rot}>
-                                  <span>{rot}</span>
-                                  {l ? (
-                                    <>
-                                      <b>
-                                        {l.hora} · {l.veiculo || "—"}
-                                      </b>
-                                      <small>
-                                        {[l.fornecedor, NOME_CATEGORIA[l.categoria] || l.categoria, l.motorista, l.guia ? `guia ${l.guia}` : "", `${l.pax} pax · ${l.reservas} reserva(s)`]
-                                          .filter(Boolean)
-                                          .join(" · ")}
-                                      </small>
-                                      <small>
-                                        Fornecedor {formatarReais(l.valorFornecedor)} · guia {formatarReais(l.guiaValor)} · total {formatarReais(l.total)}
-                                      </small>
-                                    </>
-                                  ) : (
-                                    <em>{rot === "Programado" ? "não estava na programação" : "não está mais no Phoenix"}</em>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </TableExpansion>
+                        </div>
                       )}
-                    </Fragment>
-                  );
-                })}
-              </Table>
-            </Card>
-          )}
-
-          {voltaram.length > 0 && (
-            <Card className="aud-voltaram">
-              <div className="aud-voltaram__topo">
-                <button type="button" className="aud-voltaram__abrir" onClick={() => setVerVoltaram((x) => !x)} aria-expanded={verVoltaram}>
-                  <Icon name={verVoltaram ? "chevronDown" : "chevronRight"} size={15} />
-                  <span>
-                    <b>Voltaram atrás ou mudaram de novo · {voltaram.length}</b>
-                    <small>Registradas durante o dia e que não estão mais assim no Phoenix. Não entram no impacto.</small>
-                  </span>
-                </button>
-                {verVoltaram && (
-                  <Button size="sm" variant="ghost" icon="trash" onClick={descartarVoltaram} loading={descartando} disabled={descartando}>
-                    Limpar registros
-                  </Button>
-                )}
-              </div>
-              {verVoltaram && (
-                <ul>
-                  {voltaram.map((v) => (
-                    <li key={v.k}>
-                      <time>{horaDe(v.em)}</time>
-                      <span className={`cst-tipo cst-tipo--${v.tipoServico}`}>{NOME_TIPO[v.tipoServico] || v.tipoServico}</span>
-                      <b>{v.hora}</b>
-                      <span className="aud-voltaram__veic">{v.veiculoDepois || v.veiculoAntes || "—"}</span>
-                      <span className="aud-mudancas">
-                        {(v.mudancas || []).map((m) => (
-                          <span key={m.tipo} className={`aud-mud is-${m.tipo}`}>
-                            <b>{CURTO_ALTERACAO[m.tipo]}</b> {textoMudanca(m)}
-                          </span>
-                        ))}
-                      </span>
-                      <span className={`aud-impacto ${v.impacto > 0 ? "is-mais" : v.impacto < 0 ? "is-menos" : ""}`}>{sinal(v.impacto || 0)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
+                    </div>
+                    <div className="aud-at__custo">
+                      <b className="tabular">{a.impacto ? sinal(a.impacto) : formatarReais(0)}</b>
+                      <small>{res === "mais" ? "custo maior" : res === "menos" ? "custo enxugado" : "sem impacto no custo"}</small>
+                      {a.custoRegras ? <small className="aud-at__regra">inclui {formatarReais(a.custoRegras)} da tabela de alterações</small> : null}
+                      {vistoEm(a.id) ? <small className="aud-at__visto">visto às {horaDe(vistoEm(a.id))}</small> : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </>
       )}

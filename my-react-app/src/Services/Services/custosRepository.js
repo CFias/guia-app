@@ -26,7 +26,13 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { compararComFoto, conferenciaSuspeita, fotoDaLinha, linhaDaAlteracao, resumoDoBalanco } from "./auditoriaAlteracoes";
+import {
+  compararComFoto,
+  conferenciaSuspeita,
+  fotoDaLinha,
+  linhaDaAlteracao,
+  resumoDoBalanco,
+} from "./auditoriaAlteracoes";
 import { SEDE, phoenixReserveService } from "./regiaoAtiva";
 import {
   alertasDoDia,
@@ -62,7 +68,8 @@ const urlPhoenix = (data, tipos, regiao) => {
 
 const lista = (json) => {
   if (Array.isArray(json)) return json;
-  for (const c of [json?.data, json?.results, json?.rows, json?.items]) if (Array.isArray(c)) return c;
+  for (const c of [json?.data, json?.results, json?.rows, json?.items])
+    if (Array.isArray(c)) return c;
   return [];
 };
 
@@ -87,12 +94,17 @@ export const buscarItensDoDia = async (data, regiao) => {
 
 // Transfers e passeios do dia, já um por escala (e os serviços de parceiro
 // reconhecidos pelas tarifas)
-export const buscarServicosDoDia = async (data, tarifas = [], regiao) => consolidarServicos(await buscarItensDoDia(data, regiao), data, tarifas);
+export const buscarServicosDoDia = async (data, tarifas = [], regiao) =>
+  consolidarServicos(await buscarItensDoDia(data, regiao), data, tarifas);
 
 // nomes de serviço vistos no Phoenix (sugestão no cadastro de tarifa de parceiro)
 export const registrarServicosConhecidos = (nomes = []) =>
   nomes.length
-    ? setDoc(REF_CONFIG(), { servicosConhecidos: arrayUnion(...nomes) }, { merge: true })
+    ? setDoc(
+        REF_CONFIG(),
+        { servicosConhecidos: arrayUnion(...nomes) },
+        { merge: true },
+      )
     : Promise.resolve();
 
 /* ---------------- configuração ---------------- */
@@ -100,7 +112,11 @@ export const registrarServicosConhecidos = (nomes = []) =>
 export const ouvirConfigCustos = (aoMudar, aoErro) =>
   onSnapshot(
     REF_CONFIG(),
-    (snap) => aoMudar(normalizarConfigCustos(snap.exists() ? snap.data() : {}), snap.exists()),
+    (snap) =>
+      aoMudar(
+        normalizarConfigCustos(snap.exists() ? snap.data() : {}),
+        snap.exists(),
+      ),
     (e) => {
       console.error("Erro ao ler settings/custos:", e);
       aoErro?.(e);
@@ -109,18 +125,29 @@ export const ouvirConfigCustos = (aoMudar, aoErro) =>
   );
 
 export const salvarConfigCustos = (patch) =>
-  setDoc(REF_CONFIG(), { ...patch, atualizadoEm: Timestamp.now() }, { merge: true });
+  setDoc(
+    REF_CONFIG(),
+    { ...patch, atualizadoEm: Timestamp.now() },
+    { merge: true },
+  );
 
 export const fixarCategoriaVeiculo = (veiculoKey, categoria) =>
   setDoc(
     REF_CONFIG(),
-    { categoriasVeiculo: { [veiculoKey]: categoria || deleteField() }, atualizadoEm: Timestamp.now() },
+    {
+      categoriasVeiculo: { [veiculoKey]: categoria || deleteField() },
+      atualizadoEm: Timestamp.now(),
+    },
     { merge: true },
   );
 
 export const registrarRegioes = (regioes = []) =>
   regioes.length
-    ? setDoc(REF_CONFIG(), { regioesConhecidas: arrayUnion(...regioes) }, { merge: true })
+    ? setDoc(
+        REF_CONFIG(),
+        { regioesConhecidas: arrayUnion(...regioes) },
+        { merge: true },
+      )
     : Promise.resolve();
 
 /* ---------------- fornecedores e vínculos ---------------- */
@@ -135,11 +162,18 @@ export const ouvirVinculos = (aoMudar) =>
     },
   );
 
-export const salvarVinculoVeiculo = (veiculoKey, { fornecedor, veiculoNome = "", placa = "" }) =>
+export const salvarVinculoVeiculo = (
+  veiculoKey,
+  { fornecedor, veiculoNome = "", placa = "" },
+) =>
   setDoc(
     REF_VINCULOS(),
     {
-      vinculos: { [veiculoKey]: fornecedor ? { fornecedor, veiculoNome, placa } : deleteField() },
+      vinculos: {
+        [veiculoKey]: fornecedor
+          ? { fornecedor, veiculoNome, placa }
+          : deleteField(),
+      },
       updatedAt: Timestamp.now(),
     },
     { merge: true },
@@ -188,7 +222,11 @@ export const gravarRetratos = (data, retratos = {}, removidas = []) => {
     linhas[chave] = { removido: true };
   });
   if (!Object.keys(linhas).length) return Promise.resolve();
-  return setDoc(REF_DIA(data), { data, linhas, sincronizadoEm: Timestamp.now() }, { merge: true });
+  return setDoc(
+    REF_DIA(data),
+    { data, linhas, sincronizadoEm: Timestamp.now() },
+    { merge: true },
+  );
 };
 
 // patch: campos de `manual`; null/"" apaga o campo (volta ao automático)
@@ -213,10 +251,18 @@ export const gravarLancamento = (data, chave, patch, usuario, retrato) => {
 
 // resumo do recomendador e dos alertas (para o relatório executivo)
 export const gravarResumoDia = (data, resumo) =>
-  setDoc(REF_DIA(data), { data, resumo, resumoEm: Timestamp.now() }, { merge: true });
+  setDoc(
+    REF_DIA(data),
+    { data, resumo, resumoEm: Timestamp.now() },
+    { merge: true },
+  );
 
 export const excluirLinha = (data, chave) =>
-  setDoc(REF_DIA(data), { linhas: { [chave]: deleteField() } }, { merge: true });
+  setDoc(
+    REF_DIA(data),
+    { linhas: { [chave]: deleteField() } },
+    { merge: true },
+  );
 
 export const marcarStatusDia = (data, status, usuario) =>
   setDoc(
@@ -242,7 +288,9 @@ const emLotes = async (itens, tamanho, fn) => {
       res[atual] = await fn(itens[atual], atual);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador));
+  await Promise.all(
+    Array.from({ length: Math.min(tamanho, itens.length) }, trabalhador),
+  );
   return res;
 };
 
@@ -257,7 +305,11 @@ export const carregarCustosPeriodo = async (datas = []) =>
 // Dias sem lançamento: busca no Phoenix e grava o retrato pela tabela
 // (rascunho), para o relatório não ficar com buraco. Não sobrescreve nada
 // lançado à mão (só cria o que não existe).
-export const calcularDiasPelaTabela = async (datas, { config, vinculos, fornecedores }, aoProgredir) => {
+export const calcularDiasPelaTabela = async (
+  datas,
+  { config, vinculos, fornecedores },
+  aoProgredir,
+) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
   const capacidades = mapaCapacidadePorVeiculo(fornecedores);
   let feitos = 0;
@@ -273,10 +325,21 @@ export const calcularDiasPelaTabela = async (datas, { config, vinculos, forneced
       linhas.forEach((l) => {
         retratos[l.chave] = retratoDaLinha(l);
       });
-      const resumo = resumoDoDia(recomendarTrocas(servicos, ctx), alertasDoDia(linhas));
+      const resumo = resumoDoDia(
+        recomendarTrocas(servicos, ctx),
+        alertasDoDia(linhas),
+      );
       await setDoc(
         REF_DIA(data),
-        { data, status: "rascunho", linhas: retratos, resumo, resumoEm: Timestamp.now(), sincronizadoEm: Timestamp.now(), calculadoPelaTabela: true },
+        {
+          data,
+          status: "rascunho",
+          linhas: retratos,
+          resumo,
+          resumoEm: Timestamp.now(),
+          sincronizadoEm: Timestamp.now(),
+          calculadoPelaTabela: true,
+        },
         { merge: true },
       );
     } catch (e) {
@@ -297,7 +360,10 @@ export const calcularDiasPelaTabela = async (datas, { config, vinculos, forneced
 // os serviços do dia com o custo pela tabela (sem lançamentos à mão).
 // Sempre o Phoenix de Salvador: a auditoria é da sede, mesmo que a pessoa
 // esteja com outra base selecionada no topo (senão compararia bases diferentes).
-export const calcularLinhasDoDia = async (data, { config, vinculos, fornecedores }) => {
+export const calcularLinhasDoDia = async (
+  data,
+  { config, vinculos, fornecedores },
+) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
   const capacidades = mapaCapacidadePorVeiculo(fornecedores);
   const { servicos } = await buscarServicosDoDia(data, config.tarifas, SEDE);
@@ -318,20 +384,37 @@ export const ouvirAuditoria = (data, aoMudar) =>
   );
 
 // tira (ou refaz) a foto da escala de um dia: substitui a foto e zera o "visto às"
-export const tirarFotoDaEscala = async (data, ctx, usuario, origem = "manual") => {
+export const tirarFotoDaEscala = async (
+  data,
+  ctx,
+  usuario,
+  origem = "manual",
+) => {
   const linhas = await calcularLinhasDoDia(data, ctx);
-  const fotos = Object.fromEntries(linhas.map((l) => [l.chave, fotoDaLinha(l)]));
+  const fotos = Object.fromEntries(
+    linhas.map((l) => [l.chave, fotoDaLinha(l)]),
+  );
   await setDoc(REF_AUDITORIA(data), {
     data,
-    foto: { em: Timestamp.now(), por: quem(usuario), origem, servicos: linhas.length, linhas: fotos },
+    foto: {
+      em: Timestamp.now(),
+      por: quem(usuario),
+      origem,
+      servicos: linhas.length,
+      linhas: fotos,
+    },
     atualizadoEm: Timestamp.now(),
   });
   return linhas.length;
 };
 
-const idSeguro = (id) => String(id).replace(/[^\w|:,-]/g, "_").slice(0, 300);
+const idSeguro = (id) =>
+  String(id)
+    .replace(/[^\w|:,-]/g, "_")
+    .slice(0, 300);
 export const chaveDaVista = idSeguro;
-const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const isoDe = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lerVinculos = async () => {
   const snap = await getDoc(REF_VINCULOS());
   return snap.exists() ? snap.data()?.vinculos || {} : {};
@@ -359,18 +442,31 @@ export const garantirProgramacao = async (data, ctx, usuario) => {
   // da programação guardada na véspera (a "prévia", atualizada a cada 10 min)
   const previa = snap.exists() ? snap.data()?.previa : null;
   const agoraV = new Date();
-  const naViradaV = isoDe(agoraV) === data && agoraV.getHours() === 0 && agoraV.getMinutes() < 30;
+  const naViradaV =
+    isoDe(agoraV) === data &&
+    agoraV.getHours() === 0 &&
+    agoraV.getMinutes() < 30;
   if (!naViradaV && previa?.linhas && Object.keys(previa.linhas).length) {
     const em = previa.em?.toDate?.() || null;
     if (em && isoDe(em) < data) {
       const foto = { ...previa, origem: "vespera" };
-      await setDoc(REF_AUDITORIA(data), { data, foto, previa: deleteField(), atualizadoEm: Timestamp.now() }, { merge: true });
+      await setDoc(
+        REF_AUDITORIA(data),
+        { data, foto, previa: deleteField(), atualizadoEm: Timestamp.now() },
+        { merge: true },
+      );
       return foto;
     }
   }
   const agora = new Date();
-  const naVirada = isoDe(agora) === data && agora.getHours() === 0 && agora.getMinutes() < 30;
-  await tirarFotoDaEscala(data, ctx, usuario, naVirada ? "meia-noite" : isoDe(agora) < data ? "antecipada" : "atrasada");
+  const naVirada =
+    isoDe(agora) === data && agora.getHours() === 0 && agora.getMinutes() < 30;
+  await tirarFotoDaEscala(
+    data,
+    ctx,
+    usuario,
+    naVirada ? "meia-noite" : isoDe(agora) < data ? "antecipada" : "atrasada",
+  );
   return (await getDoc(REF_AUDITORIA(data))).data()?.foto || null;
 };
 
@@ -382,9 +478,21 @@ const resumoAlteracao = (a) =>
       hora: a.hora,
       tipoServico: a.tipoServico,
       servico: a.servico,
-      veiculoAntes: a.antes?.veiculo || "",
-      veiculoDepois: a.depois?.veiculo || "",
-      mudancas: a.mudancas.map((m) => ({ tipo: m.tipo, de: m.de ?? "", para: m.para ?? "", qtd: m.qtd ?? 0, custo: m.custo || 0 })),
+      classe: a.classe || "",
+      titulo: a.titulo || "",
+      veiculoAntes: a.veiculosAntes ?? (a.antes?.veiculo || ""),
+      veiculoDepois: a.veiculosDepois ?? (a.depois?.veiculo || ""),
+      veiculosAntes: a.veiculosAntes || "",
+      veiculosDepois: a.veiculosDepois || "",
+      totalAntes: a.totalAntes ?? 0,
+      totalDepois: a.totalDepois ?? 0,
+      mudancas: a.mudancas.map((m) => ({
+        tipo: m.tipo,
+        de: m.de ?? "",
+        para: m.para ?? "",
+        qtd: m.qtd ?? 0,
+        custo: m.custo || 0,
+      })),
       deltaTabela: a.deltaTabela,
       custoRegras: a.custoRegras,
       impacto: a.impacto,
@@ -394,7 +502,8 @@ const resumoAlteracao = (a) =>
 // id fixo para a mesma leva de alterações (dois computadores abertos não duplicam o aviso)
 const hashTexto = (t) => {
   let h = 5381;
-  for (let i = 0; i < t.length; i += 1) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  for (let i = 0; i < t.length; i += 1)
+    h = ((h << 5) + h + t.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 };
 const dataBrCurta = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -403,12 +512,17 @@ const dataBrCurta = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
    com uma linha por alteração — sem valores (nem todos têm acesso a Custos). */
 export const notificarAlteracoes = (data, novas = []) => {
   if (!novas.length) return Promise.resolve();
-  const id = `aud_${data}_${hashTexto(novas.map((a) => a.id).sort().join("|"))}`;
+  const id = `aud_${data}_${hashTexto(
+    novas
+      .map((a) => a.id)
+      .sort()
+      .join("|"),
+  )}`;
   return setDoc(doc(db, "notificacoes", id), {
     tipo: "auditoria",
     origem: "sistema",
     data,
-    titulo: `${novas.length} alteraç${novas.length > 1 ? "ões" : "ão"} na escala de ${dataBrCurta(data)}`,
+    titulo: `${novas.length} atualizaç${novas.length > 1 ? "ões" : "ão"} na programação de ${dataBrCurta(data)}`,
     linhas: novas.slice(0, 6).map(linhaDaAlteracao),
     total: novas.length,
     createdAt: Timestamp.now(),
@@ -417,14 +531,31 @@ export const notificarAlteracoes = (data, novas = []) => {
 
 // grava no histórico as alterações que ainda não estavam lá (e avisa no sino);
 // com `rel`, guarda também o resumo do dia que alimenta o Balanço
-export const registrarNoHistorico = async (data, alteracoes = [], historicoAtual = null, rel = null) => {
-  const atual = historicoAtual || (await getDoc(REF_AUDITORIA(data))).data()?.historico || {};
+export const registrarNoHistorico = async (
+  data,
+  alteracoes = [],
+  historicoAtual = null,
+  rel = null,
+) => {
+  const atual =
+    historicoAtual ||
+    (await getDoc(REF_AUDITORIA(data))).data()?.historico ||
+    {};
   const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
   const patch = { ultimaVerificacao: Timestamp.now(), suspeita: deleteField() };
   if (rel) patch.resumo = { ...resumoDoBalanco(rel), em: Timestamp.now() };
-  if (novas.length) patch.historico = Object.fromEntries(novas.map((a) => [idSeguro(a.id), { em: Timestamp.now(), ...resumoAlteracao(a) }]));
+  if (novas.length)
+    patch.historico = Object.fromEntries(
+      novas.map((a) => [
+        idSeguro(a.id),
+        { em: Timestamp.now(), ...resumoAlteracao(a) },
+      ]),
+    );
   await setDoc(REF_AUDITORIA(data), patch, { merge: true });
-  if (novas.length) await notificarAlteracoes(data, novas).catch((e) => console.error("Aviso da auditoria:", e));
+  if (novas.length)
+    await notificarAlteracoes(data, novas).catch((e) =>
+      console.error("Aviso da auditoria:", e),
+    );
   return novas.length;
 };
 
@@ -433,7 +564,11 @@ export const registrarNoHistorico = async (data, alteracoes = [], historicoAtual
 export const conferirDia = async (data, ctx, foto) => {
   const linhas = await calcularLinhasDoDia(data, ctx);
   if (conferenciaSuspeita(foto, linhas)) {
-    await setDoc(REF_AUDITORIA(data), { ultimaVerificacao: Timestamp.now(), suspeita: Timestamp.now() }, { merge: true });
+    await setDoc(
+      REF_AUDITORIA(data),
+      { ultimaVerificacao: Timestamp.now(), suspeita: Timestamp.now() },
+      { merge: true },
+    );
     return 0;
   }
   const rel = compararComFoto(foto, linhas, ctx.config.auditoria);
@@ -443,14 +578,32 @@ export const conferirDia = async (data, ctx, foto) => {
 // a programação de amanhã como está agora (vira a "foto" se ninguém estiver
 // com o sistema aberto à meia-noite)
 export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
-  const amanha = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+  const amanha = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate() + 1,
+  );
   const data = isoDe(amanha);
   const snap = await getDoc(REF_AUDITORIA(data));
   if (snap.exists() && snap.data()?.foto) return 0;
   const linhas = await calcularLinhasDoDia(data, ctx);
   if (!linhas.length) return 0;
-  const fotos = Object.fromEntries(linhas.map((l) => [l.chave, fotoDaLinha(l)]));
-  await setDoc(REF_AUDITORIA(data), { data, previa: { em: Timestamp.now(), por: "sistema", servicos: linhas.length, linhas: fotos } }, { merge: true });
+  const fotos = Object.fromEntries(
+    linhas.map((l) => [l.chave, fotoDaLinha(l)]),
+  );
+  await setDoc(
+    REF_AUDITORIA(data),
+    {
+      data,
+      previa: {
+        em: Timestamp.now(),
+        por: "sistema",
+        servicos: linhas.length,
+        linhas: fotos,
+      },
+    },
+    { merge: true },
+  );
   return linhas.length;
 };
 
@@ -461,11 +614,17 @@ export const rodarAuditoriaAutomatica = async (usuario, contexto = null) => {
   const foto = await garantirProgramacao(hoje, ctx, usuario);
   const n = foto ? await conferirDia(hoje, ctx, foto) : 0;
   // fecha o dia de ontem (pega o que mudou depois da última conferência)
-  const ontem = isoDe(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1));
+  const ontem = isoDe(
+    new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1),
+  );
   const docOntem = (await getDoc(REF_AUDITORIA(ontem))).data();
   if (docOntem?.foto && !docOntem.fechado) {
     await conferirDia(ontem, ctx, docOntem.foto);
-    await setDoc(REF_AUDITORIA(ontem), { fechado: Timestamp.now() }, { merge: true });
+    await setDoc(
+      REF_AUDITORIA(ontem),
+      { fechado: Timestamp.now() },
+      { merge: true },
+    );
   }
   // a partir do meio-dia, vai guardando a programação de amanhã
   if (agora.getHours() >= 12) await guardarPreviaDeAmanha(ctx, agora);
@@ -478,16 +637,38 @@ export const carregarBalanco = async (datas = []) =>
     await emLotes(datas, 10, async (data) => {
       const snap = await getDoc(REF_AUDITORIA(data));
       const d = snap.exists() ? snap.data() : null;
-      return d?.foto ? { data, resumo: d.resumo || null, foto: { em: d.foto.em || null, origem: d.foto.origem || "", servicos: d.foto.servicos || 0 }, historico: Object.keys(d.historico || {}).length, fechado: !!d.fechado } : null;
+      return d?.foto
+        ? {
+            data,
+            resumo: d.resumo || null,
+            foto: {
+              em: d.foto.em || null,
+              origem: d.foto.origem || "",
+              servicos: d.foto.servicos || 0,
+            },
+            historico: Object.keys(d.historico || {}).length,
+            fechado: !!d.fechado,
+          }
+        : null;
     })
   ).filter(Boolean);
 
 // apaga do histórico registros que não valem (ex.: os que voltaram atrás)
 export const descartarDoHistorico = (data, chaves = []) =>
   chaves.length
-    ? setDoc(REF_AUDITORIA(data), { historico: Object.fromEntries(chaves.map((k) => [k, deleteField()])) }, { merge: true })
+    ? setDoc(
+        REF_AUDITORIA(data),
+        {
+          historico: Object.fromEntries(chaves.map((k) => [k, deleteField()])),
+        },
+        { merge: true },
+      )
     : Promise.resolve();
 
 // só o resumo do Balanço (dia passado aberto no auditor, sem mexer no histórico)
 export const gravarResumoDoBalanco = (data, rel) =>
-  setDoc(REF_AUDITORIA(data), { resumo: { ...resumoDoBalanco(rel), em: Timestamp.now() } }, { merge: true });
+  setDoc(
+    REF_AUDITORIA(data),
+    { resumo: { ...resumoDoBalanco(rel), em: Timestamp.now() } },
+    { merge: true },
+  );

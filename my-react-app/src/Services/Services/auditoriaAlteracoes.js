@@ -12,26 +12,194 @@
 // + o que a TABELA DE CUSTOS DAS ALTERAÇÕES manda somar (100% configurável:
 // valor fixo, % do serviço e valor por passageiro, por tipo de alteração).
 //
-// A chave do serviço é a mesma do Custo do dia (`<tipo>_<escala>`), então
-// trocar o veículo dentro da mesma escala aparece como "troca de veículo", e
-// não como um cancelado + um novo.
+// As reservas ligam os veículos da programação aos de agora: cada grupo de
+// passageiros que mudou vira UMA atualização ("1 Van → 1 Van + 1 Carro"),
+// com o custo antes e depois pela tabela de tarifas.
 
 export const TIPOS_ALTERACAO = [
-  { id: "novo", nome: "Serviço novo no dia", curto: "Novo", ref: "depois", dica: "escala criada depois da foto" },
-  { id: "cancelado", nome: "Serviço cancelado / tirado da escala", curto: "Cancelado", ref: "antes", dica: "estava na foto e saiu" },
-  { id: "fornecedor", nome: "Troca de fornecedor", curto: "Fornecedor", ref: "depois" },
+  {
+    id: "novo",
+    nome: "Serviço novo no dia",
+    curto: "Novo",
+    ref: "depois",
+    dica: "escala criada depois da foto",
+  },
+  {
+    id: "cancelado",
+    nome: "Serviço cancelado / tirado da escala",
+    curto: "Cancelado",
+    ref: "antes",
+    dica: "estava na foto e saiu",
+  },
+  {
+    id: "fornecedor",
+    nome: "Troca de fornecedor",
+    curto: "Fornecedor",
+    ref: "depois",
+  },
   { id: "veiculo", nome: "Troca de veículo", curto: "Veículo", ref: "depois" },
-  { id: "categoria", nome: "Troca de categoria (carro, van, micro…)", curto: "Categoria", ref: "depois" },
-  { id: "motorista", nome: "Troca de motorista", curto: "Motorista", ref: "depois" },
+  {
+    id: "categoria",
+    nome: "Troca de categoria (carro, van, micro…)",
+    curto: "Categoria",
+    ref: "depois",
+  },
+  {
+    id: "motorista",
+    nome: "Troca de motorista",
+    curto: "Motorista",
+    ref: "depois",
+  },
   { id: "guia", nome: "Troca de guia", curto: "Guia", ref: "depois" },
-  { id: "horario", nome: "Mudança de horário", curto: "Horário", ref: "depois" },
-  { id: "paxMais", nome: "Passageiros a mais", curto: "Pax +", ref: "depois", porPax: true },
-  { id: "paxMenos", nome: "Passageiros a menos", curto: "Pax −", ref: "depois", porPax: true },
-  { id: "reservasMais", nome: "Reservas incluídas", curto: "Reserva +", ref: "depois", porPax: true, unidade: "reserva" },
-  { id: "reservasMenos", nome: "Reservas retiradas", curto: "Reserva −", ref: "depois", porPax: true, unidade: "reserva" },
+  {
+    id: "horario",
+    nome: "Mudança de horário",
+    curto: "Horário",
+    ref: "depois",
+  },
+  {
+    id: "paxMais",
+    nome: "Passageiros a mais",
+    curto: "Pax +",
+    ref: "depois",
+    porPax: true,
+  },
+  {
+    id: "paxMenos",
+    nome: "Passageiros a menos",
+    curto: "Pax −",
+    ref: "depois",
+    porPax: true,
+  },
+  {
+    id: "reservasMais",
+    nome: "Reservas incluídas",
+    curto: "Reserva +",
+    ref: "depois",
+    porPax: true,
+    unidade: "reserva",
+  },
+  {
+    id: "reservasMenos",
+    nome: "Reservas retiradas",
+    curto: "Reserva −",
+    ref: "depois",
+    porPax: true,
+    unidade: "reserva",
+  },
+  {
+    id: "escala",
+    nome: "Escala refeita (mesmo veículo, número novo)",
+    curto: "Escala",
+    ref: "depois",
+  },
 ];
-export const NOME_ALTERACAO = Object.fromEntries(TIPOS_ALTERACAO.map((t) => [t.id, t.nome]));
-export const CURTO_ALTERACAO = Object.fromEntries(TIPOS_ALTERACAO.map((t) => [t.id, t.curto]));
+
+/* O QUE O AUDITOR OBSERVA (configurável em Auditor → O que observar).
+   Tudo o que vem do Phoenix e entra na comparação. Desmarcado = o auditor
+   ignora aquele tipo de mudança (não mostra, não conta, não avisa). */
+export const ITENS_OBSERVADOS = [
+  {
+    id: "estrutura",
+    nome: "Veículo a mais, retirado ou juntados",
+    dica: "o grupo de passageiros passou a usar mais ou menos veículos (ex.: 1 Van → 1 Van + 1 Carro)",
+    tipos: [],
+    padrao: true,
+  },
+  {
+    id: "novo",
+    nome: "Serviço novo",
+    dica: "escala que não existia na programação fechada",
+    tipos: ["novo"],
+    padrao: true,
+  },
+  {
+    id: "cancelado",
+    nome: "Serviço cancelado",
+    dica: "estava na programação e saiu do Phoenix",
+    tipos: ["cancelado"],
+    padrao: true,
+  },
+  {
+    id: "veiculo",
+    nome: "Troca de veículo",
+    dica: "mesmo grupo, outro veículo",
+    tipos: ["veiculo"],
+    padrao: true,
+  },
+  {
+    id: "fornecedor",
+    nome: "Troca de fornecedor",
+    dica: "o veículo é de outro fornecedor",
+    tipos: ["fornecedor"],
+    padrao: true,
+  },
+  {
+    id: "categoria",
+    nome: "Troca de categoria",
+    dica: "carro, van, micro, ônibus",
+    tipos: ["categoria"],
+    padrao: true,
+  },
+  {
+    id: "motorista",
+    nome: "Troca de motorista",
+    dica: "mesmo veículo, outro motorista",
+    tipos: ["motorista"],
+    padrao: true,
+  },
+  {
+    id: "guia",
+    nome: "Troca de guia",
+    dica: "guia incluído, trocado ou retirado",
+    tipos: ["guia"],
+    padrao: true,
+  },
+  {
+    id: "horario",
+    nome: "Mudança de horário",
+    dica: "o horário do serviço mudou",
+    tipos: ["horario"],
+    padrao: true,
+  },
+  {
+    id: "pax",
+    nome: "Passageiros a mais ou a menos",
+    dica: "pax do veículo mudou",
+    tipos: ["paxMais", "paxMenos"],
+    padrao: true,
+  },
+  {
+    id: "reservas",
+    nome: "Reservas incluídas ou retiradas",
+    dica: "quantidade de reservas do veículo mudou",
+    tipos: ["reservasMais", "reservasMenos"],
+    padrao: true,
+  },
+  {
+    id: "escala",
+    nome: "Escala refeita no mesmo veículo",
+    dica: "tirou da escala e escalou de novo no mesmo veículo (só o número da escala muda — normalmente não interessa)",
+    tipos: ["escala"],
+    padrao: false,
+  },
+];
+const ITEM_DO_TIPO = Object.fromEntries(
+  ITENS_OBSERVADOS.flatMap((i) => i.tipos.map((t) => [t, i.id])),
+);
+export const normalizarObservar = (o = {}) =>
+  Object.fromEntries(
+    ITENS_OBSERVADOS.map((i) => [
+      i.id,
+      typeof o?.[i.id] === "boolean" ? o[i.id] : i.padrao,
+    ]),
+  );
+export const NOME_ALTERACAO = Object.fromEntries(
+  TIPOS_ALTERACAO.map((t) => [t.id, t.nome]),
+);
+export const CURTO_ALTERACAO = Object.fromEntries(
+  TIPOS_ALTERACAO.map((t) => [t.id, t.curto]),
+);
 
 const num = (v) => {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -45,10 +213,19 @@ const horaValida = (h) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(h || ""));
 export const normalizarAuditoria = (a = {}) => ({
   // somar a diferença da tabela de tarifas (custo depois − custo antes)
   contarTabela: a?.contarTabela !== false,
+  observar: normalizarObservar(a?.observar),
   regras: Object.fromEntries(
     TIPOS_ALTERACAO.map((t) => {
       const r = a?.regras?.[t.id] || {};
-      return [t.id, { fixo: Math.max(0, num(r.fixo)), pct: Math.max(0, Math.min(500, num(r.pct))), porPax: Math.max(0, num(r.porPax)), ativa: r.ativa !== false }];
+      return [
+        t.id,
+        {
+          fixo: Math.max(0, num(r.fixo)),
+          pct: Math.max(0, Math.min(500, num(r.pct))),
+          porPax: Math.max(0, num(r.porPax)),
+          ativa: r.ativa !== false,
+        },
+      ];
     }),
   ),
 });
@@ -74,26 +251,88 @@ export const fotoDaLinha = (l) => ({
   total: Number(l.total) || 0,
 });
 
-const iguais = (a, b) => String(a || "").trim().toUpperCase() === String(b || "").trim().toUpperCase();
-const minutos = (h) => (horaValida(h) ? Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5)) : null);
+const iguais = (a, b) =>
+  String(a || "")
+    .trim()
+    .toUpperCase() ===
+  String(b || "")
+    .trim()
+    .toUpperCase();
+const minutos = (h) =>
+  horaValida(h) ? Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5)) : null;
 
 // as mudanças entre a foto (antes) e agora (depois) de um mesmo serviço
 const mudancasDoServico = (antes, depois) => {
   const m = [];
   if (!antes && depois) return [{ tipo: "novo", para: depois.veiculo }];
   if (antes && !depois) return [{ tipo: "cancelado", de: antes.veiculo }];
-  if (antes.fornecedor && depois.fornecedor && !iguais(antes.fornecedor, depois.fornecedor)) m.push({ tipo: "fornecedor", de: antes.fornecedor, para: depois.fornecedor });
-  if (!iguais(antes.veiculo, depois.veiculo)) m.push({ tipo: "veiculo", de: antes.veiculo, para: depois.veiculo });
-  if (antes.categoria && depois.categoria && antes.categoria !== depois.categoria) m.push({ tipo: "categoria", de: antes.categoria, para: depois.categoria });
-  if (antes.motorista && !iguais(antes.motorista, depois.motorista)) m.push({ tipo: "motorista", de: antes.motorista, para: depois.motorista || "—" });
-  if ((antes.guia || depois.guia) && !iguais(antes.guia, depois.guia)) m.push({ tipo: "guia", de: antes.guia || "sem guia", para: depois.guia || "sem guia" });
+  if (
+    antes.fornecedor &&
+    depois.fornecedor &&
+    !iguais(antes.fornecedor, depois.fornecedor)
+  )
+    m.push({
+      tipo: "fornecedor",
+      de: antes.fornecedor,
+      para: depois.fornecedor,
+    });
+  if (!iguais(antes.veiculo, depois.veiculo))
+    m.push({ tipo: "veiculo", de: antes.veiculo, para: depois.veiculo });
+  if (
+    antes.categoria &&
+    depois.categoria &&
+    antes.categoria !== depois.categoria
+  )
+    m.push({ tipo: "categoria", de: antes.categoria, para: depois.categoria });
+  if (antes.motorista && !iguais(antes.motorista, depois.motorista))
+    m.push({
+      tipo: "motorista",
+      de: antes.motorista,
+      para: depois.motorista || "—",
+    });
+  if ((antes.guia || depois.guia) && !iguais(antes.guia, depois.guia))
+    m.push({
+      tipo: "guia",
+      de: antes.guia || "sem guia",
+      para: depois.guia || "sem guia",
+    });
   const ma = minutos(antes.hora);
   const md = minutos(depois.hora);
-  if (ma !== null && md !== null && ma !== md) m.push({ tipo: "horario", de: antes.hora, para: depois.hora, qtd: md - ma });
-  if (depois.pax > antes.pax) m.push({ tipo: "paxMais", de: antes.pax, para: depois.pax, qtd: depois.pax - antes.pax });
-  if (depois.pax < antes.pax) m.push({ tipo: "paxMenos", de: antes.pax, para: depois.pax, qtd: antes.pax - depois.pax });
-  if (depois.reservas > antes.reservas) m.push({ tipo: "reservasMais", de: antes.reservas, para: depois.reservas, qtd: depois.reservas - antes.reservas });
-  if (depois.reservas < antes.reservas) m.push({ tipo: "reservasMenos", de: antes.reservas, para: depois.reservas, qtd: antes.reservas - depois.reservas });
+  if (ma !== null && md !== null && ma !== md)
+    m.push({
+      tipo: "horario",
+      de: antes.hora,
+      para: depois.hora,
+      qtd: md - ma,
+    });
+  if (depois.pax > antes.pax)
+    m.push({
+      tipo: "paxMais",
+      de: antes.pax,
+      para: depois.pax,
+      qtd: depois.pax - antes.pax,
+    });
+  if (depois.pax < antes.pax)
+    m.push({
+      tipo: "paxMenos",
+      de: antes.pax,
+      para: depois.pax,
+      qtd: antes.pax - depois.pax,
+    });
+  if (depois.reservas > antes.reservas)
+    m.push({
+      tipo: "reservasMais",
+      de: antes.reservas,
+      para: depois.reservas,
+      qtd: depois.reservas - antes.reservas,
+    });
+  if (depois.reservas < antes.reservas)
+    m.push({
+      tipo: "reservasMenos",
+      de: antes.reservas,
+      para: depois.reservas,
+      qtd: antes.reservas - depois.reservas,
+    });
   return m;
 };
 
@@ -102,9 +341,14 @@ export const custoDaRegra = (m, antes, depois, regras) => {
   const r = regras?.[m.tipo];
   if (!r || r.ativa === false) return 0;
   const tipo = TIPOS_ALTERACAO.find((t) => t.id === m.tipo);
-  const ref = tipo?.ref === "antes" ? antes?.total || 0 : depois?.total || antes?.total || 0;
+  const ref =
+    tipo?.ref === "antes"
+      ? antes?.total || 0
+      : depois?.total || antes?.total || 0;
   const pax = tipo?.porPax ? Math.abs(Number(m.qtd) || 0) : 0;
-  return Math.round((r.fixo + (ref * r.pct) / 100 + r.porPax * pax) * 100) / 100;
+  return (
+    Math.round((r.fixo + (ref * r.pct) / 100 + r.porPax * pax) * 100) / 100
+  );
 };
 
 /* Compara a foto com o dia.
@@ -112,126 +356,432 @@ export const custoDaRegra = (m, antes, depois, regras) => {
    Devolve { alteracoes: [...], totais }. Cada alteração:
    { id, chave, hora, tipoServico, servico, antes, depois, mudancas: [{ tipo, de, para, qtd, custo }],
      deltaTabela, custoRegras, impacto } */
-/* Quando o Phoenix troca o veículo, muitas vezes ele apaga a escala e cria
-   outra (a chave muda). Sem isto, a troca apareceria como "cancelado" +
-   "novo". Junta os pares: mesmo tipo de serviço e as mesmas reservas (ou,
-   na foto antiga sem reservas, mesmo serviço e mesmo horário, sem empate). */
-const juntarTrocas = (sumiram, entraram) => {
-  const pares = [];
-  const livres = new Set(entraram.map((d) => d.chave));
-  sumiram.forEach((a) => {
-    let melhor = null;
-    let nota = 0;
-    entraram.forEach((d) => {
-      if (!livres.has(d.chave) || (a.tipo || "") !== (d.tipo || "")) return;
-      const ca = new Set(a.codigos || []);
-      const comum = (d.codigos || []).filter((c) => ca.has(c)).length;
-      // metade ou mais das reservas da foto foram para a escala nova
-      const n = ca.size && comum ? comum / ca.size : 0;
-      if (n >= 0.5 && n > nota) {
-        melhor = d;
-        nota = n;
-      }
-    });
-    if (!melhor && !(a.codigos || []).length) {
-      const mesmos = entraram.filter((d) => livres.has(d.chave) && (d.tipo || "") === (a.tipo || "") && iguais(d.servicoNome, a.servicoNome) && d.hora === a.hora);
-      const rivais = sumiram.filter((x) => (x.tipo || "") === (a.tipo || "") && iguais(x.servicoNome, a.servicoNome) && x.hora === a.hora);
-      if (mesmos.length === 1 && rivais.length === 1) melhor = mesmos[0];
-    }
-    if (melhor) {
-      livres.delete(melhor.chave);
-      pares.push([a, melhor]);
-    }
+/* ---------------------------------------------------------------
+   COMPARAÇÃO: programação fechada (foto da virada) × Phoenix agora.
+
+   O que importa é a LOGÍSTICA de cada grupo de passageiros: as reservas
+   ligam os veículos de antes aos de agora. Cada grupo que mudou vira UMA
+   atualização legível, com o custo antes e depois pela tabela de tarifas:
+     "Veículo a mais: Van FERNANDO → Van FERNANDO + Carro THAIS  +R$ 90"
+     "Veículos juntados: Carro A + Carro B → Van C  −R$ 40"
+     "Troca de veículo: Van X → Micro Y  +R$ 120"
+   Foto antiga (sem as reservas guardadas) cai na comparação escala a escala.
+   --------------------------------------------------------------- */
+export const CLASSES_ATUALIZACAO = [
+  {
+    id: "veiculoMais",
+    nome: "Veículo a mais",
+    dica: "o grupo foi dividido em mais veículos",
+  },
+  {
+    id: "juntou",
+    nome: "Veículos juntados",
+    dica: "grupos que estavam em veículos diferentes foram juntados",
+  },
+  { id: "troca", nome: "Troca de veículo", dica: "mesmo grupo, outro veículo" },
+  {
+    id: "novo",
+    nome: "Serviço novo",
+    dica: "entrou depois da programação fechada",
+  },
+  {
+    id: "cancelado",
+    nome: "Serviço cancelado",
+    dica: "estava na programação e saiu",
+  },
+  {
+    id: "remanejou",
+    nome: "Passageiros remanejados",
+    dica: "reservas passaram de um veículo para outro",
+  },
+  {
+    id: "ajuste",
+    nome: "Ajuste no serviço",
+    dica: "horário, passageiros, motorista ou guia",
+  },
+  {
+    id: "escala",
+    nome: "Escala refeita",
+    dica: "mesmo veículo, número de escala novo",
+  },
+];
+export const NOME_CLASSE = Object.fromEntries(
+  CLASSES_ATUALIZACAO.map((c) => [c.id, c.nome]),
+);
+
+const NOME_CAT_CURTO = {
+  carro: "Carro",
+  van: "Van",
+  "van-alongada": "Van alongada",
+  micro: "Micro",
+  onibus: "Ônibus",
+};
+// "Van FERNANDO - PLOTADA (15)"
+export const nomeDoVeiculo = (l) => {
+  const cat = NOME_CAT_CURTO[l?.categoria] || "";
+  const v = String(l?.veiculo || "").trim();
+  if (!v) return cat || "sem veículo";
+  return cat && !v.toUpperCase().startsWith(cat.toUpperCase())
+    ? `${cat} ${v}`
+    : v;
+};
+// "1 Van" / "1 Van + 1 Carro"
+export const contagemDeVeiculos = (lista = []) => {
+  const n = {};
+  lista.forEach((l) => {
+    const c = NOME_CAT_CURTO[l.categoria] || "Veículo";
+    n[c] = (n[c] || 0) + 1;
   });
-  return pares;
+  return Object.entries(n)
+    .map(([c, q]) => `${q} ${c}${q > 1 && !c.endsWith("s") ? "s" : ""}`)
+    .join(" + ");
 };
 
-export const compararComFoto = (foto, atuais = [], config = normalizarAuditoria()) => {
+// grupos ligados pelas reservas (ou pela mesma escala)
+const gruposPorReserva = (base, agora) => {
+  const pai = new Map();
+  const achar = (x) => {
+    while (pai.get(x) !== x) {
+      pai.set(x, pai.get(pai.get(x)));
+      x = pai.get(x);
+    }
+    return x;
+  };
+  const unir = (a, b) => {
+    const ra = achar(a);
+    const rb = achar(b);
+    if (ra !== rb) pai.set(ra, rb);
+  };
+  const nos = [
+    ...Object.keys(base).map((k) => `A:${k}`),
+    ...[...agora.keys()].map((k) => `B:${k}`),
+  ];
+  nos.forEach((n) => pai.set(n, n));
+  // mesma escala nos dois lados
+  Object.keys(base).forEach((k) => agora.has(k) && unir(`A:${k}`, `B:${k}`));
+  // mesma reserva
+  const porCodigo = new Map();
+  const anotar = (lado, l) =>
+    (l.codigos || []).forEach((c) => {
+      const k = `${l.tipo || ""}|${c}`;
+      if (!porCodigo.has(k)) porCodigo.set(k, []);
+      porCodigo.get(k).push(`${lado}:${l.chave}`);
+    });
+  Object.values(base).forEach((l) => anotar("A", l));
+  agora.forEach((l) => anotar("B", l));
+  porCodigo.forEach((lista) =>
+    lista.slice(1).forEach((n) => unir(lista[0], n)),
+  );
+  const grupos = new Map();
+  nos.forEach((n) => {
+    const r = achar(n);
+    if (!grupos.has(r)) grupos.set(r, { a: [], b: [] });
+    const [lado, ...resto] = n.split(":");
+    const chave = resto.join(":");
+    if (lado === "A") grupos.get(r).a.push(base[chave]);
+    else grupos.get(r).b.push(agora.get(chave));
+  });
+  return [...grupos.values()];
+};
+
+// dentro do grupo, quem é a continuação de quem (mesma escala ou mais reservas em comum)
+const parear = (a, b) => {
+  const pares = [];
+  const livresB = new Set(b.map((x) => x.chave));
+  const livresA = new Set(a.map((x) => x.chave));
+  a.forEach((x) => {
+    if (livresB.has(x.chave)) {
+      pares.push([x, b.find((y) => y.chave === x.chave)]);
+      livresB.delete(x.chave);
+      livresA.delete(x.chave);
+    }
+  });
+  const candidatos = [];
+  a.filter((x) => livresA.has(x.chave)).forEach((x) => {
+    const cx = new Set(x.codigos || []);
+    b.filter((y) => livresB.has(y.chave)).forEach((y) => {
+      const comum = (y.codigos || []).filter((c) => cx.has(c)).length;
+      if (comum) candidatos.push([comum, x, y]);
+    });
+  });
+  candidatos
+    .sort((p, q) => q[0] - p[0])
+    .forEach(([, x, y]) => {
+      if (!livresA.has(x.chave) || !livresB.has(y.chave)) return;
+      pares.push([x, y]);
+      livresA.delete(x.chave);
+      livresB.delete(y.chave);
+    });
+  return {
+    pares,
+    soA: a.filter((x) => livresA.has(x.chave)),
+    soB: b.filter((y) => livresB.has(y.chave)),
+  };
+};
+
+// foto antiga sem reservas: troca de escala com o mesmo serviço e horário (sem empate)
+const juntarSemCodigos = (grupos) => {
+  const soltosA = grupos.filter(
+    (g) => g.a.length === 1 && !g.b.length && !(g.a[0].codigos || []).length,
+  );
+  const soltosB = grupos.filter((g) => g.b.length === 1 && !g.a.length);
+  const usados = new Set();
+  soltosA.forEach((ga) => {
+    const x = ga.a[0];
+    const iguaisA = soltosA.filter(
+      (g) =>
+        (g.a[0].tipo || "") === (x.tipo || "") &&
+        iguais(g.a[0].servicoNome, x.servicoNome) &&
+        g.a[0].hora === x.hora,
+    );
+    const cand = soltosB.filter(
+      (g) =>
+        !usados.has(g) &&
+        (g.b[0].tipo || "") === (x.tipo || "") &&
+        iguais(g.b[0].servicoNome, x.servicoNome) &&
+        g.b[0].hora === x.hora,
+    );
+    if (iguaisA.length === 1 && cand.length === 1) {
+      ga.b.push(cand[0].b[0]);
+      usados.add(cand[0]);
+    }
+  });
+  return grupos.filter((g) => !usados.has(g));
+};
+
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const somaTotal = (l) => r2(l.reduce((s, x) => s + (Number(x.total) || 0), 0));
+
+export const compararComFoto = (
+  foto,
+  atuais = [],
+  config = normalizarAuditoria(),
+) => {
   const base = foto?.linhas || {};
   const agora = new Map(atuais.map((l) => [l.chave, fotoDaLinha(l)]));
-  const sumiram = Object.values(base).filter((a) => !agora.has(a.chave));
-  const entraram = [...agora.values()].filter((d) => !base[d.chave]);
-  const pares = juntarTrocas(sumiram, entraram);
-  const parDe = new Map(pares.map(([a, d]) => [a.chave, d]));
-  const jaUsada = new Set(pares.map(([, d]) => d.chave));
-  const casos = [
-    ...Object.keys(base).map((chave) => [base[chave], parDe.get(chave) || agora.get(chave) || null]),
-    ...[...agora.values()].filter((d) => !base[d.chave] && !jaUsada.has(d.chave)).map((d) => [null, d]),
-  ];
+  const grupos = juntarSemCodigos(gruposPorReserva(base, agora));
   const alteracoes = [];
-  casos.forEach(([antes, depois]) => {
-    const chave = depois?.chave || antes?.chave;
-    const trocouEscala = !!(antes && depois && antes.chave !== depois.chave);
-    const mudancas = mudancasDoServico(antes, depois);
-    if (!mudancas.length) return;
-    mudancas.forEach((m) => {
-      m.custo = custoDaRegra(m, antes, depois, config.regras);
+
+  const obs = normalizarObservar(config.observar);
+  const escalaDe = (l) => String(l?.chave || "").replace(/^[A-Z]+_/, "");
+
+  grupos.forEach(({ a: a0, b: b0 }) => {
+    // serviço novo / cancelado inteiro
+    if (!a0.length && !obs.novo) return;
+    if (!b0.length && !obs.cancelado) return;
+    const { pares, soA, soB } = parear(a0, b0);
+    const misto = a0.length > 0 && b0.length > 0;
+    // sem "veículo a mais / retirado", o grupo fica só com os veículos que continuam
+    const a = misto && !obs.estrutura ? pares.map(([x]) => x) : a0;
+    const b = misto && !obs.estrutura ? pares.map(([, y]) => y) : b0;
+    const mudancas = [];
+    pares.forEach(([x, y]) => {
+      mudancasDoServico(x, y).forEach((m) =>
+        mudancas.push({ ...m, veiculo: nomeDoVeiculo(y), _a: x, _b: y }),
+      );
+      // mesma logística, mas a escala foi refeita (número novo)
+      if (x.chave !== y.chave && iguais(x.veiculo, y.veiculo))
+        mudancas.push({
+          tipo: "escala",
+          de: escalaDe(x),
+          para: escalaDe(y),
+          veiculo: nomeDoVeiculo(y),
+          _a: x,
+          _b: y,
+        });
     });
-    const deltaTabela = config.contarTabela ? Math.round(((depois?.total || 0) - (antes?.total || 0)) * 100) / 100 : 0;
-    const custoRegras = Math.round(mudancas.reduce((s, m) => s + m.custo, 0) * 100) / 100;
-    const ref = depois || antes;
+    if (!misto || obs.estrutura) {
+      soA.forEach((x) =>
+        mudancas.push({
+          tipo: "cancelado",
+          de: nomeDoVeiculo(x),
+          veiculo: nomeDoVeiculo(x),
+          _a: x,
+          _b: null,
+          estrutura: misto,
+        }),
+      );
+      soB.forEach((y) =>
+        mudancas.push({
+          tipo: "novo",
+          para: nomeDoVeiculo(y),
+          veiculo: nomeDoVeiculo(y),
+          _a: null,
+          _b: y,
+          estrutura: misto,
+        }),
+      );
+    }
+    // só o que está marcado em "O que observar"
+    const vistas = mudancas.filter(
+      (m) => m.estrutura || obs[ITEM_DO_TIPO[m.tipo]] !== false,
+    );
+    mudancas.length = 0;
+    vistas.forEach((m) => {
+      delete m.estrutura;
+      mudancas.push(m);
+    });
+    if (!mudancas.length) return;
+
+    mudancas.forEach((m) => {
+      m.custo = custoDaRegra(m, m._a, m._b, config.regras);
+      delete m._a;
+      delete m._b;
+    });
+    const totalAntes = somaTotal(a);
+    const totalDepois = somaTotal(b);
+    const deltaTabela = config.contarTabela ? r2(totalDepois - totalAntes) : 0;
+    const custoRegras = r2(mudancas.reduce((s, m) => s + m.custo, 0));
+    const impacto = r2(deltaTabela + custoRegras);
+
+    const trocouVeiculo = mudancas.some((m) => m.tipo === "veiculo");
+    const classe = !a.length
+      ? "novo"
+      : !b.length
+        ? "cancelado"
+        : b.length > a.length
+          ? "veiculoMais"
+          : b.length < a.length
+            ? "juntou"
+            : trocouVeiculo
+              ? "troca"
+              : mudancas.every((m) => m.tipo === "escala")
+                ? "escala"
+                : a.length > 1 &&
+                    mudancas.some((m) => /^(pax|reservas)/.test(m.tipo))
+                  ? "remanejou"
+                  : "ajuste";
+    const ordenar = (l) =>
+      [...l].sort((x, y) =>
+        `${x.hora}${x.chave}`.localeCompare(`${y.hora}${y.chave}`),
+      );
+    const antesL = ordenar(a);
+    const depoisL = ordenar(b);
+    const ref = depoisL[0] || antesL[0];
+    const chaves = `${antesL.map((x) => x.chave).join("+")}>${depoisL.map((x) => x.chave).join("+")}`;
     alteracoes.push({
-      id: `${trocouEscala ? `${antes.chave}>` : ""}${chave}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
-      chave,
-      trocouEscala,
-      hora: ref.hora || "",
+      id: `${chaves}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
+      chave: ref.chave,
+      classe,
+      titulo: NOME_CLASSE[classe],
+      hora: (depoisL[0] || antesL[0])?.hora || "",
       tipoServico: ref.tipo || "",
       servico: ref.servicoNome || "",
-      antes,
-      depois,
+      antesLista: antesL,
+      depoisLista: depoisL,
+      antes: antesL[0] || null,
+      depois: depoisL[0] || null,
+      veiculosAntes: antesL.map(nomeDoVeiculo).join(" + "),
+      veiculosDepois: depoisL.map(nomeDoVeiculo).join(" + "),
+      contagemAntes: contagemDeVeiculos(antesL),
+      contagemDepois: contagemDeVeiculos(depoisL),
+      paxAntes: antesL.reduce((s, x) => s + (x.pax || 0), 0),
+      paxDepois: depoisL.reduce((s, x) => s + (x.pax || 0), 0),
+      totalAntes,
+      totalDepois,
       mudancas,
       deltaTabela,
       custoRegras,
-      impacto: Math.round((deltaTabela + custoRegras) * 100) / 100,
+      impacto,
     });
   });
-  alteracoes.sort((a, b) => `${a.hora || "99:99"}${a.chave}`.localeCompare(`${b.hora || "99:99"}${b.chave}`));
-  const totalFoto = Object.values(base).reduce((s, l) => s + (Number(l.total) || 0), 0);
-  const totalAgora = [...agora.values()].reduce((s, l) => s + (Number(l.total) || 0), 0);
+
+  alteracoes.sort((x, y) =>
+    `${x.hora || "99:99"}${x.chave}`.localeCompare(
+      `${y.hora || "99:99"}${y.chave}`,
+    ),
+  );
+  const totalFoto = Object.values(base).reduce(
+    (s, l) => s + (Number(l.total) || 0),
+    0,
+  );
+  const totalAgora = [...agora.values()].reduce(
+    (s, l) => s + (Number(l.total) || 0),
+    0,
+  );
   const porTipo = {};
-  alteracoes.forEach((a) =>
-    a.mudancas.forEach((m) => {
+  const porClasse = {};
+  alteracoes.forEach((x) => {
+    porClasse[x.classe] = porClasse[x.classe] || { n: 0, impacto: 0 };
+    porClasse[x.classe].n += 1;
+    porClasse[x.classe].impacto = r2(porClasse[x.classe].impacto + x.impacto);
+    x.mudancas.forEach((m) => {
       porTipo[m.tipo] = porTipo[m.tipo] || { n: 0, custo: 0 };
       porTipo[m.tipo].n += 1;
       porTipo[m.tipo].custo += m.custo;
-    }),
-  );
-  const deltaTabela = alteracoes.reduce((s, a) => s + a.deltaTabela, 0);
-  const custoRegras = alteracoes.reduce((s, a) => s + a.custoRegras, 0);
+    });
+  });
+  const deltaTabela = alteracoes.reduce((s, x) => s + x.deltaTabela, 0);
+  const custoRegras = alteracoes.reduce((s, x) => s + x.custoRegras, 0);
   return {
     alteracoes,
     totais: {
       servicosFoto: Object.keys(base).length,
       servicosAgora: agora.size,
-      totalFoto: Math.round(totalFoto * 100) / 100,
-      totalAgora: Math.round(totalAgora * 100) / 100,
-      deltaTabela: Math.round(deltaTabela * 100) / 100,
-      custoRegras: Math.round(custoRegras * 100) / 100,
-      impacto: Math.round((deltaTabela + custoRegras) * 100) / 100,
-      aumentos: alteracoes.filter((a) => a.impacto > 0).reduce((s, a) => s + a.impacto, 0),
-      reducoes: alteracoes.filter((a) => a.impacto < 0).reduce((s, a) => s + a.impacto, 0),
+      totalFoto: r2(totalFoto),
+      totalAgora: r2(totalAgora),
+      deltaTabela: r2(deltaTabela),
+      custoRegras: r2(custoRegras),
+      impacto: r2(deltaTabela + custoRegras),
+      aumentos: r2(
+        alteracoes
+          .filter((x) => x.impacto > 0)
+          .reduce((s, x) => s + x.impacto, 0),
+      ),
+      reducoes: r2(
+        alteracoes
+          .filter((x) => x.impacto < 0)
+          .reduce((s, x) => s + x.impacto, 0),
+      ),
       porTipo,
+      porClasse,
     },
   };
 };
 
-const NOME_CATEG = { carro: "Carro", van: "Van", "van-alongada": "Van alongada", micro: "Micro-ônibus", onibus: "Ônibus" };
+const NOME_CATEG = {
+  carro: "Carro",
+  van: "Van",
+  "van-alongada": "Van alongada",
+  micro: "Micro-ônibus",
+  onibus: "Ônibus",
+};
 // "VAN X → THAIS 1", "05:30 → 06:00 (+30 min)", "6 → 3 pax"…
 export const textoDaMudanca = (m) => {
   if (m.tipo === "novo") return `entrou ${m.para || ""}`.trim();
+  if (m.tipo === "escala") return `nº ${m.de} → ${m.para}`;
   if (m.tipo === "cancelado") return `saiu ${m.de || ""}`.trim();
-  if (m.tipo === "categoria") return `${NOME_CATEG[m.de] || m.de} → ${NOME_CATEG[m.para] || m.para}`;
-  if (m.tipo === "horario") return `${m.de} → ${m.para} (${m.qtd > 0 ? "+" : ""}${m.qtd} min)`;
-  if (m.tipo === "paxMais" || m.tipo === "paxMenos") return `${m.de} → ${m.para} pax`;
-  if (m.tipo === "reservasMais" || m.tipo === "reservasMenos") return `${m.de} → ${m.para} reserva(s)`;
+  if (m.tipo === "categoria")
+    return `${NOME_CATEG[m.de] || m.de} → ${NOME_CATEG[m.para] || m.para}`;
+  if (m.tipo === "horario")
+    return `${m.de} → ${m.para} (${m.qtd > 0 ? "+" : ""}${m.qtd} min)`;
+  if (m.tipo === "paxMais" || m.tipo === "paxMenos")
+    return `${m.de} → ${m.para} pax`;
+  if (m.tipo === "reservasMais" || m.tipo === "reservasMenos")
+    return `${m.de} → ${m.para} reserva(s)`;
   return `${m.de || "—"} → ${m.para || "—"}`;
 };
-const NOME_TIPO_SERV = { IN: "IN", OUT: "OUT", TRF: "Transfer", PASSEIO: "Passeio", APOIO: "Apoio", SERVICO: "Parceiro" };
+const NOME_TIPO_SERV = {
+  IN: "IN",
+  OUT: "OUT",
+  TRF: "Transfer",
+  PASSEIO: "Passeio",
+  APOIO: "Apoio",
+  SERVICO: "Parceiro",
+};
 // uma linha por alteração, para a notificação (sem valores)
 export const linhaDaAlteracao = (a) =>
-  `${a.hora || "--:--"} ${NOME_TIPO_SERV[a.tipoServico] || a.tipoServico || ""} · ${(a.depois || a.antes)?.veiculo || a.veiculoDepois || a.veiculoAntes || "—"}: ${(a.mudancas || [])
-    .map((m) => `${CURTO_ALTERACAO[m.tipo] || m.tipo} ${textoDaMudanca(m)}`)
-    .join(" · ")}`;
+  a.titulo
+    ? `${a.hora || "--:--"} ${NOME_TIPO_SERV[a.tipoServico] || a.tipoServico || ""} · ${a.titulo}: ${
+        a.classe === "ajuste" || a.classe === "remanejou"
+          ? `${a.veiculosDepois || a.veiculosAntes} (${(a.mudancas || []).map((m) => `${CURTO_ALTERACAO[m.tipo] || m.tipo} ${textoDaMudanca(m)}`).join(" · ")})`
+          : `${a.veiculosAntes || "—"} → ${a.veiculosDepois || "—"}`
+      }`
+    : `${a.hora || "--:--"} ${NOME_TIPO_SERV[a.tipoServico] || a.tipoServico || ""} · ${(a.depois || a.antes)?.veiculo || a.veiculoDepois || a.veiculoAntes || "—"}: ${(
+        a.mudancas || []
+      )
+        .map((m) => `${CURTO_ALTERACAO[m.tipo] || m.tipo} ${textoDaMudanca(m)}`)
+        .join(" · ")}`;
 
 /* Resumo do dia para o BALANÇO (fica no auditoria_dia de cada dia e é
    atualizado a cada conferência): quantas alterações, quanto aumentou e
@@ -239,7 +789,12 @@ export const linhaDaAlteracao = (a) =>
 export const resumoDoBalanco = (rel) => {
   const t = rel?.totais || {};
   const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-  const porTipo = Object.fromEntries(Object.entries(t.porTipo || {}).map(([k, v]) => [k, { n: v.n || 0, custo: r2(v.custo) }]));
+  const porTipo = Object.fromEntries(
+    Object.entries(t.porTipo || {}).map(([k, v]) => [
+      k,
+      { n: v.n || 0, custo: r2(v.custo) },
+    ]),
+  );
   const alteracoes = rel?.alteracoes || [];
   return {
     alteracoes: alteracoes.length,
@@ -256,6 +811,7 @@ export const resumoDoBalanco = (rel) => {
     reducoes: r2(t.reducoes),
     impacto: r2(t.impacto),
     porTipo,
+    porClasse: t.porClasse || {},
   };
 };
 
@@ -267,9 +823,13 @@ export const conferenciaSuspeita = (foto, atuais = []) => {
   if (nFoto < 6) return false;
   if (!atuais.length) return true;
   // pelas reservas (a escala pode ter sido refeita com outros números)
-  const codFoto = new Set(Object.values(foto.linhas).flatMap((l) => l.codigos || []));
+  const codFoto = new Set(
+    Object.values(foto.linhas).flatMap((l) => l.codigos || []),
+  );
   if (codFoto.size >= 10) {
-    const codAgora = new Set(atuais.flatMap((l) => (l.codigos || []).map(String)));
+    const codAgora = new Set(
+      atuais.flatMap((l) => (l.codigos || []).map(String)),
+    );
     const ficaram = [...codFoto].filter((c) => codAgora.has(c)).length;
     return ficaram / codFoto.size < 0.4;
   }

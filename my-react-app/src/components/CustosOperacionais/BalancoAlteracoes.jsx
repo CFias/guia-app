@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles } from "../ui";
-import { NOME_ALTERACAO, TIPOS_ALTERACAO } from "../../Services/Services/auditoriaAlteracoes";
+import { CLASSES_ATUALIZACAO, TIPOS_ALTERACAO } from "../../Services/Services/auditoriaAlteracoes";
 import { formatarReais } from "../../Services/Services/custosCalculo";
 import { carregarBalanco } from "../../Services/Services/custosRepository";
 import { CSS_IMPRESSAO, esc, imprimirHtml } from "../RelatorioTurnos/impressaoTurnos";
@@ -49,7 +49,7 @@ const PRESETS = [
 // soma os resumos dos dias
 const somarBalanco = (dias = []) => {
   const comResumo = dias.filter((d) => d.resumo);
-  const t = { dias: dias.length, comResumo: comResumo.length, alteracoes: 0, mudancas: 0, comAumento: 0, comReducao: 0, aumentos: 0, reducoes: 0, impacto: 0, totalFoto: 0, totalAgora: 0, porTipo: {} };
+  const t = { dias: dias.length, comResumo: comResumo.length, alteracoes: 0, mudancas: 0, comAumento: 0, comReducao: 0, aumentos: 0, reducoes: 0, impacto: 0, totalFoto: 0, totalAgora: 0, porTipo: {}, porClasse: {} };
   comResumo.forEach(({ resumo: r }) => {
     t.alteracoes += r.alteracoes || 0;
     t.mudancas += r.mudancas || 0;
@@ -65,34 +65,46 @@ const somarBalanco = (dias = []) => {
       t.porTipo[k].n += v.n || 0;
       t.porTipo[k].custo += v.custo || 0;
     });
+    Object.entries(r.porClasse || {}).forEach(([k, v]) => {
+      t.porClasse[k] = t.porClasse[k] || { n: 0, impacto: 0 };
+      t.porClasse[k].n += v.n || 0;
+      t.porClasse[k].impacto = r2(t.porClasse[k].impacto + (v.impacto || 0));
+    });
   });
   ["aumentos", "reducoes", "impacto", "totalFoto", "totalAgora"].forEach((k) => (t[k] = r2(t[k])));
   return t;
 };
 
+// "por tipo": pelas atualizações (Veículo a mais, Juntados…) com o saldo de
+// cada uma; dias antigos (antes desse resumo) caem nos tipos de mudança
+const linhasPorTipo = (t) =>
+  Object.keys(t.porClasse).length
+    ? CLASSES_ATUALIZACAO.filter((c) => t.porClasse[c.id]).map((c) => ({ id: c.id, nome: c.nome, n: t.porClasse[c.id].n, valor: t.porClasse[c.id].impacto, saldo: true }))
+    : TIPOS_ALTERACAO.filter((x) => t.porTipo[x.id]).map((x) => ({ id: x.id, nome: x.nome, n: t.porTipo[x.id].n, valor: r2(t.porTipo[x.id].custo), saldo: false }));
+
 const htmlBalanco = ({ ini, fim, dias, t }) => {
-  const tipos = TIPOS_ALTERACAO.filter((x) => t.porTipo[x.id]);
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Balanço das alterações ${esc(dataBr(ini))} a ${esc(dataBr(fim))}</title><style>${CSS_IMPRESSAO}
+  const tipos = linhasPorTipo(t);
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Balanço das atualizações ${esc(dataBr(ini))} a ${esc(dataBr(fim))}</title><style>${CSS_IMPRESSAO}
 .mais { color: #b42318; font-weight: 700; } .menos { color: #067647; font-weight: 700; }
 .kpis { grid-template-columns: repeat(5, 1fr); }
 </style></head><body>
-<div class="topo"><div><h1>Balanço das alterações da escala</h1><p>${esc(dataBr(ini))} a ${esc(dataBr(fim))} · ${t.comResumo} dia(s) auditado(s)</p></div><div class="gerado">Gerado em ${esc(new Date().toLocaleString("pt-BR"))}</div></div>
+<div class="topo"><div><h1>Balanço das atualizações da programação</h1><p>${esc(dataBr(ini))} a ${esc(dataBr(fim))} · ${t.comResumo} dia(s) auditado(s)</p></div><div class="gerado">Gerado em ${esc(new Date().toLocaleString("pt-BR"))}</div></div>
 <div class="kpis">
-<div class="kpi"><span>Alterações</span><b>${t.alteracoes}</b><small>${t.mudancas} mudança(s)</small></div>
-<div class="kpi"><span>Aumentaram o custo</span><b class="mais">${esc(sinal(t.aumentos))}</b><small>${t.comAumento} alteração(ões)</small></div>
-<div class="kpi"><span>Reduziram o custo</span><b class="menos">${esc(sinal(t.reducoes))}</b><small>${t.comReducao} alteração(ões)</small></div>
+<div class="kpi"><span>Atualizações</span><b>${t.alteracoes}</b><small>${t.mudancas} mudança(s)</small></div>
+<div class="kpi"><span>Custo maior</span><b class="mais">${esc(sinal(t.aumentos))}</b><small>${t.comAumento} atualização(ões)</small></div>
+<div class="kpi"><span>Custo enxugado</span><b class="menos">${esc(sinal(t.reducoes))}</b><small>${t.comReducao} atualização(ões)</small></div>
 <div class="kpi"><span>Saldo</span><b class="${t.impacto > 0 ? "mais" : t.impacto < 0 ? "menos" : ""}">${esc(sinal(t.impacto))}</b><small>aumentos + reduções</small></div>
 <div class="kpi"><span>Custo programado → final</span><b>${esc(formatarReais(t.totalAgora, { semCentavos: true }))}</b><small>programado ${esc(formatarReais(t.totalFoto, { semCentavos: true }))}</small></div>
 </div>
 ${
   tipos.length
-    ? `<h2>Por tipo de alteração</h2><table><thead><tr><th class="e">Alteração</th><th>Quantidade</th><th>Custo pela tabela das alterações</th></tr></thead><tbody>${tipos
-        .map((x) => `<tr><td class="e">${esc(x.nome)}</td><td>${t.porTipo[x.id].n}</td><td>${esc(formatarReais(t.porTipo[x.id].custo))}</td></tr>`)
+    ? `<h2>Por tipo de atualização</h2><table><thead><tr><th class="e">Atualização</th><th>Quantidade</th><th>Impacto no custo</th></tr></thead><tbody>${tipos
+        .map((x) => `<tr><td class="e">${esc(x.nome)}</td><td>${x.n}</td><td class="${x.valor > 0 ? "mais" : x.valor < 0 ? "menos" : ""}">${esc(x.saldo ? sinal(x.valor) : formatarReais(x.valor))}</td></tr>`)
         .join("")}</tbody></table>`
     : ""
 }
 <h2>Dia a dia</h2>
-<table><thead><tr><th class="e">Dia</th><th>Serviços</th><th>Alterações</th><th>Aumento</th><th>Redução</th><th>Saldo</th><th>Programado</th><th>Final</th></tr></thead><tbody>
+<table><thead><tr><th class="e">Dia</th><th>Serviços</th><th>Atualizações</th><th>Aumento</th><th>Redução</th><th>Saldo</th><th>Programado</th><th>Final</th></tr></thead><tbody>
 ${dias
   .map((d) =>
     d.resumo
@@ -124,24 +136,24 @@ const BalancoAlteracoes = () => {
   const carregando = res.chave !== chave;
   const dias = useMemo(() => (carregando ? [] : res.dias), [carregando, res.dias]);
   const t = useMemo(() => somarBalanco(dias), [dias]);
-  const tipos = TIPOS_ALTERACAO.filter((x) => t.porTipo[x.id]);
+  const tipos = linhasPorTipo(t);
   const maiorDia = Math.max(1, ...dias.map((d) => Math.abs(d.resumo?.aumentos || 0) + Math.abs(d.resumo?.reducoes || 0)));
 
   const baixarExcel = () => {
     const linhas = [
-      [`Balanço das alterações · ${dataBr(ini)} a ${dataBr(fim)}`],
+      [`Balanço das atualizações · ${dataBr(ini)} a ${dataBr(fim)}`],
       [],
-      ["Alterações", t.alteracoes],
-      ["Aumentaram o custo", t.aumentos, `${t.comAumento} alteração(ões)`],
-      ["Reduziram o custo", t.reducoes, `${t.comReducao} alteração(ões)`],
+      ["Atualizações", t.alteracoes],
+      ["Custo maior", t.aumentos, `${t.comAumento} atualização(ões)`],
+      ["Custo enxugado", t.reducoes, `${t.comReducao} atualização(ões)`],
       ["Saldo", t.impacto],
       ["Custo programado", t.totalFoto],
       ["Custo final", t.totalAgora],
       [],
-      ["Por tipo de alteração", "Quantidade", "Custo pela tabela das alterações"],
-      ...tipos.map((x) => [NOME_ALTERACAO[x.id], t.porTipo[x.id].n, r2(t.porTipo[x.id].custo)]),
+      ["Por tipo de atualização", "Quantidade", "Impacto no custo"],
+      ...tipos.map((x) => [x.nome, x.n, x.valor]),
       [],
-      ["Dia", "Serviços programados", "Alterações", "Aumento", "Redução", "Saldo", "Custo programado", "Custo final"],
+      ["Dia", "Serviços programados", "Atualizações", "Aumento", "Redução", "Saldo", "Custo programado", "Custo final"],
       ...dias.map((d) =>
         d.resumo
           ? [dataBr(d.data), d.resumo.servicosFoto, d.resumo.alteracoes, d.resumo.aumentos, d.resumo.reducoes, d.resumo.impacto, d.resumo.totalFoto, d.resumo.totalAgora]
@@ -208,9 +220,9 @@ const BalancoAlteracoes = () => {
         <>
           <KpiTiles
             items={[
-              { key: "n", label: "Alterações", value: t.alteracoes, hint: `${t.comResumo} dia(s) auditado(s) · ${t.mudancas} mudança(s)`, icon: "listCheck" },
-              { key: "mais", label: "Aumentaram o custo", value: sinal(t.aumentos), hint: `${t.comAumento} alteração(ões)`, icon: "trendingUp", tone: t.aumentos > 0 ? "alert" : undefined },
-              { key: "menos", label: "Reduziram o custo", value: sinal(t.reducoes), hint: `${t.comReducao} alteração(ões)`, icon: "trendingDown" },
+              { key: "n", label: "Atualizações", value: t.alteracoes, hint: `${t.comResumo} dia(s) auditado(s) · ${t.mudancas} mudança(s)`, icon: "listCheck" },
+              { key: "mais", label: "Custo maior", value: sinal(t.aumentos), hint: `${t.comAumento} atualização(ões)`, icon: "trendingUp", tone: t.aumentos > 0 ? "alert" : undefined },
+              { key: "menos", label: "Custo enxugado", value: sinal(t.reducoes), hint: `${t.comReducao} atualização(ões)`, icon: "trendingDown" },
               {
                 key: "saldo",
                 label: "Saldo do período",
@@ -224,18 +236,17 @@ const BalancoAlteracoes = () => {
 
           {tipos.length > 0 && (
             <Card className="bal-alt__card">
-              <CardHeader icon="listCheck" title="Por tipo de alteração" subtitle="Quantas vezes cada tipo aconteceu no período e o custo pela tabela das alterações." />
+              <CardHeader icon="listCheck" title="Por tipo de atualização" subtitle="Quantas vezes cada tipo aconteceu no período e quanto mexeu no custo." />
               <ul className="bal-alt__tipos">
-                {tipos
-                  .sort((a, b) => t.porTipo[b.id].n - t.porTipo[a.id].n)
+                {[...tipos]
+                  .sort((a, b) => b.n - a.n)
                   .map((x) => (
                     <li key={x.id}>
-                      <span className={`aud-mud is-${x.id}`}>
-                        <b>{x.curto}</b>
-                      </span>
                       <span className="bal-alt__tipo-nome">{x.nome}</span>
-                      <b className="tabular">{t.porTipo[x.id].n}</b>
-                      <span className="tabular bal-alt__tipo-custo">{t.porTipo[x.id].custo ? formatarReais(t.porTipo[x.id].custo) : "—"}</span>
+                      <b className="tabular">{x.n}</b>
+                      <span className={`tabular bal-alt__tipo-custo aud-impacto ${x.saldo && x.valor > 0 ? "is-mais" : x.saldo && x.valor < 0 ? "is-menos" : ""}`}>
+                        {x.valor ? (x.saldo ? sinal(x.valor) : formatarReais(x.valor)) : "—"}
+                      </span>
                     </li>
                   ))}
               </ul>
@@ -250,7 +261,7 @@ const BalancoAlteracoes = () => {
                   <tr>
                     <th className="e">Dia</th>
                     <th>Serviços</th>
-                    <th>Alterações</th>
+                    <th>Atualizações</th>
                     <th className="e bal-alt__col-barra">Aumento × redução</th>
                     <th>Saldo</th>
                     <th>Programado</th>
