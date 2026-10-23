@@ -137,8 +137,6 @@ const AtendimentoAeroporto = () => {
   const [filtroTurno, setFiltroTurno] = useState(() => (ehOperacional ? "todos" : "meu"));
   const [filtro, setFiltro] = useState("pendentes"); // pendentes | todos | meus
   const [busca, setBusca] = useState("");
-  const [emNomeDe, setEmNomeDe] = useState(""); // operacional: colaborador escolhido
-  const [horaManual, setHoraManual] = useState(""); // operacional: horário da cartinha
   const [abertos, setAbertos] = useState(() => new Set()); // veículos com as reservas abertas
   const alternarAberto = (chave) =>
     setAbertos((a) => {
@@ -233,13 +231,15 @@ const AtendimentoAeroporto = () => {
   }, [etapas]);
   const regra = config?.atendimento?.contagem || "dividir";
 
-  // quem está marcando. Operacional: a própria conta (credenciais dele — a
-  // pessoa da escala ligada a esta conta ou, se não estiver na escala, a conta);
-  // "em nome de" só para lançar cartinhas de outra pessoa
-  const euMesmo = ehOperacional && uid ? equipe.find((c) => c.contaUid === uid || c.id === uid) || { id: uid, nome: perfil?.nome || "Operacional" } : null;
-  const lancando = ehOperacional && !!emNomeDe && emNomeDe !== euMesmo?.id;
+  // quem está marcando.
+  // Operacional: sempre a própria conta, com o NOME CADASTRADO na conta (não
+  // dá para marcar em nome de outra pessoa). Se a conta está ligada a alguém
+  // da escala, usa o id dessa pessoa — o relatório soma no lugar certo.
+  const euMesmo = ehOperacional && uid
+    ? { id: equipe.find((c) => c.contaUid === uid || c.id === uid)?.id || uid, nome: perfil?.nome || "Operacional", turnoId: equipe.find((c) => c.contaUid === uid || c.id === uid)?.turnoId }
+    : null;
   const eu = ehOperacional
-    ? (lancando ? equipe.find((c) => c.id === emNomeDe) : null) || euMesmo
+    ? euMesmo
     : // a conta é ligada à pessoa em Configurar escala (contaUid); contas antigas, pelo colaboradorId
     equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
     equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
@@ -310,8 +310,6 @@ const AtendimentoAeroporto = () => {
       quem,
       por: user?.uid,
       etapaId: etapaRecepcao.id,
-      lancado: lancando,
-      horaManual: lancando ? horaManual : "",
     });
   };
   const alternarReserva = async (g, r, i) => {
@@ -394,8 +392,6 @@ const AtendimentoAeroporto = () => {
         por: user?.uid,
         marcar: !marcado,
         docId: vinculos.get(g.chave)?.id,
-        lancado: lancando,
-        horaManual: lancando ? horaManual : "",
       });
       if (!marcado) registrarAcao(`atendimento_${etapa.id}`, `${etapa.nome} (aeroporto)`, `${g.voos.join(", ")} · ${g.pax} pax`);
     } catch (e) {
@@ -472,7 +468,7 @@ const AtendimentoAeroporto = () => {
           </span>
           <div className="atd-topo__titulo">
             <strong>Atendimento no aeroporto</strong>
-            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : eu.turnoId ? " · folga neste dia" : " · ainda sem turno na escala"}` : "Escolha em nome de quem marcar"}</small>
+            <small>{eu ? `${eu.nome}${meuTurno ? ` · ${meuTurno.turno.nome} ${janela.inicio}–${janela.fim}` : eu.turnoId ? " · folga neste dia" : ehOperacional ? " · conta do Operacional" : " · ainda sem turno na escala"}` : "Entrando…"}</small>
           </div>
           <span className="atd-topo__acoes">
             <AvaliacaoSistema variante="botao" className="atd-btn-leve atd-avaliar" />
@@ -503,34 +499,6 @@ const AtendimentoAeroporto = () => {
             </button>
           </span>
         </div>
-
-        {ehOperacional && (
-          <label className="atd-em-nome">
-            <span>Marcar como</span>
-            <select className="ui-input" value={lancando ? emNomeDe : ""} onChange={(e) => setEmNomeDe(e.target.value)}>
-              <option value="">Eu · {euMesmo?.nome || "minha conta"}</option>
-              {equipe.filter((c) => c.id !== euMesmo?.id).map((c) => (
-                <option key={c.id} value={c.id}>
-                  Lançar por {c.nome} · {c.turnoNome}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {lancando && (
-          <label className="atd-em-nome atd-hora-manual">
-            <span>Horário da cartinha (opcional)</span>
-            <span className="atd-hora-manual__linha">
-              <input type="time" className="ui-input" value={horaManual} onChange={(e) => setHoraManual(e.target.value)} />
-              {horaManual && (
-                <button type="button" className="atd-btn-leve" onClick={() => setHoraManual("")}>
-                  Agora
-                </button>
-              )}
-            </span>
-            <small>Sem horário, a marca fica com a hora do lançamento e não entra no tempo de espera.</small>
-          </label>
-        )}
 
         <div className="atd-dias" role="tablist" aria-label="Dia">
           {[somarDias(hoje(), -1), hoje(), somarDias(hoje(), 1)].map((d) => (
