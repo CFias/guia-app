@@ -2743,3 +2743,260 @@ button.rtn-cal__dia:hover {
   justify-content: center;
   border-bottom: 0;
 }
+
+/* ===================== Atendimento no aeroporto: premium clean ===================== */
+.rtn-atd {
+  gap: 16px;
+}
+
+.rtn-atd .ui-card {
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px -18px rgba(0, 0, 0, 0.35);
+}
+
+.rtn-atd .ui-card__head {
+  padding-top: 16px;
+  padding-bottom: 10px;
+  border-bottom: 0;
+}
+
+.rtn-atd .ui-card__title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.rtn-atd .ui-card__subtitle {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* barra de filtros compacta */
+.rtn-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.rtn-barra__esq,
+.rtn-barra__dir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rtn-barra__datas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text-3);
+}
+
+.rtn-barra__datas input {
+  width: 118px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  color-scheme: light dark;
+}
+
+.rtn-barra__colab {
+  height: 34px;
+  max-width: 220px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color-scheme: light dark;
+}
+
+.rtn-barra__ic {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rtn-barra__ic:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.rtn-barra__ic:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ao vivo: faixa fina */
+.rtn-atd .rtn-vivo {
+  padding: 10px 14px;
+}
+
+.rtn-vivo__lista li {
+  background: none;
+  border-radius: 10px;
+}
+
+.rtn-vivo__lista li:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.rtn-vivo__lista li.is-riscado b {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.rtn-vivo__desfeito {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* indicadores */
+.rtn-metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.rtn-metrica {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.rtn-metrica__rot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rtn-metrica__rot .rtn-ic {
+  width: 26px;
+  height: 26px;
+}
+
+.rtn-metrica>b {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.rtn-metrica>b em {
+  color: var(--text-3);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.rtn-metrica>small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.rtn-metrica__barra {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  overflow: hidden;
+}
+
+.rtn-metrica__barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.rtn-metrica.is-rec .rtn-metrica__barra span {
+  background: linear-gradient(90deg, #2bc277, #16934f);
+}
+
+.rtn-metrica.is-emb .rtn-metrica__barra span {
+  background: linear-gradient(90deg, #5b9bff, #2563eb);
+}
+
+.rtn-metrica.is-aviso>b {
+  color: var(--warning);
+}
+
+.rtn-metrica.is-alerta>b {
+  color: var(--alert);
+}
+
+/* listas: separadores mais leves */
+.rtn-colab,
+.rtn-pend li,
+.rtn-lista__item {
+  border-bottom-color: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.rtn-colabs__cab {
+  border-bottom-color: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.rtn-colab__barra {
+  height: 5px;
+}
+
+.rtn-pend__voo {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+@media (max-width: 640px) {
+  .rtn-barra__dir {
+    width: 100%;
+  }
+
+  .rtn-barra__colab {
+    flex: 1;
+    max-width: none;
+  }
+}

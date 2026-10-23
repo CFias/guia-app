@@ -421,6 +421,19 @@ export const eventosNovos = (antes = [], depois = [], etapas = []) => {
   return out.sort((a, b) => (b.em?.getTime() || 0) - (a.em?.getTime() || 0));
 };
 
+/* O que foi DESFEITO entre duas leituras (marca, recepção ou no show que
+   sumiu): a mesma busca ao contrário. Cada um vira um aviso "Desfeito · …"
+   e o evento original (pelo id) fica riscado no "Ao vivo". */
+export const eventosDesfeitos = (antes = [], depois = [], etapas = []) =>
+  eventosNovos(depois, antes, etapas).map((e) => ({
+    ...e,
+    idOriginal: e.id,
+    id: `${e.id}|desfeito|${Date.now()}`,
+    tipo: "desfeito",
+    texto: `Desfeito · ${e.texto}`,
+    em: new Date(),
+  }));
+
 /* Conta pax por pessoa e etapa.
    regra "dividir": pax / quantos marcaram a etapa; "total": cada um conta tudo.
    Devolve { pessoas: Map(id → { id, nome, colaboradorId, etapas: {e: {pax, veiculos}} }),

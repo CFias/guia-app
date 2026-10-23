@@ -1393,3 +1393,143 @@
     font-size: 14.5px;
   }
 }
+
+/* ===================== leve e didático =====================
+   A FAZER: claro, só contorno, com o número da etapa e a instrução.
+   FEITO: cheio, com ✓, quem e a hora. TRAVADO: tracejado, com cadeado. */
+.atd-carro {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px -16px rgba(0, 0, 0, 0.25);
+  background: var(--surface, #fff);
+}
+
+.atd-carro::before {
+  height: 2px;
+  opacity: 0.85;
+}
+
+.atd-carro.is-andamento {
+  --atd-tom: linear-gradient(90deg, #22b268 50%, color-mix(in srgb, var(--text) 10%, transparent) 50%);
+}
+
+.atd-botao {
+  min-height: 64px;
+  border-radius: 16px;
+  box-shadow: none !important;
+}
+
+.atd-botao__txt b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.atd-botao__tipo {
+  opacity: 0.7;
+}
+
+.atd-botao__num {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a fazer: contorno colorido, fundo claro */
+.atd-botao.is-livre.is-rec,
+.atd-botao.is-livre.is-emb,
+.atd-botao.is-livre.is-meio {
+  border: 1.5px solid color-mix(in srgb, var(--atd-c) 55%, transparent);
+  background: var(--surface, #fff);
+  color: var(--text);
+}
+
+.atd-botao.is-livre .atd-botao__ic {
+  border: 1.5px solid var(--atd-c);
+  background: transparent;
+  color: var(--atd-c);
+}
+
+.atd-botao.is-livre .atd-botao__txt b {
+  color: color-mix(in srgb, var(--atd-c) 85%, var(--text));
+}
+
+.atd-botao.is-livre .atd-botao__txt small {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+.atd-botao.is-livre:hover:not(:disabled) {
+  filter: none;
+  background: color-mix(in srgb, var(--atd-c) 7%, var(--surface, #fff));
+  border-color: var(--atd-c);
+}
+
+.atd-botao.is-livre:active:not(:disabled) {
+  background: color-mix(in srgb, var(--atd-c) 14%, var(--surface, #fff));
+}
+
+/* feito: cheio, ✓ branco */
+.atd-botao.is-feito {
+  border: 1.5px solid transparent;
+  background: var(--atd-c);
+  color: #fff;
+}
+
+.atd-botao.is-rec.is-feito {
+  background: linear-gradient(135deg, #27b36d, #16934f);
+}
+
+.atd-botao.is-emb.is-feito {
+  background: linear-gradient(135deg, #4f8ff7, #2563eb);
+}
+
+.atd-botao.is-feito .atd-botao__ic {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  box-shadow: none;
+}
+
+.atd-botao.is-feito .atd-botao__txt b,
+:is(body.dark, body.dark-pro) .atd-botao.is-feito .atd-botao__txt b {
+  color: #fff;
+}
+
+.atd-botao.is-feito .atd-botao__txt small {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.atd-botao__desfazer {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+
+.atd-botao.is-feito:hover:not(:disabled) .atd-botao__desfazer {
+  background: rgba(255, 255, 255, 0.32);
+  color: #fff;
+}
+
+/* travado */
+.atd-botao.is-travado {
+  border: 1.5px dashed color-mix(in srgb, var(--text) 16%, transparent);
+  background: transparent;
+}
+
+.atd-botao.is-travado .atd-botao__ic {
+  border: 1.5px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: transparent;
+  color: var(--text-3);
+}
+
+.atd-botao.is-travado .atd-botao__txt b {
+  color: var(--text-3);
+}
+
+.atd-botao__cadeado {
+  flex: none;
+  color: var(--text-3);
+}

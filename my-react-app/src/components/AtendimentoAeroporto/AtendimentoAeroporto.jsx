@@ -826,21 +826,39 @@ const AtendimentoAeroporto = () => {
                                 }
                               >
                                 <span className="atd-botao__ic">
-                                  <Icon name={ocupado ? "loader" : travada ? "lock" : icone(x.k)} size={18} className={ocupado ? "ui-spin" : undefined} />
+                                  {ocupado ? (
+                                    <Icon name="loader" size={18} className="ui-spin" />
+                                  ) : feita ? (
+                                    <Icon name="check" size={18} />
+                                  ) : (
+                                    <span className="atd-botao__num">{x.k + 1}</span>
+                                  )}
                                 </span>
                                 <span className="atd-botao__txt">
-                                  <b>{feita ? x.e.nome : x.e.acao || x.e.nome}</b>
+                                  <b>
+                                    {feita ? x.e.nome : x.e.acao || x.e.nome}
+                                    {x.k > 0 && <Icon name={icone(x.k)} size={14} className="atd-botao__tipo" />}
+                                  </b>
                                   <small>
                                     {feita
                                       ? x.marcas.map((y) => `${String(y.nome || "").split(" ")[0]} ${horaDe(y.em)}`).join(" · ")
                                       : travada
                                         ? `libera depois ${daEtapa(anterior.k)}`
                                         : parcial && parcial.ativas.length
-                                          ? `todas · ${parcial.feitas}/${parcial.ativas.length} reservas`
-                                          : "toque para marcar"}
+                                          ? `toque para receber todas · ${parcial.feitas}/${parcial.ativas.length}`
+                                          : x.k === 0
+                                            ? "toque quando receber o passageiro"
+                                            : x.k === etapas.length - 1
+                                              ? "toque quando o veículo sair"
+                                              : "toque para marcar"}
                                   </small>
                                 </span>
-                                {feita && <Icon name="undo" size={14} className="atd-botao__desfazer" />}
+                                {feita && (
+                                  <span className="atd-botao__desfazer" aria-hidden="true">
+                                    <Icon name="undo" size={13} />
+                                  </span>
+                                )}
+                                {travada && <Icon name="lock" size={14} className="atd-botao__cadeado" />}
                               </button>
                               {feita && !jaMarquei && !x.virtual && !(x.k === 0 && porReserva(g)) && (
                                 <button type="button" className="atd-botao__eu" onClick={() => alternar(g, x.e)} disabled={!quem || ocupado}>
