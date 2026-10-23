@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button, Card, EmptyState, Icon, PageHeader, SearchInput, useToast } from "../ui";
 import { useAuth } from "../../Context/AuthContext";
 import { ROLES, ROLE_LABELS } from "../../Context/permissions";
-import { AREAS, GRUPOS_ACESSO, contarBloqueadas, ehGerencia, telaNaRegiao } from "../../Context/acessos";
+import { AREAS, GRUPOS_ACESSO, contarBloqueadas, ehGerencia, liberadaNoMapa, telaNaRegiao } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
 import { controleAtivado, listarContas, salvarAcessosConta } from "../../Services/Services/acessosRepository";
@@ -86,7 +86,7 @@ const ControleAcessos = () => {
   const sujo = useMemo(() => {
     if (!selecionada || !rascunho) return false;
     if ((selecionada.gerencia === true) !== rascunho.gerencia) return true;
-    return AREAS.some((a) => (selecionada.acessos?.[a.chave] === false) !== (rascunho.acessos[a.chave] === false));
+    return AREAS.some((a) => liberadaNoMapa(selecionada.acessos, a.chave) !== liberadaNoMapa(rascunho.acessos, a.chave));
   }, [selecionada, rascunho]);
 
   const filtradas = useMemo(() => {
@@ -300,7 +300,7 @@ const ControleAcessos = () => {
                           {g.areas.map((a) => {
                             const base = baseDaConta({ ...selecionada, gerencia: rascunho.gerencia });
                             const naBase = telaNaRegiao(a.chave, base);
-                            const pode = rascunho.gerencia || (naBase && rascunho.acessos[a.chave] !== false);
+                            const pode = rascunho.gerencia || (naBase && liberadaNoMapa(rascunho.acessos, a.chave));
                             if (!naBase) {
                               return (
                                 <li key={a.chave} className="is-bloq is-fora-base">

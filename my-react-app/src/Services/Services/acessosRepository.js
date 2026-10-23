@@ -5,6 +5,7 @@
 //  - users/{uid}.gerencia: true → acesso total e pode mudar os acessos.
 //  - users/{uid}.acessos: { chaveDaTela: false } → tela bloqueada.
 
+import { AREAS_SO_COM_PERMISSAO } from "../../Context/acessos";
 import { Timestamp, collection, doc, getDoc, getDocs, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -22,8 +23,11 @@ export const listarContas = async () => {
 // administrador no Firebase (users/{uid}.gerencia = true).
 
 export const salvarAcessosConta = async (uid, { gerencia, acessos }, autor) => {
-  // só guarda as telas BLOQUEADAS (false); o resto é liberado
-  const bloqueadas = Object.fromEntries(Object.entries(acessos || {}).filter(([, v]) => v === false));
+  // guarda as telas BLOQUEADAS (false) e as "só com permissão" LIBERADAS (true);
+  // o resto segue o padrão (liberado)
+  const bloqueadas = Object.fromEntries(
+    Object.entries(acessos || {}).filter(([k, v]) => v === false || (v === true && AREAS_SO_COM_PERMISSAO.includes(k))),
+  );
   await updateDoc(doc(db, "users", uid), {
     gerencia: !!gerencia,
     acessos: bloqueadas,

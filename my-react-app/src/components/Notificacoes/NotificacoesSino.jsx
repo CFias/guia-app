@@ -65,12 +65,27 @@ const Contexto = ({ n }) => {
   if (n.tipo === "idiomas") {
     return `${n.total} idioma${n.total === 1 ? "" : "s"} no total`;
   }
-  return `Semana ${dataBr(n.semanaInicio)} a ${dataBr(n.semanaFim)}${
-    n.tipo !== "cancelamento"
+  return `Semana ${dataBr(n.semanaInicio)} a ${dataBr(n.semanaFim)}${n.tipo !== "cancelamento"
       ? ` · ${n.total} dia${n.total === 1 ? "" : "s"} no total`
       : ""
-  }`;
+    }`;
 };
+
+// aviso do Auditor de alterações (escala do dia mudou)
+const ehAuditoria = (n) => n.tipo === "auditoria";
+const CorpoAuditoria = ({ n }) => (
+  <>
+    <span className="notif-titulo">
+      <Icon name="activity" size={13} /> <strong>{n.titulo || "Alteração na escala"}</strong>
+    </span>
+    <span className="notif-linhas">
+      {(n.linhas || []).map((l, i) => (
+        <span key={i}>{l}</span>
+      ))}
+      {n.total > (n.linhas || []).length && <span>+{n.total - n.linhas.length} no Auditor</span>}
+    </span>
+  </>
+);
 
 const NotificacoesSino = () => {
   const { user } = useAuth();
@@ -229,7 +244,7 @@ const NotificacoesSino = () => {
   const abrirNotificacao = (n) => {
     marcarLida(n);
     setAberto(false);
-    navigate(n.tipo === "idiomas" ? "/guias" : "/disponibilidade-guia");
+    navigate(ehAuditoria(n) ? "/custos?aba=auditor" : n.tipo === "idiomas" ? "/guias" : "/disponibilidade-guia");
   };
 
   return (
@@ -254,101 +269,107 @@ const NotificacoesSino = () => {
       {aberto &&
         createPortal(
 
-        <>
-          <div className="notif-backdrop" onClick={() => setAberto(false)} />
-          <div className="notif-painel" role="dialog" aria-label="Notificações">
-            <div className="notif-painel-topo">
-              <strong>Notificações dos guias</strong>
-              <div className="notif-painel-acoes">
-                <button
-                  type="button"
-                  className="notif-link"
-                  onClick={alternarSom}
-                  aria-pressed={som}
-                  title={som ? "Desligar o som das notificações" : "Ligar o som das notificações"}
-                >
-                  <Icon name="bell" size={14} /> {som ? "Som ligado" : "Som desligado"}
-                </button>
-                <button
-                  type="button"
-                  className="notif-link"
-                  onClick={marcarTodasLidas}
-                  disabled={naoLidas === 0}
-                >
-                  <Icon name="check" size={14} /> Marcar todas como lidas
-                </button>
-                <button
-                  type="button"
-                  className="notif-fechar"
-                  onClick={() => setAberto(false)}
-                  aria-label="Fechar notificações"
-                  title="Fechar"
-                >
-                  <Icon name="x" size={16} />
-                </button>
+          <>
+            <div className="notif-backdrop" onClick={() => setAberto(false)} />
+            <div className="notif-painel" role="dialog" aria-label="Notificações">
+              <div className="notif-painel-topo">
+                <strong>Notificações</strong>
+                <div className="notif-painel-acoes">
+                  <button
+                    type="button"
+                    className="notif-link"
+                    onClick={alternarSom}
+                    aria-pressed={som}
+                    title={som ? "Desligar o som das notificações" : "Ligar o som das notificações"}
+                  >
+                    <Icon name="bell" size={14} /> {som ? "Som ligado" : "Som desligado"}
+                  </button>
+                  <button
+                    type="button"
+                    className="notif-link"
+                    onClick={marcarTodasLidas}
+                    disabled={naoLidas === 0}
+                  >
+                    <Icon name="check" size={14} /> Marcar todas como lidas
+                  </button>
+                  <button
+                    type="button"
+                    className="notif-fechar"
+                    onClick={() => setAberto(false)}
+                    aria-label="Fechar notificações"
+                    title="Fechar"
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {itens.length === 0 ? (
-              <p className="notif-vazio">
-                Nenhum envio ainda. Quando um guia enviar ou alterar a
-                disponibilidade, aparece aqui na hora.
-              </p>
-            ) : (
-              <ul className="notif-lista">
-                {itensVisiveis.map((n) => (
-                  <li key={n.id}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className={`notif-item ${foiLida(n) ? "" : "nao-lida"}`}
-                      onClick={() => abrirNotificacao(n)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          abrirNotificacao(n);
-                        }
-                      }}
-                    >
-                      <span className="notif-ponto" />
-                      <span className="notif-corpo">
-                        <span className="notif-titulo">
-                          <strong>{n.guideName}</strong>{" "}
-                          {VERBOS[n.tipo] || "atualizou a disponibilidade"}
-                        </span>
-                        <span className="notif-sub">
-                          <Contexto n={n} />
-                        </span>
-                        <Detalhes n={n} />
-                        <span className="notif-hora">{tempoRelativo(n._data)}</span>
-                      </span>
-                      <button
-                        type="button"
-                        className="notif-apagar"
-                        onClick={(e) => apagarNotificacao(e, n)}
-                        aria-label="Remover da minha lista"
-                        title="Remover da minha lista"
+              {itens.length === 0 ? (
+                <p className="notif-vazio">
+                  Nada por aqui. Envios dos guias e alterações na escala do dia
+                  (Auditor) aparecem aqui na hora.
+                </p>
+              ) : (
+                <ul className="notif-lista">
+                  {itensVisiveis.map((n) => (
+                    <li key={n.id}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className={`notif-item ${foiLida(n) ? "" : "nao-lida"}`}
+                        onClick={() => abrirNotificacao(n)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            abrirNotificacao(n);
+                          }
+                        }}
                       >
-                        <Icon name="trash" size={16} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                        <span className="notif-ponto" />
+                        <span className="notif-corpo">
+                          {ehAuditoria(n) ? (
+                            <CorpoAuditoria n={n} />
+                          ) : (
+                            <>
+                              <span className="notif-titulo">
+                                <strong>{n.guideName}</strong>{" "}
+                                {VERBOS[n.tipo] || "atualizou a disponibilidade"}
+                              </span>
+                              <span className="notif-sub">
+                                <Contexto n={n} />
+                              </span>
+                              <Detalhes n={n} />
+                            </>
+                          )}
+                          <span className="notif-hora">{tempoRelativo(n._data)}</span>
+                        </span>
+                        <button
+                          type="button"
+                          className="notif-apagar"
+                          onClick={(e) => apagarNotificacao(e, n)}
+                          aria-label="Remover da minha lista"
+                          title="Remover da minha lista"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {restantes > 0 && (
-              <button
-                type="button"
-                className="notif-ver-mais"
-                onClick={() => setQtdVisivel((v) => v + ITENS_POR_PAGINA)}
-              >
-                <Icon name="chevronDown" size={16} />
-                Ver mais ({restantes} restante{restantes === 1 ? "" : "s"})
-              </button>
-            )}
-          </div>
-        </>
+              {restantes > 0 && (
+                <button
+                  type="button"
+                  className="notif-ver-mais"
+                  onClick={() => setQtdVisivel((v) => v + ITENS_POR_PAGINA)}
+                >
+                  <Icon name="chevronDown" size={16} />
+                  Ver mais ({restantes} restante{restantes === 1 ? "" : "s"})
+                </button>
+              )}
+            </div>
+          </>
           ,
           document.body,
         )}
@@ -356,26 +377,32 @@ const NotificacoesSino = () => {
       {/* Aviso que aparece na tela quando chega algo novo */}
       {createPortal(
         <div className="notif-toasts" aria-live="polite">
-        {toasts.map((n) => (
-          <div key={n.id} className="notif-toast">
-            <div className="notif-toast-corpo">
-              <strong>{n.guideName}</strong>{" "}
-              {VERBOS[n.tipo] || "atualizou a disponibilidade"}
-              <span>
-                <Contexto n={n} />
-              </span>
-              <Detalhes n={n} />
+          {toasts.map((n) => (
+            <div key={n.id} className="notif-toast">
+              <div className="notif-toast-corpo">
+                {ehAuditoria(n) ? (
+                  <CorpoAuditoria n={n} />
+                ) : (
+                  <>
+                    <strong>{n.guideName}</strong>{" "}
+                    {VERBOS[n.tipo] || "atualizou a disponibilidade"}
+                    <span>
+                      <Contexto n={n} />
+                    </span>
+                    <Detalhes n={n} />
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Fechar aviso"
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== n.id))}
+              >
+                <Icon name="x" size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label="Fechar aviso"
-              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== n.id))}
-            >
-              <Icon name="x" size={16} />
-            </button>
-          </div>
-        ))}
-      </div>,
+          ))}
+        </div>,
         document.body,
       )}
     </>

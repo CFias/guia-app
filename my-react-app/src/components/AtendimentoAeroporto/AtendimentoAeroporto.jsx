@@ -4,6 +4,7 @@ import { onSnapshot, query, where } from "firebase/firestore";
 import Icon from "../ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
 import { ROLES } from "../../Context/permissions";
+import { podeArea } from "../../Context/acessos";
 import { colBase } from "../../Services/Services/dadosBase";
 import { definirTituloAba } from "../Shell/tituloAba";
 import AvaliacaoSistema from "../Atividade/AvaliacaoSistema";
@@ -156,11 +157,6 @@ const AtendimentoAeroporto = () => {
         setConfig(c);
         setExcecoes(e);
         setConfigLida(true);
-        // conta do Operacional que está na escala: já começa marcando em nome dela
-        if (ehOperacional && uid) {
-          const eu = todosDaEquipe(c).find((x) => x.contaUid === uid || x.id === uid);
-          if (eu) setEmNomeDe((atual) => atual || eu.id);
-        }
       })
       .catch(() => {
         if (!vivo) return;
@@ -170,7 +166,7 @@ const AtendimentoAeroporto = () => {
     return () => {
       vivo = false;
     };
-  }, [ehOperacional, uid]);
+  }, []);
 
   // chegadas do Phoenix (por veículo) — espera a configuração por causa da
   // exceção por voo (fornecedores que usam o mesmo número de escala)
@@ -231,9 +227,13 @@ const AtendimentoAeroporto = () => {
   }, [etapas]);
   const regra = config?.atendimento?.contagem || "dividir";
 
-  // quem está marcando
+  // quem está marcando. Operacional: a própria conta (credenciais dele — a
+  // pessoa da escala ligada a esta conta ou, se não estiver na escala, a conta);
+  // "em nome de" só para lançar cartinhas de outra pessoa
+  const euMesmo = ehOperacional && uid ? equipe.find((c) => c.contaUid === uid || c.id === uid) || { id: uid, nome: perfil?.nome || "Operacional" } : null;
+  const lancando = ehOperacional && !!emNomeDe && emNomeDe !== euMesmo?.id;
   const eu = ehOperacional
-    ? equipe.find((c) => c.id === emNomeDe) || null
+    ? (lancando ? equipe.find((c) => c.id === emNomeDe) : null) || euMesmo
     : // a conta é ligada à pessoa em Configurar escala (contaUid); contas antigas, pelo colaboradorId
     equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
     equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
@@ -290,8 +290,8 @@ const AtendimentoAeroporto = () => {
       quem,
       por: user?.uid,
       etapaId: etapaRecepcao.id,
-      lancado: ehOperacional,
-      horaManual: ehOperacional ? horaManual : "",
+      lancado: lancando,
+      horaManual: lancando ? horaManual : "",
     });
   };
   const alternarReserva = async (g, r, i) => {
@@ -374,8 +374,8 @@ const AtendimentoAeroporto = () => {
         por: user?.uid,
         marcar: !marcado,
         docId: vinculos.get(g.chave)?.id,
-        lancado: ehOperacional,
-        horaManual: ehOperacional ? horaManual : "",
+        lancado: lancando,
+        horaManual: lancando ? horaManual : "",
       });
       if (!marcado) registrarAcao(`atendimento_${etapa.id}`, `${etapa.nome} (aeroporto)`, `${g.voos.join(", ")} · ${g.pax} pax`);
     } catch (e) {
@@ -385,6 +385,46 @@ const AtendimentoAeroporto = () => {
       setSalvando("");
     }
   };
+
+  const desfazerEtapa = async (g, etapa) => {
+    if (!quem) return;
+    const marcas = marcasDaEtapa({ marcas: marcasDe(g) }, etapa.id);
+    const outros = marcas.filter((x) => x.id !== quem.id);
+    if (!window.confirm(`Desfazer "${etapa.nome}" deste veículo${outros.length ? ` (marcado por ${marcas.map((x) => x.nome).join(", ")})` : ""}?`)) return;
+    setSalvando(`${g.chave}|${etapa.id}`);
+    try {
+      if (etapa.id === etapaRecepcao?.id && porReserva(g)) {
+        const { ativas } = estadoReservas(g);
+        await gravarRecepcao(g, ativas.filter((x) => x.rec), false);
+      } else {
+        const docId = vinculos.get(g.chave)?.id;
+        for (const x of marcas) {
+          await marcarEtapa({ data, grupo: g, etapa: etapa.id, quem: { id: x.id, nome: x.nome, colaboradorId: x.colaboradorId || x.id }, por: user?.uid, marcar: false, docId });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível desfazer. Confira a conexão.");
+    } finally {
+      setSalvando("");
+    }
+  };
+
+  // Operacional: só quem a gerência liberou (Controle de acessos → Painel de Atendimento)
+  if (ehOperacional && !podeArea(perfil, "painelAtendimento")) {
+    return (
+      <div className="atd atd--bloqueado">
+        <div className="atd-bloqueio">
+          <Icon name="lock" size={26} />
+          <b>Painel de Atendimento não liberado para esta conta</b>
+          <span>A gerência libera em Controle de acessos → Painel de Atendimento (aeroporto).</span>
+          <Link to="/" className="atd-btn-leve">
+            <Icon name="chevronLeft" size={15} /> Voltar para o sistema
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const nomeDoDia = data === hoje() ? "Hoje" : data === somarDias(hoje(), -1) ? "Ontem" : data === somarDias(hoje(), 1) ? "Amanhã" : dataBr(data);
 
@@ -421,9 +461,14 @@ const AtendimentoAeroporto = () => {
                 <Icon name="bell" size={15} />
               </button>
             )}
+            {ehOperacional && (
+              <Link to="/" className="atd-btn-leve" title="Voltar para o sistema">
+                <Icon name="chevronLeft" size={15} /> <span className="atd-btn-txt">Sistema</span>
+              </Link>
+            )}
             {ehOperacional ? (
               <Link to="/recepcao-turnos" className="atd-btn-leve">
-                <Icon name="barChart" size={15} /> Relatório
+                <Icon name="barChart" size={15} /> <span className="atd-btn-txt">Relatório</span>
               </Link>
             ) : (
               <Link to="/atendimento/sobre" className="atd-btn-leve" title="Sobre a FiaSystem">
@@ -441,18 +486,18 @@ const AtendimentoAeroporto = () => {
 
         {ehOperacional && (
           <label className="atd-em-nome">
-            <span>Marcar em nome de</span>
-            <select className="ui-input" value={emNomeDe} onChange={(e) => setEmNomeDe(e.target.value)}>
-              <option value="">Escolha o colaborador…</option>
-              {equipe.map((c) => (
+            <span>Marcar como</span>
+            <select className="ui-input" value={lancando ? emNomeDe : ""} onChange={(e) => setEmNomeDe(e.target.value)}>
+              <option value="">Eu · {euMesmo?.nome || "minha conta"}</option>
+              {equipe.filter((c) => c.id !== euMesmo?.id).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nome} · {c.turnoNome}
+                  Lançar por {c.nome} · {c.turnoNome}
                 </option>
               ))}
             </select>
           </label>
         )}
-        {ehOperacional && (
+        {lancando && (
           <label className="atd-em-nome atd-hora-manual">
             <span>Horário da cartinha (opcional)</span>
             <span className="atd-hora-manual__linha">
@@ -691,35 +736,69 @@ const AtendimentoAeroporto = () => {
                       ))}
                     </ul>
                   )}
-                  <div className="atd-etapas">
-                    {etapas.map((e) => {
-                      const quemMarcou = marcasDaEtapa({ marcas: m }, e.id);
-                      const meu = !!(quem && m[e.id]?.[quem.id]);
-                      const ocupado = salvando === `${g.chave}|${e.id}`;
-                      return (
-                        <div key={e.id} className="atd-etapa">
+                  {(() => {
+                    // um botão só, em sequência: Recepcionei → Embarquei; as etapas
+                    // feitas ficam em cima, com quem marcou e "Desfazer" na última
+                    const feitas = etapas.map((e, k) => ({ e, k, marcas: marcasDaEtapa({ marcas: m }, e.id) }));
+                    const prox = feitas.find((x) => !x.marcas.length);
+                    const ultimaFeita = [...feitas].reverse().find((x) => x.marcas.length);
+                    const icone = (k) => (k === 0 ? "check" : k === etapas.length - 1 ? "car" : "circleCheck");
+                    const ocupadoProx = prox && salvando === `${g.chave}|${prox.e.id}`;
+                    const parcial = prox && prox.k === 0 && porReserva(g) ? estadoReservas(g) : null;
+                    return (
+                      <div className="atd-fluxo">
+                        {feitas
+                          .filter((x) => x.marcas.length)
+                          .map((x) => {
+                            const ehUltima = x === ultimaFeita;
+                            const jaMarquei = !!(quem && m[x.e.id]?.[quem.id]);
+                            const ocupado = salvando === `${g.chave}|${x.e.id}`;
+                            return (
+                              <div key={x.e.id} className={`atd-fluxo__feito is-${x.k === 0 ? "rec" : x.k === etapas.length - 1 ? "emb" : "meio"}`}>
+                                <i className="atd-fluxo__ic">
+                                  <Icon name={icone(x.k)} size={15} />
+                                </i>
+                                <span className="atd-fluxo__txt">
+                                  <b>{x.e.nome}</b>
+                                  <small>{x.marcas.map((y) => `${y.nome} ${horaDe(y.em)}`).join(" · ")}</small>
+                                </span>
+                                {!jaMarquei && !(x.k === 0 && porReserva(g)) && (
+                                  <button type="button" className="atd-fluxo__link" onClick={() => alternar(g, x.e)} disabled={!quem || ocupado} title="Você também atendeu este veículo">
+                                    + eu também
+                                  </button>
+                                )}
+                                {ehUltima && (
+                                  <button type="button" className="atd-fluxo__desfazer" onClick={() => desfazerEtapa(g, x.e)} disabled={!quem || ocupado}>
+                                    {ocupado ? <Icon name="loader" size={13} className="ui-spin" /> : <Icon name="undo" size={13} />} Desfazer
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        {prox ? (
                           <button
                             type="button"
-                            className={`atd-etapa__btn ${meu ? "is-meu" : ""}`}
-                            onClick={() => alternar(g, e)}
-                            disabled={!quem || ocupado}
-                            aria-pressed={meu}
+                            className={`atd-fluxo__btn is-${prox.k === 0 ? "rec" : prox.k === etapas.length - 1 ? "emb" : "meio"}`}
+                            onClick={() => alternar(g, prox.e)}
+                            disabled={!quem || ocupadoProx}
                           >
-                            <Icon name={ocupado ? "loader" : meu ? "circleCheck" : "circle"} size={16} className={ocupado ? "ui-spin" : undefined} />
-                            {e.id === etapaRecepcao?.id && porReserva(g)
-                              ? (() => {
-                                const { ativas, feitas } = estadoReservas(g);
-                                return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
-                              })()
-                              : e.acao || e.nome}
+                            <Icon name={ocupadoProx ? "loader" : icone(prox.k)} size={18} className={ocupadoProx ? "ui-spin" : undefined} />
+                            {prox.e.acao || prox.e.nome}
+                            {parcial && parcial.ativas.length > 0 && (
+                              <small>
+                                {" "}
+                                todas · {parcial.feitas}/{parcial.ativas.length}
+                              </small>
+                            )}
                           </button>
-                          <small className="atd-etapa__quem">
-                            {quemMarcou.length ? quemMarcou.map((x) => `${x.nome} ${horaDe(x.em)}`).join(", ") : "ninguém ainda"}
-                          </small>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        ) : (
+                          <div className="atd-fluxo__fim">
+                            <Icon name="circleCheck" size={16} /> Atendimento concluído
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     const esp = esperaDoDoc({ marcas: m }, etapas);
                     return esp?.min !== null && esp?.min !== undefined ? (

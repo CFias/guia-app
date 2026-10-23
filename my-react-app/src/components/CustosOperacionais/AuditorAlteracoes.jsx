@@ -8,6 +8,7 @@ import {
   TIPOS_ALTERACAO,
   compararComFoto,
   normalizarAuditoria,
+  textoDaMudanca,
 } from "../../Services/Services/auditoriaAlteracoes";
 import { NOME_CATEGORIA, NOME_TIPO, formatarReais } from "../../Services/Services/custosCalculo";
 import {
@@ -54,14 +55,7 @@ const ORIGEM = {
   tardia: "guardada no próprio dia",
 };
 
-const textoMudanca = (m) => {
-  if (m.tipo === "novo") return `entrou ${m.para || ""}`.trim();
-  if (m.tipo === "cancelado") return `saiu ${m.de || ""}`.trim();
-  if (m.tipo === "categoria") return `${NOME_CATEGORIA[m.de] || m.de} → ${NOME_CATEGORIA[m.para] || m.para}`;
-  if (m.tipo === "horario") return `${m.de} → ${m.para} (${m.qtd > 0 ? "+" : ""}${m.qtd} min)`;
-  if (m.tipo === "paxMais" || m.tipo === "paxMenos") return `${m.de} → ${m.para} pax`;
-  return `${m.de || "—"} → ${m.para || "—"}`;
-};
+const textoMudanca = textoDaMudanca;
 
 /* ---------- tabela de custos das alterações (configurável) ---------- */
 const TabelaRegras = ({ config, onFechar }) => {
@@ -106,7 +100,7 @@ const TabelaRegras = ({ config, onFechar }) => {
               <th>Conta?</th>
               <th>Valor fixo (R$)</th>
               <th>% do serviço</th>
-              <th>R$ por pax</th>
+              <th>R$ por pax / reserva</th>
             </tr>
           </thead>
           <tbody>

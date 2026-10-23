@@ -31,6 +31,13 @@ export const GRUPOS_ACESSO = [
         detalhe: "Inclui Chegadas, OUT's, Conferência de voos e Resumo por guia.",
         rotas: ["/op", "/chegadas", "/outs", "/conferencia", "/resumo"],
       },
+      {
+        chave: "painelAtendimento",
+        label: "Painel de Atendimento (aeroporto)",
+        detalhe: "Marcar recepção e embarque no painel do aeroporto, com a própria conta. Só para quem for liberado aqui.",
+        rotas: [],
+        soComPermissao: true,
+      },
       { chave: "previas", label: "Prévia de Serviços", rotas: ["/previas"] },
       { chave: "planilha", label: "Planilha operacional", rotas: ["/planilha"] },
     ],
@@ -103,6 +110,7 @@ export const GRUPOS_ACESSO = [
 ];
 
 export const AREAS = GRUPOS_ACESSO.flatMap((g) => g.areas);
+export const AREAS_SO_COM_PERMISSAO = AREAS.filter((a) => a.soComPermissao).map((a) => a.chave);
 
 export const ROTA_ACESSOS = "/acessos";
 
@@ -123,8 +131,13 @@ export const podeArea = (perfil, chave, regiao = regiaoAtual()) => {
   const gerencia = ehGerencia(perfil);
   if (!telaNaRegiao(chave, regiao) && !(gerencia && GERENCIA_EM_QUALQUER_BASE.includes(chave))) return false;
   if (gerencia) return true;
-  return perfil.acessos?.[chave] !== false;
+  return liberadaNoMapa(perfil.acessos, chave);
 };
+
+// área "só com permissão" (ex.: Painel de Atendimento): fechada até a gerência
+// marcar; as outras: abertas até a gerência bloquear
+export const liberadaNoMapa = (acessos = {}, chave) =>
+  AREAS_SO_COM_PERMISSAO.includes(chave) ? acessos?.[chave] === true : acessos?.[chave] !== false;
 
 const limparCaminho = (pathname) => (pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname);
 
@@ -144,7 +157,7 @@ export const rotaInicial = (perfil, regiao = regiaoAtual()) => {
   return area.rotas.find((r) => !rotaForaDaRegiao(r, regiao)) || "/sobre";
 };
 
-export const contarBloqueadas = (acessos = {}) => AREAS.filter((a) => acessos?.[a.chave] === false).length;
+export const contarBloqueadas = (acessos = {}) => AREAS.filter((a) => !a.soComPermissao && acessos?.[a.chave] === false).length;
 
 // Balanço de uso (quem usa, impressões, avaliações): a gerência e as contas
 // que a gerência marcar (users/{uid}.verBalanco — mesma regra do firestore.rules).

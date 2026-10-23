@@ -26,7 +26,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { compararComFoto, fotoDaLinha } from "./auditoriaAlteracoes";
+import { compararComFoto, fotoDaLinha, linhaDaAlteracao } from "./auditoriaAlteracoes";
 import { phoenixReserveService } from "./regiaoAtiva";
 import {
   alertasDoDia,
@@ -376,13 +376,38 @@ const resumoAlteracao = (a) =>
     }),
   );
 
-// grava no histórico as alterações que ainda não estavam lá
+// id fixo para a mesma leva de alterações (dois computadores abertos não duplicam o aviso)
+const hashTexto = (t) => {
+  let h = 5381;
+  for (let i = 0; i < t.length; i += 1) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+};
+const dataBrCurta = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/* Aviso no sino (todo o Operacional): "3 alterações na escala de 24/10",
+   com uma linha por alteração — sem valores (nem todos têm acesso a Custos). */
+export const notificarAlteracoes = (data, novas = []) => {
+  if (!novas.length) return Promise.resolve();
+  const id = `aud_${data}_${hashTexto(novas.map((a) => a.id).sort().join("|"))}`;
+  return setDoc(doc(db, "notificacoes", id), {
+    tipo: "auditoria",
+    origem: "sistema",
+    data,
+    titulo: `${novas.length} alteraç${novas.length > 1 ? "ões" : "ão"} na escala de ${dataBrCurta(data)}`,
+    linhas: novas.slice(0, 6).map(linhaDaAlteracao),
+    total: novas.length,
+    createdAt: Timestamp.now(),
+  });
+};
+
+// grava no histórico as alterações que ainda não estavam lá (e avisa no sino)
 export const registrarNoHistorico = async (data, alteracoes = [], historicoAtual = null) => {
   const atual = historicoAtual || (await getDoc(REF_AUDITORIA(data))).data()?.historico || {};
   const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
   const patch = { ultimaVerificacao: Timestamp.now() };
   if (novas.length) patch.historico = Object.fromEntries(novas.map((a) => [idSeguro(a.id), { em: Timestamp.now(), ...resumoAlteracao(a) }]));
   await setDoc(REF_AUDITORIA(data), patch, { merge: true });
+  if (novas.length) await notificarAlteracoes(data, novas).catch((e) => console.error("Aviso da auditoria:", e));
   return novas.length;
 };
 

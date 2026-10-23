@@ -41,6 +41,7 @@ export const TELAS_REGIONAIS = [
     detalhe: "Chegadas, saídas, transfers, resumo por guia, mapa e placas.",
     pronta: true,
   },
+  { grupo: "Operação do dia", chave: "painelAtendimento", label: "Painel de Atendimento", detalhe: "Recepção e embarque no aeroporto (contas liberadas).", pronta: true },
   { grupo: "Operação do dia", chave: "previas", label: "Prévia de serviços", detalhe: "Prévia do dia para os fornecedores da base.", pronta: true },
   { grupo: "Operação do dia", chave: "planilha", label: "Planilha operacional", detalhe: "A planilha do dia (mesma base da prévia).", pronta: true },
   { grupo: "Escala e guias", chave: "gerarEscala", label: "Gerar Escala", detalhe: "Escala automática da semana.", pronta: false },

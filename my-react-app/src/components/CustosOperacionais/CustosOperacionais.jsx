@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { PageHeader, Segmented } from "../ui";
 import {
   carregarFornecedores,
@@ -37,7 +38,17 @@ const ABAS = [
 ];
 
 const CustosOperacionais = () => {
-  const [aba, setAba] = useState("dia");
+  // ?aba=auditor (vindo do aviso do sino) abre direto no Auditor — também
+  // quando a tela já está aberta (ajusta o estado quando o endereço muda)
+  const { search } = useLocation();
+  const pedida = new URLSearchParams(search || "").get("aba");
+  const valida = ABAS.some((x) => x.value === pedida) ? pedida : null;
+  const [aba, setAba] = useState(valida || "dia");
+  const [ultimaPedida, setUltimaPedida] = useState(valida);
+  if (valida !== ultimaPedida) {
+    setUltimaPedida(valida);
+    if (valida) setAba(valida);
+  }
 
   const [config, setConfig] = useState(() => normalizarConfigCustos({}));
   const [configCarregada, setConfigCarregada] = useState(false);

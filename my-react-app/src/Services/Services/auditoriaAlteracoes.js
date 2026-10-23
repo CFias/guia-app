@@ -27,6 +27,8 @@ export const TIPOS_ALTERACAO = [
   { id: "horario", nome: "Mudança de horário", curto: "Horário", ref: "depois" },
   { id: "paxMais", nome: "Passageiros a mais", curto: "Pax +", ref: "depois", porPax: true },
   { id: "paxMenos", nome: "Passageiros a menos", curto: "Pax −", ref: "depois", porPax: true },
+  { id: "reservasMais", nome: "Reservas incluídas", curto: "Reserva +", ref: "depois", porPax: true, unidade: "reserva" },
+  { id: "reservasMenos", nome: "Reservas retiradas", curto: "Reserva −", ref: "depois", porPax: true, unidade: "reserva" },
 ];
 export const NOME_ALTERACAO = Object.fromEntries(TIPOS_ALTERACAO.map((t) => [t.id, t.nome]));
 export const CURTO_ALTERACAO = Object.fromEntries(TIPOS_ALTERACAO.map((t) => [t.id, t.curto]));
@@ -89,6 +91,8 @@ const mudancasDoServico = (antes, depois) => {
   if (ma !== null && md !== null && ma !== md) m.push({ tipo: "horario", de: antes.hora, para: depois.hora, qtd: md - ma });
   if (depois.pax > antes.pax) m.push({ tipo: "paxMais", de: antes.pax, para: depois.pax, qtd: depois.pax - antes.pax });
   if (depois.pax < antes.pax) m.push({ tipo: "paxMenos", de: antes.pax, para: depois.pax, qtd: antes.pax - depois.pax });
+  if (depois.reservas > antes.reservas) m.push({ tipo: "reservasMais", de: antes.reservas, para: depois.reservas, qtd: depois.reservas - antes.reservas });
+  if (depois.reservas < antes.reservas) m.push({ tipo: "reservasMenos", de: antes.reservas, para: depois.reservas, qtd: antes.reservas - depois.reservas });
   return m;
 };
 
@@ -166,3 +170,21 @@ export const compararComFoto = (foto, atuais = [], config = normalizarAuditoria(
     },
   };
 };
+
+const NOME_CATEG = { carro: "Carro", van: "Van", "van-alongada": "Van alongada", micro: "Micro-ônibus", onibus: "Ônibus" };
+// "VAN X → THAIS 1", "05:30 → 06:00 (+30 min)", "6 → 3 pax"…
+export const textoDaMudanca = (m) => {
+  if (m.tipo === "novo") return `entrou ${m.para || ""}`.trim();
+  if (m.tipo === "cancelado") return `saiu ${m.de || ""}`.trim();
+  if (m.tipo === "categoria") return `${NOME_CATEG[m.de] || m.de} → ${NOME_CATEG[m.para] || m.para}`;
+  if (m.tipo === "horario") return `${m.de} → ${m.para} (${m.qtd > 0 ? "+" : ""}${m.qtd} min)`;
+  if (m.tipo === "paxMais" || m.tipo === "paxMenos") return `${m.de} → ${m.para} pax`;
+  if (m.tipo === "reservasMais" || m.tipo === "reservasMenos") return `${m.de} → ${m.para} reserva(s)`;
+  return `${m.de || "—"} → ${m.para || "—"}`;
+};
+const NOME_TIPO_SERV = { IN: "IN", OUT: "OUT", TRF: "Transfer", PASSEIO: "Passeio", APOIO: "Apoio", SERVICO: "Parceiro" };
+// uma linha por alteração, para a notificação (sem valores)
+export const linhaDaAlteracao = (a) =>
+  `${a.hora || "--:--"} ${NOME_TIPO_SERV[a.tipoServico] || a.tipoServico || ""} · ${(a.depois || a.antes)?.veiculo || a.veiculoDepois || a.veiculoAntes || "—"}: ${(a.mudancas || [])
+    .map((m) => `${CURTO_ALTERACAO[m.tipo] || m.tipo} ${textoDaMudanca(m)}`)
+    .join(" · ")}`;

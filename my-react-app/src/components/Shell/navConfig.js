@@ -16,6 +16,8 @@ export const GRUPOS_MENU = [
     titulo: "Operação do dia",
     itens: [
       { to: "/op", chave: "painelOperacional", label: "Painel Operacional", icon: "painel", area: "painel" },
+      // painel do aeroporto (abre em tela cheia); só para as contas liberadas
+      { to: "/atendimento", chave: "painelAtendimento", label: "Painel de Atendimento", icon: "planeLanding", area: "painel" },
       { to: "/previas", chave: "previas", label: "Prévia de Serviços", icon: "send", area: "painel" },
       { to: "/planilha", chave: "planilha", label: "Planilha operacional", icon: "planilha", area: "painel" },
     ],
