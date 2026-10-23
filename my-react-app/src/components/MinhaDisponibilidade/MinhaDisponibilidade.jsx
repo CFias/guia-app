@@ -159,7 +159,7 @@ const MinhaDisponibilidade = () => {
     let vivo = true;
     getDoc(doc(db, "guide_fotos", guideId))
       .then((snap) => vivo && setFoto(snap.exists() ? snap.data()?.foto || "" : ""))
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       vivo = false;
     };
@@ -548,6 +548,10 @@ const MinhaDisponibilidade = () => {
                 Falar com a operação
               </a>
             )}
+            <Link to="/guia/tema" className="minha-disp-sair" title="Tema, cor e tamanho do texto">
+              <Icon name="palette" size={16} />
+              Tema
+            </Link>
             <Link to="/guia/sobre" className="minha-disp-sair" title="Sobre a FiaSystem">
               <Icon name="info" size={16} />
               Sobre
@@ -676,11 +680,10 @@ const MinhaDisponibilidade = () => {
                 <p>
                   {janela.aberta
                     ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
-                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
-                        janela.diasAteAbrir > 0
-                          ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
-                          : ""
-                      }.`}
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${janela.diasAteAbrir > 0
+                      ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
+                      : ""
+                    }.`}
                 </p>
                 {janela.aberta && (
                   <div
@@ -718,14 +721,14 @@ const MinhaDisponibilidade = () => {
                   <section className="minha-disp-card guia-semana">
                     <div className="guia-semana__topo">
                       <div>
-                      <h2>
-                        <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
-                      </h2>
-                      <p className="minha-disp-nota">
-                        {janela.aberta
-                          ? "Toque só nos dias em que você está totalmente livre."
-                          : "O envio dos dias da semana que vem abre na quinta-feira."}
-                      </p>
+                        <h2>
+                          <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
+                        </h2>
+                        <p className="minha-disp-nota">
+                          {janela.aberta
+                            ? "Toque só nos dias em que você está totalmente livre."
+                            : "O envio dos dias da semana que vem abre na quinta-feira."}
+                        </p>
                       </div>
                       <span className="guia-contador" aria-label={`${marcadas.size} de ${janela.dias.length} dias marcados`}>
                         <strong>{marcadas.size}</strong>/{janela.dias.length}
@@ -1104,12 +1107,12 @@ const MinhaDisponibilidade = () => {
                             {(Array.isArray(p.frequencia)
                               ? p.frequencia.length > 0
                               : p.frequencia) && (
-                              <span className="minha-disp-freq">
-                                {Array.isArray(p.frequencia)
-                                  ? p.frequencia.join(" · ")
-                                  : p.frequencia}
-                              </span>
-                            )}
+                                <span className="minha-disp-freq">
+                                  {Array.isArray(p.frequencia)
+                                    ? p.frequencia.join(" · ")
+                                    : p.frequencia}
+                                </span>
+                              )}
                           </li>
                         ))}
                       </ul>

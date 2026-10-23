@@ -27,7 +27,41 @@ import {
   trabalhaPeloModelo,
   validarConfig,
 } from "../../Services/Services/relatorioTurnos";
+import { carregarFornecedores, ouvirVinculos } from "../../Services/Services/custosRepository";
+import { chaveDoVeiculo, normalizarTexto } from "../../Services/Services/custosCalculo";
 import "./assistente.css";
+
+// exceção por voo: os veículos (chaves) dos fornecedores marcados, pelo cadastro
+// de fornecedores e pelos vínculos da tela Serviços por Fornecedor
+const veiculosDosFornecedores = (nomes = [], fornecedores = [], vinculos = {}) => {
+  const alvo = new Set(nomes.map((n) => normalizarTexto(n)));
+  const chaves = new Set();
+  fornecedores
+    .filter((f) => alvo.has(normalizarTexto(f?.nome)))
+    .forEach((f) =>
+      (Array.isArray(f.veiculos) ? f.veiculos : []).forEach((v) => {
+        const id = typeof v === "object" ? v?.id : null;
+        const nome = typeof v === "object" ? v?.nome : v;
+        chaves.add(chaveDoVeiculo(id !== null && id !== undefined && id !== "" ? String(id) : "", nome || ""));
+        if (nome) chaves.add(chaveDoVeiculo("", nome));
+      }),
+    );
+  Object.entries(vinculos || {}).forEach(([k, v]) => {
+    if (alvo.has(normalizarTexto(v?.fornecedor))) chaves.add(k);
+  });
+  return [...chaves];
+};
+const lerVinculosUmaVez = () =>
+  new Promise((ok) => {
+    let parar = null;
+    let feito = false;
+    parar = ouvirVinculos((v) => {
+      if (feito) return;
+      feito = true;
+      ok(v || {});
+      setTimeout(() => parar && parar(), 0);
+    });
+  });
 
 /* CONFIGURAR ESCALA — assistente em 5 etapas:
    1. Modelo   — o modelo da base (6x1, 5x2, 12x36, 24x48, 2x2, personalizado);
@@ -101,8 +135,8 @@ const FaixaModelo = ({ modelo, trabalha, folga }) => {
     m?.tipo === "semanal"
       ? [Array.from({ length: 14 }, (_, i) => (m.folgas === 1 ? i % 7 !== 6 : i % 7 < 5))]
       : Array.from({ length: Math.min(3, Math.max(1, Math.ceil((trabalha + folga) / trabalha))) }, (_, g) =>
-          Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
-        );
+        Array.from({ length: 14 }, (_, i) => ((((i - g * trabalha) % (trabalha + folga)) + (trabalha + folga)) % (trabalha + folga)) < trabalha),
+      );
   return (
     <div className="aes-faixa" aria-hidden="true">
       {linhas.map((l, g) => (
@@ -257,6 +291,32 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
   const [aberta, setAberta] = useState(""); // pessoa com "mais opções" aberta
   const [contas, setContas] = useState(null);
 
+  // fornecedores (exceção por voo): ao abrir, recalcula os veículos dos já marcados
+  const [fornCad, setFornCad] = useState(null); // { nomes, fornecedores, vinculos }
+  useEffect(() => {
+    let vivo = true;
+    Promise.all([carregarFornecedores().catch(() => []), lerVinculosUmaVez().catch(() => ({}))]).then(([fornecedores, vinculos]) => {
+      if (!vivo) return;
+      const nomes = [
+        ...new Set([
+          ...fornecedores.filter((f) => f?.nome && f.ativo !== false).map((f) => String(f.nome).trim()),
+          ...Object.values(vinculos || {}).map((v) => String(v?.fornecedor || "").trim()),
+        ]),
+      ]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+      setFornCad({ nomes, fornecedores, vinculos });
+      setR((x) => {
+        const sel = x.atendimento?.porVoo?.fornecedores || [];
+        if (!sel.length) return x;
+        return { ...x, atendimento: { ...x.atendimento, porVoo: { fornecedores: sel, veiculos: veiculosDosFornecedores(sel, fornecedores, vinculos) } } };
+      });
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
   useEffect(() => {
     let vivo = true;
     carregarContasEquipe()
@@ -299,7 +359,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
         return turnoAtual === destino ? { ...t, colaboradores: t.colaboradores.map((c) => (c.id === id ? nova : c)) } : { ...t, colaboradores: [...sem, nova] };
       });
       const semF = (x.folguistas || []).filter((f) => f.id !== id);
-      const folguistas = destino === FOLGUISTA ? [...semF, { id: nova.id, nome: nova.nome, obs: nova.obs || "", contaUid: nova.contaUid || "" }] : semF;
+      const folguistas = destino === FOLGUISTA ? [...semF, { id: nova.id, nome: nova.nome, obs: nova.obs || "", contaUid: nova.contaUid || "", funcao: nova.funcao || "" }] : semF;
       return { ...x, turnos, folguistas };
     });
   const adicionarPessoa = (dados = {}) => {
@@ -511,7 +571,7 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
               <Icon name="users" size={12} /> {t.colaboradores.length}
             </span>
             <span className="aes-turnos__acoes">
-              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
+              <Button variant="ghost" iconOnly size="sm" icon="arrowUp" disabled={i === 0} onClick={() => setR((x) => { const l = [...x.turnos];[l[i - 1], l[i]] = [l[i], l[i - 1]]; return { ...x, turnos: l }; })} aria-label="Subir" />
               <Button variant="ghost" iconOnly size="sm" icon="trash" disabled={r.turnos.length <= 1} onClick={() => removerTurno(t)} aria-label={`Remover ${t.nome}`} />
             </span>
           </li>
@@ -1171,6 +1231,46 @@ const AssistenteEscala = ({ config, onClose, onSalvar }) => {
       <label className="aes-check">
         <input type="checkbox" checked={at.avisarForaDoTurno} onChange={(e) => setAt({ avisarForaDoTurno: e.target.checked })} /> Avisar quando alguém marcar um veículo fora do próprio turno
       </label>
+      <div className="aes-porvoo">
+        <b>Fornecedores que separam por voo</b>
+        <p>
+          Para quem leva vários voos com o mesmo número de escala (ex.: o terceirizado de Morro de São Paulo): no painel do aeroporto, cada voo aparece separado, no
+          horário dele — a chegada das 13h vai para o turno da tarde, não fica junto com a das 10h.
+        </p>
+        {!fornCad ? (
+          <small className="aes-porvoo__carregando">
+            <Icon name="loader" size={13} className="ui-spin" /> Carregando fornecedores…
+          </small>
+        ) : fornCad.nomes.length === 0 ? (
+          <small>Nenhum fornecedor cadastrado.</small>
+        ) : (
+          <div className="aes-porvoo__lista" role="group" aria-label="Fornecedores que separam por voo">
+            {fornCad.nomes.map((n) => {
+              const sel = (at.porVoo?.fornecedores || []).some((x) => normalizarTexto(x) === normalizarTexto(n));
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  className={sel ? "is-on" : ""}
+                  aria-pressed={sel}
+                  onClick={() => {
+                    const atual = at.porVoo?.fornecedores || [];
+                    const nova = sel ? atual.filter((x) => normalizarTexto(x) !== normalizarTexto(n)) : [...atual, n];
+                    setAt({ porVoo: { fornecedores: nova, veiculos: veiculosDosFornecedores(nova, fornCad.fornecedores, fornCad.vinculos) } });
+                  }}
+                >
+                  {sel && <Icon name="check" size={12} />} {n}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {(at.porVoo?.fornecedores || []).length > 0 && (
+          <small className="aes-porvoo__resumo">
+            {(at.porVoo.fornecedores || []).join(", ")} · {(at.porVoo.veiculos || []).length} veículo(s) reconhecido(s). Veículo com o nome do fornecedor no apelido também entra.
+          </small>
+        )}
+      </div>
     </div>
   );
 

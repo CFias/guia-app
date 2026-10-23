@@ -387,6 +387,13 @@ const RelatorioTurnos = () => {
     mostrarToast("Escala salva");
   };
 
+  // relatório de recebimento: quem fica de fora (salvo na configuração, vale para todos)
+  const salvarOcultos = async (ocultos) => {
+    const salva = await salvarConfigTurnos({ ...config, atendimento: { ...config.atendimento, ocultos } });
+    setConfig(salva);
+    return salva;
+  };
+
   const salvarEscala = async (novas) => {
     const salvas = await salvarExcecoes(novas);
     setExcecoes(salvas);
@@ -454,7 +461,7 @@ const RelatorioTurnos = () => {
 
       {visao === "atendimento" &&
         (config ? (
-          <AtendimentoRelatorio config={config} excecoes={excecoes} />
+          <AtendimentoRelatorio config={config} excecoes={excecoes} onSalvarOcultos={salvarOcultos} />
         ) : (
           <p className="rtn-atd__carregando">
             <Icon name="loader" size={16} className="ui-spin" /> Carregando a equipe…

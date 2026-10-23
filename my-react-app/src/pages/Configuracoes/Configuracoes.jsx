@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import {
@@ -77,7 +78,9 @@ const Interruptor = ({ id, ligado, onClick, disabled }) => (
   </button>
 );
 
-const Configuracoes = () => {
+/* voltar: quando a tela abre fora do menu lateral (guia e atendimento só
+   mexem no tema), mostra o link de volta para a tela deles. */
+const Configuracoes = ({ voltar = "", textoVoltar = "Voltar" }) => {
   const { theme, toggleTheme, togglePro } = useTheme();
   const { perfil, role } = useAuth();
   // regras da escala são da equipe operacional; os outros só mexem na aparência
@@ -300,7 +303,13 @@ const Configuracoes = () => {
       : { tone: "accent", texto: "Tudo sincronizado" };
 
   return (
-    <div className="ui-page cfg-page">
+    <div className={`ui-page cfg-page ${voltar ? "cfg-page--avulsa" : ""}`}>
+      {voltar && (
+        <Link to={voltar} className="cfg-voltar">
+          <Icon name="chevronLeft" size={16} />
+          {textoVoltar}
+        </Link>
+      )}
       <PageHeader
         title="Configurações"
         description={

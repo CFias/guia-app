@@ -130,23 +130,23 @@ service cloud.firestore {
     // Coleções / documentos que pertencem a UMA tela só
     function podeLerColecao(col, id) {
       return regionalLe(col, id) || daSede() && !(col in ['users', 'atividade_diaria', 'avaliacoes']) && (
-        (col == 'custos_dia' && podeArea('custos'))
+        (col in ['custos_dia', 'auditoria_dia'] && podeArea('custos'))
         || (col == 'settings' && id == 'custos'
             && (podeArea('custos') || podeArea('servicosFornecedor')))
         || ((col == 'faq_itens' || col == 'arquivos')
             && (podeArea('centralInformacoes') || podeArea('verComercial')))
-        || (!(col in ['custos_dia', 'faq_itens', 'arquivos'])
+        || (!(col in ['custos_dia', 'auditoria_dia', 'faq_itens', 'arquivos'])
             && !(col == 'settings' && id == 'custos'))
       );
     }
     function podeGravarColecao(col, id) {
       return regionalGrava(col, id) || daSede() && !(col in ['users', 'atividade_diaria', 'avaliacoes']) && (
-        (col == 'custos_dia' && podeArea('custos'))
+        (col in ['custos_dia', 'auditoria_dia'] && podeArea('custos'))
         || (col == 'settings' && id == 'custos' && podeArea('custos'))
         || (col == 'settings' && (id == 'turnos_equipe' || id.matches('turnos_equipe__.*')) && podeArea('demandaTurnos'))
         || (col == 'settings' && id in ['acessos', 'regioes'] && isGerencia())
         || ((col == 'faq_itens' || col == 'arquivos') && podeArea('centralInformacoes'))
-        || (!(col in ['custos_dia', 'faq_itens', 'arquivos'])
+        || (!(col in ['custos_dia', 'auditoria_dia', 'faq_itens', 'arquivos'])
             && !(col == 'settings' && (id in ['custos', 'turnos_equipe', 'acessos', 'regioes'] || id.matches('turnos_equipe__.*'))))
       );
     }

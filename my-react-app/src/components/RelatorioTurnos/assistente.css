@@ -152,7 +152,8 @@
     font-size: var(--fs-sm);
 }
 
-.aes-inline input[type=time], .aes-inline input[type=date] {
+.aes-inline input[type=time],
+.aes-inline input[type=date] {
     width: auto;
 }
 
@@ -379,7 +380,9 @@
     font-weight: 700;
 }
 
-.aes-turnos__as, .aes-turnos__dur, .aes-turnos__gente {
+.aes-turnos__as,
+.aes-turnos__dur,
+.aes-turnos__gente {
     color: var(--text-3);
     font-size: var(--fs-sm);
 }
@@ -808,7 +811,8 @@
     color: var(--text-2);
 }
 
-.aes-grade th:first-child, .aes-grade td:first-child {
+.aes-grade th:first-child,
+.aes-grade td:first-child {
     min-width: 150px;
     padding-left: 8px;
     text-align: left;
@@ -1224,4 +1228,60 @@
     .aes-passos__nome {
         font-size: 11px;
     }
+}
+
+/* exceção por voo (fornecedores) */
+.aes-porvoo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 12px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-md);
+    background: var(--raised);
+}
+
+.aes-porvoo p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+}
+
+.aes-porvoo__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.aes-porvoo__lista button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    border: 1px solid var(--divider);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.aes-porvoo__lista button.is-on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-text, var(--accent));
+    font-weight: 700;
+}
+
+.aes-porvoo__resumo,
+.aes-porvoo__carregando {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-3);
+    font-size: var(--fs-xs);
 }

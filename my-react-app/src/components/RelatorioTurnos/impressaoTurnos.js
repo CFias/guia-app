@@ -310,6 +310,49 @@ export const imprimirHtml = (html) => {
   return html;
 };
 
+/* Baixar a MESMA página da impressão como imagem PNG (para mandar nos grupos).
+   Monta a página num quadro escondido com a largura de uma folha A4 deitada
+   e fotografa com o html2canvas (carregado só na hora). */
+export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura = 1123 } = {}) => {
+  const { default: html2canvas } = await import("html2canvas");
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText = `position:fixed;left:-${largura + 200}px;top:0;width:${largura}px;height:800px;border:0;visibility:hidden`;
+  document.body.appendChild(iframe);
+  try {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    // margem da folha vira respiro em volta da imagem
+    doc.write(html.replace("</head>", `<style>html,body{background:#fff}body{margin:0;padding:28px 30px 32px;width:${largura}px;box-sizing:border-box}*{font-variant-numeric:normal!important}</style></head>`));
+    doc.close();
+    await new Promise((ok) => (doc.readyState === "complete" ? ok() : iframe.addEventListener("load", ok, { once: true })));
+    await doc.fonts?.ready?.catch?.(() => {});
+    await Promise.all([...doc.images].map((img) => (img.complete ? null : new Promise((ok) => ((img.onload = ok), (img.onerror = ok))))));
+    // se algo ficou mais largo que a folha (muitas colunas), a imagem acompanha
+    const larg = Math.max(largura, Math.ceil(doc.documentElement.scrollWidth));
+    if (larg > largura) {
+      iframe.style.width = `${larg}px`;
+      doc.body.style.width = `${larg}px`;
+    }
+    const alto = Math.ceil(doc.body.scrollHeight);
+    iframe.style.height = `${alto}px`;
+    const canvas = await html2canvas(doc.body, { backgroundColor: "#ffffff", scale: 2, width: larg, height: alto, windowWidth: larg, windowHeight: alto, logging: false, useCORS: true });
+    const blob = await new Promise((ok) => canvas.toBlob(ok, "image/png"));
+    if (!blob) throw new Error("Não foi possível gerar a imagem.");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return blob;
+  } finally {
+    iframe.remove();
+  }
+};
+
 // Excel: resumo por turno, colaboradores e uma linha por dia
 export const baixarExcelTurnos = (r) => {
   if (!r) return;

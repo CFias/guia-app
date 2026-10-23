@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Card, CardHeader, EmptyState, Field, Icon, KpiTiles, Segmented } from "../ui";
+import { Button, Card, CardHeader, EmptyState, Field, Icon, KpiTiles, Segmented, useToast } from "../ui";
 import { dataBr, escalaDoDia, isoLocal, listarDatas, num, somarDias, todosDaEquipe } from "../../Services/Services/relatorioTurnos";
 import {
   buscarChegadasPorVeiculo,
   buscarReserva,
+  eventosNovos,
   horaDe,
   listarAtendimentos,
+  ouvirAtendimentos,
+  regraPorVoo,
   marcasDaEtapa,
   relatorioAtendimento,
   resumoEsperas,
@@ -17,6 +20,10 @@ import {
 } from "../../Services/Services/atendimentoAeroporto";
 import { baixarExcelAtendimento, imprimirAtendimento } from "./impressaoAtendimento";
 import RelatorioColaborador from "./RelatorioColaborador";
+import { definirSom, somLigado, tocarNotificacao } from "../../Services/Utils/somNotificacao";
+
+// ícone de cada etapa: ✓ = recebeu (1ª), carro = embarcou (última)
+const iconeEtapa = (i, n) => (i === 0 ? "check" : i === n - 1 ? "car" : "circleCheck");
 
 const normal = (t = "") =>
   String(t)
@@ -105,18 +112,22 @@ const TempoEspera = ({ docs, etapas }) => {
         <div className="rtn-esp">
           <div className="rtn-esp__kpis">
             <div>
+              <Icon name="clock" size={16} />
               <b className="tabular">{textoMinutos(r.media)}</b>
               <span>espera média por {unidade}</span>
             </div>
             <div>
+              <Icon name="users" size={16} />
               <b className="tabular">{textoMinutos(r.mediaPax)}</b>
               <span>espera média por passageiro</span>
             </div>
             <div>
+              <Icon name="activity" size={16} />
               <b className="tabular">{textoMinutos(r.mediana)}</b>
               <span>metade {ehReserva ? "das reservas" : "dos veículos"} esperou até</span>
             </div>
-            <div>
+            <div className={r.maior?.espera.min > 60 ? "is-alerta" : ""}>
+              <Icon name="alert" size={16} />
               <b className="tabular">{textoMinutos(r.maior?.espera.min)}</b>
               <span>
                 maior espera
@@ -137,51 +148,56 @@ const TempoEspera = ({ docs, etapas }) => {
               </li>
             ))}
           </ul>
-          <div className="rtn-semana">
-            <table className="rtn-esp__tab">
-              <thead>
-                <tr>
-                  <th>{ehReserva ? "Reserva" : "Voo / veículo"}</th>
-                  <th>Pax</th>
-                  <th>{ini.nome}</th>
-                  <th>{fim.nome}</th>
-                  <th>Espera</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map((x, k) => (
-                  <tr key={`${x.doc.id}-${k}`}>
-                    <td>
-                      {ehReserva ? (
-                        <>
-                          <b>{x.reserva.titular || "Sem nome"}</b>
-                          <small>
-                            {" "}
-                            · {x.reserva.codigo || "sem código"} · {variosDias ? `${dataBr(x.doc.data).slice(0, 5)} ` : ""}
-                            {x.doc.hora || "--:--"} {(x.doc.voos || []).join(", ")}
-                          </small>
-                        </>
-                      ) : (
-                        <>
-                          <b>
-                            {variosDias ? `${dataBr(x.doc.data).slice(0, 5)} ` : ""}
-                            {x.doc.hora || "--:--"} · {(x.doc.voos || []).join(", ") || "Sem voo"}
-                          </b>
-                          <small> · {x.doc.veiculo || "sem veículo"}</small>
-                        </>
-                      )}
-                    </td>
-                    <td className="tabular">{ehReserva ? x.reserva.pax : x.doc.pax}</td>
-                    <td>{ehReserva ? quemHora(x.espera.inicio) : quemComHora(x.doc, ini.id)}</td>
-                    <td>{ehReserva ? quemHora(x.espera.fim) : quemComHora(x.doc, fim.id)}</td>
-                    <td className={`tabular ${x.espera.min > 60 ? "is-alerta" : x.espera.min > 30 ? "is-aviso" : ""}`}>
-                      <b>{x.espera.min === null ? "sem horário" : textoMinutos(x.espera.min)}</b>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="rtn-lista rtn-lista--esp">
+            {lista.map((x, k) => {
+              const ini_ = ehReserva ? quemHora(x.espera.inicio) : quemComHora(x.doc, ini.id);
+              const fim_ = ehReserva ? quemHora(x.espera.fim) : quemComHora(x.doc, fim.id);
+              const tom = x.espera.min > 60 ? "is-alerta" : x.espera.min > 30 ? "is-aviso" : "is-ok";
+              return (
+                <li key={`${x.doc.id}-${k}`} className="rtn-lista__item">
+                  <span className="rtn-lista__hora tabular">
+                    {variosDias && <small>{dataBr(x.doc.data).slice(0, 5)}</small>}
+                    {x.doc.hora || "--:--"}
+                  </span>
+                  <span className="rtn-lista__principal">
+                    {ehReserva ? (
+                      <>
+                        <b>{x.reserva.titular || "Sem nome"}</b>
+                        <small>
+                          {x.reserva.codigo || "sem código"} · {(x.doc.voos || []).join(", ")} · {x.reserva.pax} pax
+                        </small>
+                      </>
+                    ) : (
+                      <>
+                        <b>
+                          <Icon name="planeLanding" size={12} /> {(x.doc.voos || []).join(", ") || "Sem voo"}
+                        </b>
+                        <small>
+                          <Icon name="car" size={11} /> {x.doc.veiculo || "sem veículo"} · {x.doc.pax} pax
+                        </small>
+                      </>
+                    )}
+                  </span>
+                  <span className="rtn-esp__passos">
+                    <span title={`${ini.nome}: ${ini_}`}>
+                      <i className="rtn-ic is-rec">
+                        <Icon name="check" size={12} />
+                      </i>
+                      <small>{ini_}</small>
+                    </span>
+                    <Icon name="arrowRight" size={13} className="rtn-esp__seta" />
+                    <span title={`${fim.nome}: ${fim_}`}>
+                      <i className="rtn-ic is-emb">
+                        <Icon name="car" size={12} />
+                      </i>
+                      <small>{fim_}</small>
+                    </span>
+                  </span>
+                  <span className={`rtn-esp__pilula tabular ${tom}`}>{x.espera.min === null ? "sem horário" : textoMinutos(x.espera.min)}</span>
+                </li>
+              );
+            })}
+          </ul>
           <div className="rtn-esp__rodape">
             {r.semHorario > 0 && (
               <small>
@@ -232,59 +248,51 @@ const NoShowCard = ({ resumo, variosDias }) => {
         <>
           <div className="rtn-ns-resumo">
             <span className="is-com_custo">
+              <i className="rtn-ic is-falta"><Icon name="coins" size={12} /></i>
               <b>{resumo.comCusto.reservas}</b> com custo · {resumo.comCusto.pax} pax
             </span>
             <span className="is-sem_custo">
+              <i className="rtn-ic is-aviso"><Icon name="x" size={12} /></i>
               <b>{resumo.semCusto.reservas}</b> sem custo · {resumo.semCusto.pax} pax
             </span>
           </div>
-          <div className="rtn-semana">
-            <table className="rtn-ns-tab">
-              <thead>
-                <tr>
-                  <th>{variosDias ? "Dia / hora" : "Hora"}</th>
-                  <th>Reserva</th>
-                  <th>Voo / veículo</th>
-                  <th>Pax</th>
-                  <th>Tipo</th>
-                  <th>Informado por</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map((n) => (
-                  <tr key={`${n.docId}-${n.chave}`}>
-                    <td className="tabular">
-                      {variosDias ? `${dataBr(n.data).slice(0, 5)} ` : ""}
-                      {n.hora || "--:--"}
-                    </td>
-                    <td>
-                      <b>{n.titular || "Sem nome"}</b>
-                      <small>
-                        {" "}
-                        · {n.codigo || "sem código"}
-                        {n.hotel ? ` · ${n.hotel}` : ""}
-                      </small>
-                    </td>
-                    <td>
-                      {(n.voos || []).join(", ") || n.voo || "—"}
-                      <small> · {n.veiculo || "sem veículo"}</small>
-                    </td>
-                    <td className="tabular">
-                      {n.pax}
-                      <small> ({textoPax(n)})</small>
-                    </td>
-                    <td>
-                      <span className={`rtn-ns-tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
-                    </td>
-                    <td>
-                      {n.porNome || "—"}
-                      <small> {horaDe(n.em)}</small>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="rtn-lista">
+            {lista.map((n) => (
+              <li key={`${n.docId}-${n.chave}`} className={`rtn-lista__item is-${n.tipo}`}>
+                <i className={`rtn-ic ${n.tipo === "com_custo" ? "is-falta" : "is-aviso"}`}>
+                  <Icon name="x" size={13} />
+                </i>
+                <span className="rtn-lista__hora tabular">
+                  {variosDias && <small>{dataBr(n.data).slice(0, 5)}</small>}
+                  {n.hora || "--:--"}
+                </span>
+                <span className="rtn-lista__principal">
+                  <b>{n.titular || "Sem nome"}</b>
+                  <small>
+                    {n.codigo || "sem código"}
+                    {n.hotel ? ` · ${n.hotel}` : ""}
+                  </small>
+                </span>
+                <span className="rtn-lista__meta">
+                  <span>
+                    <Icon name="planeLanding" size={12} /> {(n.voos || []).join(", ") || n.voo || "—"}
+                  </span>
+                  <span>
+                    <Icon name="car" size={12} /> {n.veiculo || "sem veículo"}
+                  </span>
+                  <span>
+                    <Icon name="users" size={12} /> {n.pax} <small>({textoPax(n)})</small>
+                  </span>
+                </span>
+                <span className="rtn-lista__fim">
+                  <span className={`rtn-ns-tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
+                  <small>
+                    <Icon name="user" size={11} /> {n.porNome || "—"} {horaDe(n.em)}
+                  </small>
+                </span>
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </Card>
@@ -431,41 +439,152 @@ const BuscaReserva = ({ docs, chegadas, etapas, inicio, fim, equipe = [], onAbri
   );
 };
 
-const AtendimentoRelatorio = ({ config, excecoes }) => {
+const ATUALIZAR_PHOENIX_MS = 5 * 60 * 1000; // chegadas do Phoenix: a cada 5 min (período com hoje)
+const MAX_EVENTOS = 30;
+
+/* Ao vivo: o que a equipe acabou de marcar no painel do aeroporto */
+const AoVivo = ({ eventos, em, som, onSom }) => {
+  const [todos, setTodos] = useState(false);
+  const lista = todos ? eventos : eventos.slice(0, 5);
+  return (
+    <Card className="rtn-vivo">
+      <div className="rtn-vivo__topo">
+        <span className="rtn-vivo__selo">
+          <i aria-hidden="true" /> Ao vivo
+        </span>
+        <span className="rtn-vivo__quando">{em ? `Atualizado às ${em.toLocaleTimeString("pt-BR")}` : "Conectando…"}</span>
+        <button type="button" className={`rtn-vivo__som ${som ? "is-on" : ""}`} onClick={onSom} aria-pressed={som} title={som ? "Desligar o som" : "Ligar o som"}>
+          <Icon name="bell" size={14} /> {som ? "Som ligado" : "Som desligado"}
+        </button>
+      </div>
+      {eventos.length === 0 ? (
+        <p className="rtn-vivo__vazio">As marcações aparecem aqui assim que a equipe marcar no painel.</p>
+      ) : (
+        <ul className="rtn-vivo__lista">
+          {lista.map((e) => (
+            <li key={e.id} className={`is-${e.tipo}`}>
+              <i className={`rtn-ic ${e.tipo === "noshow" ? "is-falta" : e.tipo === "marca" && e.etapa > 0 && e.etapa === e.nEtapas - 1 ? "is-emb" : "is-rec"}`}>
+                <Icon
+                  name={e.tipo === "noshow" ? "x" : e.tipo === "reserva" ? "check" : e.tipo === "completo" ? "circleCheck" : iconeEtapa(e.etapa || 0, e.nEtapas || 2)}
+                  size={12}
+                />
+              </i>
+              <time>{e.em ? e.em.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}</time>
+              <span>
+                <b>{e.texto}</b>
+                <small>{e.detalhe}</small>
+              </span>
+            </li>
+          ))}
+          {eventos.length > 5 && (
+            <li className="rtn-vivo__mais">
+              <button type="button" onClick={() => setTodos((x) => !x)}>
+                {todos ? "Mostrar menos" : `Ver todas (${eventos.length})`}
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </Card>
+  );
+};
+
+const iniciaisDe = (nome = "") =>
+  String(nome)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0] || "")
+    .join("")
+    .toUpperCase() || "?";
+const marcouAlgo = (l, etapas) => etapas.some((e) => l.etapas[e.id]?.pax || l.etapas[e.id]?.veiculos);
+
+const AtendimentoRelatorio = ({ config, excecoes, onSalvarOcultos }) => {
+  const { mostrarToast } = useToast();
   const [atalho, setAtalho] = useState("hoje");
   const [periodo, setPeriodo] = useState(() => ATALHOS[0].calc());
   const [recarregar, setRecarregar] = useState(0);
-  const [carga, setCarga] = useState({ chave: "", docs: [], chegadas: null, erro: "" });
   const [colabSel, setColabSel] = useState(null); // relatório de um colaborador
   const [inicio, fim] = periodo;
-  const chave = `${inicio}|${fim}|${recarregar}`;
+  const chavePeriodo = `${inicio}|${fim}`;
   const dias = listarDatas(inicio, fim);
   const cruzar = dias.length <= MAX_CRUZAR;
+  const etapas = useMemo(() => config?.atendimento?.etapas || [], [config]);
+  const etapasRef = useRef(etapas);
+  useEffect(() => {
+    etapasRef.current = etapas;
+  }, [etapas]);
 
+  // marcações em TEMPO REAL: cada marca feita no painel chega aqui na hora
+  const [marcas, setMarcas] = useState({ periodo: "", docs: [], erro: "", em: null });
+  const [eventos, setEventos] = useState({ periodo: "", lista: [] });
+  const [som, setSom] = useState(somLigado);
+  useEffect(() => {
+    const per = `${inicio}|${fim}`;
+    let anteriores = null;
+    return ouvirAtendimentos(
+      inicio,
+      fim,
+      (docs) => {
+        if (anteriores) {
+          const novos = eventosNovos(anteriores, docs, etapasRef.current);
+          if (novos.length) {
+            setEventos((ev) => ({ periodo: per, lista: [...novos, ...(ev.periodo === per ? ev.lista : [])].slice(0, MAX_EVENTOS) }));
+            tocarNotificacao();
+            mostrarToast(novos.length > 1 ? `${novos[0].texto} (+${novos.length - 1})` : novos[0].texto);
+          }
+        }
+        anteriores = docs;
+        setMarcas({ periodo: per, docs, erro: "", em: new Date() });
+      },
+      (e) => {
+        console.error(e);
+        setMarcas({ periodo: per, docs: [], erro: "Não foi possível carregar as marcações.", em: null });
+      },
+    );
+  }, [inicio, fim, mostrarToast]);
+  const alternarSom = () => {
+    const novo = !som;
+    definirSom(novo);
+    setSom(novo);
+    if (novo) tocarNotificacao({ forcar: true });
+  };
+
+  // chegadas do Phoenix (até 7 dias): no "Atualizar" e, com hoje no período, a cada 5 min
+  const porVoo = useMemo(() => regraPorVoo(config?.atendimento), [config]);
+  const [phx, setPhx] = useState({ periodo: "", rec: -1, chegadas: null, erro: "" });
   useEffect(() => {
     let vivo = true;
+    const per = `${inicio}|${fim}`;
     const datas = listarDatas(inicio, fim);
     const phoenix =
       datas.length <= MAX_CRUZAR
-        ? Promise.all(datas.map((d) => buscarChegadasPorVeiculo(d).then((g) => [d, g]))).then((pares) => Object.fromEntries(pares))
+        ? Promise.all(datas.map((d) => buscarChegadasPorVeiculo(d, { porVoo }).then((g) => [d, g]))).then((pares) => Object.fromEntries(pares))
         : Promise.resolve(null);
-    Promise.all([listarAtendimentos(inicio, fim), phoenix.catch(() => "erro")])
-      .then(([docs, chegadas]) => {
-        if (!vivo) return;
-        setCarga({ chave, docs, chegadas: chegadas === "erro" ? null : chegadas, erro: chegadas === "erro" ? "O Phoenix não respondeu: os números abaixo são só das marcações." : "" });
-      })
-      .catch((e) => {
-        console.error(e);
-        if (vivo) setCarga({ chave, docs: [], chegadas: null, erro: "Não foi possível carregar as marcações." });
+    phoenix
+      .then((chegadas) => vivo && setPhx({ periodo: per, rec: recarregar, chegadas, erro: "" }))
+      .catch(() => {
+        // falhou: mantém as chegadas que já estavam na tela (se for o mesmo período)
+        if (vivo)
+          setPhx((p) => ({ periodo: per, rec: recarregar, chegadas: p.periodo === per ? p.chegadas : null, erro: "O Phoenix não respondeu: os números abaixo são só das marcações." }));
       });
     return () => {
       vivo = false;
     };
-  }, [inicio, fim, chave]);
+  }, [inicio, fim, recarregar, porVoo]);
+  useEffect(() => {
+    if (fim < hoje()) return undefined;
+    const t = setInterval(() => setRecarregar((x) => x + 1), ATUALIZAR_PHOENIX_MS);
+    return () => clearInterval(t);
+  }, [fim]);
 
-  const etapas = useMemo(() => config?.atendimento?.etapas || [], [config]);
+  const carregando = marcas.periodo !== chavePeriodo || phx.periodo !== chavePeriodo;
+  const atualizando = !carregando && phx.rec !== recarregar;
+  const carga = useMemo(
+    () => ({ docs: marcas.docs, chegadas: phx.chegadas, erro: marcas.erro || phx.erro }),
+    [marcas, phx],
+  );
   const regra = config?.atendimento?.contagem || "dividir";
-  const carregando = carga.chave !== chave;
   const equipe = useMemo(() => (config ? todosDaEquipe(config) : []), [config]);
   const rel = useMemo(() => {
     if (carregando || !config) return null;
@@ -484,8 +603,30 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
     setPeriodo((p) => (qual === 0 ? [v, p[1] < v ? v : p[1]] : [p[0] > v ? v : p[0], v]));
   };
 
-  const dadosSaida = rel ? { inicio, fim, etapas, rel, docs: carga.docs } : null;
-  const max = rel ? Math.max(1, ...rel.linhas.map((l) => l.etapas[etapas[0]?.id]?.pax || 0)) : 1;
+  // quem sai no relatório: sem os ocultos (configuração) e, se quiser, só quem marcou
+  const ocultos = useMemo(() => new Set(config?.atendimento?.ocultos || []), [config]);
+  const [soQuemMarcou, setSoQuemMarcou] = useState(true);
+  const [verOcultos, setVerOcultos] = useState(false);
+  const [todasPend, setTodasPend] = useState(false);
+  const [salvandoOculto, setSalvandoOculto] = useState("");
+  const relSaida = useMemo(
+    () => (rel ? { ...rel, linhas: rel.linhas.filter((l) => !ocultos.has(l.id) && (!soQuemMarcou || marcouAlgo(l, etapas))) } : null),
+    [rel, ocultos, soQuemMarcou, etapas],
+  );
+  const listaOcultos = rel ? rel.linhas.filter((l) => ocultos.has(l.id)) : [];
+  const semMarca = rel ? rel.linhas.filter((l) => !ocultos.has(l.id) && !marcouAlgo(l, etapas)).length : 0;
+  const linhasTela = rel ? [...relSaida.linhas, ...(verOcultos ? listaOcultos : [])] : [];
+  const alternarOculto = async (l) => {
+    if (!onSalvarOcultos) return;
+    setSalvandoOculto(l.id);
+    try {
+      const atual = config?.atendimento?.ocultos || [];
+      await onSalvarOcultos(ocultos.has(l.id) ? atual.filter((x) => x !== l.id) : [...atual, l.id]);
+    } finally {
+      setSalvandoOculto("");
+    }
+  };
+  const dadosSaida = relSaida ? { inicio, fim, etapas, rel: relSaida, docs: carga.docs } : null;
 
   if (config && config.atendimento?.ativo === false) {
     return (
@@ -527,7 +668,7 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
                 </option>
               ))}
             </select>
-            <Button size="sm" icon="refresh" onClick={() => setRecarregar((x) => x + 1)} loading={carregando} disabled={carregando}>
+            <Button size="sm" icon="refresh" onClick={() => setRecarregar((x) => x + 1)} loading={carregando || atualizando} disabled={carregando || atualizando} title="Busca de novo as chegadas no Phoenix (as marcações já chegam sozinhas)">
               Atualizar
             </Button>
             <Button size="sm" icon="download" onClick={() => baixarExcelAtendimento(dadosSaida)} disabled={!rel}>
@@ -539,6 +680,10 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
           </span>
         </div>
       </Card>
+
+      {!carregando && (
+        <AoVivo eventos={eventos.periodo === chavePeriodo ? eventos.lista : []} em={marcas.em} som={som} onSom={alternarSom} />
+      )}
 
       {carga.erro && !carregando && (
         <div className="rtn-faixa rtn-faixa--aviso" role="status">
@@ -588,47 +733,86 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
               subtitle={`Pax e % de cada um em cada etapa (${dataBr(inicio)}${inicio !== fim ? ` a ${dataBr(fim)}` : ""}). ${regra === "total" ? "Regra: cada um conta o veículo inteiro." : "Regra: 2 pessoas no mesmo veículo dividem os pax."
                 }`}
             />
-            {rel.linhas.length === 0 ? (
-              <p className="rtn-atd__vazio">Ninguém marcou atendimento neste período.</p>
+            <div className="rtn-atd__opc">
+              <label className="rtn-atd__check">
+                <input type="checkbox" checked={soQuemMarcou} onChange={(e) => setSoQuemMarcou(e.target.checked)} />
+                Só quem marcou{semMarca ? ` (${semMarca} sem marcação)` : ""}
+              </label>
+              {listaOcultos.length > 0 && (
+                <button type="button" className="rtn-atd__ocultos" onClick={() => setVerOcultos((x) => !x)}>
+                  <Icon name="eyeOff" size={13} /> {listaOcultos.length} fora do relatório{verOcultos ? " · esconder" : " · ver"}
+                </button>
+              )}
+              <span className="rtn-atd__opc-dica">A tabela, a impressão e o Excel saem do mesmo jeito.</span>
+            </div>
+            {linhasTela.length === 0 ? (
+              <p className="rtn-atd__vazio">{rel.linhas.some((l) => marcouAlgo(l, etapas)) ? "Todos que marcaram estão fora do relatório." : "Ninguém marcou atendimento neste período."}</p>
             ) : (
-              <div className="rtn-semana">
-                <table className="rtn-atd__tab">
-                  <thead>
-                    <tr>
-                      <th>Colaborador</th>
-                      {etapas.map((e) => (
-                        <th key={e.id} colSpan={2}>
-                          {e.nome}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rel.linhas.map((l) => (
-                      <tr key={l.id} className={l.foraDaEquipe ? "is-fora" : ""}>
-                        <td>
-                          <i className="rtn-dot" style={{ background: l.cor }} />
+              <div className="rtn-colabs" style={{ "--n": etapas.length }}>
+                <div className="rtn-colabs__cab" aria-hidden="true">
+                  <span>Colaborador</span>
+                  {etapas.map((e, k) => (
+                    <span key={e.id}>
+                      <i className={`rtn-ic is-${k === 0 ? "rec" : k === etapas.length - 1 ? "emb" : "meio"}`}>
+                        <Icon name={iconeEtapa(k, etapas.length)} size={12} />
+                      </i>
+                      {e.nome}
+                    </span>
+                  ))}
+                  <span />
+                </div>
+                {linhasTela.map((l) => {
+                  const oculto = ocultos.has(l.id);
+                  return (
+                    <div key={l.id} className={`rtn-colab ${l.foraDaEquipe ? "is-fora" : ""} ${oculto ? "is-oculto" : ""}`}>
+                      <span className="rtn-atd__quem">
+                        <span className="rtn-atd__avatar" style={{ "--c": l.cor }}>
+                          {iniciaisDe(l.nome)}
+                        </span>
+                        <span>
                           <button type="button" className="rtn-atd__nome" onClick={() => setColabSel(l)} title={`Relatório de ${l.nome}`}>
                             <b>{l.nome}</b>
                           </button>
-                          <small> · {l.foraDaEquipe ? "fora da equipe" : l.turnoNome}</small>
-                        </td>
-                        {etapas.map((e, i) => {
-                          const v = l.etapas[e.id];
-                          return [
-                            <td key={`${e.id}-p`} className="tabular rtn-atd__pax">
-                              {i === 0 && <span className="rtn-atd__barra" style={{ width: `${(v.pax / max) * 100}%`, background: l.cor }} aria-hidden="true" />}
-                              <b>{num(v.pax, 1)}</b> <small>· {v.veiculos} veíc.</small>
-                            </td>,
-                            <td key={`${e.id}-c`} className="tabular">
-                              {v.pax ? pct(v.pct) : "—"}
-                            </td>,
-                          ];
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <small>{oculto ? "fora do relatório" : l.foraDaEquipe ? "fora da equipe" : l.turnoNome}</small>
+                        </span>
+                      </span>
+                      {etapas.map((e, k) => {
+                        const v = l.etapas[e.id];
+                        const maxEtapa = Math.max(1, ...relSaida.linhas.map((x) => x.etapas[e.id]?.pax || 0));
+                        return (
+                          <span key={e.id} className={`rtn-colab__etapa ${v.pax ? "" : "is-zero"}`} title={`${e.nome}: ${num(v.pax, 1)} pax · ${v.veiculos} veículo(s)${v.pax ? ` · ${pct(v.pct)} do dia` : ""}`}>
+                            <i className={`rtn-ic is-${k === 0 ? "rec" : k === etapas.length - 1 ? "emb" : "meio"} ${v.pax ? "" : "is-off"}`}>
+                              <Icon name={iconeEtapa(k, etapas.length)} size={13} />
+                            </i>
+                            <span className="rtn-colab__num">
+                              <b className="tabular">{num(v.pax, 1)}</b>
+                              <small>
+                                pax · {v.veiculos} <Icon name="car" size={11} />
+                              </small>
+                            </span>
+                            <span className="rtn-colab__barra" aria-hidden="true">
+                              <span style={{ width: `${(v.pax / maxEtapa) * 100}%`, background: l.cor }} />
+                            </span>
+                            <span className="rtn-colab__pct tabular">{v.pax ? pct(v.pct) : "—"}</span>
+                          </span>
+                        );
+                      })}
+                      <span className="rtn-atd__acao">
+                        {onSalvarOcultos && (
+                          <button
+                            type="button"
+                            onClick={() => alternarOculto(l)}
+                            disabled={salvandoOculto === l.id}
+                            title={oculto ? "Voltar a mostrar no relatório" : "Tirar do relatório (tela, impressão e Excel)"}
+                            aria-label={oculto ? `Mostrar ${l.nome} no relatório` : `Ocultar ${l.nome} do relatório`}
+                          >
+                            <Icon name={salvandoOculto === l.id ? "loader" : oculto ? "eye" : "eyeOff"} size={15} className={salvandoOculto === l.id ? "ui-spin" : undefined} />
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -645,16 +829,47 @@ const AtendimentoRelatorio = ({ config, excecoes }) => {
                   <Icon name="circleCheck" size={16} /> Tudo marcado.
                 </p>
               ) : (
-                <ul className="rtn-atd__pend">
-                  {rel.pendentes.map((g) => (
+                <ul className="rtn-pend">
+                  {(todasPend ? rel.pendentes : rel.pendentes.slice(0, 8)).map((g) => (
                     <li key={`${g.data}-${g.chave}`}>
-                      <b className="tabular">{inicio !== fim ? `${dataBr(g.data).slice(0, 5)} ` : ""}{g.hora || "--:--"}</b>
-                      <span>
-                        {g.voos.join(", ") || "Sem voo"} · {g.veiculo || "sem veículo"} · {g.pax} pax
+                      <span className="rtn-pend__hora tabular">
+                        {inicio !== fim && <small>{dataBr(g.data).slice(0, 5)}</small>}
+                        {g.hora || "--:--"}
                       </span>
-                      <em>falta {g.faltando.join(" e ").toLowerCase()}</em>
+                      <span className="rtn-pend__info">
+                        <span className="rtn-pend__voos">
+                          {(g.voos.length ? g.voos : ["Sem voo"]).map((v) => (
+                            <span key={v} className="rtn-pend__voo">
+                              <Icon name="planeLanding" size={12} /> {v}
+                            </span>
+                          ))}
+                        </span>
+                        <span className="rtn-pend__veic">
+                          <Icon name="car" size={13} /> {g.veiculo || "sem veículo"}
+                          <span className="rtn-pend__pax">
+                            <Icon name="users" size={12} /> {g.pax}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="rtn-pend__etapas">
+                        {etapas.map((e, k) => {
+                          const falta = g.faltando.includes(e.nome);
+                          return (
+                            <i key={e.id} className={`rtn-ic ${falta ? "is-falta" : `is-${k === 0 ? "rec" : k === etapas.length - 1 ? "emb" : "meio"}`}`} title={`${e.nome}: ${falta ? "falta marcar" : "marcado"}`}>
+                              <Icon name={falta ? "x" : iconeEtapa(k, etapas.length)} size={12} />
+                            </i>
+                          );
+                        })}
+                      </span>
                     </li>
                   ))}
+                  {rel.pendentes.length > 8 && (
+                    <li className="rtn-pend__mais">
+                      <Button size="sm" variant="ghost" onClick={() => setTodasPend((x) => !x)}>
+                        {todasPend ? "Mostrar menos" : `Ver todos (${rel.pendentes.length})`}
+                      </Button>
+                    </li>
+                  )}
                 </ul>
               )}
             </Card>

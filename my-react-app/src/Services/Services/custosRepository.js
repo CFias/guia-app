@@ -26,6 +26,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { compararComFoto, fotoDaLinha } from "./auditoriaAlteracoes";
 import { phoenixReserveService } from "./regiaoAtiva";
 import {
   alertasDoDia,
@@ -47,6 +48,7 @@ const EXPAND =
 const REF_CONFIG = () => doc(db, "settings", "custos");
 const REF_VINCULOS = () => doc(db, "settings", "vinculos_veiculos_fornecedor");
 const REF_DIA = (data) => doc(db, "custos_dia", data);
+const REF_AUDITORIA = (data) => doc(db, "auditoria_dia", data);
 
 /* ---------------- Phoenix ---------------- */
 
@@ -285,4 +287,111 @@ export const calcularDiasPelaTabela = async (datas, { config, vinculos, forneced
     aoProgredir?.(feitos, datas.length);
   });
   return { falhas };
+};
+
+/* ---------------- auditor de alterações ----------------
+   auditoria_dia/{data}:
+     foto   → { em, por, origem: "manual" | "automatica" | "tardia", servicos, linhas: { chave: foto } }
+     vistas → { <id da alteração>: quando o auditor viu a alteração pela 1ª vez } */
+
+// os serviços do dia com o custo pela tabela (sem lançamentos à mão)
+export const calcularLinhasDoDia = async (data, { config, vinculos, fornecedores }) => {
+  const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
+  const capacidades = mapaCapacidadePorVeiculo(fornecedores);
+  const { servicos } = await buscarServicosDoDia(data, config.tarifas);
+  const pares = detectarCasados(servicos, config.casado);
+  const apoios = detectarApoios(servicos);
+  const ctx = { fornecedorPorVeiculo, config, pares, apoios, capacidades };
+  return servicos.map((s) => calcularLinha(s, {}, ctx));
+};
+
+export const ouvirAuditoria = (data, aoMudar) =>
+  onSnapshot(
+    REF_AUDITORIA(data),
+    (snap) => aoMudar(snap.exists() ? snap.data() : null),
+    (e) => {
+      console.error("Erro ao ler a auditoria do dia:", e);
+      aoMudar(null);
+    },
+  );
+
+// tira (ou refaz) a foto da escala de um dia: substitui a foto e zera o "visto às"
+export const tirarFotoDaEscala = async (data, ctx, usuario, origem = "manual") => {
+  const linhas = await calcularLinhasDoDia(data, ctx);
+  const fotos = Object.fromEntries(linhas.map((l) => [l.chave, fotoDaLinha(l)]));
+  await setDoc(REF_AUDITORIA(data), {
+    data,
+    foto: { em: Timestamp.now(), por: quem(usuario), origem, servicos: linhas.length, linhas: fotos },
+    atualizadoEm: Timestamp.now(),
+  });
+  return linhas.length;
+};
+
+const idSeguro = (id) => String(id).replace(/[^\w|:,-]/g, "_").slice(0, 300);
+export const chaveDaVista = idSeguro;
+const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const lerVinculos = async () => {
+  const snap = await getDoc(REF_VINCULOS());
+  return snap.exists() ? snap.data()?.vinculos || {} : {};
+};
+
+/* AUDITORIA AUTOMÁTICA (sem botão):
+   1. a programação do dia é guardada logo depois da meia-noite (o sistema
+      aberto por quem tem acesso a Custos agenda para 00:00); se ninguém
+      estava com o sistema aberto, ela é guardada na primeira vez que alguém
+      abrir — e fica marcada como "guardada depois da meia-noite";
+   2. de tempos em tempos, compara o Phoenix com a programação e grava no
+      histórico cada alteração nova (com a hora em que apareceu), mesmo que
+      ninguém esteja olhando o auditor — inclusive as que depois voltam atrás. */
+const carregarContexto = async () => ({
+  config: normalizarConfigCustos((await getDoc(REF_CONFIG())).data() || {}),
+  vinculos: await lerVinculos(),
+  fornecedores: await carregarFornecedores(),
+});
+
+// guarda a programação do dia, se ainda não foi guardada; devolve a foto
+export const garantirProgramacao = async (data, ctx, usuario) => {
+  const snap = await getDoc(REF_AUDITORIA(data));
+  if (snap.exists() && snap.data()?.foto) return snap.data().foto;
+  const agora = new Date();
+  const naVirada = isoDe(agora) === data && agora.getHours() === 0 && agora.getMinutes() < 30;
+  await tirarFotoDaEscala(data, ctx, usuario, naVirada ? "meia-noite" : isoDe(agora) < data ? "antecipada" : "atrasada");
+  return (await getDoc(REF_AUDITORIA(data))).data()?.foto || null;
+};
+
+// o que fica no histórico de cada alteração (sem undefined: o Firestore não aceita)
+const resumoAlteracao = (a) =>
+  JSON.parse(
+    JSON.stringify({
+      chave: a.chave,
+      hora: a.hora,
+      tipoServico: a.tipoServico,
+      servico: a.servico,
+      veiculoAntes: a.antes?.veiculo || "",
+      veiculoDepois: a.depois?.veiculo || "",
+      mudancas: a.mudancas.map((m) => ({ tipo: m.tipo, de: m.de ?? "", para: m.para ?? "", qtd: m.qtd ?? 0, custo: m.custo || 0 })),
+      deltaTabela: a.deltaTabela,
+      custoRegras: a.custoRegras,
+      impacto: a.impacto,
+    }),
+  );
+
+// grava no histórico as alterações que ainda não estavam lá
+export const registrarNoHistorico = async (data, alteracoes = [], historicoAtual = null) => {
+  const atual = historicoAtual || (await getDoc(REF_AUDITORIA(data))).data()?.historico || {};
+  const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
+  const patch = { ultimaVerificacao: Timestamp.now() };
+  if (novas.length) patch.historico = Object.fromEntries(novas.map((a) => [idSeguro(a.id), { em: Timestamp.now(), ...resumoAlteracao(a) }]));
+  await setDoc(REF_AUDITORIA(data), patch, { merge: true });
+  return novas.length;
+};
+
+export const rodarAuditoriaAutomatica = async (usuario, contexto = null) => {
+  const ctx = contexto || (await carregarContexto());
+  const hoje = isoDe(new Date());
+  const foto = await garantirProgramacao(hoje, ctx, usuario);
+  if (!foto) return 0;
+  const linhas = await calcularLinhasDoDia(hoje, ctx);
+  const rel = compararComFoto(foto, linhas, ctx.config.auditoria);
+  return registrarNoHistorico(hoje, rel.alteracoes);
 };

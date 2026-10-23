@@ -430,3 +430,105 @@ body:is(.dark, .dark-pro) {
   color: var(--accent-text);
   font-weight: 600;
 }
+
+/* atendimento no aeroporto no painel de chegadas: selos só com ícone */
+.painel-op-selos {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.painel-op-selo {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--divider);
+  background: transparent;
+  color: var(--text-3);
+  opacity: 0.55;
+}
+
+.painel-op-selo.is-ok {
+  border-color: transparent;
+  background: #1f9d55;
+  color: #fff;
+  opacity: 1;
+}
+
+.painel-op-selo.is-parcial {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+  opacity: 1;
+}
+
+.painel-op-selo i {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #fff;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+}
+
+:is(body.dark, body.dark-pro) .painel-op-selo.is-ok {
+  background: #2ea86a;
+}
+
+.painel-op-forn__atd {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.painel-op-selo-quem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.painel-op-selo-quem small {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.painel-op-atd__res {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.painel-op-atd__res.is-ok {
+  background: color-mix(in srgb, #1f9d55 14%, transparent);
+  color: #17804a;
+}
+
+.painel-op-atd__res.is-noshow {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+:is(body.dark, body.dark-pro) .painel-op-atd__res.is-ok {
+  color: #3ccf7f;
+}

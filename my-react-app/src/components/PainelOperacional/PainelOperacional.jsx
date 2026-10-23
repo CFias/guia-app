@@ -41,6 +41,57 @@ import MapaDrawer from "./mapa/MapaDrawer";
 import { extrairIdiomasDoItem } from "../../Services/Utils/idiomas";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 import { ehSede, idPorRegiao, phoenixReserveService, regiaoAtual } from "../../Services/Services/regiaoAtiva";
+import {
+  docDoVeiculoNoVoo,
+  docsDoVooSemEscala,
+  etapasDoDoc,
+  horaDe,
+  noShowDaReserva,
+  nomeNoShow,
+  ouvirAtendimentos,
+  recepcaoDaReserva,
+} from "../../Services/Services/atendimentoAeroporto";
+import { carregarConfigTurnos } from "../../Services/Services/relatorioTurnos";
+
+// ícone de cada etapa do atendimento: ✓ = recebido (1ª), carro = embarcado (última)
+const iconeEtapaAtd = (i, n) => (i === 0 ? "check" : i === n - 1 ? "car" : "circleCheck");
+/* Selos só com ícone (verde = todos, amarelo = parte, cinza = ninguém);
+   o detalhe fica na dica (passar o mouse). */
+const SelosAtendimento = ({ etapas, total }) => (
+  <span className="painel-op-selos" role="group" aria-label="Atendimento no aeroporto">
+    {etapas.map((e, i) => {
+      const estado = !total ? "nada" : e.feitos >= total ? "ok" : e.feitos ? "parcial" : "nada";
+      const dica = `${e.nome}: ${!total ? "—" : e.feitos >= total ? "todos" : `${e.feitos} de ${total}`} veículo(s)${e.quem.length ? ` · ${e.quem.join(", ")}` : ""}`;
+      return (
+        <span key={e.id} className={`painel-op-selo is-${estado}`} title={dica} aria-label={dica}>
+          <Icon name={iconeEtapaAtd(i, etapas.length)} size={14} />
+          {estado === "parcial" && total > 1 && <i className="tabular">{e.feitos}</i>}
+        </span>
+      );
+    })}
+  </span>
+);
+
+/* Atendimento no aeroporto (Demanda por turno) no painel de chegadas:
+   quantos veículos de cada voo já foram recebidos / embarcados. */
+const resumoEtapasDoVoo = (voo, docs, etapas) => {
+  const veiculos = voo.gruposPorVeiculo.map((g) => ({
+    g,
+    doc: docDoVeiculoNoVoo(docs, [...new Set(g.reservas.map((r) => r.escalaId).filter(Boolean))], voo.voo),
+  }));
+  const semEscala = voo.reservasNaoEscaladas.length ? docsDoVooSemEscala(docs, voo.voo) : [];
+  const todos = [...veiculos.map((v) => v.doc), ...semEscala];
+  const total = veiculos.length + (voo.reservasNaoEscaladas.length ? Math.max(1, semEscala.length) : 0);
+  return {
+    veiculos,
+    total,
+    etapas: etapas.map((e) => {
+      const feitos = todos.filter((d) => d && etapasDoDoc(d, [e])[0].marcas.length);
+      const quem = feitos.flatMap((d) => etapasDoDoc(d, [e])[0].marcas.slice(0, 1).map((m) => `${m.nome || "?"} ${m.data ? horaDe(m.data) : ""}`.trim()));
+      return { ...e, feitos: feitos.length, quem };
+    }),
+  };
+};
 
 // status do voo → tom e ícone (atrasado/cancelado em --alert)
 // ícones da linha de OUT/Transfer (só apresentação)
@@ -1118,6 +1169,31 @@ export default function PainelOperacionalUnificado() {
   });
 
   const [itensChegadas, setItensChegadas] = useState([]);
+
+  // atendimento no aeroporto: etapas (Configurar escala) e marcas do dia, em tempo real
+  const [atdConfig, setAtdConfig] = useState(null);
+  const [atdDocs, setAtdDocs] = useState({ data: "", lista: [] });
+  useEffect(() => {
+    let vivo = true;
+    carregarConfigTurnos()
+      .then((c) => vivo && setAtdConfig(c.atendimento))
+      .catch(() => vivo && setAtdConfig(null));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (abaAtiva !== ABAS.CHEGADAS || !atdConfig?.ativo) return undefined;
+    const d = dataSelecionada;
+    return ouvirAtendimentos(
+      d,
+      d,
+      (lista) => setAtdDocs({ data: d, lista }),
+      (e) => console.error("Erro ao ler o atendimento do aeroporto:", e),
+    );
+  }, [abaAtiva, dataSelecionada, atdConfig]);
+  const atdAtivo = !!atdConfig?.ativo && (atdConfig?.etapas || []).length > 0;
+  const atdLista = atdDocs.data === dataSelecionada ? atdDocs.lista : [];
   const [itensOuts, setItensOuts] = useState([]);
   const [itensGuias, setItensGuias] = useState([]);
 
@@ -2743,8 +2819,12 @@ export default function PainelOperacionalUnificado() {
             </Card>
           ) : (
             <Table
-              columns="20px minmax(150px,1.2fr) 118px 120px minmax(150px,1fr) 70px minmax(150px,1.2fr) 44px"
-              minWidth={900}
+              columns={
+                atdAtivo
+                  ? "20px minmax(150px,1.2fr) 118px 120px minmax(150px,1fr) 84px 70px minmax(150px,1.2fr) 44px"
+                  : "20px minmax(150px,1.2fr) 118px 120px minmax(150px,1fr) 70px minmax(150px,1.2fr) 44px"
+              }
+              minWidth={atdAtivo ? 980 : 900}
             >
               <TableHead>
                 <span />
@@ -2752,6 +2832,11 @@ export default function PainelOperacionalUnificado() {
                 <span><span className="painel-op-th"><Icon name="clock" size={13} />Previsto</span></span>
                 <span><span className="painel-op-th"><Icon name="activity" size={13} />Estimado</span></span>
                 <span><span className="painel-op-th"><Icon name="info" size={13} />Status</span></span>
+                {atdAtivo && (
+                  <span title="Painel do aeroporto, em tempo real: ✓ recebido · carro embarcado">
+                    <span className="painel-op-th">Atend.</span>
+                  </span>
+                )}
                 <span className="ui-cell-end painel-op-pax"><span className="painel-op-th"><Icon name="users" size={13} />Pax</span></span>
                 <span><span className="painel-op-th"><Icon name="truck" size={13} />Motorista · veículo</span></span>
                 <span />
@@ -2763,6 +2848,7 @@ export default function PainelOperacionalUnificado() {
                 const estimadoBruto = formatarHora(voo.horarioReal || voo.horarioAtualizado);
                 const estimado = estimadoBruto && estimadoBruto !== "--:--" ? estimadoBruto : "";
                 const fornecedores = voo.gruposPorVeiculo;
+                const atd = atdAtivo ? resumoEtapasDoVoo(voo, atdLista, atdConfig.etapas) : null;
                 return (
                   <Fragment key={voo.vooKey}>
                     <TableRow
@@ -2849,6 +2935,7 @@ export default function PainelOperacionalUnificado() {
                           <span className="ui-cell-sub">Não está no painel do aeroporto</span>
                         ) : null}
                       </span>
+                      {atd && <SelosAtendimento etapas={atd.etapas} total={atd.total} />}
                       <span className="ui-cell-end ui-cell-main tabular painel-op-pax painel-op-com-icone">
                         <Icon name="users" size={14} />
                         {voo.totalPax}
@@ -2955,6 +3042,26 @@ export default function PainelOperacionalUnificado() {
                                   <strong>{grupo.totalPax} pax</strong> · {grupo.totalReservas} reserva(s)
                                 </span>
                               </span>
+                              {atd && (
+                                <span className="painel-op-forn__atd">
+                                  {etapasDoDoc(atd.veiculos[i]?.doc, atdConfig.etapas).map((e, k, todas) => (
+                                    <span
+                                      key={e.id}
+                                      className={`painel-op-selo-quem ${e.marcas.length ? "is-ok" : ""}`}
+                                      title={e.marcas.length ? `${e.nome}: ${e.marcas.map((m) => `${m.nome} ${horaDe(m.data)}`).join(", ")}` : `${e.nome}: ainda não`}
+                                    >
+                                      <span className={`painel-op-selo ${e.marcas.length ? "is-ok" : "is-nada"}`}>
+                                        <Icon name={iconeEtapaAtd(k, todas.length)} size={13} />
+                                      </span>
+                                      {e.marcas.length > 0 && (
+                                        <small>
+                                          {e.marcas[0].nome?.split(" ")[0]} · {horaDe(e.marcas[0].data)}
+                                        </small>
+                                      )}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
                             </header>
 
                             <Table
@@ -2975,7 +3082,28 @@ export default function PainelOperacionalUnificado() {
                               </TableHead>
                               {grupo.reservas.map((reserva) => (
                                 <TableRow key={reserva.id}>
-                                  <span className="ui-cell-main">{obterNomePlaca(reserva)}</span>
+                                  <span className="ui-cell-main">
+                                    {obterNomePlaca(reserva)}
+                                    {atd &&
+                                      (() => {
+                                        const doc = atd.veiculos[i]?.doc;
+                                        if (!doc) return null;
+                                        const r = { codigo: reserva.codigoReserva, titular: reserva.cliente };
+                                        const ns = noShowDaReserva(doc, r);
+                                        if (ns)
+                                          return (
+                                            <span className="painel-op-atd__res is-noshow" title={`${nomeNoShow(ns.tipo)}${ns.porNome ? ` · ${ns.porNome}` : ""}`}>
+                                              <Icon name="x" size={11} /> no show
+                                            </span>
+                                          );
+                                        const rec = recepcaoDaReserva(doc, r);
+                                        return rec ? (
+                                          <span className="painel-op-atd__res is-ok" title={`Recebida por ${rec.nome} às ${horaDe(rec.em)}`}>
+                                            <Icon name="check" size={11} /> {horaDe(rec.em)}
+                                          </span>
+                                        ) : null;
+                                      })()}
+                                  </span>
                                   <span className="tabular">
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (

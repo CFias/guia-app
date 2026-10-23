@@ -13,12 +13,13 @@
 // A contagem (pax por colaborador, % do dia) é feita no relatório
 // (Demanda por turno → Atendimento no aeroporto), com a regra configurada.
 
-import { Timestamp, deleteField, getDocs, query, setDoc, where } from "firebase/firestore";
+import { Timestamp, deleteField, getDocs, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { colBase, docBase } from "./dadosBase";
 import { phoenixReserveService } from "./regiaoAtiva";
 import { EXPAND } from "./plannerUtils";
 import { extrairListaResposta } from "./plannerApi";
 import { paraMinutos } from "./relatorioTurnos";
+import { chaveDoVeiculo, normalizarTexto } from "./custosCalculo";
 
 export const COL_ATENDIMENTOS = "atendimentos";
 
@@ -49,6 +50,10 @@ const infDo = (i) => Number(i?.is_baby_count || i?.is_infant_count || 0);
 const paxDo = (i) => adtDo(i) + chdDo(i) + infDo(i);
 const titularDo = (i) => texto(i?.reserve?.customer?.name || i?.customer?.name || i?.reserve?.holder_name || i?.passenger_name);
 const hotelDo = (i) => texto(i?.establishmentDestination?.name || i?.establishment_destination?.name || i?.destination?.name);
+// operadora (parceiro da reserva) ou, sem parceiro, quem vendeu (comercial)
+const operadoraDo = (i) =>
+  texto(i?.reserve?.partner?.fantasy_name || i?.reserve?.partner?.name || (Array.isArray(i?.reserve?.pdvPayment) ? i.reserve.pdvPayment.map((p) => p?.user?.name).find(Boolean) : ""));
+const servicoDo = (i) => texto(i?.service?.name || i?.schedule?.service?.name);
 const codigoDo = (i) => texto(i?.reserve?.code || i?.reserve_code || i?.code || i?.reserve?.id);
 
 // chave segura para id de documento
@@ -59,10 +64,40 @@ export const chaveSegura = (t = "") =>
     .replace(/[^\w-]+/g, "_")
     .slice(0, 80) || "sem_chave";
 
+/* EXCEÇÃO POR VOO (fornecedores marcados, ex.: o terceirizado de Morro de
+   São Paulo): todos os carros do fornecedor saem com o MESMO número de escala,
+   mas com voos diferentes. Para esses, cada voo vira um grupo à parte
+   (esc_<escala>__v_<voo>) com o horário do próprio voo — assim a chegada das
+   13h aparece para o turno da tarde, e não junto com a das 10h.
+   atendimento.porVoo = { fornecedores: [nomes], veiculos: [chaves do veículo] }
+   (os veículos são calculados quando a gerência salva, porque a conta de
+   atendimento não lê o cadastro de fornecedores). mapaFornecedor (opcional):
+   chave do veículo → fornecedor, para quem pode ler o cadastro. */
+export const chaveSeparadaPorVoo = (escala, voo) => `esc_${escala}__v_${chaveSegura(voo || "sem_voo")}`;
+export const regraPorVoo = (atendimento, mapaFornecedor = null) => {
+  const fornecedores = (atendimento?.porVoo?.fornecedores || []).map((f) => normalizarTexto(f)).filter(Boolean);
+  const veiculos = new Set(atendimento?.porVoo?.veiculos || []);
+  if (!fornecedores.length && !veiculos.size) return null;
+  return (i) => {
+    const so = roadmap(i)?.serviceOrder || {};
+    const v = so.vehicle || i?.vehicle || {};
+    const id = v.id ?? so.vehicle_id ?? "";
+    const nome = v.name || so.vehicle_name || v.nickname || "";
+    const k1 = chaveDoVeiculo(id !== "" && id !== null ? String(id) : "", nome);
+    const k2 = chaveDoVeiculo("", nome);
+    if (veiculos.has(k1) || veiculos.has(k2)) return true;
+    const f = mapaFornecedor && (mapaFornecedor[k1] || mapaFornecedor[k2]);
+    if (f && fornecedores.includes(normalizarTexto(f))) return true;
+    // o nome do fornecedor no apelido do veículo (ex.: "MORRO TUR 2")
+    const apelido = normalizarTexto(`${v.nickname || ""} ${v.name || ""}`);
+    return fornecedores.some((n) => n.length >= 3 && apelido.includes(n));
+  };
+};
+
 /* Chegadas do dia agrupadas por veículo.
    [{ chave, veiculo, motorista, voos[], hora, min, pax,
       reservas: [{ codigo, titular, pax, adt, chd, inf, voo, hotel }] }] */
-export const buscarChegadasPorVeiculo = async (data) => {
+export const buscarChegadasPorVeiculo = async (data, { porVoo = null } = {}) => {
   const p = new URLSearchParams();
   p.append("execution_date", data);
   p.append("expand", EXPAND);
@@ -78,11 +113,14 @@ export const buscarChegadasPorVeiculo = async (data) => {
     const veiculo = veiculoDo(i);
     const voo = vooDo(i);
     const h = horaVooDo(i);
-    // com escala do Phoenix: o veículo da escala; sem escala: o voo (aguardando veículo)
-    const chave = escala ? `esc_${escala}` : `voo_${voo || "sem_voo"}_${h}`;
+    // com escala do Phoenix: o veículo da escala; sem escala: o voo (aguardando veículo).
+    // fornecedor da exceção: a escala é dividida por voo
+    const separa = !!(escala && porVoo && porVoo(i));
+    const chave = escala ? (separa ? chaveSeparadaPorVoo(escala, voo) : `esc_${escala}`) : `voo_${voo || "sem_voo"}_${h}`;
     const g = grupos.get(chave) || {
       chave,
       escalaId: escala || null,
+      porVoo: separa,
       veiculo: escala ? veiculo || "Veículo da escala" : "",
       motorista: escala ? motoristaDo(i) : "",
       voos: new Set(),
@@ -93,7 +131,7 @@ export const buscarChegadasPorVeiculo = async (data) => {
     if (voo) g.voos.add(voo);
     if (h && (!g.hora || h < g.hora)) g.hora = h;
     g.pax += pax;
-    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, adt: adtDo(i), chd: chdDo(i), inf: infDo(i), voo, hotel: hotelDo(i) });
+    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, adt: adtDo(i), chd: chdDo(i), inf: infDo(i), voo, hotel: hotelDo(i), operadora: operadoraDo(i), servico: servicoDo(i) });
     grupos.set(chave, g);
   });
   return [...grupos.values()]
@@ -145,6 +183,8 @@ const resumoReserva = (r) => ({
   adt: Number(r.adt) || 0,
   chd: Number(r.chd) || 0,
   inf: Number(r.inf) || 0,
+  operadora: r.operadora || "",
+  servico: r.servico || "",
 });
 
 // marca ou desmarca uma etapa para alguém (quem = { id, nome, colaboradorId }).
@@ -197,6 +237,21 @@ export const TIPOS_NO_SHOW = [
   { id: "sem_custo", nome: "No show sem custo", curto: "Sem custo" },
   { id: "com_custo", nome: "No show com custo", curto: "Com custo" },
 ];
+/* Relato padronizado do no show, para colar no grupo:
+   Ocorrência: No-show / Reserva / Operadora/Comercial / Serviço / Descrição /
+   Custo para a base:(✅ ) Sim ( ) Não */
+export const DESCRICAO_NO_SHOW = "Esperamos mais de 45 minutos, foram realizadas tentativas de contato, porém sem retorno.";
+export const textoRelatoNoShow = ({ reserva = {}, tipo, descricao = DESCRICAO_NO_SHOW }) => {
+  const com = tipo === "com_custo";
+  return [
+    "Ocorrência: No-show",
+    `Reserva: ${reserva.codigo || reserva.titular || "—"}`,
+    `Operadora/Comercial: ${reserva.operadora || "—"}`,
+    `Serviço: ${reserva.servico || "IN"}`,
+    `Descrição: ${String(descricao || DESCRICAO_NO_SHOW).trim()}`,
+    `Custo para a base:(${com ? "✅ " : " "}) Sim (${com ? " " : "✅ "}) Não`,
+  ].join("\n");
+};
 export const nomeNoShow = (tipo) => TIPOS_NO_SHOW.find((t) => t.id === tipo)?.nome || "No show";
 export const chaveReserva = (r = {}, i = 0) => chaveSegura(r.codigo || `${r.titular || "reserva"}_${i}`);
 const entradasNoShow = (doc) => Object.entries(doc?.noShow || {}).filter(([, v]) => v && typeof v === "object" && v.tipo);
@@ -285,6 +340,86 @@ export const listarAtendimentos = async (inicio, fim = inicio) => {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
+
+/* PAINEL DE CHEGADAS (Painel Operacional): o documento de marcas de um
+   veículo num voo — pela escala (esc_<id>), pela escala separada por voo
+   (esc_<id>__v_<voo>) ou, sem escala, pelo voo (voo_<voo>_<hora>). */
+export const docDoVeiculoNoVoo = (docs = [], escalaIds = [], voo = "") => {
+  const porChave = new Map(docs.map((d) => [d.chave, d]));
+  for (const id of escalaIds.filter(Boolean)) {
+    const separado = porChave.get(chaveSeparadaPorVoo(id, voo));
+    if (separado) return separado;
+    const normal = porChave.get(`esc_${id}`);
+    if (normal) return normal;
+  }
+  return null;
+};
+export const docsDoVooSemEscala = (docs = [], voo = "") => {
+  const v = String(voo || "").trim().toUpperCase();
+  return docs.filter((d) => String(d.chave || "").startsWith("voo_") && (d.voos || []).some((x) => String(x).trim().toUpperCase() === v));
+};
+// situação das etapas de um documento: [{ id, nome, marcas: [{ nome, data }] }]
+export const etapasDoDoc = (doc, etapas = []) => etapas.map((e) => ({ id: e.id, nome: e.nome, marcas: doc ? marcasDaEtapa(doc, e.id) : [] }));
+
+/* Os mesmos atendimentos em TEMPO REAL: chama aoMudar(docs, snap) a cada
+   marcação feita no painel. Devolve a função que para de ouvir. */
+export const ouvirAtendimentos = (inicio, fim, aoMudar, aoErrar) =>
+  onSnapshot(
+    query(colBase(COL_ATENDIMENTOS), where("data", ">=", inicio), where("data", "<=", fim)),
+    (snap) => aoMudar(snap.docs.map((d) => ({ id: d.id, ...d.data() })), snap),
+    (e) => aoErrar?.(e),
+  );
+
+/* O que é NOVO entre duas leituras (para o "ao vivo" e o som):
+   marcas de etapa, recepções por reserva e no shows que apareceram.
+   antes/depois: listas de documentos. Desmarcações não viram aviso. */
+export const eventosNovos = (antes = [], depois = [], etapas = []) => {
+  const velhos = new Map(antes.map((d) => [d.id, d]));
+  const nomeEtapa = (id) => etapas.find((e) => e.id === id)?.nome || id;
+  const veiculoDe = (d) => [d.veiculo, d.hora].filter(Boolean).join(" · ") || "Veículo";
+  const out = [];
+  depois.forEach((d) => {
+    const v = velhos.get(d.id) || {};
+    Object.entries(d.marcas || {}).forEach(([etapa, pessoas]) =>
+      Object.entries(pessoas || {}).forEach(([id, m]) => {
+        if (!m || typeof m !== "object" || v.marcas?.[etapa]?.[id]) return;
+        out.push({
+          id: `${d.id}|m|${etapa}|${id}`,
+          etapa: Math.max(0, etapas.findIndex((e) => e.id === etapa)),
+          nEtapas: etapas.length,
+          tipo: m.auto ? "completo" : "marca",
+          quem: m.nome || "",
+          texto: m.auto ? `${veiculoDe(d)}: ${nomeEtapa(etapa).toLowerCase()} completo` : `${m.nome || "Alguém"} · ${nomeEtapa(etapa)}`,
+          detalhe: m.auto ? `${m.nome || ""}${m.paxReservas ? ` · ${m.paxReservas} pax` : ""}` : `${veiculoDe(d)} · ${Number(d.pax) || 0} pax`,
+          em: paraDate(m.em),
+        });
+      }),
+    );
+    Object.entries(d.recepcoes || {}).forEach(([k, r]) => {
+      if (!r?.em || v.recepcoes?.[k]) return;
+      out.push({
+        id: `${d.id}|r|${k}`,
+        tipo: "reserva",
+        quem: r.nome || "",
+        texto: `${r.nome || "Alguém"} recebeu ${r.titular || r.codigo || "uma reserva"}`,
+        detalhe: `${veiculoDe(d)}${r.pax ? ` · ${r.pax} pax` : ""}`,
+        em: paraDate(r.em),
+      });
+    });
+    Object.entries(d.noShow || {}).forEach(([k, n]) => {
+      if (!n?.tipo || v.noShow?.[k]?.tipo) return;
+      out.push({
+        id: `${d.id}|n|${k}`,
+        tipo: "noshow",
+        quem: n.porNome || "",
+        texto: `${nomeNoShow(n.tipo)} · ${n.titular || n.codigo || "reserva"}`,
+        detalhe: `${veiculoDe(d)}${n.porNome ? ` · por ${n.porNome}` : ""}`,
+        em: paraDate(n.em),
+      });
+    });
+  });
+  return out.sort((a, b) => (b.em?.getTime() || 0) - (a.em?.getTime() || 0));
+};
 
 /* Conta pax por pessoa e etapa.
    regra "dividir": pax / quantos marcaram a etapa; "total": cada um conta tudo.

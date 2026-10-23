@@ -502,3 +502,26 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Tema aberto fora do menu lateral (guia e atendimento) */
+.cfg-page--avulsa {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.cfg-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-bottom: 4px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cfg-voltar:hover {
+  color: var(--accent);
+}

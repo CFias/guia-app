@@ -7,6 +7,7 @@ import {
   ouvirVinculos,
 } from "../../Services/Services/custosRepository";
 import { normalizarConfigCustos } from "../../Services/Services/custosCalculo";
+import AuditorAlteracoes from "./AuditorAlteracoes";
 import CustoDia from "./CustoDia";
 import RelatorioCustos from "./RelatorioCustos";
 import TabelaTarifas from "./TabelaTarifas";
@@ -15,7 +16,9 @@ import TabelaMi from "./TabelaMi";
 import "./custos.css";
 
 /* =========================================================
-   CUSTOS OPERACIONAIS
+   CUSTOS E ALTERAÇÕES (antes "Custos operacionais")
+   - Auditor de alterações: foto da escala na véspera × o dia da operação,
+     com quanto cada alteração mexeu no custo (auditoria_dia/{data})
    - Custo do dia: serviços do Phoenix com fornecedor, tarifa,
      valor real cobrado e guia (lançamentos em custos_dia/{data})
    - Relatórios: período, por fornecedor/tipo/guia/dia, economia
@@ -26,6 +29,7 @@ import "./custos.css";
 
 const ABAS = [
   { value: "dia", label: "Custo do dia", icon: "calendar" },
+  { value: "auditor", label: "Auditor de alterações", icon: "activity" },
   { value: "relatorios", label: "Relatórios", icon: "barChart" },
   { value: "tarifario", label: "Tarifário", icon: "fileText" },
   { value: "tarifas", label: "Tarifas", icon: "tag" },
@@ -78,13 +82,14 @@ const CustosOperacionais = () => {
   return (
     <div className="ui-page cst-page">
       <PageHeader
-        title="Custos operacionais"
-        description="Quanto custa cada serviço do dia — fornecedores e guias — com a tabela de tarifas, o valor real cobrado e os serviços casados."
+        title="Custos e alterações"
+        description="Quanto custa cada serviço do dia — fornecedores e guias — e o que mudou desde a escala da véspera, com o impacto de cada alteração no custo."
       />
 
       <Segmented ariaLabel="Seções de custos" value={aba} onChange={trocarAba} options={ABAS} />
 
       {aba === "dia" && <CustoDia {...contexto} onCriarTarifa={criarTarifa} />}
+      {aba === "auditor" && <AuditorAlteracoes {...contexto} />}
       {aba === "relatorios" && <RelatorioCustos {...contexto} />}
       {aba === "tarifario" && <Tarifario {...contexto} />}
       {aba === "mi" && <TabelaMi key={configCarregada ? "ok" : "carregando"} {...contexto} />}

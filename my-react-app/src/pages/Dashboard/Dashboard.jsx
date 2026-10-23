@@ -9,6 +9,7 @@ import BoasVindasBase from "../../components/BoasVindas/BoasVindasBase";
 import NotificacoesSino from "../../components/Notificacoes/NotificacoesSino";
 import { ACESSO, ROLE_LABELS, ROLES } from "../../Context/permissions";
 import { areaDaRota, ehGerencia, podeArea, podeVerBalanco, rotaForaDaRegiao } from "../../Context/acessos";
+import { rodarAuditoriaAutomatica } from "../../Services/Services/custosRepository";
 import AvaliacaoSistema from "../../components/Atividade/AvaliacaoSistema";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ehSede } from "../../Services/Services/regiaoAtiva";
@@ -64,6 +65,33 @@ const Dashboard = ({ loading }) => {
   const { sidebarRecolhida, setSidebarRecolhida } = usePreferenciasUI();
   const { regiao, todas, podeTrocar, trocarRegiao, carregando: carregandoRegiao, indisponivel } = useRegiao();
   const naSede = ehSede(regiao);
+
+  // Auditoria de escala automática: com o sistema aberto por quem tem acesso
+  // a Custos, guarda a programação do dia logo depois da meia-noite e, a cada
+  // 10 min, registra as alterações do dia (Custos e alterações → Auditor).
+  const podeAuditar = role === ROLES.OPERACIONAL && naSede && podeArea(perfil, "custos", regiao);
+  useEffect(() => {
+    if (!podeAuditar) return undefined;
+    const rodar = () => rodarAuditoriaAutomatica(perfil).catch((e) => console.error("Auditoria automática:", e));
+    const primeira = setTimeout(rodar, 20000);
+    const t = setInterval(rodar, 10 * 60 * 1000);
+    // e logo depois da virada do dia (00:00:20)
+    let meiaNoite = null;
+    const agendarMeiaNoite = () => {
+      const agora = new Date();
+      const alvo = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1, 0, 0, 20);
+      meiaNoite = setTimeout(() => {
+        rodar();
+        agendarMeiaNoite();
+      }, alvo - agora);
+    };
+    agendarMeiaNoite();
+    return () => {
+      clearTimeout(primeira);
+      clearInterval(t);
+      clearTimeout(meiaNoite);
+    };
+  }, [podeAuditar, perfil]);
 
   // Celular / tablet: o menu vira uma gaveta que abre pelo botão ☰.
   const [menuAberto, setMenuAberto] = useState(false);

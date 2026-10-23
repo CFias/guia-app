@@ -47,7 +47,7 @@ export const TELAS_REGIONAIS = [
   { grupo: "Escala e guias", chave: "listaGuias", label: "Lista de Guias", detalhe: "Guias da base: dados, idiomas, foto e afinidade.", pronta: true },
   { grupo: "Escala e guias", chave: "mapaAfinidade", label: "Mapa de afinidade", detalhe: "Nível de cada guia em cada passeio.", pronta: false },
   { grupo: "Escala e guias", chave: "disponibilidade", label: "Disponibilidade da semana", detalhe: "O que cada guia enviou.", pronta: false },
-  { grupo: "Custos e relatórios", chave: "custos", label: "Custos operacionais", detalhe: "Custos e tarifas da base.", pronta: false },
+  { grupo: "Custos e relatórios", chave: "custos", label: "Custos e alterações", detalhe: "Custos, tarifas e auditor de alterações da base.", pronta: false },
   { grupo: "Custos e relatórios", chave: "demandaTurnos", label: "Demanda por turno", detalhe: "Turnos e equipe próprios da base.", pronta: true },
   { grupo: "Custos e relatórios", chave: "servicosFornecedor", label: "Serviços por Fornecedor", detalhe: "Serviços de cada fornecedor da base.", pronta: false },
   {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { onSnapshot, query, where } from "firebase/firestore";
 import Icon from "../ui/Icon";
@@ -24,6 +24,7 @@ import {
   buscarChegadasPorVeiculo,
   contarAtendimentos,
   esperaDoDoc,
+  eventosNovos,
   horaDe,
   marcarEtapa,
   marcarNoShow,
@@ -31,11 +32,15 @@ import {
   recepcaoDaReserva,
   noShowDaReserva,
   TIPOS_NO_SHOW,
+  DESCRICAO_NO_SHOW,
+  textoRelatoNoShow,
   marcasDaEtapa,
+  regraPorVoo,
   textoMinutos,
   textoPax,
   vincularDocs,
 } from "../../Services/Services/atendimentoAeroporto";
+import { definirSom, somLigado, tocarNotificacao } from "../../Services/Utils/somNotificacao";
 import "./atendimento.css";
 
 /* PAINEL DO AEROPORTO (conta "Atendimento" ou Operacional).
@@ -51,6 +56,64 @@ const semAcento = (t = "") =>
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
+// copia um texto (com reserva para navegador sem a API de área de transferência)
+const copiarTexto = async (t) => {
+  try {
+    await navigator.clipboard.writeText(t);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = t;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+};
+
+/* Relato padronizado do no show para colar no grupo (com a descrição editável) */
+const RelatoNoShow = ({ reserva, tipo }) => {
+  const [editando, setEditando] = useState(false);
+  const [descricao, setDescricao] = useState(DESCRICAO_NO_SHOW);
+  const [copiado, setCopiado] = useState(false);
+  const texto = textoRelatoNoShow({ reserva, tipo, descricao });
+  const copiar = async () => {
+    if (await copiarTexto(texto)) {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2200);
+    } else window.prompt("Copie o relato:", texto);
+  };
+  return (
+    <div className="atd-relato">
+      {editando && (
+        <>
+          <pre className="atd-relato__previa">{texto}</pre>
+          <label className="atd-relato__desc">
+            <span>Descrição</span>
+            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} maxLength={500} />
+          </label>
+        </>
+      )}
+      <div className="atd-relato__acoes">
+        <button type="button" className={`atd-relato__copiar ${copiado ? "is-ok" : ""}`} onClick={copiar}>
+          <Icon name={copiado ? "check" : "copy"} size={13} /> {copiado ? "Copiado!" : "Copiar relato para o grupo"}
+        </button>
+        <button type="button" className="atd-relato__editar" onClick={() => setEditando((x) => !x)}>
+          {editando ? "Fechar" : "Ver / editar"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const pl = (n, um, varios) => `${num(n, 0)} ${Math.round(n) === 1 ? um : varios}`;
 
 const AtendimentoAeroporto = () => {
@@ -59,6 +122,7 @@ const AtendimentoAeroporto = () => {
   const uid = user?.uid || "";
   const [data, setData] = useState(hoje);
   const [config, setConfig] = useState(null);
+  const [configLida, setConfigLida] = useState(false);
   const [excecoes, setExcecoes] = useState({ dias: {} });
   const [carga, setCarga] = useState({ data: "", grupos: [], erro: "" });
   const [docs, setDocs] = useState({ data: "", lista: [] });
@@ -91,51 +155,89 @@ const AtendimentoAeroporto = () => {
         if (!vivo) return;
         setConfig(c);
         setExcecoes(e);
+        setConfigLida(true);
         // conta do Operacional que está na escala: já começa marcando em nome dela
         if (ehOperacional && uid) {
           const eu = todosDaEquipe(c).find((x) => x.contaUid === uid || x.id === uid);
           if (eu) setEmNomeDe((atual) => atual || eu.id);
         }
       })
-      .catch(() => vivo && setConfig(null));
+      .catch(() => {
+        if (!vivo) return;
+        setConfig(null);
+        setConfigLida(true);
+      });
     return () => {
       vivo = false;
     };
   }, [ehOperacional, uid]);
 
-  // chegadas do Phoenix (por veículo)
+  // chegadas do Phoenix (por veículo) — espera a configuração por causa da
+  // exceção por voo (fornecedores que usam o mesmo número de escala)
+  const porVoo = useMemo(() => regraPorVoo(config?.atendimento), [config]);
   useEffect(() => {
+    if (!configLida) return undefined;
     let vivo = true;
-    buscarChegadasPorVeiculo(data)
+    buscarChegadasPorVeiculo(data, { porVoo })
       .then((grupos) => vivo && setCarga({ data, grupos, erro: "" }))
       .catch((e) => vivo && setCarga({ data, grupos: [], erro: e?.message || "Não foi possível ler o Phoenix." }));
     return () => {
       vivo = false;
     };
-  }, [data, recarregar]);
+  }, [data, recarregar, configLida, porVoo]);
 
-  // marcas do dia, em tempo real
-  useEffect(
-    () =>
-      onSnapshot(
-        query(colBase(COL_ATENDIMENTOS), where("data", "==", data)),
-        (snap) => setDocs({ data, lista: snap.docs.map((d) => ({ id: d.id, ...d.data() })) }),
-        (e) => console.error("Erro ao ler atendimentos:", e),
-      ),
-    [data],
-  );
+  // marcas do dia, em tempo real. Para o Operacional, o que OUTRA pessoa
+  // marcar toca o som e aparece no aviso "Agora há pouco".
+  const etapasRef = useRef([]);
+  const [aviso, setAviso] = useState(null);
+  const [som, setSom] = useState(somLigado);
+  useEffect(() => {
+    let anteriores = null;
+    return onSnapshot(
+      query(colBase(COL_ATENDIMENTOS), where("data", "==", data)),
+      (snap) => {
+        const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // marcações feitas neste aparelho chegam com hasPendingWrites: não avisam
+        if (ehOperacional && anteriores && !snap.metadata.hasPendingWrites) {
+          const novos = eventosNovos(anteriores, lista, etapasRef.current);
+          if (novos.length) {
+            setAviso({ ...novos[0], mais: novos.length - 1, ts: Date.now() });
+            tocarNotificacao();
+          }
+        }
+        anteriores = lista;
+        setDocs({ data, lista });
+      },
+      (e) => console.error("Erro ao ler atendimentos:", e),
+    );
+  }, [data, ehOperacional]);
+  // o aviso some sozinho
+  useEffect(() => {
+    if (!aviso) return undefined;
+    const t = setTimeout(() => setAviso(null), 7000);
+    return () => clearTimeout(t);
+  }, [aviso]);
+  const alternarSom = () => {
+    const novo = !som;
+    definirSom(novo);
+    setSom(novo);
+    if (novo) tocarNotificacao({ forcar: true });
+  };
 
   const equipe = useMemo(() => (config ? todosDaEquipe(config) : []), [config]);
-  const etapas = config?.atendimento?.etapas || [];
+  const etapas = useMemo(() => config?.atendimento?.etapas || [], [config]);
+  useEffect(() => {
+    etapasRef.current = etapas;
+  }, [etapas]);
   const regra = config?.atendimento?.contagem || "dividir";
 
   // quem está marcando
   const eu = ehOperacional
     ? equipe.find((c) => c.id === emNomeDe) || null
     : // a conta é ligada à pessoa em Configurar escala (contaUid); contas antigas, pelo colaboradorId
-      equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
-      equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
-      (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
+    equipe.find((c) => user?.uid && (c.contaUid === user.uid || c.id === user.uid)) ||
+    equipe.find((c) => perfil?.colaboradorId && c.id === perfil.colaboradorId) ||
+    (user?.uid ? { id: user.uid, nome: perfil?.nome || "Atendimento" } : null);
   const quem = eu ? { id: eu.id, nome: eu.nome, colaboradorId: eu.id } : null;
 
   // meu turno no dia
@@ -288,6 +390,21 @@ const AtendimentoAeroporto = () => {
 
   return (
     <div className="atd">
+      {aviso && (
+        <div className={`atd-aviso is-${aviso.tipo}`} role="status" aria-live="polite" key={aviso.ts}>
+          <Icon name={aviso.tipo === "noshow" ? "alert" : "circleCheck"} size={16} />
+          <span>
+            <b>{aviso.texto}</b>
+            <small>
+              {aviso.detalhe}
+              {aviso.mais > 0 ? ` · +${aviso.mais}` : ""}
+            </small>
+          </span>
+          <button type="button" onClick={() => setAviso(null)} aria-label="Fechar aviso">
+            <Icon name="x" size={14} />
+          </button>
+        </div>
+      )}
       <header className="atd-topo">
         <div className="atd-topo__linha">
           <span className="atd-topo__icone">
@@ -299,6 +416,11 @@ const AtendimentoAeroporto = () => {
           </div>
           <span className="atd-topo__acoes">
             <AvaliacaoSistema variante="botao" className="atd-btn-leve atd-avaliar" />
+            {ehOperacional && (
+              <button type="button" className={`atd-btn-leve ${som ? "is-on" : ""}`} onClick={alternarSom} aria-pressed={som} title={som ? "Desligar o som das marcações" : "Ligar o som das marcações"}>
+                <Icon name="bell" size={15} />
+              </button>
+            )}
             {ehOperacional ? (
               <Link to="/recepcao-turnos" className="atd-btn-leve">
                 <Icon name="barChart" size={15} /> Relatório
@@ -308,6 +430,9 @@ const AtendimentoAeroporto = () => {
                 <Icon name="info" size={15} />
               </Link>
             )}
+            <Link to="/atendimento/tema" className="atd-btn-leve" title="Tema, cor e tamanho do texto" aria-label="Tema">
+              <Icon name="palette" size={15} />
+            </Link>
             <button type="button" className="atd-btn-leve" onClick={logout} title="Sair">
               <Icon name="logout" size={15} />
             </button>
@@ -445,6 +570,11 @@ const AtendimentoAeroporto = () => {
                       <>
                         <b>{g.veiculo}</b>
                         {g.motorista && <span> · {g.motorista}</span>}
+                        {g.porVoo && (
+                          <span className="atd-carro__porvoo" title="Fornecedor com a mesma escala para voos diferentes: cada voo aparece separado, no horário dele">
+                            separado por voo
+                          </span>
+                        )}
                       </>
                     ) : (
                       <em>Ainda sem veículo na escala</em>
@@ -545,6 +675,7 @@ const AtendimentoAeroporto = () => {
                                 <button type="button" onClick={() => informarNoShow(g, r, i, null)} disabled={!quem || ocupado}>
                                   Desfazer
                                 </button>
+                                <RelatoNoShow reserva={{ ...ns, ...r }} tipo={ns.tipo} />
                               </div>
                             ) : (
                               <div className="atd-noshow-btns">
@@ -577,9 +708,9 @@ const AtendimentoAeroporto = () => {
                             <Icon name={ocupado ? "loader" : meu ? "circleCheck" : "circle"} size={16} className={ocupado ? "ui-spin" : undefined} />
                             {e.id === etapaRecepcao?.id && porReserva(g)
                               ? (() => {
-                                  const { ativas, feitas } = estadoReservas(g);
-                                  return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
-                                })()
+                                const { ativas, feitas } = estadoReservas(g);
+                                return feitas === ativas.length && ativas.length ? `${e.nome} (todas)` : `${e.acao || e.nome} todas`;
+                              })()
                               : e.acao || e.nome}
                           </button>
                           <small className="atd-etapa__quem">

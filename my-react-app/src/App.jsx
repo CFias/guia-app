@@ -119,12 +119,15 @@ function App() {
         <Route path="/minha-disponibilidade" element={<MinhaDisponibilidade />} />
         {/* Sobre a FiaSystem na versão da área do guia (sem menu lateral) */}
         <Route path="/guia/sobre" element={<Sobre modo="guia" />} />
+        {/* Tema (aparência): todos os níveis de conta */}
+        <Route path="/guia/tema" element={<Configuracoes voltar="/minha-disponibilidade" textoVoltar="Voltar para minha disponibilidade" />} />
       </Route>
 
       {/* ===== ATENDIMENTO NO AEROPORTO: painel das cartinhas (sem menu lateral) ===== */}
       <Route element={<RequireRole roles={ACESSO.atendimentoAeroporto} />}>
         <Route path="/atendimento" element={<AtendimentoAeroporto />} />
         <Route path="/atendimento/sobre" element={<Sobre modo="guia" voltar="/atendimento" textoVoltar="Voltar para o atendimento" />} />
+        <Route path="/atendimento/tema" element={<Configuracoes voltar="/atendimento" textoVoltar="Voltar para o atendimento" />} />
       </Route>
 
       {/* Qualquer outra URL volta pra home do nível de cada um */}
