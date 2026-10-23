@@ -115,6 +115,12 @@ const RelatoNoShow = ({ reserva, tipo }) => {
   );
 };
 
+// busca o voo no Google (status, atraso, portão)
+const buscarVooNoGoogle = (voo) => {
+  if (!voo) return;
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(`voo ${String(voo).replace(/\s*-\s*/g, " ")}`)}`, "_blank", "noopener,noreferrer");
+};
+
 const pl = (n, um, varios) => `${num(n, 0)} ${Math.round(n) === 1 ? um : varios}`;
 
 const AtendimentoAeroporto = () => {
@@ -250,7 +256,21 @@ const AtendimentoAeroporto = () => {
   const vinculos = useMemo(() => vincularDocs(grupos || [], lista, data), [grupos, lista, data]);
   const marcasDe = (g) => vinculos.get(g.chave)?.doc?.marcas || {};
   const totalPax = (grupos || []).reduce((s, g) => s + g.pax, 0);
-  const completo = (g) => etapas.every((e) => Object.keys(marcasDe(g)[e.id] || {}).length > 0);
+  // recepção por reserva: todas as reservas (fora no show) recebidas = recepção feita,
+  // mesmo que a marca principal do veículo não tenha sido gravada
+  const recepcaoPelasReservas = (g) => {
+    if (config?.atendimento?.recepcaoPorReserva === false || g.reservas.length <= 1) return null;
+    const doc = vinculos.get(g.chave)?.doc;
+    if (!doc) return null;
+    const ativas = g.reservas.map((r, i) => ({ r, i })).filter(({ r, i }) => !noShowDaReserva(doc, r, i));
+    if (!ativas.length) return null;
+    const recs = ativas.map(({ r, i }) => recepcaoDaReserva(doc, r, i));
+    if (recs.some((x) => !x)) return null;
+    const porNome = new Map();
+    recs.forEach((x) => porNome.set(x.nome, { id: x.colaboradorId || x.nome, nome: x.nome, em: x.em }));
+    return [...porNome.values()];
+  };
+  const completo = (g) => etapas.every((e, k) => Object.keys(marcasDe(g)[e.id] || {}).length > 0 || (k === 0 && !!recepcaoPelasReservas(g)));
 
   const visiveis = (grupos || []).filter((g) => {
     if (filtroTurno === "meu" && janela && !dentro(g.min, janela.inicio, janela.fim)) return false;
@@ -598,19 +618,48 @@ const AtendimentoAeroporto = () => {
             {visiveis.map((g) => {
               const m = marcasDe(g);
               const feito = completo(g);
+              // etapas feitas (a recepção vale pelas reservas quando todas foram recebidas)
+              const feitas = etapas.map((e, k) => {
+                const marcas = marcasDaEtapa({ marcas: m }, e.id);
+                const virtual = !marcas.length && k === 0 ? recepcaoPelasReservas(g) : null;
+                return { e, k, marcas: marcas.length ? marcas : virtual || [], virtual: !!virtual };
+              });
+              const prox = feitas.find((x) => !x.marcas.length);
+              const situacao = feito ? "feito" : feitas.some((x) => x.marcas.length) ? "andamento" : "pendente";
+              const rotuloSituacao = feito
+                ? "Concluído"
+                : prox?.k === 0
+                  ? "Aguardando recepção"
+                  : prox?.k === etapas.length - 1
+                    ? "Aguardando embarque"
+                    : `Aguardando ${(prox?.e.nome || "").toLowerCase()}`;
               return (
-                <li key={g.chave} className={`atd-carro ${feito ? "is-feito" : ""}`}>
+                <li key={g.chave} className={`atd-carro is-${situacao}`}>
                   <div className="atd-carro__topo">
                     <span className="atd-carro__hora">{g.hora || "--:--"}</span>
                     <span className="atd-carro__voos">
-                      {g.voos.length ? g.voos.map((v) => <b key={v}>{v}</b>) : <b>Sem voo</b>}
+                      {(g.voos.length ? g.voos : ["Sem voo"]).map((v) => (
+                        <b key={v}>
+                          <Icon name="planeLanding" size={12} /> {v}
+                          {g.voos.length > 0 && (
+                            <button type="button" className="atd-carro__lupa" onClick={() => buscarVooNoGoogle(v)} title={`Buscar ${v} no Google`} aria-label={`Buscar o voo ${v} no Google`}>
+                              <Icon name="search" size={12} />
+                            </button>
+                          )}
+                        </b>
+                      ))}
                     </span>
-                    <span className="atd-carro__pax">
+                    <span className="atd-carro__pax" title={`${g.pax} passageiro(s)`}>
                       <Icon name="users" size={14} /> {g.pax}
                     </span>
                   </div>
+                  <span className={`atd-carro__situacao is-${situacao}`}>
+                    <i aria-hidden="true" /> {rotuloSituacao}
+                  </span>
                   <div className="atd-carro__veiculo">
-                    <Icon name="truck" size={14} />
+                    <span className="atd-carro__veic-ic" aria-hidden="true">
+                      <Icon name="car" size={15} />
+                    </span>
                     {g.veiculo ? (
                       <>
                         <b>{g.veiculo}</b>
@@ -737,65 +786,70 @@ const AtendimentoAeroporto = () => {
                     </ul>
                   )}
                   {(() => {
-                    // um botão só, em sequência: Recepcionei → Embarquei; as etapas
-                    // feitas ficam em cima, com quem marcou e "Desfazer" na última
-                    const feitas = etapas.map((e, k) => ({ e, k, marcas: marcasDaEtapa({ marcas: m }, e.id) }));
-                    const prox = feitas.find((x) => !x.marcas.length);
-                    const ultimaFeita = [...feitas].reverse().find((x) => x.marcas.length);
+                    // dois botões lado a lado: Recepcionei e Embarquei. O de cada etapa
+                    // só libera depois da anterior; feito, mostra quem e a hora — tocar
+                    // de novo desfaz (com confirmação)
                     const icone = (k) => (k === 0 ? "check" : k === etapas.length - 1 ? "car" : "circleCheck");
-                    const ocupadoProx = prox && salvando === `${g.chave}|${prox.e.id}`;
-                    const parcial = prox && prox.k === 0 && porReserva(g) ? estadoReservas(g) : null;
+                    const tom = (k) => (k === 0 ? "rec" : k === etapas.length - 1 ? "emb" : "meio");
+                    // "a recepção", "o embarque" (as etapas têm nome no passado: Recepcionou, Embarcou)
+                    const daEtapa = (k) => (k === 0 ? "da recepção" : k === etapas.length - 1 ? "do embarque" : `de ${etapas[k].nome.toLowerCase()}`);
+                    const aEtapa = (k) => (k === 0 ? "a recepção" : k === etapas.length - 1 ? "o embarque" : etapas[k].nome.toLowerCase());
                     return (
-                      <div className="atd-fluxo">
-                        {feitas
-                          .filter((x) => x.marcas.length)
-                          .map((x) => {
-                            const ehUltima = x === ultimaFeita;
-                            const jaMarquei = !!(quem && m[x.e.id]?.[quem.id]);
-                            const ocupado = salvando === `${g.chave}|${x.e.id}`;
-                            return (
-                              <div key={x.e.id} className={`atd-fluxo__feito is-${x.k === 0 ? "rec" : x.k === etapas.length - 1 ? "emb" : "meio"}`}>
-                                <i className="atd-fluxo__ic">
-                                  <Icon name={icone(x.k)} size={15} />
-                                </i>
-                                <span className="atd-fluxo__txt">
-                                  <b>{x.e.nome}</b>
-                                  <small>{x.marcas.map((y) => `${y.nome} ${horaDe(y.em)}`).join(" · ")}</small>
+                      <div className="atd-botoes" style={{ "--n": etapas.length }}>
+                        {feitas.map((x) => {
+                          const feita = x.marcas.length > 0;
+                          const anterior = x.k > 0 ? feitas[x.k - 1] : null;
+                          const travada = !feita && anterior && !anterior.marcas.length;
+                          const seguinteFeita = feitas[x.k + 1]?.marcas.length > 0;
+                          const ocupado = salvando === `${g.chave}|${x.e.id}`;
+                          const jaMarquei = !!(quem && m[x.e.id]?.[quem.id]);
+                          const parcial = !feita && x.k === 0 && porReserva(g) ? estadoReservas(g) : null;
+                          const tocar = () => {
+                            if (!feita) return alternar(g, x.e);
+                            if (seguinteFeita) return window.alert(`Desfaça ${aEtapa(x.k + 1)} antes.`);
+                            return desfazerEtapa(g, x.e);
+                          };
+                          return (
+                            <div key={x.e.id} className="atd-botao-wrap">
+                              <button
+                                type="button"
+                                className={`atd-botao is-${tom(x.k)} ${feita ? "is-feito" : travada ? "is-travado" : "is-livre"}`}
+                                onClick={tocar}
+                                disabled={!quem || ocupado || travada}
+                                aria-pressed={feita}
+                                title={
+                                  travada
+                                    ? `Libera depois ${daEtapa(anterior.k)}`
+                                    : feita
+                                      ? `Tocar para desfazer ${aEtapa(x.k)}`
+                                      : x.e.acao || x.e.nome
+                                }
+                              >
+                                <span className="atd-botao__ic">
+                                  <Icon name={ocupado ? "loader" : travada ? "lock" : icone(x.k)} size={18} className={ocupado ? "ui-spin" : undefined} />
                                 </span>
-                                {!jaMarquei && !(x.k === 0 && porReserva(g)) && (
-                                  <button type="button" className="atd-fluxo__link" onClick={() => alternar(g, x.e)} disabled={!quem || ocupado} title="Você também atendeu este veículo">
-                                    + eu também
-                                  </button>
-                                )}
-                                {ehUltima && (
-                                  <button type="button" className="atd-fluxo__desfazer" onClick={() => desfazerEtapa(g, x.e)} disabled={!quem || ocupado}>
-                                    {ocupado ? <Icon name="loader" size={13} className="ui-spin" /> : <Icon name="undo" size={13} />} Desfazer
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        {prox ? (
-                          <button
-                            type="button"
-                            className={`atd-fluxo__btn is-${prox.k === 0 ? "rec" : prox.k === etapas.length - 1 ? "emb" : "meio"}`}
-                            onClick={() => alternar(g, prox.e)}
-                            disabled={!quem || ocupadoProx}
-                          >
-                            <Icon name={ocupadoProx ? "loader" : icone(prox.k)} size={18} className={ocupadoProx ? "ui-spin" : undefined} />
-                            {prox.e.acao || prox.e.nome}
-                            {parcial && parcial.ativas.length > 0 && (
-                              <small>
-                                {" "}
-                                todas · {parcial.feitas}/{parcial.ativas.length}
-                              </small>
-                            )}
-                          </button>
-                        ) : (
-                          <div className="atd-fluxo__fim">
-                            <Icon name="circleCheck" size={16} /> Atendimento concluído
-                          </div>
-                        )}
+                                <span className="atd-botao__txt">
+                                  <b>{feita ? x.e.nome : x.e.acao || x.e.nome}</b>
+                                  <small>
+                                    {feita
+                                      ? x.marcas.map((y) => `${String(y.nome || "").split(" ")[0]} ${horaDe(y.em)}`).join(" · ")
+                                      : travada
+                                        ? `libera depois ${daEtapa(anterior.k)}`
+                                        : parcial && parcial.ativas.length
+                                          ? `todas · ${parcial.feitas}/${parcial.ativas.length} reservas`
+                                          : "toque para marcar"}
+                                  </small>
+                                </span>
+                                {feita && <Icon name="undo" size={14} className="atd-botao__desfazer" />}
+                              </button>
+                              {feita && !jaMarquei && !x.virtual && !(x.k === 0 && porReserva(g)) && (
+                                <button type="button" className="atd-botao__eu" onClick={() => alternar(g, x.e)} disabled={!quem || ocupado}>
+                                  + eu também
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}
