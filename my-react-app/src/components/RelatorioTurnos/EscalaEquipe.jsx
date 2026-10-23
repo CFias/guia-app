@@ -24,7 +24,19 @@ import {
 } from "../../Services/Services/relatorioTurnos";
 import { regiaoAtual } from "../../Services/Services/regiaoAtiva";
 import { registrarImpressao } from "../../Services/Services/atividadeRepository";
-import { CSS_IMPRESSAO, baixarPngHtml, esc, imprimirHtml } from "./impressaoTurnos";
+import { CSS_IMPRESSAO, baixarPngHtml, esc, escalarFontes, imprimirHtml } from "./impressaoTurnos";
+
+// tamanho da letra da imagem/PDF da escala (lembrado neste navegador)
+const TAMANHOS_LETRA = [80, 90, 100, 110, 120, 130, 140, 150, 170];
+const CHAVE_LETRA = "esc.tamanhoLetra";
+const lerTamanhoLetra = () => {
+  try {
+    const n = Number(localStorage.getItem(CHAVE_LETRA));
+    return TAMANHOS_LETRA.includes(n) ? n : 100;
+  } catch {
+    return 100;
+  }
+};
 import "./escala.css";
 
 /* Aba "Escala da equipe": 1 ou 2 semanas, agrupadas por turno. No cabeçalho
@@ -502,6 +514,16 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
   const [periodoDe, setPeriodoDe] = useState(null); // pessoa no formulário de férias/atestado
   // Fins de semana: escolher quais mostrar/imprimir (chave = sábado do fim de semana)
   const [fdsOcultos, setFdsOcultos] = useState(() => new Set());
+  const [letra, setLetraBruta] = useState(lerTamanhoLetra);
+  const setLetra = (n) => {
+    setLetraBruta(n);
+    try {
+      localStorage.setItem(CHAVE_LETRA, String(n));
+    } catch {
+      /* sem armazenamento: vale só nesta tela */
+    }
+  };
+  const comLetra = (html) => escalarFontes(html, letra / 100);
   const finsDoMes = ehFdsLista(diasDoPeriodo, nSemanas, sabadoDe);
   const dias = useMemo(
     () => (nSemanas === "fds" ? diasDoPeriodo.filter((d) => !fdsOcultos.has(sabadoDe(d))) : diasDoPeriodo),
@@ -655,9 +677,9 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
     () => relatorioOcorrencias({ equipe: equipe.filter((c) => passaNoFiltro(c, t, filtroFuncao)), excecoes: rascunho, inicio: dias[0], fim: ultimo }),
     [equipe, rascunho, dias, ultimo, t, filtroFuncao],
   );
-  const imprimirOcorrencias = () => imprimirHtml(htmlOcorrencias({ rel: ocorr, inicio: dias[0], fim: ultimo }));
+  const imprimirOcorrencias = () => imprimirHtml(comLetra(htmlOcorrencias({ rel: ocorr, inicio: dias[0], fim: ultimo })));
   const pngOcorrencias = () =>
-    baixarPngHtml(htmlOcorrencias({ rel: ocorr, inicio: dias[0], fim: ultimo }), `ocorrencias-${dias[0].slice(8, 10)}-${dias[0].slice(5, 7)}-a-${ultimo.slice(8, 10)}-${ultimo.slice(5, 7)}.png`).catch((e) => {
+    baixarPngHtml(comLetra(htmlOcorrencias({ rel: ocorr, inicio: dias[0], fim: ultimo })), `ocorrencias-${dias[0].slice(8, 10)}-${dias[0].slice(5, 7)}-a-${ultimo.slice(8, 10)}-${ultimo.slice(5, 7)}.png`).catch((e) => {
       console.error(e);
       window.alert("Não foi possível gerar a imagem.");
     });
@@ -675,7 +697,8 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
   }, [hoje, dias, ultimo, equipe, rascunho, turnoPorId, cobertura, config]);
 
   // a mesma página serve para imprimir/PDF e para baixar em PNG
-  const htmlDaEscala = () => {
+  const htmlDaEscala = () => comLetra(htmlDaEscalaBase());
+  const htmlDaEscalaBase = () => {
     const dados = { config, equipe: equipe.filter((c) => visiveis.some((g) => g.pessoas.includes(c))), dias, rascunho, turnoPorId };
     return ehFds
       ? htmlPlantao({
@@ -1024,6 +1047,22 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
                 </option>
               ))}
             </select>
+            <label className="esc-letra" title="Tamanho da letra na imagem (PNG) e no PDF">
+              <span>Letra</span>
+              <button type="button" onClick={() => setLetra(TAMANHOS_LETRA[Math.max(0, TAMANHOS_LETRA.indexOf(letra) - 1)])} disabled={letra === TAMANHOS_LETRA[0]} aria-label="Diminuir a letra">
+                A−
+              </button>
+              <select value={letra} onChange={(e) => setLetra(Number(e.target.value))} aria-label="Tamanho da letra na imagem e no PDF">
+                {TAMANHOS_LETRA.map((n) => (
+                  <option key={n} value={n}>
+                    {n}%
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={() => setLetra(TAMANHOS_LETRA[Math.min(TAMANHOS_LETRA.length - 1, TAMANHOS_LETRA.indexOf(letra) + 1)])} disabled={letra === TAMANHOS_LETRA[TAMANHOS_LETRA.length - 1]} aria-label="Aumentar a letra">
+                A+
+              </button>
+            </label>
             <Button size="sm" icon="image" onClick={baixarPng} loading={gerandoPng} disabled={gerandoPng} title="Baixar a escala como imagem para mandar nos grupos">
               Baixar PNG
             </Button>

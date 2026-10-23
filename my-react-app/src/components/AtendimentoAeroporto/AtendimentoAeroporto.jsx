@@ -115,6 +115,21 @@ const RelatoNoShow = ({ reserva, tipo }) => {
   );
 };
 
+// "LITORAL NORTE" -> "Litoral Norte"
+const nomeRegiao = (r) =>
+  String(r || "")
+    .toLowerCase()
+    .replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase())
+    .replace(/\b(De|Da|Do|Das|Dos|E)\b/g, (m) => m.toLowerCase());
+const CHAVE_REGIAO = "atd.filtroRegiao";
+const lerRegiaoSalva = () => {
+  try {
+    return localStorage.getItem(CHAVE_REGIAO) || "";
+  } catch {
+    return "";
+  }
+};
+
 // busca o voo no Google (status, atraso, portão)
 const buscarVooNoGoogle = (voo) => {
   if (!voo) return;
@@ -137,6 +152,16 @@ const AtendimentoAeroporto = () => {
   const [filtroTurno, setFiltroTurno] = useState(() => (ehOperacional ? "todos" : "meu"));
   const [filtro, setFiltro] = useState("pendentes"); // pendentes | todos | meus
   const [busca, setBusca] = useState("");
+  const [regiao, setRegiaoBruta] = useState(lerRegiaoSalva);
+  const setRegiao = (r) => {
+    setRegiaoBruta(r);
+    try {
+      if (r) localStorage.setItem(CHAVE_REGIAO, r);
+      else localStorage.removeItem(CHAVE_REGIAO);
+    } catch {
+      /* navegador sem armazenamento: o filtro só não fica lembrado */
+    }
+  };
   const [abertos, setAbertos] = useState(() => new Set()); // veículos com as reservas abertas
   const alternarAberto = (chave) =>
     setAbertos((a) => {
@@ -272,12 +297,21 @@ const AtendimentoAeroporto = () => {
   };
   const completo = (g) => etapas.every((e, k) => Object.keys(marcasDe(g)[e.id] || {}).length > 0 || (k === 0 && !!recepcaoPelasReservas(g)));
 
+  // regiões do dia (com quantos carros cada); a escolhida só vale se existir hoje
+  const regioesDoDia = useMemo(() => {
+    const n = new Map();
+    (grupos || []).forEach((g) => (g.regioes || []).forEach((r) => n.set(r, (n.get(r) || 0) + 1)));
+    return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [grupos]);
+  const regiaoAtiva = regioesDoDia.some(([r]) => r === regiao) ? regiao : "";
+
   const visiveis = (grupos || []).filter((g) => {
+    if (regiaoAtiva && !(g.regioes || []).includes(regiaoAtiva)) return false;
     if (filtroTurno === "meu" && janela && !dentro(g.min, janela.inicio, janela.fim)) return false;
     if (filtro === "pendentes" && completo(g)) return false;
     if (filtro === "meus" && !etapas.some((e) => quem && marcasDe(g)[e.id]?.[quem.id])) return false;
     const t = semAcento(busca.trim());
-    if (t && !semAcento(`${g.voos.join(" ")} ${g.veiculo} ${g.motorista} ${g.reservas.map((r) => `${r.titular} ${r.codigo} ${r.hotel}`).join(" ")}`).includes(t)) return false;
+    if (t && !semAcento(`${g.voos.join(" ")} ${g.veiculo} ${g.motorista} ${(g.regioes || []).join(" ")} ${g.reservas.map((r) => `${r.titular} ${r.codigo} ${r.hotel}`).join(" ")}`).includes(t)) return false;
     return true;
   });
 
@@ -555,6 +589,21 @@ const AtendimentoAeroporto = () => {
               </button>
             ))}
           </div>
+          {regioesDoDia.length > 1 && (
+            <div className="atd-chips atd-regioes" role="group" aria-label="Região do transfer">
+              <span className="atd-regioes__rot">
+                <Icon name="mapPin" size={13} /> Região
+              </span>
+              <button type="button" className={!regiaoAtiva ? "is-on" : ""} onClick={() => setRegiao("")}>
+                Todas
+              </button>
+              {regioesDoDia.map(([r, n]) => (
+                <button key={r} type="button" className={regiaoAtiva === r ? "is-on" : ""} onClick={() => setRegiao(regiaoAtiva === r ? "" : r)}>
+                  {nomeRegiao(r)} <small>{n}</small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {!config ? (
@@ -615,6 +664,11 @@ const AtendimentoAeroporto = () => {
                             </button>
                           )}
                         </b>
+                      ))}
+                      {(g.regioes || []).map((r) => (
+                        <em key={r} className="atd-carro__regiao">
+                          <Icon name="mapPin" size={11} /> {nomeRegiao(r)}
+                        </em>
                       ))}
                     </span>
                     <span className="atd-carro__pax" title={`${g.pax} passageiro(s)`}>

@@ -116,8 +116,7 @@ const equipeHtml = (t) =>
   t.colaboradores
     .map(
       (c) =>
-        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${
-          c.dias?.length || (c.escala?.modelo && c.escala.modelo !== "semanal") ? `, ${esc(textoEscala(c))}` : ""
+        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${c.dias?.length || (c.escala?.modelo && c.escala.modelo !== "semanal") ? `, ${esc(textoEscala(c))}` : ""
         }${c.inicio && c.fim ? `, ${horaTexto(c.inicio)}–${horaTexto(c.fim)}` : ""}`,
     )
     .join(" · ") || "Sem colaboradores";
@@ -228,13 +227,12 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
 <div class="kpi"><span>Turno mais movimentado</span><b>${esc(maisMov?.nome || "—")}</b><small>${maisMov ? `${num(maisMov.mediaPax)} pessoas por turno` : ""}</small></div>
 <div class="kpi"><span>Na troca de turno</span><b>${num(r.troca.mediaPax)}</b><small>pessoas por dia, nos dois turnos</small></div>
 </div>
-${
-  Object.keys(r.porTipo).length > 1
-    ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
+${Object.keys(r.porTipo).length > 1
+      ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
         .map(([k, v]) => `${esc(nomeTipo(k))} <b>${v.pax.toLocaleString("pt-BR")}</b>`)
         .join(" · ")}</p>`
-    : ""
-}
+      : ""
+    }
 
 <h2>Média por turno</h2>
 <div class="turnos">${cards}</div>
@@ -242,11 +240,10 @@ ${
 <div class="blk">
 <h2>Colaboradores</h2>
 <table><thead><tr><th class="e">Colaborador</th><th class="e">Papel</th><th class="e">Turno</th><th class="e">Horário</th><th class="e">Dias</th><th>Média/dia</th><th>Total</th></tr></thead><tbody>${colabs}</tbody></table>
-${
-  r.folguistas.length
-    ? `<p class="top"><b>Folguista${r.folguistas.length > 1 ? "s" : ""}:</b> ${esc(r.folguistas.map((f) => f.nome + (f.obs ? ` (${f.obs})` : "")).join(", "))} — cobre as folgas.</p>`
-    : ""
-}
+${r.folguistas.length
+      ? `<p class="top"><b>Folguista${r.folguistas.length > 1 ? "s" : ""}:</b> ${esc(r.folguistas.map((f) => f.nome + (f.obs ? ` (${f.obs})` : "")).join(", "))} — cobre as folgas.</p>`
+      : ""
+    }
 </div>
 
 <div class="blk">
@@ -271,9 +268,8 @@ ${semanaHoraHtml(r.semanaHora)}
 </div>
 
 <div class="notas blk">
-<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${
-    r.pelaApresentacao ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)` : ""
-  }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Por colaborador principal" divide a demanda do turno pelos colaboradores de função principal escalados no dia; quem está em sinergia não divide a conta.</p>
+<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${r.pelaApresentacao ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)` : ""
+    }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Por colaborador principal" divide a demanda do turno pelos colaboradores de função principal escalados no dia; quem está em sinergia não divide a conta.</p>
 </div>
 </body></html>`;
 };
@@ -326,7 +322,7 @@ export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura 
     doc.write(html.replace("</head>", `<style>html,body{background:#fff}body{margin:0;padding:28px 30px 32px;width:${largura}px;box-sizing:border-box}*{font-variant-numeric:normal!important}</style></head>`));
     doc.close();
     await new Promise((ok) => (doc.readyState === "complete" ? ok() : iframe.addEventListener("load", ok, { once: true })));
-    await doc.fonts?.ready?.catch?.(() => {});
+    await doc.fonts?.ready?.catch?.(() => { });
     await Promise.all([...doc.images].map((img) => (img.complete ? null : new Promise((ok) => ((img.onload = ok), (img.onerror = ok))))));
     // se algo ficou mais largo que a folha (muitas colunas), a imagem acompanha
     const larg = Math.max(largura, Math.ceil(doc.documentElement.scrollWidth));
@@ -419,4 +415,13 @@ export const baixarExcelTurnos = (r) => {
   XLSX.utils.book_append_sheet(wb, abaColabs, "Colaboradores");
   XLSX.utils.book_append_sheet(wb, abaDias, "Por dia");
   XLSX.writeFile(wb, `demanda-por-turno-${r.inicio}-a-${r.fim}.xlsx`);
+};
+
+// aumenta/diminui todas as letras da página impressa (e da imagem): 1 = como está
+export const escalarFontes = (html, k = 1) => {
+  if (!k || Math.abs(k - 1) < 0.001) return html;
+  const r = (n) => Math.round(parseFloat(n) * k * 10) / 10;
+  return String(html)
+    .replace(/font-size:\s*([\d.]+)px/g, (m, n) => `font-size: ${r(n)}px`)
+    .replace(/min-width:\s*([\d.]+)px/g, (m, n) => `min-width: ${Math.round(parseFloat(n) * Math.max(1, k))}px`);
 };

@@ -3000,3 +3000,53 @@ button.rtn-cal__dia:hover {
     max-width: none;
   }
 }
+
+/* tamanho da letra da imagem/PDF da escala */
+.esc-letra {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  font-size: 12.5px;
+}
+
+.esc-letra>span {
+  padding: 0 6px 0 8px;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+
+.esc-letra button {
+  min-width: 30px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.esc-letra button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.esc-letra button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.esc-letra select {
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

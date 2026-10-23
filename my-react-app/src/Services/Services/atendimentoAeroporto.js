@@ -53,6 +53,9 @@ const hotelDo = (i) => texto(i?.establishmentDestination?.name || i?.establishme
 // operadora (parceiro da reserva) ou, sem parceiro, quem vendeu (comercial)
 const operadoraDo = (i) =>
   texto(i?.reserve?.partner?.fantasy_name || i?.reserve?.partner?.name || (Array.isArray(i?.reserve?.pdvPayment) ? i.reserve.pdvPayment.map((p) => p?.user?.name).find(Boolean) : ""));
+// região do transfer: para onde a chegada vai (Salvador, Litoral Norte, Morro…)
+const regiaoDo = (i) =>
+  texto(i?.establishmentDestination?.region?.name || i?.establishment_destination?.region?.name || i?.regionDestination?.name || i?.destination?.region?.name).toUpperCase();
 const servicoDo = (i) => texto(i?.service?.name || i?.schedule?.service?.name);
 const codigoDo = (i) => texto(i?.reserve?.code || i?.reserve_code || i?.code || i?.reserve?.id);
 
@@ -121,6 +124,7 @@ export const buscarChegadasPorVeiculo = async (data, { porVoo = null } = {}) => 
       chave,
       escalaId: escala || null,
       porVoo: separa,
+      regioes: new Set(),
       veiculo: escala ? veiculo || "Veículo da escala" : "",
       motorista: escala ? motoristaDo(i) : "",
       voos: new Set(),
@@ -129,13 +133,14 @@ export const buscarChegadasPorVeiculo = async (data, { porVoo = null } = {}) => 
       reservas: [],
     };
     if (voo) g.voos.add(voo);
+    if (regiaoDo(i)) g.regioes.add(regiaoDo(i));
     if (h && (!g.hora || h < g.hora)) g.hora = h;
     g.pax += pax;
-    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, adt: adtDo(i), chd: chdDo(i), inf: infDo(i), voo, hotel: hotelDo(i), operadora: operadoraDo(i), servico: servicoDo(i) });
+    g.reservas.push({ codigo: codigoDo(i), titular: titularDo(i), pax, adt: adtDo(i), chd: chdDo(i), inf: infDo(i), voo, hotel: hotelDo(i), regiao: regiaoDo(i), operadora: operadoraDo(i), servico: servicoDo(i) });
     grupos.set(chave, g);
   });
   return [...grupos.values()]
-    .map((g) => ({ ...g, voos: [...g.voos], min: paraMinutos(g.hora) ?? 9999 }))
+    .map((g) => ({ ...g, voos: [...g.voos], regioes: [...g.regioes].sort(), min: paraMinutos(g.hora) ?? 9999 }))
     .sort((a, b) => a.min - b.min || a.chave.localeCompare(b.chave));
 };
 
