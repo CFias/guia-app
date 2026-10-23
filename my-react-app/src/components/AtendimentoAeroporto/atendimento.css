@@ -1570,3 +1570,92 @@
   font-size: 11.5px;
   font-weight: 600;
 }
+
+/* botões mais discretos: letra menor e altura mais baixa */
+.atd-botao {
+  min-height: 50px;
+  gap: 9px;
+  padding: 7px 11px;
+  border-radius: 13px;
+}
+
+.atd-botao .atd-botao__ic {
+  width: 28px;
+  height: 28px;
+}
+
+.atd-botao__num {
+  font-size: 13px;
+}
+
+.atd-botao .atd-botao__txt {
+  line-height: 1.25;
+}
+
+.atd-botao .atd-botao__txt b,
+.atd-botao.is-feito .atd-botao__txt b {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.atd-botao .atd-botao__txt small {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.atd-botao__desfazer {
+  width: 22px;
+  height: 22px;
+}
+
+.atd-botao__eu {
+  font-size: 11px;
+}
+
+@media (max-width: 400px) {
+  .atd-botao {
+    min-height: 46px;
+  }
+
+  .atd-botao .atd-botao__txt b {
+    font-size: 13px;
+  }
+}
+
+.atd-botao .atd-botao__txt b {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+@media (max-width: 400px) {
+  .atd-botao {
+    gap: 7px;
+    padding: 6px 8px;
+  }
+
+  .atd-botao .atd-botao__ic {
+    width: 24px;
+    height: 24px;
+  }
+
+  .atd-botao .atd-botao__txt b,
+  .atd-botao.is-feito .atd-botao__txt b {
+    font-size: 12.5px;
+  }
+
+  .atd-botao__tipo {
+    display: none;
+  }
+
+  .atd-botao .atd-botao__txt small {
+    font-size: 10.5px;
+  }
+
+  .atd-botao__desfazer {
+    width: 20px;
+    height: 20px;
+  }
+}
