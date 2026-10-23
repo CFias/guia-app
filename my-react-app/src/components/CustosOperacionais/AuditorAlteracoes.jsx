@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles, useToast } from "../ui";
 import { useAuth } from "../../Context/AuthContext";
+import { useRegiao } from "../../Context/regiaoContext";
 import {
   CLASSES_ATUALIZACAO,
   CURTO_ALTERACAO,
@@ -232,6 +233,8 @@ const AuditorAlteracoes = (props) => {
 
 const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const { perfil } = useAuth();
+  // a base em uso: a auditoria (Phoenix e documentos) é sempre da mesma base
+  const { regiao } = useRegiao();
   const [data, setData] = useState(hojeIso);
   const [recarga, setRecarga] = useState(0);
   const [atual, setAtual] = useState({ chave: "", data: "", linhas: [], estado: "carregando", erro: "" });
@@ -244,21 +247,21 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const chave = `${data}|${recarga}`;
 
   // programação guardada e histórico de alterações do dia (tempo real)
-  useEffect(() => ouvirAuditoria(data, (doc) => setAud({ data, doc })), [data]);
+  useEffect(() => ouvirAuditoria(data, (doc) => setAud({ data, doc }), regiao), [data, regiao]);
 
   // o dia agora: Phoenix + tabela de tarifas
   useEffect(() => {
     if (!pronto) return undefined;
     let vivo = true;
     const ch = `${data}|${recarga}`;
-    calcularLinhasDoDia(data, { config, vinculos, fornecedores })
+    calcularLinhasDoDia(data, { config, vinculos, fornecedores, regiao })
       .then((linhas) => vivo && setAtual({ chave: ch, data, linhas, estado: "ok", erro: "" }))
       // erro numa atualização não apaga o que já estava na tela
       .catch((e) => vivo && setAtual((x) => (x.data === data && x.estado === "ok" ? { ...x, chave: ch, erroAtualizar: e?.message || "O Phoenix não respondeu." } : { chave: ch, data, linhas: [], estado: "erro", erro: e?.message || "O Phoenix não respondeu." })));
     return () => {
       vivo = false;
     };
-  }, [data, recarga, pronto, config, vinculos, fornecedores]);
+  }, [data, recarga, pronto, config, vinculos, fornecedores, regiao]);
 
   // hoje: atualiza sozinho
   useEffect(() => {
@@ -271,8 +274,8 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   // à meia-noite, guarda agora) e registra as alterações — sem botão
   useEffect(() => {
     if (!pronto || data !== hoje) return;
-    rodarAuditoriaAutomatica(perfil, { config, vinculos, fornecedores }).catch((e) => console.error("Auditoria automática:", e));
-  }, [pronto, data, hoje, perfil, config, vinculos, fornecedores]);
+    rodarAuditoriaAutomatica(perfil, { config, vinculos, fornecedores, regiao }).catch((e) => console.error("Auditoria automática:", e));
+  }, [pronto, data, hoje, perfil, config, vinculos, fornecedores, regiao]);
 
   const doc = aud.data === data ? aud.doc : undefined;
   const foto = doc?.foto || null;
@@ -294,9 +297,9 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     if (data === hoje) {
       const hist = doc.historico || {};
       const mudou = !resumoGravado || resumoGravado.alteracoes !== rel.alteracoes.length || resumoGravado.impacto !== rel.totais.impacto;
-      if (mudou || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel).catch((e) => console.error("Histórico:", e));
+      if (mudou || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel, regiao).catch((e) => console.error("Histórico:", e));
     } else if (data < hoje && !resumoGravado) {
-      gravarResumoDoBalanco(data, rel).catch((e) => console.error("Resumo do balanço:", e));
+      gravarResumoDoBalanco(data, rel, regiao).catch((e) => console.error("Resumo do balanço:", e));
     }
   }, [rel, doc, data, hoje, resumoGravado]);
 

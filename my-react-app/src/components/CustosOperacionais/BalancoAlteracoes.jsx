@@ -4,6 +4,7 @@ import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles } from "../ui";
 import { CLASSES_ATUALIZACAO, TIPOS_ALTERACAO } from "../../Services/Services/auditoriaAlteracoes";
 import { formatarReais } from "../../Services/Services/custosCalculo";
 import { carregarBalanco } from "../../Services/Services/custosRepository";
+import { useRegiao } from "../../Context/regiaoContext";
 import { CSS_IMPRESSAO, esc, imprimirHtml } from "../RelatorioTurnos/impressaoTurnos";
 
 /* =========================================================
@@ -117,6 +118,7 @@ ${dias
 };
 
 const BalancoAlteracoes = () => {
+  const { regiao } = useRegiao();
   const [periodo, setPeriodo] = useState(() => PRESETS[1][2]());
   const [ini, fim] = periodo;
   const chave = `${ini}|${fim}`;
@@ -125,13 +127,13 @@ const BalancoAlteracoes = () => {
   useEffect(() => {
     if (!ini || !fim || ini > fim) return undefined;
     let vivo = true;
-    carregarBalanco(datasEntre(ini, fim))
+    carregarBalanco(datasEntre(ini, fim), regiao)
       .then((dias) => vivo && setRes({ chave, dias, erro: "" }))
       .catch((e) => vivo && setRes({ chave, dias: [], erro: e?.message || "Não foi possível ler o balanço." }));
     return () => {
       vivo = false;
     };
-  }, [ini, fim, chave]);
+  }, [ini, fim, chave, regiao]);
 
   const carregando = res.chave !== chave;
   const dias = useMemo(() => (carregando ? [] : res.dias), [carregando, res.dias]);

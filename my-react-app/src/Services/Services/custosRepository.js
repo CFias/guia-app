@@ -33,7 +33,12 @@ import {
   linhaDaAlteracao,
   resumoDoBalanco,
 } from "./auditoriaAlteracoes";
-import { SEDE, phoenixReserveService } from "./regiaoAtiva";
+import {
+  colecaoDaBase,
+  idPorRegiao,
+  phoenixReserveService,
+  regiaoAtual,
+} from "./regiaoAtiva";
 import {
   alertasDoDia,
   calcularLinha,
@@ -51,10 +56,17 @@ import {
 const EXPAND =
   "service,schedule,reserve,establishmentOrigin,establishmentDestination,establishmentOrigin.region,establishmentDestination.region,roadmapService,roadmapService.roadmap,auxRoadmapService.roadmap,auxRoadmapService.roadmap.serviceOrder,auxRoadmapService.roadmap.serviceOrder.vehicle,auxRoadmapService.roadmap.driver,auxRoadmapService.roadmap.guide,roadmapService.roadmap.driver,roadmapService.roadmap.guide,roadmapService.roadmap.serviceOrder,roadmapService.roadmap.serviceOrder.vehicle";
 
-const REF_CONFIG = () => doc(db, "settings", "custos");
-const REF_VINCULOS = () => doc(db, "settings", "vinculos_veiculos_fornecedor");
-const REF_DIA = (data) => doc(db, "custos_dia", data);
-const REF_AUDITORIA = (data) => doc(db, "auditoria_dia", data);
+// Cada base tem os próprios custos: Salvador usa os documentos de sempre;
+// as outras bases, os mesmos com o sufixo (settings/custos__nat,
+// custos_dia__nat, auditoria_dia__nat…). r = a base; sem ela, a base em uso.
+const REF_CONFIG = (r = regiaoAtual()) =>
+  doc(db, "settings", idPorRegiao("custos", r));
+const REF_VINCULOS = (r = regiaoAtual()) =>
+  doc(db, "settings", idPorRegiao("vinculos_veiculos_fornecedor", r));
+const REF_DIA = (data, r = regiaoAtual()) =>
+  doc(db, colecaoDaBase("custos_dia", r), data);
+const REF_AUDITORIA = (data, r = regiaoAtual()) =>
+  doc(db, colecaoDaBase("auditoria_dia", r), data);
 
 /* ---------------- Phoenix ---------------- */
 
@@ -179,9 +191,9 @@ export const salvarVinculoVeiculo = (
     { merge: true },
   );
 
-export const carregarFornecedores = async () => {
+export const carregarFornecedores = async (r = regiaoAtual()) => {
   try {
-    const snap = await getDocs(collection(db, "providers"));
+    const snap = await getDocs(collection(db, colecaoDaBase("providers", r)));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.error("Erro ao ler fornecedores:", e);
@@ -191,7 +203,7 @@ export const carregarFornecedores = async () => {
 
 export const carregarNomesDePasseios = async () => {
   try {
-    const snap = await getDocs(collection(db, "services"));
+    const snap = await getDocs(collection(db, colecaoDaBase("services")));
     return snap.docs
       .map((d) => d.data()?.nome || d.data()?.externalName || "")
       .filter(Boolean)
@@ -358,24 +370,28 @@ export const calcularDiasPelaTabela = async (
      vistas → { <id da alteração>: quando o auditor viu a alteração pela 1ª vez } */
 
 // os serviços do dia com o custo pela tabela (sem lançamentos à mão).
-// Sempre o Phoenix de Salvador: a auditoria é da sede, mesmo que a pessoa
-// esteja com outra base selecionada no topo (senão compararia bases diferentes).
+// ctx.regiao fixa a base (Phoenix e documentos da MESMA base do começo ao
+// fim, mesmo que a gerência troque a base no topo no meio da conferência).
 export const calcularLinhasDoDia = async (
   data,
-  { config, vinculos, fornecedores },
+  { config, vinculos, fornecedores, regiao },
 ) => {
   const fornecedorPorVeiculo = mapaFornecedorPorVeiculo(vinculos, fornecedores);
   const capacidades = mapaCapacidadePorVeiculo(fornecedores);
-  const { servicos } = await buscarServicosDoDia(data, config.tarifas, SEDE);
+  const { servicos } = await buscarServicosDoDia(
+    data,
+    config.tarifas,
+    regiao || regiaoAtual(),
+  );
   const pares = detectarCasados(servicos, config.casado);
   const apoios = detectarApoios(servicos);
   const ctx = { fornecedorPorVeiculo, config, pares, apoios, capacidades };
   return servicos.map((s) => calcularLinha(s, {}, ctx));
 };
 
-export const ouvirAuditoria = (data, aoMudar) =>
+export const ouvirAuditoria = (data, aoMudar, r = regiaoAtual()) =>
   onSnapshot(
-    REF_AUDITORIA(data),
+    REF_AUDITORIA(data, r),
     (snap) => aoMudar(snap.exists() ? snap.data() : null),
     (e) => {
       console.error("Erro ao ler a auditoria do dia:", e);
@@ -394,7 +410,7 @@ export const tirarFotoDaEscala = async (
   const fotos = Object.fromEntries(
     linhas.map((l) => [l.chave, fotoDaLinha(l)]),
   );
-  await setDoc(REF_AUDITORIA(data), {
+  await setDoc(REF_AUDITORIA(data, ctx.regiao), {
     data,
     foto: {
       em: Timestamp.now(),
@@ -415,8 +431,8 @@ const idSeguro = (id) =>
 export const chaveDaVista = idSeguro;
 const isoDe = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const lerVinculos = async () => {
-  const snap = await getDoc(REF_VINCULOS());
+const lerVinculos = async (r) => {
+  const snap = await getDoc(REF_VINCULOS(r));
   return snap.exists() ? snap.data()?.vinculos || {} : {};
 };
 
@@ -428,15 +444,18 @@ const lerVinculos = async () => {
    2. de tempos em tempos, compara o Phoenix com a programação e grava no
       histórico cada alteração nova (com a hora em que apareceu), mesmo que
       ninguém esteja olhando o auditor — inclusive as que depois voltam atrás. */
-const carregarContexto = async () => ({
-  config: normalizarConfigCustos((await getDoc(REF_CONFIG())).data() || {}),
-  vinculos: await lerVinculos(),
-  fornecedores: await carregarFornecedores(),
+const carregarContexto = async (regiao = regiaoAtual()) => ({
+  regiao,
+  config: normalizarConfigCustos(
+    (await getDoc(REF_CONFIG(regiao))).data() || {},
+  ),
+  vinculos: await lerVinculos(regiao),
+  fornecedores: await carregarFornecedores(regiao),
 });
 
 // guarda a programação do dia, se ainda não foi guardada; devolve a foto
 export const garantirProgramacao = async (data, ctx, usuario) => {
-  const snap = await getDoc(REF_AUDITORIA(data));
+  const snap = await getDoc(REF_AUDITORIA(data, ctx.regiao));
   if (snap.exists() && snap.data()?.foto) return snap.data().foto;
   // ninguém estava com o sistema aberto na virada: vale a última versão
   // da programação guardada na véspera (a "prévia", atualizada a cada 10 min)
@@ -451,7 +470,7 @@ export const garantirProgramacao = async (data, ctx, usuario) => {
     if (em && isoDe(em) < data) {
       const foto = { ...previa, origem: "vespera" };
       await setDoc(
-        REF_AUDITORIA(data),
+        REF_AUDITORIA(data, ctx.regiao),
         { data, foto, previa: deleteField(), atualizadoEm: Timestamp.now() },
         { merge: true },
       );
@@ -467,7 +486,7 @@ export const garantirProgramacao = async (data, ctx, usuario) => {
     usuario,
     naVirada ? "meia-noite" : isoDe(agora) < data ? "antecipada" : "atrasada",
   );
-  return (await getDoc(REF_AUDITORIA(data))).data()?.foto || null;
+  return (await getDoc(REF_AUDITORIA(data, ctx.regiao))).data()?.foto || null;
 };
 
 // o que fica no histórico de cada alteração (sem undefined: o Firestore não aceita)
@@ -510,7 +529,7 @@ const dataBrCurta = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 /* Aviso no sino (todo o Operacional): "3 alterações na escala de 24/10",
    com uma linha por alteração — sem valores (nem todos têm acesso a Custos). */
-export const notificarAlteracoes = (data, novas = []) => {
+export const notificarAlteracoes = (data, novas = [], r = regiaoAtual()) => {
   if (!novas.length) return Promise.resolve();
   const id = `aud_${data}_${hashTexto(
     novas
@@ -518,7 +537,7 @@ export const notificarAlteracoes = (data, novas = []) => {
       .sort()
       .join("|"),
   )}`;
-  return setDoc(doc(db, "notificacoes", id), {
+  return setDoc(doc(db, colecaoDaBase("notificacoes", r), id), {
     tipo: "auditoria",
     origem: "sistema",
     data,
@@ -536,10 +555,11 @@ export const registrarNoHistorico = async (
   alteracoes = [],
   historicoAtual = null,
   rel = null,
+  r = regiaoAtual(),
 ) => {
   const atual =
     historicoAtual ||
-    (await getDoc(REF_AUDITORIA(data))).data()?.historico ||
+    (await getDoc(REF_AUDITORIA(data, r))).data()?.historico ||
     {};
   const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
   const patch = { ultimaVerificacao: Timestamp.now(), suspeita: deleteField() };
@@ -551,9 +571,9 @@ export const registrarNoHistorico = async (
         { em: Timestamp.now(), ...resumoAlteracao(a) },
       ]),
     );
-  await setDoc(REF_AUDITORIA(data), patch, { merge: true });
+  await setDoc(REF_AUDITORIA(data, r), patch, { merge: true });
   if (novas.length)
-    await notificarAlteracoes(data, novas).catch((e) =>
+    await notificarAlteracoes(data, novas, r).catch((e) =>
       console.error("Aviso da auditoria:", e),
     );
   return novas.length;
@@ -565,14 +585,14 @@ export const conferirDia = async (data, ctx, foto) => {
   const linhas = await calcularLinhasDoDia(data, ctx);
   if (conferenciaSuspeita(foto, linhas)) {
     await setDoc(
-      REF_AUDITORIA(data),
+      REF_AUDITORIA(data, ctx.regiao),
       { ultimaVerificacao: Timestamp.now(), suspeita: Timestamp.now() },
       { merge: true },
     );
     return 0;
   }
   const rel = compararComFoto(foto, linhas, ctx.config.auditoria);
-  return registrarNoHistorico(data, rel.alteracoes, null, rel);
+  return registrarNoHistorico(data, rel.alteracoes, null, rel, ctx.regiao);
 };
 
 // a programação de amanhã como está agora (vira a "foto" se ninguém estiver
@@ -584,7 +604,7 @@ export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
     agora.getDate() + 1,
   );
   const data = isoDe(amanha);
-  const snap = await getDoc(REF_AUDITORIA(data));
+  const snap = await getDoc(REF_AUDITORIA(data, ctx.regiao));
   if (snap.exists() && snap.data()?.foto) return 0;
   const linhas = await calcularLinhasDoDia(data, ctx);
   if (!linhas.length) return 0;
@@ -592,7 +612,7 @@ export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
     linhas.map((l) => [l.chave, fotoDaLinha(l)]),
   );
   await setDoc(
-    REF_AUDITORIA(data),
+    REF_AUDITORIA(data, ctx.regiao),
     {
       data,
       previa: {
@@ -607,8 +627,16 @@ export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
   return linhas.length;
 };
 
-export const rodarAuditoriaAutomatica = async (usuario, contexto = null) => {
-  const ctx = contexto || (await carregarContexto());
+export const rodarAuditoriaAutomatica = async (
+  usuario,
+  contexto = null,
+  regiao = null,
+) => {
+  const ctx = contexto?.regiao
+    ? contexto
+    : contexto
+      ? { ...contexto, regiao: regiao || regiaoAtual() }
+      : await carregarContexto(regiao || regiaoAtual());
   const agora = new Date();
   const hoje = isoDe(agora);
   const foto = await garantirProgramacao(hoje, ctx, usuario);
@@ -617,11 +645,11 @@ export const rodarAuditoriaAutomatica = async (usuario, contexto = null) => {
   const ontem = isoDe(
     new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1),
   );
-  const docOntem = (await getDoc(REF_AUDITORIA(ontem))).data();
+  const docOntem = (await getDoc(REF_AUDITORIA(ontem, ctx.regiao))).data();
   if (docOntem?.foto && !docOntem.fechado) {
     await conferirDia(ontem, ctx, docOntem.foto);
     await setDoc(
-      REF_AUDITORIA(ontem),
+      REF_AUDITORIA(ontem, ctx.regiao),
       { fechado: Timestamp.now() },
       { merge: true },
     );
@@ -632,10 +660,10 @@ export const rodarAuditoriaAutomatica = async (usuario, contexto = null) => {
 };
 
 // Balanço: o resumo de cada dia do período (só os dias com programação guardada)
-export const carregarBalanco = async (datas = []) =>
+export const carregarBalanco = async (datas = [], r = regiaoAtual()) =>
   (
     await emLotes(datas, 10, async (data) => {
-      const snap = await getDoc(REF_AUDITORIA(data));
+      const snap = await getDoc(REF_AUDITORIA(data, r));
       const d = snap.exists() ? snap.data() : null;
       return d?.foto
         ? {
@@ -654,10 +682,10 @@ export const carregarBalanco = async (datas = []) =>
   ).filter(Boolean);
 
 // apaga do histórico registros que não valem (ex.: os que voltaram atrás)
-export const descartarDoHistorico = (data, chaves = []) =>
+export const descartarDoHistorico = (data, chaves = [], r = regiaoAtual()) =>
   chaves.length
     ? setDoc(
-        REF_AUDITORIA(data),
+        REF_AUDITORIA(data, r),
         {
           historico: Object.fromEntries(chaves.map((k) => [k, deleteField()])),
         },
@@ -666,9 +694,9 @@ export const descartarDoHistorico = (data, chaves = []) =>
     : Promise.resolve();
 
 // só o resumo do Balanço (dia passado aberto no auditor, sem mexer no histórico)
-export const gravarResumoDoBalanco = (data, rel) =>
+export const gravarResumoDoBalanco = (data, rel, r = regiaoAtual()) =>
   setDoc(
-    REF_AUDITORIA(data),
+    REF_AUDITORIA(data, r),
     { resumo: { ...resumoDoBalanco(rel), em: Timestamp.now() } },
     { merge: true },
   );

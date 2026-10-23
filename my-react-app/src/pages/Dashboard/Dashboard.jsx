@@ -69,10 +69,11 @@ const Dashboard = ({ loading }) => {
   // Auditoria de escala automática: com o sistema aberto por quem tem acesso
   // a Custos, guarda a programação do dia logo depois da meia-noite e, a cada
   // 10 min, registra as alterações do dia (Custos e alterações → Auditor).
-  const podeAuditar = role === ROLES.OPERACIONAL && naSede && podeArea(perfil, "custos", regiao);
+  // Cada base audita a própria programação (a base em uso, com a tela liberada).
+  const podeAuditar = role === ROLES.OPERACIONAL && !carregandoRegiao && !indisponivel && podeArea(perfil, "custos", regiao);
   useEffect(() => {
     if (!podeAuditar) return undefined;
-    const rodar = () => rodarAuditoriaAutomatica(perfil).catch((e) => console.error("Auditoria automática:", e));
+    const rodar = () => rodarAuditoriaAutomatica(perfil, null, regiao).catch((e) => console.error("Auditoria automática:", e));
     const primeira = setTimeout(rodar, 20000);
     const t = setInterval(rodar, 10 * 60 * 1000);
     // e logo depois da virada do dia (00:00:20)
@@ -91,7 +92,7 @@ const Dashboard = ({ loading }) => {
       clearInterval(t);
       clearTimeout(meiaNoite);
     };
-  }, [podeAuditar, perfil]);
+  }, [podeAuditar, perfil, regiao]);
 
   // Celular / tablet: o menu vira uma gaveta que abre pelo botão ☰.
   const [menuAberto, setMenuAberto] = useState(false);
