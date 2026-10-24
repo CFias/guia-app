@@ -11,6 +11,7 @@ import {
   fraseDaAtualizacao,
   linhasDoQueMudou,
   nomeCategoriaCurto,
+  reservasDoGrupo,
   NOME_ALTERACAO,
   nomeDoVeiculo,
   TIPOS_ALTERACAO,
@@ -51,10 +52,6 @@ const dataBr = (iso = "") => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${is
 const quando = (ts) => {
   const d = ts?.toDate ? ts.toDate() : ts instanceof Date ? ts : null;
   return d ? `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "";
-};
-const horaDe = (ts) => {
-  const d = ts?.toDate ? ts.toDate() : null;
-  return d ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
 };
 const sinal = (v) => (v > 0 ? `+${formatarReais(v)}` : v < 0 ? `−${formatarReais(-v)}` : formatarReais(0));
 const ATUALIZAR_MS = 5 * 60 * 1000;
@@ -304,26 +301,21 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     if (data === hoje) {
       const hist = doc.historico || {};
       const mudou = !resumoGravado || resumoGravado.alteracoes !== rel.alteracoes.length || resumoGravado.impacto !== rel.totais.impacto;
-      const semHora = rel.alteracoes.some((a) => a.mudancas.some((m) => m.id && !doc.horasMudancas?.[m.id]));
-      if (mudou || semHora || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel, regiao).catch((e) => console.error("Histórico:", e));
+      if (mudou || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel, regiao).catch((e) => console.error("Histórico:", e));
     } else if (data < hoje && !resumoGravado) {
       gravarResumoDoBalanco(data, rel, regiao).catch((e) => console.error("Resumo do balanço:", e));
     }
   }, [rel, doc, data, hoje, resumoGravado]);
 
-  const historico = useMemo(() => doc?.historico || {}, [doc]);
-  // hora em que a atualização apareceu pela primeira vez
-  const vistoEm = (id) => historico[chaveDaVista(id)]?.em || doc?.vistas?.[chaveDaVista(id)] || null;
-  // hora de cada mudança (a primeira vez que o sistema viu); sem registro, a da atualização
-  const horasMud = doc?.horasMudancas || {};
-  const msDe = (ts) => ts?.toMillis?.() ?? (ts?.toDate ? ts.toDate().getTime() : null);
-  const horaDasMudancas = (ids, a) => {
-    const t = ids.map((id) => msDe(horasMud[id])).filter((x) => x !== null && x !== undefined);
-    if (t.length) return new Date(Math.max(...t));
-    const v = vistoEm(a.id);
-    return v?.toDate ? v.toDate() : null;
-  };
-  const horaCurta = (d) => (d ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "");
+  // reservas abertas (por veículo); serviço novo/cancelado já abre
+  const [abertas, setAbertas] = useState(() => new Set());
+  const alternarReservas = (k) =>
+    setAbertas((x) => {
+      const n = new Set(x);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
   const passaFiltro = (a) =>
     (!filtroTipo || a.classe === filtroTipo) &&
     (!filtroImpacto || (filtroImpacto === "mais" ? a.impacto > 0 : filtroImpacto === "menos" ? a.impacto < 0 : a.impacto === 0));
@@ -336,7 +328,7 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
       [`Auditor da programação · ${dataBr(data)}`],
       [`Programação fechada: ${quando(foto.em)} (${ORIGEM[foto.origem] || foto.origem})`],
       [],
-      ["Hora", "Tipo", "Atualização", "Serviço", "Programado", "Agora", "Detalhes", "Custo programado", "Custo agora", "Diferença da tabela", "Tabela das alterações", "Impacto", "Resultado", "Visto às"],
+      ["Hora", "Tipo", "Atualização", "Serviço", "Programado", "Agora", "Detalhes", "Custo programado", "Custo agora", "Diferença da tabela", "Tabela das alterações", "Impacto", "Resultado"],
       ...rel.alteracoes.map((a) => [
         a.hora,
         NOME_TIPO[a.tipoServico] || a.tipoServico,
@@ -351,7 +343,6 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
         a.custoRegras,
         a.impacto,
         a.impacto > 0 ? "Custo maior" : a.impacto < 0 ? "Custo enxugado" : "Sem impacto",
-        horaDe(vistoEm(a.id)),
       ]),
       [],
       ["", "", "", "", "", "", "Total do dia", rel.totais.totalFoto, rel.totais.totalAgora, rel.totais.deltaTabela, rel.totais.custoRegras, rel.totais.impacto],
@@ -366,7 +357,12 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     if (!rel) return;
     const t = rel.totais;
     const cls = (v) => (v > 0 ? "mais" : v < 0 ? "menos" : "");
-    const lado = (l) => (l.length ? l.map((x) => esc(nomeDoVeiculo(x))).join("<br>") : "<i>—</i>");
+    const lado = (l) =>
+      l.length
+        ? l
+            .map((x) => `${esc(nomeDoVeiculo(x))}<br><span class="det">${x.escala ? `escala ${esc(x.escala)} · ` : ""}${x.pax} pax · ${(x.codigos || []).length || x.reservas || 0} reserva(s)${(x.codigos || []).length ? `: ${esc(x.codigos.join(", "))}` : ""}</span>`)
+            .join("<br>")
+        : "<i>—</i>";
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Auditor da programação ${esc(dataBr(data))}</title><style>${CSS_IMPRESSAO}
 .mais { color: #b42318; font-weight: 700; } .menos { color: #067647; font-weight: 700; }
 td { vertical-align: top; } td.e { white-space: normal !important; } .det { color: #57606a; font-size: 9.5px; }
@@ -430,13 +426,12 @@ ${
               <span>
                 <b>Programação de {dataBr(data).slice(0, 5)}</b> · {ORIGEM[foto.origem] || foto.origem} ({quando(foto.em)}) · {foto.servicos} serviço(s)
                 {rel ? <> · {formatarReais(rel.totais.totalFoto, { semCentavos: true })}</> : null}
-                {doc?.ultimaVerificacao ? <> · conferida às {horaDe(doc.ultimaVerificacao)}</> : null}
               </span>
             ) : (
               <span>
                 <b>Programação de {dataBr(data).slice(0, 5)}</b> ·{" "}
                 {data > hoje
-                  ? `em montagem — fecha às 23:59 e, a partir da meia-noite, cada atualização aparece aqui.${doc?.previa?.em ? ` Última leitura às ${horaDe(doc.previa.em)} · ${doc.previa.servicos} serviço(s).` : ""}`
+                  ? `em montagem — fecha às 23:59 e, a partir da meia-noite, cada atualização aparece aqui.${doc?.previa?.servicos ? ` Por enquanto: ${doc.previa.servicos} serviço(s).` : ""}`
                   : data === hoje
                     ? "guardando agora…"
                     : "não foi guardada (o sistema não estava aberto nesse dia)."}
@@ -539,7 +534,7 @@ ${
               <ul className="aud-ats">
                 {lista.map((a) => {
                   const res = a.impacto > 0 ? "mais" : a.impacto < 0 ? "menos" : "zero";
-                  const ultima = horaDasMudancas(a.mudancas.map((m) => m.id), a);
+                  const rg = reservasDoGrupo(a);
                   return (
                     <li key={a.id} className={`aud-at is-${res}`}>
                       <div className="aud-at__topo">
@@ -551,11 +546,6 @@ ${
                           <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
                           {a.servico ? <span className="aud-at__serv">{a.servico}</span> : null}
                         </span>
-                        {ultima ? (
-                          <span className="aud-at__ultima" title="Hora da última mudança deste grupo">
-                            <Icon name="bell" size={12} /> {horaCurta(ultima)}
-                          </span>
-                        ) : null}
                         <span className={`aud-res is-${res}`}>
                           <Icon name={res === "mais" ? "trendingUp" : res === "menos" ? "trendingDown" : "minus"} size={14} />
                           {res === "mais" ? "Custo maior" : res === "menos" ? "Custo enxugado" : "Sem impacto"}
@@ -588,6 +578,7 @@ ${
                                       const cat = nomeCategoriaCurto(x.categoria);
                                       return (
                                         <li key={x.chave} className={`aud-veic is-${e}`}>
+                                          <div className="aud-veic__linha">
                                           <span className="aud-veic__ic" title={cat || "Sem categoria"}>
                                             <Icon name={ICONE_CATEGORIA[x.categoria] || "car"} size={15} />
                                           </span>
@@ -612,6 +603,70 @@ ${
                                           ) : e !== "continua" ? (
                                             <span className={`aud-veic__tag is-${e}`}>{ROTULO_ESTADO[e]}</span>
                                           ) : null}
+                                          </div>
+                                          {(() => {
+                                            const rs = rg[`${k ? "B" : "A"}:${x.chave}`] || [];
+                                            const kk = `${a.id}|${k}|${x.chave}`;
+                                            const padrao = a.classe === "novo" || a.classe === "cancelado";
+                                            const aberto = abertas.has(kk) !== padrao;
+                                            const mexidas = rs.filter((r) => r.estado !== "continua").length;
+                                            return (
+                                              <>
+                                                <div className="aud-veic__meta">
+                                                  {x.escala ? (
+                                                    <span title="Número da escala no Phoenix">
+                                                      <Icon name="hash" size={11} /> Escala {x.escala}
+                                                    </span>
+                                                  ) : null}
+                                                  <span>
+                                                    <Icon name="users" size={11} /> {x.pax} pax
+                                                  </span>
+                                                  {rs.length > 0 ? (
+                                                    <button type="button" className={`aud-veic__ver ${aberto ? "is-on" : ""}`} onClick={() => alternarReservas(kk)} aria-expanded={aberto}>
+                                                      <Icon name="ticket" size={11} /> {pl(rs.length, "reserva", "reservas")}
+                                                      {mexidas ? <em>{mexidas} mudou</em> : null}
+                                                      <Icon name={aberto ? "chevronUp" : "chevronDown"} size={11} />
+                                                    </button>
+                                                  ) : (
+                                                    <span>
+                                                      <Icon name="ticket" size={11} /> {pl(x.reservas || 0, "reserva", "reservas")}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                {aberto && rs.length > 0 && (
+                                                  <ul className="aud-res-lista">
+                                                    {rs.map((r) => (
+                                                      <li key={r.codigo} className={`is-${r.estado}`}>
+                                                        <span className="aud-res-lista__cod">
+                                                          <b>{r.codigo}</b>
+                                                          {r.estado !== "continua" && (
+                                                            <em className={`aud-res-lista__tag is-${r.estado}`}>
+                                                              {r.estado === "nova" ? "nova" : r.estado === "saiu" ? "saiu" : r.estado === "veioDe" ? `veio de ${r.outro}` : `foi para ${r.outro}`}
+                                                            </em>
+                                                          )}
+                                                        </span>
+                                                        {r.soCodigo ? (
+                                                          <small>detalhes indisponíveis nesta programação</small>
+                                                        ) : (
+                                                          <small>
+                                                            {[
+                                                              r.titular,
+                                                              r.pax ? `${r.pax} pax` : "",
+                                                              r.voo ? `voo ${r.voo}${r.horaVoo ? ` · ${r.horaVoo}` : ""}` : r.hora ? `às ${r.hora}` : "",
+                                                              r.destino || r.origem ? `${a.tipoServico === "OUT" ? "de" : "→"} ${a.tipoServico === "OUT" ? r.origem || r.destino : r.destino || r.origem}` : "",
+                                                              r.regiao,
+                                                            ]
+                                                              .filter(Boolean)
+                                                              .join(" · ")}
+                                                          </small>
+                                                        )}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
                                         </li>
                                       );
                                     })}
@@ -645,19 +700,16 @@ ${
                       </div>
 
                       {(() => {
-                        const linhas = linhasDoQueMudou(a)
-                          .map((l) => ({ ...l, quando: horaDasMudancas(l.ids, a) }))
-                          .sort((x, y) => (x.quando?.getTime() || 0) - (y.quando?.getTime() || 0));
+                        const linhas = linhasDoQueMudou(a);
                         if (!linhas.length) return null;
                         return (
                           <div className="aud-linha">
                             <span className="aud-linha__tit">
-                              <Icon name="history" size={13} /> O que mudou e quando
+                              <Icon name="listCheck" size={13} /> O que mudou
                             </span>
                             <ol>
                               {linhas.map((l, i) => (
                                 <li key={i} className={l.tom ? `is-${l.tom}` : ""}>
-                                  <time className="tabular">{horaCurta(l.quando) || "—"}</time>
                                   <span className="aud-linha__ic">
                                     <Icon name={l.icone} size={13} />
                                   </span>

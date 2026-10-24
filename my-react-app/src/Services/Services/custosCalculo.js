@@ -384,6 +384,49 @@ export const restricaoDaObservacao = (texto = "") => {
   return !!t && PADROES_RESTRICAO.some((r) => r.test(t));
 };
 
+// detalhes de uma reserva (o auditor mostra as reservas de cada escala)
+const textoR = (v) => String(v ?? "").trim();
+const horaR = (v) => (String(v || "").match(/(\d{2}:\d{2})/) || [])[1] || "";
+const detalheDaReserva = (item, tipo) => {
+  const voo = textoR(
+    item?.reserve?.flight_code ||
+      item?.reserve?.flight?.code ||
+      item?.flight_code ||
+      item?.flight?.code ||
+      item?.schedule?.name,
+  ).toUpperCase();
+  const horaVoo = horaR(
+    item?.fly_hour ||
+      item?.reserve?.flight_time ||
+      item?.reserve?.flight?.scheduled_time ||
+      item?.flight_time ||
+      item?.flight_hour,
+  );
+  const origem = textoR(item?.establishmentOrigin?.name);
+  const destino = textoR(item?.establishmentDestination?.name);
+  const regiao = textoR(
+    (tipo === "OUT"
+      ? item?.establishmentOrigin
+      : item?.establishmentDestination
+    )?.region?.name,
+  ).toUpperCase();
+  return {
+    codigo: codigoReserva(item),
+    titular: textoR(
+      item?.reserve?.customer?.name ||
+        item?.customer?.name ||
+        item?.reserve?.holder_name ||
+        item?.passenger_name,
+    ),
+    pax: paxDo(item),
+    voo: voo && voo !== "0" ? voo : "",
+    horaVoo: horaVoo && horaVoo !== "00:00" ? horaVoo : "",
+    hora: extrairHora(item),
+    origem,
+    destino,
+    regiao,
+  };
+};
 const codigoReserva = (item) =>
   String(item?.reserve?.code || item?.reserve?.id || item?.id || "");
 const resumirObs = (t = "") =>
@@ -547,6 +590,7 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
         excluidas: [],
         restricoes: [],
         codigos: [],
+        reservasLista: [],
       });
     }
     const s = mapa.get(chave);
@@ -558,7 +602,10 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
     s.pax += paxDo(item);
     // reservas da escala: o auditor reconhece a troca de veículo mesmo quando o Phoenix cria outra escala
     const cod = String(codigoReserva(item) || "").trim();
-    if (cod && !s.codigos.includes(cod)) s.codigos.push(cod);
+    if (cod && !s.codigos.includes(cod)) {
+      s.codigos.push(cod);
+      s.reservasLista.push(detalheDaReserva(item, tipo));
+    }
     // idioma dos passageiros (só os estrangeiros: português não entra)
     acumularIdiomas(
       s.idiomas,

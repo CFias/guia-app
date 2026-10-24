@@ -562,15 +562,6 @@ export const registrarNoHistorico = async (
   const atual = historicoAtual || docAtual.historico || {};
   const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
   const patch = { ultimaVerificacao: Timestamp.now(), suspeita: deleteField() };
-  // hora em que cada mudança apareceu (a primeira vez que o sistema viu)
-  const horas = docAtual.horasMudancas || {};
-  const novasMud = alteracoes
-    .flatMap((a) => a.mudancas || [])
-    .filter((m) => m.id && !horas[m.id]);
-  if (novasMud.length)
-    patch.horasMudancas = Object.fromEntries(
-      novasMud.map((m) => [m.id, Timestamp.now()]),
-    );
   if (rel) patch.resumo = { ...resumoDoBalanco(rel), em: Timestamp.now() };
   if (novas.length)
     patch.historico = Object.fromEntries(

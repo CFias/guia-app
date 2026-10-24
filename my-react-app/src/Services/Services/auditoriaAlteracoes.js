@@ -246,6 +246,21 @@ export const fotoDaLinha = (l) => ({
   reservas: Number(l.reservas) || 0,
   regioes: Array.isArray(l.regioes) ? l.regioes.slice(0, 4) : [],
   codigos: Array.isArray(l.codigos) ? l.codigos.slice(0, 60).map(String) : [],
+  // número da escala no Phoenix e as reservas com voo, horário e destino
+  escala: String(l.escalaId || String(l.chave || "").replace(/^[A-Z]+_/, "")),
+  reservasLista: Array.isArray(l.reservasLista)
+    ? l.reservasLista.slice(0, 40).map((r) => ({
+        codigo: String(r.codigo || ""),
+        titular: String(r.titular || "").slice(0, 60),
+        pax: Number(r.pax) || 0,
+        voo: String(r.voo || ""),
+        horaVoo: String(r.horaVoo || ""),
+        hora: String(r.hora || ""),
+        origem: String(r.origem || "").slice(0, 80),
+        destino: String(r.destino || "").slice(0, 80),
+        regiao: String(r.regiao || ""),
+      }))
+    : [],
   valorFornecedor: Number(l.valorFornecedor) || 0,
   guiaValor: Number(l.guiaValor) || 0,
   total: Number(l.total) || 0,
@@ -627,6 +642,46 @@ const hash = (t) => {
 export const chaveDaMudanca = (m) =>
   `m${hash(`${m.tipo}|${m.chaveA || ""}>${m.chaveB || ""}|${m.para ?? ""}`)}`;
 
+/* RESERVAS de cada veículo do grupo, com o que aconteceu com cada uma:
+   nova (não existia na programação), saiu (não está mais no Phoenix),
+   veio de / foi para (mudou de veículo) ou continua. Programação antiga
+   (sem os detalhes) mostra só os códigos. */
+export const reservasDoGrupo = (a) => {
+  const antes = a.antesLista || [];
+  const depois = a.depoisLista || [];
+  const ondeAntes = new Map();
+  const ondeDepois = new Map();
+  antes.forEach((x) => (x.codigos || []).forEach((c) => ondeAntes.set(c, x)));
+  depois.forEach((y) => (y.codigos || []).forEach((c) => ondeDepois.set(c, y)));
+  const lista = (x) =>
+    x.reservasLista?.length
+      ? x.reservasLista
+      : (x.codigos || []).map((codigo) => ({ codigo, soCodigo: true }));
+  const porVeiculo = {};
+  antes.forEach((x) => {
+    porVeiculo[`A:${x.chave}`] = lista(x).map((r) => {
+      const y = ondeDepois.get(r.codigo);
+      if (!y) return { ...r, estado: "saiu" };
+      if (a.parA?.[x.chave] && y.chave !== a.parA[x.chave])
+        return { ...r, estado: "foiPara", outro: nomeDoVeiculo(y) };
+      return { ...r, estado: "continua" };
+    });
+  });
+  depois.forEach((y) => {
+    const parB = Object.entries(a.parA || {}).find(
+      ([, b]) => b === y.chave,
+    )?.[0];
+    porVeiculo[`B:${y.chave}`] = lista(y).map((r) => {
+      const x = ondeAntes.get(r.codigo);
+      if (!x) return { ...r, estado: "nova" };
+      if (x.chave !== parB)
+        return { ...r, estado: "veioDe", outro: nomeDoVeiculo(x) };
+      return { ...r, estado: "continua" };
+    });
+  });
+  return porVeiculo;
+};
+
 /* "O que mudou", em frases — uma linha por veículo e assunto, com a hora:
    "VAN 2320 foi trocada por MICRAO 2429 (Van → Micro)"
    "MICRAO 1960: horário 11:00 → 10:50 (10 min mais cedo)"
@@ -697,6 +752,39 @@ export const linhasDoQueMudou = (a) => {
         [px, rs].filter(Boolean),
       );
     }
+    // reservas que entraram ou saíram deste veículo
+    const rg = reservasDoGrupo(a);
+    const codigos = (lst, est) =>
+      lst.filter((r) => r.estado === est).map((r) => r.codigo);
+    const novas = ms[0].chaveB
+      ? codigos(rg[`B:${ms[0].chaveB}`] || [], "nova")
+      : [];
+    const sairam = ms[0].chaveA
+      ? codigos(rg[`A:${ms[0].chaveA}`] || [], "saiu")
+      : [];
+    const vieram = ms[0].chaveB
+      ? (rg[`B:${ms[0].chaveB}`] || []).filter((r) => r.estado === "veioDe")
+      : [];
+    if (novas.length)
+      out.push({
+        icone: "ticket",
+        texto: `${veic}: ${novas.length > 1 ? `${novas.length} reservas novas` : "reserva nova"} (${novas.join(", ")})`,
+        ids: [],
+        tom: "entrou",
+      });
+    if (sairam.length)
+      out.push({
+        icone: "ticket",
+        texto: `${de || veic}: ${sairam.length > 1 ? `${sairam.length} reservas saíram` : "reserva saiu"} (${sairam.join(", ")})`,
+        ids: [],
+        tom: "saiu",
+      });
+    if (vieram.length)
+      out.push({
+        icone: "users",
+        texto: `${veic}: recebeu ${vieram.map((r) => `${r.codigo} (de ${r.outro})`).join(", ")}`,
+        ids: [],
+      });
     const mo = pega("motorista");
     if (mo) linha("user", `${veic}: motorista ${mo.de} → ${mo.para}`, [mo]);
     const g = pega("guia");
@@ -833,7 +921,9 @@ export const compararComFoto = (
     const estadoDepois = {};
     const trocadoPor = {};
     const noLugarDe = {};
+    const parA = {};
     pares.forEach(([x, y]) => {
+      parA[x.chave] = y.chave;
       const t = iguais(x.veiculo, y.veiculo) ? "continua" : "trocou";
       estadoAntes[x.chave] = t;
       estadoDepois[y.chave] = t;
@@ -853,6 +943,7 @@ export const compararComFoto = (
       estadoDepois,
       trocadoPor,
       noLugarDe,
+      parA,
       id: `${chaves}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
       chave: ref.chave,
       classe,
