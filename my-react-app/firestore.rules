@@ -479,7 +479,7 @@ service cloud.firestore {
       allow create, update: if retornoId.matches(request.resource.data.base + '__.*')
         && request.resource.data.keys().hasOnly([
              'base', 'data', 'escalaId', 'motoristaNome', 'conectadoEm', 'avisadoEm', 'recepcaoMs',
-             'acaminhoEm', 'posicionadoEm', 'iniciadoEm', 'finalizadoEm', 'atualizadoEm'])
+             'acaminhoEm', 'posicionadoEm', 'porta', 'iniciadoEm', 'finalizadoEm', 'atualizadoEm'])
         && request.resource.data.motoristaNome is string
         && request.resource.data.motoristaNome.size() <= 80;
     }

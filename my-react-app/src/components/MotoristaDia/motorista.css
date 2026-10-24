@@ -756,3 +756,253 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* aviso de recepcionado — compacto, sem encostar nas bordas */
+.mt-alerta {
+  padding: 24px;
+  place-items: end center;
+}
+
+.mt-alerta__caixa {
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 48px));
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  text-align: left;
+  align-items: stretch;
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.45);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.mt-alerta__topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mt-alerta__topo>span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mt-alerta__topo small {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mt-alerta__topo b {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.mt-alerta__caixa .mt-alerta__ic {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.mt-alerta__caixa p {
+  margin: 0;
+  padding-left: 52px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mt-alerta__acoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mt-alerta__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--mt-borda);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mt-alerta__btn.is-primario {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}
+
+.mt-alerta__acoes .mt-alerta__btn:only-child {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 600px) {
+  .mt-alerta {
+    place-items: center;
+  }
+}
+
+/* escolher a porta do desembarque */
+.mt-porta {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 24px;
+}
+
+.mt-porta__fundo {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.mt-porta__caixa {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 48px));
+  padding: 18px 16px 14px;
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.45);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.mt-porta__caixa>b {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mt-porta__caixa>small {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.mt-porta__opcoes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mt-porta__opcoes button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  aspect-ratio: 1;
+  border: 1px solid var(--mt-borda);
+  border-radius: 14px;
+  background: var(--mt-suave);
+  color: var(--text);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mt-porta__opcoes button small {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mt-porta__opcoes button:active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: var(--accent);
+}
+
+.mt-porta__cancelar {
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (min-width: 600px) {
+  .mt-porta {
+    align-items: center;
+  }
+}
+
+.mt-topo__txt {
+  flex: 1;
+}
+
+.mt-topo__tema {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.mt-topo__tema:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+/* alerta: para onde é o serviço */
+.mt-alerta__rota {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mt-suave, rgba(15, 23, 42, 0.04));
+  color: var(--text-2);
+}
+
+.mt-alerta__rota>svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.mt-alerta__rota>span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mt-alerta__rota b {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.mt-alerta__rota small {
+  font-size: 12.5px;
+  line-height: 1.35;
+}

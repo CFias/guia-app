@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
+import MoreMenu from "../ui/MoreMenu";
 import { useAuth } from "../../Context/AuthContext";
 import { ROLES } from "../../Context/permissions";
 import { definirTituloAba } from "../Shell/tituloAba";
@@ -35,6 +36,8 @@ import {
   situacaoDoServico,
 } from "../../Services/Services/viagemMotorista";
 import MotoristaDia from "../MotoristaDia/MotoristaDia";
+import AvaliacaoSistema from "../Atividade/AvaliacaoSistema";
+import { useTheme } from "../../Context/ThemeContext";
 import "./fornecedor.css";
 
 /* PAINEL DO FORNECEDOR PARCEIRO (celular primeiro).
@@ -103,6 +106,7 @@ const NovoMotorista = ({ aoSalvar, aoFechar, salvando }) => {
 
 const PainelFornecedor = () => {
   const { perfil, role, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme() || {};
   const { fornecedorId: idDaRota } = useParams();
   const previa = !!idDaRota && role === ROLES.OPERACIONAL;
   const fornecedorId = previa ? idDaRota : perfil?.fornecedorId || "";
@@ -130,6 +134,8 @@ const PainelFornecedor = () => {
   const [abertos, setAbertos] = useState(() => new Set());
   const [novoPara, setNovoPara] = useState(null); // { servicos } esperando um motorista novo
   const [guiaAberto, setGuiaAberto] = useState(() => !lerGuiaVisto());
+  const [pedidoAvaliacao, setPedidoAvaliacao] = useState(0);
+  const navigate = useNavigate();
   const [aviso, setAviso] = useState("");
 
   useEffect(() => {
@@ -226,8 +232,16 @@ const PainelFornecedor = () => {
   }, [veiculos, escolhas]);
 
   const euMesmo = useMemo(
-    () => (fornecedor ? { id: EU_MESMO, nome: fornecedor.nome || "Fornecedor", telefone: String(fornecedor.whatsapp || "").replace(/\D/g, "") } : null),
-    [fornecedor],
+    () =>
+      fornecedor
+        ? {
+            id: EU_MESMO,
+            // o próprio fornecedor dirige: o nome da pessoa da conta (ex.: Clóvis), não o da empresa
+            nome: (!previa && perfil?.nome) || fornecedor.nome || "Fornecedor",
+            telefone: String(fornecedor.whatsapp || "").replace(/\D/g, ""),
+          }
+        : null,
+    [fornecedor, perfil?.nome, previa],
   );
   const dadosDoLink = (mot, servicos) => ({
     base: baseAtual(),
@@ -469,19 +483,28 @@ const PainelFornecedor = () => {
             <small>Painel do fornecedor · Luck Receptivo</small>
           </div>
           <span className="pf-topo__acoes">
-            <button type="button" className={`pf-icone ${guiaAberto ? "is-on" : ""}`} onClick={() => setGuiaAberto((x) => !x)} title="Como funciona" aria-label="Como funciona">
-              <Icon name="help" size={15} />
-            </button>
-            {!previa && (
-              <>
-                <Link to="/fornecedor/tema" className="pf-icone" title="Tema e tamanho do texto" aria-label="Tema">
-                  <Icon name="palette" size={15} />
-                </Link>
-                <button type="button" className="pf-icone" onClick={logout} title="Sair" aria-label="Sair">
-                  <Icon name="logout" size={15} />
-                </button>
-              </>
+            {toggleTheme && (
+              <button
+                type="button"
+                className="pf-icone"
+                onClick={toggleTheme}
+                title={theme === "light" ? "Tema escuro" : "Tema claro"}
+                aria-label={theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
+              >
+                <Icon name={theme === "light" ? "moon" : "sun"} size={16} />
+              </button>
             )}
+            <MoreMenu
+              label="Menu"
+              items={[
+                { label: guiaAberto ? "Esconder o guia" : "Como funciona", icon: "help", onClick: () => setGuiaAberto((x) => !x) },
+                !previa && { label: "Avaliar o sistema", icon: "star", onClick: () => setPedidoAvaliacao((n) => n + 1) },
+                !previa && { label: "Cores e tamanho do texto", icon: "palette", onClick: () => navigate("/fornecedor/tema") },
+                !previa && "divider",
+                !previa && { label: "Sair", icon: "logout", danger: true, onClick: logout },
+              ]}
+            />
+            {!previa && <AvaliacaoSistema variante="oculto" pedido={pedidoAvaliacao} />}
           </span>
         </div>
         <div className="pf-dias" role="tablist" aria-label="Dia">
@@ -791,7 +814,7 @@ const PainelFornecedor = () => {
                                 if (!st.ultima) return null;
                                 return (
                                   <span className={`pf-serv__etapa ${st.concluido ? "is-ok" : ""}`}>
-                                    <Icon name={st.concluido ? "circleCheck" : "navigation"} size={12} /> {st.ultima.feito} · {horaDoTimestamp(ev[st.ultima.id]?.em)}
+                                    <Icon name={st.concluido ? "circleCheck" : "navigation"} size={12} /> {ev[st.ultima.id]?.porta ? `Porta ${ev[st.ultima.id].porta}` : st.ultima.feito} · {horaDoTimestamp(ev[st.ultima.id]?.em)}
                                   </span>
                                 );
                               })()}

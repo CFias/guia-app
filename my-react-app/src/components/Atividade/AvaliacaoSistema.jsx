@@ -10,6 +10,8 @@ import "./atividade.css";
    é quem vê o Balanço de uso.
    - <AvaliacaoSistema variante="menu" />: botão no rodapé do menu lateral
    - <AvaliacaoSistema variante="botao" />: botão solto (área do guia)
+   - <AvaliacaoSistema variante="oculto" pedido={n} />: sem botão; abre quando
+     `pedido` muda (ex.: item de um menu "⋯")
    CONVITE: quem ainda não avaliou recebe um cartão no canto da tela logo
    DEPOIS de uma ação concluída (imprimiu placas, consultou/copiou na Central,
    enviou a disponibilidade, gerou um mapa ou relatório… — ou depois de abrir
@@ -94,7 +96,7 @@ export const Estrelas = ({ valor, onChange, tamanho = 30, somenteLeitura = false
   );
 };
 
-const AvaliacaoSistema = ({ variante = "menu", recolhido = false, className = "" }) => {
+const AvaliacaoSistema = ({ variante = "menu", recolhido = false, className = "", pedido = 0 }) => {
   const { user, perfil, role } = useAuth();
   const uid = user?.uid;
   const [aberto, setAberto] = useState(false);
@@ -153,6 +155,14 @@ const AvaliacaoSistema = ({ variante = "menu", recolhido = false, className = ""
     setAberto(true);
   };
 
+  // aberto por fora (menu "⋯"): cada novo `pedido` abre a janela
+  const pedidoVisto = useRef(pedido);
+  useEffect(() => {
+    if (pedido === pedidoVisto.current) return;
+    pedidoVisto.current = pedido;
+    abrir();
+  }, [pedido]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const adiar = () => {
     setConvite(false);
     responderConvite(uid, { adiadoAte: Date.now() + UMA_HORA });
@@ -202,7 +212,7 @@ const AvaliacaoSistema = ({ variante = "menu", recolhido = false, className = ""
             {atual && <small className="atv-avaliar-menu__nota">{atual.nota}★</small>}
           </span>
         </button>
-      ) : (
+      ) : variante === "oculto" ? null : (
         <button type="button" className={className || "atv-avaliar-botao"} onClick={abrir}>
           <Icon name="star" size={16} /> {rotulo}
         </button>

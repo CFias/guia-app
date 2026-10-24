@@ -533,73 +533,110 @@ body:is(.dark, .dark-pro) {
   color: #3ccf7f;
 }
 
-/* motorista escolhido pelo fornecedor parceiro (Painel do fornecedor) */
-.painel-op-motforn {
+/* motorista do fornecedor parceiro + etapa marcada no link do dia
+   (mesmo vocabulário do sistema: ui-chip neutro + status ícone/texto) */
+.painel-op-mot {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 4px 10px;
   max-width: 100%;
-  margin-top: 2px;
-  color: #6d28d9;
+  margin-top: 3px;
   font-size: var(--fs-xs);
-  font-weight: 600;
 }
 
-.painel-op-motforn b {
-  font-weight: 800;
-}
-
-.painel-op-motforn a {
-  margin-left: 4px;
-  color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.painel-op-motforn.is-completo {
-  align-self: flex-start;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #7c3aed 10%, transparent);
-}
-
-:is(body.dark, body.dark-pro) .painel-op-motforn {
-  color: #c4b5fd;
-}
-
-/* etapa marcada pelo motorista (link do dia) */
-.painel-op-motetapa {
+.painel-op-mot__quem {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.painel-op-mot__quem>svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.painel-op-mot.is-completo {
   align-self: flex-start;
-  margin-top: 2px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #2563eb 12%, transparent);
-  color: #2563eb;
+  gap: 6px 12px;
+  margin-top: 6px;
+}
+
+.painel-op-mot__chip {
+  height: 26px;
+  gap: 6px;
+  padding: 0 4px 0 10px;
   font-size: var(--fs-xs);
+}
+
+.painel-op-mot__chip:not(:has(a)) {
+  padding-right: 10px;
+}
+
+.painel-op-mot__chip>svg {
+  color: var(--text-3);
+}
+
+.painel-op-mot__chip b {
+  color: var(--text);
   font-weight: 700;
 }
 
-.painel-op-motetapa.is-ok {
-  background: color-mix(in srgb, #17834a 12%, transparent);
-  color: #17834a;
+.painel-op-mot__acao {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
 }
 
-.painel-op-motetapa a {
-  margin-left: 2px;
-  color: inherit;
+.painel-op-mot__acao:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.painel-op-mot__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-text, var(--accent));
   font-weight: 600;
-  text-decoration: underline;
+  white-space: nowrap;
 }
 
-:is(body.dark, body.dark-pro) .painel-op-motetapa {
-  color: #79a8ff;
+.painel-op-mot__status small {
+  color: var(--text-3);
+  font-size: inherit;
+  font-weight: 500;
 }
 
-:is(body.dark, body.dark-pro) .painel-op-motetapa.is-ok {
+.painel-op-mot__status.is-ok {
+  color: #17804a;
+}
+
+:is(body.dark, body.dark-pro) .painel-op-mot__status.is-ok {
   color: #3ccf7f;
+}
+
+.painel-op-mot__passos {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.painel-op-mot__passos i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--divider);
+}
+
+.painel-op-mot__passos i.is-feito {
+  background: currentColor;
 }

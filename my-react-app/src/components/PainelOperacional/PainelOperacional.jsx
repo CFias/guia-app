@@ -1154,42 +1154,85 @@ const extrairTipoOutOuTransfer = (item) => {
 const montarChaveMonitoramento = (dataMapa, grupoId) =>
   `${dataMapa}__${grupoId}`.replace(/\//g, "-");
 
-/* Motorista escolhido pelo fornecedor parceiro no Painel do fornecedor */
+/* Motorista escolhido pelo fornecedor parceiro no Painel do fornecedor
+   + a etapa que ele marcou no link do dia. Segue o padrão do sistema:
+   chip neutro para quem dirige e status (ícone + texto na cor do tom)
+   para o andamento, com três pontinhos de progresso. */
+const textoDaEtapa = (etapa) => {
+  if (!etapa) return "";
+  if (etapa.id === "posicionado" && etapa.porta) return `Na porta ${etapa.porta}`;
+  return etapa.feito;
+};
+const iconeDaEtapa = (etapa, concluido) => (concluido ? "circleCheck" : etapa.id === "iniciado" ? "navigation" : "mapPin");
+
 const MotoristaForn = ({ m, v, texto, completo = false }) => {
   // sem motorista escolhido: o próprio fornecedor dirige — mostra só a etapa dele
   if (!m && !texto && !v) return null;
   const st = v ? situacaoDoServico(v.tipo, v.eventos) : null;
   const etapa = st?.ultima ? { ...st.ultima, ...v.eventos[st.ultima.id] } : null;
-  return (
-    <>
-    {(m || texto) && (
-    <span className={`painel-op-motforn ${completo ? "is-completo" : ""}`} title={m ? `Motorista escolhido por ${m.fornecedorNome || "o fornecedor"} no painel do fornecedor` : undefined}>
-      <Icon name="user" size={12} />
-      {texto || (
-        <>
-          {completo ? "Motorista: " : ""}
-          <b>{m.motoristaNome}</b>
-          {completo && m.motoristaTelefone ? (
-            <a href={`https://wa.me/55${m.motoristaTelefone}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-              {formatarTelefone(m.motoristaTelefone)}
-            </a>
-          ) : null}
-        </>
+  const hora = etapa ? horaDoTimestamp(etapa.em) : "";
+  const nome = m?.motoristaNome || v?.motoristaNome || "";
+  const posicao = etapa && etapa.lat !== undefined ? linkPosicao(etapa.id === "iniciado" && v.ultimaPosicao ? v.ultimaPosicao : etapa) : "";
+
+  const status = etapa && (
+    <span className={`painel-op-mot__status ${st.concluido ? "is-ok" : ""}`} title="Marcado pelo motorista no link do dia">
+      <span className="painel-op-mot__passos" aria-hidden="true">
+        {st.etapas.map((e) => (
+          <i key={e.id} className={v.eventos?.[e.id]?.em ? "is-feito" : ""} />
+        ))}
+      </span>
+      <Icon name={iconeDaEtapa(etapa, st.concluido)} size={13} />
+      <span>
+        {textoDaEtapa(etapa)}
+        {hora ? <small> · {hora}</small> : null}
+      </span>
+      {posicao && (
+        <a className="painel-op-mot__acao" href={posicao} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Ver no mapa" aria-label="Ver no mapa">
+          <Icon name="map" size={13} />
+        </a>
       )}
     </span>
-    )}
-    {etapa && (
-      <span className={`painel-op-motetapa ${st.concluido ? "is-ok" : ""}`} title="Marcado pelo motorista no link do dia">
-        <Icon name={st.concluido ? "circleCheck" : etapa.id === "iniciado" ? "navigation" : "mapPin"} size={11} />
-        {etapa.feito} {horaDoTimestamp(etapa.em)}
-        {etapa.lat !== undefined && (
-          <a href={linkPosicao(etapa.id === "iniciado" && v.ultimaPosicao ? v.ultimaPosicao : etapa)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-            ver no mapa
-          </a>
+  );
+
+  // linha da tabela: só uma linha discreta (nome + andamento)
+  if (!completo) {
+    return (
+      <span className="painel-op-mot">
+        {(m || texto) && (
+          <span className="painel-op-mot__quem" title={m ? `Motorista escolhido por ${m.fornecedorNome || "o fornecedor"}` : undefined}>
+            <Icon name="user" size={12} />
+            {texto || nome}
+          </span>
         )}
+        {status}
       </span>
-    )}
-    </>
+    );
+  }
+
+  // cabeçalho do veículo: chip do motorista + andamento
+  return (
+    <span className="painel-op-mot is-completo">
+      {(m || texto) && (
+        <span className="ui-chip painel-op-mot__chip" title={m ? `Motorista escolhido por ${m.fornecedorNome || "o fornecedor"} no painel do fornecedor` : undefined}>
+          <Icon name="user" size={13} />
+          {texto || <b>{nome}</b>}
+          {m?.motoristaTelefone ? (
+            <a
+              className="painel-op-mot__acao"
+              href={`https://wa.me/55${m.motoristaTelefone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={`WhatsApp · ${formatarTelefone(m.motoristaTelefone)}`}
+              aria-label={`WhatsApp de ${nome}`}
+            >
+              <Icon name="phone" size={12} />
+            </a>
+          ) : null}
+        </span>
+      )}
+      {status}
+    </span>
   );
 };
 

@@ -53,6 +53,13 @@ import "./atendimento.css";
    O Operacional pode marcar em nome de um colaborador (ex.: lançar cartinhas). */
 
 const hoje = () => isoLocal(new Date());
+// "IBEROSTAR" · "IBEROSTAR e VILA GALÉ" · "IBEROSTAR, VILA GALÉ +2"
+const destinoResumido = (hoteis = []) => {
+  if (!hoteis.length) return "destino a confirmar";
+  if (hoteis.length === 1) return hoteis[0];
+  if (hoteis.length === 2) return `${hoteis[0]} e ${hoteis[1]}`;
+  return `${hoteis[0]}, ${hoteis[1]} +${hoteis.length - 2}`;
+};
 const semAcento = (t = "") =>
   String(t)
     .normalize("NFD")
@@ -353,7 +360,7 @@ const AtendimentoAeroporto = () => {
       const marcasRec = Object.values(m[etapas[0].id] || {}).filter((v) => v && typeof v === "object");
       const pelasReservas = marcasRec.length ? null : recepcaoPelasReservas(g);
       const marcasEmb = etapas.length > 1 ? Object.values(m[etapas[etapas.length - 1].id] || {}).filter((v) => v && typeof v === "object") : [];
-      const e = porEscala.get(String(g.escalaId)) || { rec: false, recEm: null, recPor: "", emb: true, embEm: null, pax: 0, voos: new Set(), veiculo: g.veiculo };
+      const e = porEscala.get(String(g.escalaId)) || { rec: false, recEm: null, recPor: "", emb: true, embEm: null, pax: 0, voos: new Set(), hoteis: new Set(), veiculo: g.veiculo };
       if (marcasRec.length || pelasReservas) {
         e.rec = true;
         e.recEm = e.recEm || marcasRec[0]?.em || pelasReservas?.[0]?.em || null;
@@ -363,6 +370,7 @@ const AtendimentoAeroporto = () => {
       else e.embEm = e.embEm || marcasEmb[0]?.em || null;
       e.pax += g.pax || 0;
       (g.voos || []).forEach((v) => e.voos.add(v));
+      (g.reservas || []).forEach((r) => r.hotel && e.hoteis.add(String(r.hotel).trim()));
       porEscala.set(String(g.escalaId), e);
     });
     porEscala.forEach((e, escalaId) => {
@@ -388,8 +396,11 @@ const AtendimentoAeroporto = () => {
         enviarPushDaEscala({
           data,
           escalaId,
-          titulo: "Passageiros recepcionados",
-          corpo: `${[...e.voos].join(", ") || "Chegada"} · ${e.pax} pax · posicione o ${e.veiculo || "veículo"} no desembarque`,
+          titulo: "Passageiros recepcionados · posicione no desembarque",
+          corpo: [
+            `Aeroporto → ${destinoResumido([...e.hoteis])}`,
+            `${[...e.voos].join(", ") || "Chegada"} · ${e.pax} pax · ${e.veiculo || "veículo"}`,
+          ].join("\n"),
         });
       }
     });
@@ -679,7 +690,6 @@ const AtendimentoAeroporto = () => {
               </span>
               <span>
                 <b>{r.texto}</b>
-                {r.nome ? ` · ${r.nome}` : ""}
                 {r.hora ? ` · ${r.hora}` : ""}
               </span>
               <Icon name="phone" size={12} className="atd-mot__app" />

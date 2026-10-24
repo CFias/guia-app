@@ -18,11 +18,13 @@ import {
   linkWaze,
   localizarEndereco,
   marcarEtapaMotorista,
+  PORTAS_DESEMBARQUE,
   ouvirMotoristaDia,
   ouvirStatusEscala,
   pegarPosicao,
   situacaoDoServico,
 } from "../../Services/Services/viagemMotorista";
+import { useTheme } from "../../Context/ThemeContext";
 import "./motorista.css";
 
 /* LINK DO DIA DO MOTORISTA (/m/:token — sem login).
@@ -96,6 +98,7 @@ const bip = () => {
 const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, garantirToken = null, diasApp = null }) => {
   const { token: tokenRota } = useParams();
   const token = tokenProp || tokenRota || "";
+  const { theme, toggleTheme } = useTheme() || {};
   const [docDia, setDocDia] = useState(undefined); // undefined = carregando; null = link inválido
   const dia = diaLocal
     ? { ...diaLocal, eventos: docDia?.eventos || {}, ultimaPosicao: docDia?.ultimaPosicao || null }
@@ -310,21 +313,29 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     return () => document.removeEventListener("visibilitychange", voltar);
   }, [avisosAtivos]);
 
-  const marcar = async (s, etapa, desfazer = false) => {
+  // chegada (IN): "Cheguei no desembarque" pergunta a porta antes de gravar
+  const [portaPara, setPortaPara] = useState(null); // { s, etapa }
+  const marcar = async (s, etapa, desfazer = false, extra = null) => {
+    if (!desfazer && !extra && s.tipo === "IN" && etapa.id === "posicionado") {
+      setPortaPara({ s, etapa });
+      return;
+    }
+    setPortaPara(null);
     setSalvando(`${s.chave}|${etapa.id}`);
     try {
       if (desfazer) {
         if (!window.confirm(`Desfazer "${etapa.feito}"?`)) return;
         await marcarEtapaMotorista(token, s.chave, etapa.id, null);
-        retornar(s, { [`${etapa.id}Em`]: null });
+        retornar(s, { [`${etapa.id}Em`]: null, ...(etapa.id === "posicionado" ? { porta: null } : {}) });
       } else {
         // localização e link em paralelo (o link do fornecedor pode ainda não existir)
         const [pos, t] = await Promise.all([pegarPosicao(), token ? token : garantirToken?.()]);
         if (!t) throw new Error("sem link");
-        await marcarEtapaMotorista(t, s.chave, etapa.id, pos ? pos : { semLocalizacao: true });
-        retornar(s, { [`${etapa.id}Em`]: new Date() });
+        await marcarEtapaMotorista(t, s.chave, etapa.id, { ...(pos ? pos : { semLocalizacao: true }), ...(extra || {}) });
+        retornar(s, { [`${etapa.id}Em`]: new Date(), ...(extra?.porta ? { porta: extra.porta } : {}) });
         if (etapa.id === "posicionado" && status[s.escalaId]?.recepcionado) marcarVisto(chaveDoAviso(s));
-        setAviso(pos ? `${etapa.feito} · localização enviada` : `${etapa.feito} · sem localização (permita o acesso à localização)`);
+        const feito = extra?.porta ? `Porta ${extra.porta}` : etapa.feito;
+        setAviso(pos ? `${feito} · localização enviada` : `${feito} · sem localização (permita o acesso à localização)`);
       }
     } catch (e) {
       console.error(e);
@@ -409,7 +420,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
               <li key={e.id} className={`${ok ? "is-ok" : ""} ${prox ? "is-prox" : ""}`}>
                 <span>{ok ? <Icon name="check" size={11} /> : k + 1}</span>
                 <small>
-                  {ok ? e.feito : e.acao}
+                  {ok ? (ev[e.id]?.porta ? `Porta ${ev[e.id].porta}` : e.feito) : e.acao}
                   {ok && <em>{horaDoTimestamp(ev[e.id].em)}</em>}
                 </small>
               </li>
@@ -507,6 +518,11 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             {new Date(`${dia.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })} · {dia.fornecedorNome} · Luck Receptivo
           </small>
         </span>
+        {toggleTheme && (
+          <button type="button" className="mt-topo__tema" onClick={toggleTheme} aria-label={theme === "light" ? "Usar tema escuro" : "Usar tema claro"} title={theme === "light" ? "Tema escuro" : "Tema claro"}>
+            <Icon name={theme === "light" ? "moon" : "sun"} size={16} />
+          </button>
+        )}
       </header>
       )}
 
@@ -618,40 +634,72 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
         </div>
       )}
 
-      {/* aviso repetido: passageiro recepcionado */}
-      {alerta && (
-        <div className="mt-alerta" role="alertdialog" aria-modal="true" aria-label="Passageiros recepcionados">
-          <div className="mt-alerta__caixa">
-            <span className="mt-alerta__ic">
-              <Icon name="bell" size={30} />
-            </span>
-            <b>Passageiros recepcionados!</b>
-            <p>
-              {alerta.descricao} · {alerta.pax} pax
-              {alerta.voos.length ? ` · ${alerta.voos.join(", ")}` : ""}
-              <br />
-              {eventos[alerta.chave]?.posicionado?.em ? "Você já está posicionado: os passageiros estão indo para o carro." : `Posicione o ${alerta.veiculo} no desembarque.`}
-            </p>
-            {!eventos[alerta.chave]?.posicionado?.em && (
-            <button type="button" className="mt-botao is-posicionado" onClick={() => marcar(alerta, etapasDoTipo("IN")[0])} disabled={!!salvando}>
-              <span className="mt-botao__ic">
-                <Icon name="mapPin" size={18} />
-              </span>
-              <span className="mt-botao__txt">
-                <b>Estou posicionado</b>
-                <small>envia sua localização para a Luck</small>
-              </span>
-            </button>
-            )}
-            <button
-              type="button"
-              className="mt-alerta__depois"
-              onClick={() => {
-                if (!eventos[alerta.chave]?.posicionado?.em) retornar(alerta, { acaminhoEm: new Date(), recepcaoMs: msDoTimestamp(status[alerta.escalaId]?.recepcionadoEm) });
-                marcarVisto(chaveDoAviso(alerta));
-              }}
-            >
-              {eventos[alerta.chave]?.posicionado?.em ? "Ok, entendi" : "Estou a caminho"}
+      {/* aviso repetido: passageiro recepcionado (compacto) */}
+      {alerta && (() => {
+        const jaChegou = !!eventos[alerta.chave]?.posicionado?.em;
+        const primeiroNome = String(dia.motoristaNome || "").trim().split(" ")[0];
+        return (
+          <div className="mt-alerta" role="alertdialog" aria-modal="true" aria-label="Passageiros recepcionados">
+            <div className="mt-alerta__caixa">
+              <div className="mt-alerta__topo">
+                <span className="mt-alerta__ic">
+                  <Icon name="bell" size={18} />
+                </span>
+                <span>
+                  <small>Passageiros recepcionados</small>
+                  <b>{jaChegou ? `${primeiroNome || "Pronto"}, os passageiros estão indo até você` : `${primeiroNome ? `${primeiroNome}, posicione` : "Posicione"} no desembarque`}</b>
+                </span>
+              </div>
+              <div className="mt-alerta__rota">
+                <Icon name="mapPin" size={14} />
+                <span>
+                  <b>{alerta.descricao || `${alerta.origens?.[0] || "Aeroporto"} → ${alerta.destinos?.[0] || "destino não informado"}`}</b>
+                  <small>
+                    {alerta.hora ? `${alerta.hora} · ` : ""}
+                    {alerta.voos.length ? `${alerta.voos.join(", ")} · ` : ""}
+                    {alerta.pax} pax · {alerta.veiculo}
+                  </small>
+                </span>
+              </div>
+              <div className="mt-alerta__acoes">
+                <button
+                  type="button"
+                  className="mt-alerta__btn"
+                  onClick={() => {
+                    if (!jaChegou) retornar(alerta, { acaminhoEm: new Date(), recepcaoMs: msDoTimestamp(status[alerta.escalaId]?.recepcionadoEm) });
+                    marcarVisto(chaveDoAviso(alerta));
+                  }}
+                >
+                  {jaChegou ? "Ok" : "Estou a caminho"}
+                </button>
+                {!jaChegou && (
+                  <button type="button" className="mt-alerta__btn is-primario" onClick={() => marcar(alerta, etapasDoTipo("IN")[0])} disabled={!!salvando}>
+                    <Icon name="mapPin" size={15} /> Cheguei
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* em qual porta do desembarque o motorista está */}
+      {portaPara && (
+        <div className="mt-porta" role="dialog" aria-modal="true" aria-label="Em qual porta você está?">
+          <button type="button" className="mt-porta__fundo" onClick={() => setPortaPara(null)} aria-label="Fechar" />
+          <div className="mt-porta__caixa">
+            <b>Em qual porta do desembarque você está?</b>
+            <small>A base vê a porta e leva os passageiros até você.</small>
+            <div className="mt-porta__opcoes">
+              {PORTAS_DESEMBARQUE.map((p) => (
+                <button key={p} type="button" onClick={() => marcar(portaPara.s, portaPara.etapa, false, { porta: p })} disabled={!!salvando}>
+                  <small>Porta</small>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="mt-porta__cancelar" onClick={() => setPortaPara(null)}>
+              Cancelar
             </button>
           </div>
         </div>

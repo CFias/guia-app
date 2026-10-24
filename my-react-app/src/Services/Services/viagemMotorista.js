@@ -66,9 +66,9 @@ export const ETAPAS_POR_TIPO = {
   IN: [
     {
       id: "posicionado",
-      acao: "Estou posicionado",
-      feito: "Posicionado no aeroporto",
-      dica: "toque quando estiver na porta de desembarque",
+      acao: "Cheguei no desembarque",
+      feito: "No desembarque",
+      dica: "toque e escolha a porta em que você está",
     },
     {
       id: "iniciado",
@@ -124,6 +124,9 @@ export const ETAPAS_POR_TIPO = {
     },
   ],
 };
+// portas do desembarque do aeroporto (o motorista escolhe ao chegar)
+export const PORTAS_DESEMBARQUE = ["A", "B", "C", "D"];
+
 export const etapasDoTipo = (tipo) =>
   ETAPAS_POR_TIPO[tipo] || ETAPAS_POR_TIPO.OUTRO;
 
@@ -645,28 +648,35 @@ export const ouvirRetornosDoDia = (data, aoMudar) =>
   );
 
 // o que mostrar no card do aeroporto a partir do retorno e da recepção
+// (frase com o nome do motorista: "Clóvis chegou na porta B")
 export const leituraDoRetorno = (r, recepcaoMs = 0) => {
   if (!r) return null;
+  const nome =
+    String(r.motoristaNome || "")
+      .trim()
+      .split(" ")[0] || "Motorista";
   const hora = (v) => horaDoTimestamp(v);
   if (r.finalizadoEm)
     return {
       id: "finalizado",
       icone: "circleCheck",
-      texto: "Viagem finalizada",
+      texto: `${nome} finalizou a viagem`,
       hora: hora(r.finalizadoEm),
     };
   if (r.iniciadoEm)
     return {
       id: "iniciado",
       icone: "navigation",
-      texto: "Em viagem",
+      texto: `${nome} em viagem`,
       hora: hora(r.iniciadoEm),
     };
   if (r.posicionadoEm)
     return {
       id: "posicionado",
       icone: "mapPin",
-      texto: "Motorista posicionado",
+      texto: r.porta
+        ? `${nome} chegou na porta ${r.porta}`
+        : `${nome} chegou no desembarque`,
       hora: hora(r.posicionadoEm),
     };
   const daRecepcao = (campo) =>
@@ -675,28 +685,28 @@ export const leituraDoRetorno = (r, recepcaoMs = 0) => {
     return {
       id: "acaminho",
       icone: "car",
-      texto: "Motorista a caminho",
+      texto: `${nome} está a caminho`,
       hora: hora(r.acaminhoEm),
     };
   if (daRecepcao("avisadoEm"))
     return {
       id: "viu",
       icone: "eye",
-      texto: "Motorista viu o aviso",
+      texto: `${nome} viu o aviso`,
       hora: hora(r.avisadoEm),
     };
   if (recepcaoMs)
     return {
       id: "avisando",
       icone: "bell",
-      texto: "Avisando o motorista…",
+      texto: `Avisando ${nome}…`,
       hora: "",
     };
   if (r.conectadoEm)
     return {
       id: "conectado",
       icone: "phone",
-      texto: "Motorista com o app",
+      texto: `${nome} está com o app`,
       hora: "",
     };
   return null;
