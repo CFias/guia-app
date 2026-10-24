@@ -74,6 +74,7 @@ const ORIGEM_TEXTO = {
   tarifa: "Tabela",
   "tarifa-casada": "Tabela · casado",
   "sem-tarifa": "Sem tarifa",
+  frota: "Frota própria",
 };
 
 const textoBusca = (l) =>

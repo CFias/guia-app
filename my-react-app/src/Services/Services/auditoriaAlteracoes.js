@@ -425,16 +425,83 @@ export const nomeDoVeiculo = (l) => {
     ? `${cat} ${v}`
     : v;
 };
-// "1 Van" / "1 Van + 1 Carro"
+// "1 Van" / "1 Van + 1 Carro". O Phoenix manda só o NOME do veículo: a
+// categoria sai do nome (VAN, SPIN, VOLARE, MICRÃO…) ou do que foi fixado no
+// Custo do dia. Sem categoria → "1 sem categoria" (e não "1 Veículo").
 export const contagemDeVeiculos = (lista = []) => {
   const n = {};
   lista.forEach((l) => {
-    const c = NOME_CAT_CURTO[l.categoria] || "Veículo";
+    const c = NOME_CAT_CURTO[l.categoria] || "sem categoria";
     n[c] = (n[c] || 0) + 1;
   });
   return Object.entries(n)
-    .map(([c, q]) => `${q} ${c}${q > 1 && !c.endsWith("s") ? "s" : ""}`)
+    .map(
+      ([c, q]) =>
+        `${q} ${c}${q > 1 && c !== "sem categoria" && !c.endsWith("s") ? "s" : ""}`,
+    )
     .join(" + ");
+};
+export const nomeCategoriaCurto = (cat) => NOME_CAT_CURTO[cat] || "";
+
+// frase em português claro: o que aconteceu com esse grupo de passageiros
+const lista = (l) =>
+  l.length > 1
+    ? `${l.slice(0, -1).join(", ")} e ${l[l.length - 1]}`
+    : l[0] || "";
+export const fraseDaAtualizacao = (a) => {
+  const ent = (a.depoisLista || [])
+    .filter((x) => a.estadoDepois?.[x.chave] === "entrou")
+    .map(nomeDoVeiculo);
+  const sai = (a.antesLista || [])
+    .filter((x) => a.estadoAntes?.[x.chave] === "saiu")
+    .map(nomeDoVeiculo);
+  const det = (a.mudancas || []).filter(
+    (m) => m.tipo !== "novo" && m.tipo !== "cancelado",
+  );
+  const m1 = (tipo) => det.find((m) => m.tipo === tipo);
+  switch (a.classe) {
+    case "veiculoMais":
+      return `Entrou ${ent.length > 1 ? `${ent.length} veículos` : "mais 1 veículo"} (${lista(ent)}) para o mesmo grupo de passageiros.`;
+    case "juntou":
+      return `${a.antesLista.length} veículos viraram ${a.depoisLista.length}${sai.length ? `: saiu ${lista(sai)}` : ""}.`;
+    case "troca": {
+      const v = m1("veiculo");
+      return v
+        ? `Trocou ${v.de} por ${v.para}.`
+        : "O grupo foi para outro veículo.";
+    }
+    case "novo":
+      return `Serviço que não estava na programação: ${lista((a.depoisLista || []).map(nomeDoVeiculo))}.`;
+    case "cancelado":
+      return `Saiu da programação: ${lista((a.antesLista || []).map(nomeDoVeiculo))}.`;
+    case "remanejou":
+      return "Passageiros passaram de um veículo para outro.";
+    case "escala": {
+      const e = m1("escala");
+      return `Escala refeita no mesmo veículo${e ? ` (nº ${e.de} → ${e.para})` : ""}.`;
+    }
+    default: {
+      const partes = det.slice(0, 2).map((m) => {
+        if (m.tipo === "horario")
+          return `horário mudou de ${m.de} para ${m.para}`;
+        if (m.tipo === "paxMais" || m.tipo === "paxMenos")
+          return `passou de ${m.de} para ${m.para} pax`;
+        if (m.tipo === "motorista")
+          return `motorista trocado (${m.de} → ${m.para})`;
+        if (m.tipo === "guia") return `guia: ${m.de} → ${m.para}`;
+        if (m.tipo === "fornecedor") return `fornecedor: ${m.de} → ${m.para}`;
+        if (m.tipo === "categoria")
+          return `categoria: ${NOME_CAT_CURTO[m.de] || m.de} → ${NOME_CAT_CURTO[m.para] || m.para}`;
+        if (m.tipo === "reservasMais" || m.tipo === "reservasMenos")
+          return `passou de ${m.de} para ${m.para} reserva(s)`;
+        return textoDaMudanca(m);
+      });
+      const t = partes.join("; ");
+      return t
+        ? `${t.charAt(0).toUpperCase()}${t.slice(1)}.`
+        : "Ajuste no serviço.";
+    }
+  }
 };
 
 // grupos ligados pelas reservas (ou pela mesma escala)
@@ -549,6 +616,103 @@ const juntarSemCodigos = (grupos) => {
   return grupos.filter((g) => !usados.has(g));
 };
 
+// id curto e estável de UMA mudança (tipo + veículo de antes/agora + valor novo):
+// guarda a hora em que ela apareceu (auditoria_dia.horasMudancas)
+const hash = (t) => {
+  let h = 5381;
+  for (let i = 0; i < t.length; i += 1)
+    h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+};
+export const chaveDaMudanca = (m) =>
+  `m${hash(`${m.tipo}|${m.chaveA || ""}>${m.chaveB || ""}|${m.para ?? ""}`)}`;
+
+/* "O que mudou", em frases — uma linha por veículo e assunto, com a hora:
+   "VAN 2320 foi trocada por MICRAO 2429 (Van → Micro)"
+   "MICRAO 1960: horário 11:00 → 10:50 (10 min mais cedo)"
+   "MICRO 2682: +1 pax (8 → 9) e +1 reserva (3 → 4)"            */
+export const linhasDoQueMudou = (a) => {
+  const nome = (ch, lado) => {
+    const l = (lado === "A" ? a.antesLista : a.depoisLista) || [];
+    const x = l.find((v) => v.chave === ch);
+    return x ? nomeDoVeiculo(x) : "";
+  };
+  const grupos = new Map();
+  (a.mudancas || []).forEach((m) => {
+    const k = `${m.chaveA}>${m.chaveB}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(m);
+  });
+  const out = [];
+  grupos.forEach((ms) => {
+    const de = ms[0].chaveA ? nome(ms[0].chaveA, "A") : "";
+    const para = ms[0].chaveB ? nome(ms[0].chaveB, "B") : "";
+    const veic = para || de;
+    const pega = (t) => ms.find((m) => m.tipo === t);
+    const usados = new Set();
+    const linha = (icone, texto, lista, tom = "") => {
+      lista.forEach((m) => usados.add(m));
+      out.push({ icone, texto, ids: lista.map((m) => m.id), tom });
+    };
+    if (pega("novo")) linha("plus", `Entrou ${veic}`, [pega("novo")], "entrou");
+    if (pega("cancelado"))
+      linha("x", `Saiu ${de}`, [pega("cancelado")], "saiu");
+    const v = pega("veiculo");
+    const c = pega("categoria");
+    if (v)
+      linha(
+        "swap",
+        `${de} foi trocado por ${para}${c ? ` (${NOME_CAT_CURTO[c.de] || c.de} → ${NOME_CAT_CURTO[c.para] || c.para})` : ""}`,
+        [v, c].filter(Boolean),
+        "trocou",
+      );
+    else if (c)
+      linha(
+        "car",
+        `${veic}: categoria ${NOME_CAT_CURTO[c.de] || c.de} → ${NOME_CAT_CURTO[c.para] || c.para}`,
+        [c],
+      );
+    const h = pega("horario");
+    if (h)
+      linha(
+        "clock",
+        `${veic}: horário ${h.de} → ${h.para} (${Math.abs(h.qtd)} min mais ${h.qtd < 0 ? "cedo" : "tarde"})`,
+        [h],
+      );
+    const px = pega("paxMais") || pega("paxMenos");
+    const rs = pega("reservasMais") || pega("reservasMenos");
+    if (px || rs) {
+      const partes = [];
+      if (px)
+        partes.push(
+          `${px.tipo === "paxMais" ? "+" : "−"}${px.qtd} pax (${px.de} → ${px.para})`,
+        );
+      if (rs)
+        partes.push(
+          `${rs.tipo === "reservasMais" ? "+" : "−"}${rs.qtd} reserva${rs.qtd > 1 ? "s" : ""} (${rs.de} → ${rs.para})`,
+        );
+      linha(
+        "users",
+        `${veic}: ${partes.join(" e ")}`,
+        [px, rs].filter(Boolean),
+      );
+    }
+    const mo = pega("motorista");
+    if (mo) linha("user", `${veic}: motorista ${mo.de} → ${mo.para}`, [mo]);
+    const g = pega("guia");
+    if (g) linha("flag", `${veic}: guia ${g.de} → ${g.para}`, [g]);
+    const f = pega("fornecedor");
+    if (f) linha("building", `${veic}: fornecedor ${f.de} → ${f.para}`, [f]);
+    const e = pega("escala");
+    if (e)
+      linha("hash", `${veic}: escala refeita (nº ${e.de} → ${e.para})`, [e]);
+    ms.filter((m) => !usados.has(m)).forEach((m) =>
+      linha("sliders", `${veic}: ${textoDaMudanca(m)}`, [m]),
+    );
+  });
+  return out;
+};
+
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const somaTotal = (l) => r2(l.reduce((s, x) => s + (Number(x.total) || 0), 0));
 
@@ -625,6 +789,10 @@ export const compararComFoto = (
 
     mudancas.forEach((m) => {
       m.custo = custoDaRegra(m, m._a, m._b, config.regras);
+      // de qual veículo (programado → agora) é a mudança: serve para a hora de cada uma
+      m.chaveA = m._a?.chave || "";
+      m.chaveB = m._b?.chave || "";
+      m.id = chaveDaMudanca(m);
       delete m._a;
       delete m._b;
     });
@@ -659,7 +827,32 @@ export const compararComFoto = (
     const depoisL = ordenar(b);
     const ref = depoisL[0] || antesL[0];
     const chaves = `${antesL.map((x) => x.chave).join("+")}>${depoisL.map((x) => x.chave).join("+")}`;
+    // o que aconteceu com cada veículo: continua, trocou, saiu ou entrou
+    // (e, na troca, por qual veículo)
+    const estadoAntes = {};
+    const estadoDepois = {};
+    const trocadoPor = {};
+    const noLugarDe = {};
+    pares.forEach(([x, y]) => {
+      const t = iguais(x.veiculo, y.veiculo) ? "continua" : "trocou";
+      estadoAntes[x.chave] = t;
+      estadoDepois[y.chave] = t;
+      if (t === "trocou") {
+        trocadoPor[x.chave] = nomeDoVeiculo(y);
+        noLugarDe[y.chave] = nomeDoVeiculo(x);
+      }
+    });
+    antesL.forEach(
+      (x) => (estadoAntes[x.chave] = estadoAntes[x.chave] || "saiu"),
+    );
+    depoisL.forEach(
+      (y) => (estadoDepois[y.chave] = estadoDepois[y.chave] || "entrou"),
+    );
     alteracoes.push({
+      estadoAntes,
+      estadoDepois,
+      trocadoPor,
+      noLugarDe,
       id: `${chaves}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
       chave: ref.chave,
       classe,

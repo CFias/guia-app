@@ -9,6 +9,7 @@ import {
 } from "../../Services/Services/custosRepository";
 import { normalizarConfigCustos } from "../../Services/Services/custosCalculo";
 import AuditorAlteracoes from "./AuditorAlteracoes";
+import FrotaPropria from "./FrotaPropria";
 import CustoDia from "./CustoDia";
 import RelatorioCustos from "./RelatorioCustos";
 import TabelaTarifas from "./TabelaTarifas";
@@ -34,6 +35,7 @@ const ABAS = [
   { value: "relatorios", label: "Relatórios", icon: "barChart" },
   { value: "tarifario", label: "Tarifário", icon: "fileText" },
   { value: "tarifas", label: "Tarifas", icon: "tag" },
+  { value: "frota", label: "Frota própria", icon: "car" },
   { value: "mi", label: "Tabela MI", icon: "languages" },
 ];
 
@@ -103,6 +105,7 @@ const CustosOperacionais = () => {
       {aba === "auditor" && <AuditorAlteracoes {...contexto} />}
       {aba === "relatorios" && <RelatorioCustos {...contexto} />}
       {aba === "tarifario" && <Tarifario {...contexto} />}
+      {aba === "frota" && <FrotaPropria key={configCarregada ? "ok" : "carregando"} {...contexto} />}
       {aba === "mi" && <TabelaMi key={configCarregada ? "ok" : "carregando"} {...contexto} />}
       {aba === "tarifas" && (
         <TabelaTarifas {...contexto} prefill={prefillTarifa} onPrefillUsado={() => setPrefillTarifa(null)} />

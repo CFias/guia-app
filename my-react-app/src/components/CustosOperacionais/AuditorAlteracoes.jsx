@@ -8,6 +8,9 @@ import {
   CURTO_ALTERACAO,
   ITENS_OBSERVADOS,
   NOME_CLASSE,
+  fraseDaAtualizacao,
+  linhasDoQueMudou,
+  nomeCategoriaCurto,
   NOME_ALTERACAO,
   nomeDoVeiculo,
   TIPOS_ALTERACAO,
@@ -66,6 +69,10 @@ const ORIGEM = {
 };
 
 const textoMudanca = textoDaMudanca;
+const pl = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+const ICONE_CLASSE = { veiculoMais: "split", juntou: "merge", troca: "swap", novo: "plus", cancelado: "x", remanejou: "users", ajuste: "sliders", escala: "hash" };
+const ICONE_CATEGORIA = { carro: "car", van: "van", "van-alongada": "van", micro: "bus", onibus: "bus" };
+const ROTULO_ESTADO = { entrou: "entrou", saiu: "saiu", trocou: "trocou" };
 
 /* ---------- o que o auditor observa (configurável) ---------- */
 const OQueObservar = ({ config, onFechar }) => {
@@ -297,7 +304,8 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     if (data === hoje) {
       const hist = doc.historico || {};
       const mudou = !resumoGravado || resumoGravado.alteracoes !== rel.alteracoes.length || resumoGravado.impacto !== rel.totais.impacto;
-      if (mudou || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel, regiao).catch((e) => console.error("Histórico:", e));
+      const semHora = rel.alteracoes.some((a) => a.mudancas.some((m) => m.id && !doc.horasMudancas?.[m.id]));
+      if (mudou || semHora || rel.alteracoes.some((a) => !hist[chaveDaVista(a.id)])) registrarNoHistorico(data, rel.alteracoes, hist, rel, regiao).catch((e) => console.error("Histórico:", e));
     } else if (data < hoje && !resumoGravado) {
       gravarResumoDoBalanco(data, rel, regiao).catch((e) => console.error("Resumo do balanço:", e));
     }
@@ -306,6 +314,16 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const historico = useMemo(() => doc?.historico || {}, [doc]);
   // hora em que a atualização apareceu pela primeira vez
   const vistoEm = (id) => historico[chaveDaVista(id)]?.em || doc?.vistas?.[chaveDaVista(id)] || null;
+  // hora de cada mudança (a primeira vez que o sistema viu); sem registro, a da atualização
+  const horasMud = doc?.horasMudancas || {};
+  const msDe = (ts) => ts?.toMillis?.() ?? (ts?.toDate ? ts.toDate().getTime() : null);
+  const horaDasMudancas = (ids, a) => {
+    const t = ids.map((id) => msDe(horasMud[id])).filter((x) => x !== null && x !== undefined);
+    if (t.length) return new Date(Math.max(...t));
+    const v = vistoEm(a.id);
+    return v?.toDate ? v.toDate() : null;
+  };
+  const horaCurta = (d) => (d ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "");
   const passaFiltro = (a) =>
     (!filtroTipo || a.classe === filtroTipo) &&
     (!filtroImpacto || (filtroImpacto === "mais" ? a.impacto > 0 : filtroImpacto === "menos" ? a.impacto < 0 : a.impacto === 0));
@@ -508,68 +526,153 @@ ${
               </EmptyState>
             </Card>
           ) : (
-            <ul className="aud-ats">
-              {lista.map((a) => {
-                const det = a.mudancas.filter((m) => m.tipo !== "novo" && m.tipo !== "cancelado");
-                const res = a.impacto > 0 ? "mais" : a.impacto < 0 ? "menos" : "zero";
-                return (
-                  <li key={a.id} className={`aud-at is-${res}`}>
-                    <div className="aud-at__hora">
-                      <b className="tabular">{a.hora || "--:--"}</b>
-                      <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
-                    </div>
-                    <div className="aud-at__corpo">
-                      <div className="aud-at__titulo">
-                        <b>{a.titulo}</b>
-                        {a.servico ? <span>{a.servico}</span> : null}
+            <>
+              <div className="aud-legenda" aria-label="Como ler">
+                <span className="is-entrou"><i /> entrou</span>
+                <span className="is-saiu"><i /> saiu</span>
+                <span className="is-trocou"><i /> trocou</span>
+                <span className="is-continua"><i /> continua</span>
+                <span className="aud-legenda__dica">
+                  <Icon name="info" size={12} /> comparado com a programação fechada à meia-noite
+                </span>
+              </div>
+              <ul className="aud-ats">
+                {lista.map((a) => {
+                  const res = a.impacto > 0 ? "mais" : a.impacto < 0 ? "menos" : "zero";
+                  const ultima = horaDasMudancas(a.mudancas.map((m) => m.id), a);
+                  return (
+                    <li key={a.id} className={`aud-at is-${res}`}>
+                      <div className="aud-at__topo">
+                        <span className={`aud-classe is-${a.classe}`}>
+                          <Icon name={ICONE_CLASSE[a.classe] || "sliders"} size={14} /> {a.titulo}
+                        </span>
+                        <span className="aud-at__quando">
+                          <Icon name="clock" size={13} /> <b className="tabular">{a.hora || "--:--"}</b>
+                          <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
+                          {a.servico ? <span className="aud-at__serv">{a.servico}</span> : null}
+                        </span>
+                        {ultima ? (
+                          <span className="aud-at__ultima" title="Hora da última mudança deste grupo">
+                            <Icon name="bell" size={12} /> {horaCurta(ultima)}
+                          </span>
+                        ) : null}
+                        <span className={`aud-res is-${res}`}>
+                          <Icon name={res === "mais" ? "trendingUp" : res === "menos" ? "trendingDown" : "minus"} size={14} />
+                          {res === "mais" ? "Custo maior" : res === "menos" ? "Custo enxugado" : "Sem impacto"}
+                        </span>
                       </div>
-                      <div className="aud-at__fluxo">
-                        {[
-                          ["Programado", a.antesLista, a.contagemAntes, a.paxAntes, a.totalAntes],
-                          ["Agora", a.depoisLista, a.contagemDepois, a.paxDepois, a.totalDepois],
-                        ].map(([rot, l, cont, pax, tot], k) => (
-                          <Fragment key={rot}>
-                            {k === 1 && <Icon name="arrowRight" size={16} className="aud-at__seta" />}
-                            <div className={`aud-at__lado ${k ? "is-agora" : ""}`}>
-                              <small>
-                                {rot}
-                                {l.length ? ` · ${cont} · ${pax} pax` : ""}
-                              </small>
-                              {l.length ? (
-                                l.map((x) => (
-                                  <span key={x.chave} className="aud-at__veic">
-                                    {nomeDoVeiculo(x)}
-                                    {x.fornecedor ? <i>{x.fornecedor}</i> : null}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="aud-at__vazio">{k ? "saiu da escala" : "não estava na programação"}</span>
+
+                      <p className="aud-at__frase">{fraseDaAtualizacao(a)}</p>
+
+                      <div className="aud-at__meio">
+                        <div className="aud-at__fluxo">
+                          {[
+                            ["Programado", a.antesLista, a.estadoAntes, a.paxAntes, a.totalAntes],
+                            ["Agora", a.depoisLista, a.estadoDepois, a.paxDepois, a.totalDepois],
+                          ].map(([rot, l, est, pax, tot], k) => (
+                            <Fragment key={rot}>
+                              {k === 1 && (
+                                <span className="aud-at__seta" aria-hidden="true">
+                                  <Icon name="arrowRight" size={16} />
+                                </span>
                               )}
-                              <em className="tabular">{formatarReais(tot)}</em>
-                            </div>
-                          </Fragment>
-                        ))}
-                      </div>
-                      {det.length > 0 && (
-                        <div className="aud-mudancas">
-                          {det.map((m, i) => (
-                            <span key={`${m.tipo}${i}`} className={`aud-mud is-${m.tipo}`} title={NOME_ALTERACAO[m.tipo]}>
-                              <b>{CURTO_ALTERACAO[m.tipo]}</b> {textoMudanca(m)}
-                            </span>
+                              <div className={`aud-at__lado ${k ? "is-agora" : ""}`}>
+                                <span className="aud-at__rot">
+                                  {rot}
+                                  {l.length ? <em>{pl(l.length, "veículo", "veículos")}</em> : null}
+                                </span>
+                                {l.length ? (
+                                  <ul className="aud-veics">
+                                    {l.map((x) => {
+                                      const e = est?.[x.chave] || "continua";
+                                      const cat = nomeCategoriaCurto(x.categoria);
+                                      return (
+                                        <li key={x.chave} className={`aud-veic is-${e}`}>
+                                          <span className="aud-veic__ic" title={cat || "Sem categoria"}>
+                                            <Icon name={ICONE_CATEGORIA[x.categoria] || "car"} size={15} />
+                                          </span>
+                                          <span className="aud-veic__nome">
+                                            <b>{x.veiculo || "sem veículo"}</b>
+                                            <small>
+                                              {cat ? (
+                                                <span className="aud-veic__cat">{cat}</span>
+                                              ) : (
+                                                <span className="aud-veic__cat is-sem" title="O Phoenix manda só o nome do veículo. A categoria vem do nome (VAN, SPIN, VOLARE…) ou do que for fixado no Custo do dia.">
+                                                  sem categoria
+                                                </span>
+                                              )}
+                                              {x.fornecedor ? <> · {x.fornecedor}</> : null}
+                                            </small>
+                                          </span>
+                                          {e === "trocou" && (k ? a.noLugarDe?.[x.chave] : a.trocadoPor?.[x.chave]) ? (
+                                            <span className="aud-veic__troca">
+                                              <Icon name={k ? "undo" : "arrowRight"} size={12} />
+                                              {k ? <>no lugar de <b>{a.noLugarDe[x.chave]}</b></> : <>trocado por <b>{a.trocadoPor[x.chave]}</b></>}
+                                            </span>
+                                          ) : e !== "continua" ? (
+                                            <span className={`aud-veic__tag is-${e}`}>{ROTULO_ESTADO[e]}</span>
+                                          ) : null}
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                ) : (
+                                  <span className="aud-at__vazio">
+                                    <Icon name={k ? "x" : "plus"} size={13} /> {k ? "saiu da escala" : "não estava na programação"}
+                                  </span>
+                                )}
+                                <span className="aud-at__rodape">
+                                  <span>
+                                    <Icon name="users" size={13} /> {pax} pax
+                                  </span>
+                                  <span>
+                                    <Icon name="coins" size={13} /> <b className="tabular">{formatarReais(tot)}</b>
+                                  </span>
+                                </span>
+                              </div>
+                            </Fragment>
                           ))}
                         </div>
-                      )}
-                    </div>
-                    <div className="aud-at__custo">
-                      <b className="tabular">{a.impacto ? sinal(a.impacto) : formatarReais(0)}</b>
-                      <small>{res === "mais" ? "custo maior" : res === "menos" ? "custo enxugado" : "sem impacto no custo"}</small>
-                      {a.custoRegras ? <small className="aud-at__regra">inclui {formatarReais(a.custoRegras)} da tabela de alterações</small> : null}
-                      {vistoEm(a.id) ? <small className="aud-at__visto">visto às {horaDe(vistoEm(a.id))}</small> : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+
+                        <div className="aud-at__custo">
+                          <span className="aud-at__custo-rot">Impacto no custo</span>
+                          <b className="tabular">{a.impacto ? sinal(a.impacto) : formatarReais(0)}</b>
+                          <small className="tabular">
+                            {formatarReais(a.totalAntes, { semCentavos: true })} → {formatarReais(a.totalDepois, { semCentavos: true })}
+                          </small>
+                          {a.custoRegras ? <small className="aud-at__regra">inclui {formatarReais(a.custoRegras)} da tabela de alterações</small> : null}
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const linhas = linhasDoQueMudou(a)
+                          .map((l) => ({ ...l, quando: horaDasMudancas(l.ids, a) }))
+                          .sort((x, y) => (x.quando?.getTime() || 0) - (y.quando?.getTime() || 0));
+                        if (!linhas.length) return null;
+                        return (
+                          <div className="aud-linha">
+                            <span className="aud-linha__tit">
+                              <Icon name="history" size={13} /> O que mudou e quando
+                            </span>
+                            <ol>
+                              {linhas.map((l, i) => (
+                                <li key={i} className={l.tom ? `is-${l.tom}` : ""}>
+                                  <time className="tabular">{horaCurta(l.quando) || "—"}</time>
+                                  <span className="aud-linha__ic">
+                                    <Icon name={l.icone} size={13} />
+                                  </span>
+                                  <span className="aud-linha__txt">{l.texto}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        );
+                      })()}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </>
       )}

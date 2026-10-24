@@ -511,6 +511,7 @@ const resumoAlteracao = (a) =>
         para: m.para ?? "",
         qtd: m.qtd ?? 0,
         custo: m.custo || 0,
+        id: m.id || "",
       })),
       deltaTabela: a.deltaTabela,
       custoRegras: a.custoRegras,
@@ -557,12 +558,19 @@ export const registrarNoHistorico = async (
   rel = null,
   r = regiaoAtual(),
 ) => {
-  const atual =
-    historicoAtual ||
-    (await getDoc(REF_AUDITORIA(data, r))).data()?.historico ||
-    {};
+  const docAtual = (await getDoc(REF_AUDITORIA(data, r))).data() || {};
+  const atual = historicoAtual || docAtual.historico || {};
   const novas = alteracoes.filter((a) => !atual[idSeguro(a.id)]);
   const patch = { ultimaVerificacao: Timestamp.now(), suspeita: deleteField() };
+  // hora em que cada mudança apareceu (a primeira vez que o sistema viu)
+  const horas = docAtual.horasMudancas || {};
+  const novasMud = alteracoes
+    .flatMap((a) => a.mudancas || [])
+    .filter((m) => m.id && !horas[m.id]);
+  if (novasMud.length)
+    patch.horasMudancas = Object.fromEntries(
+      novasMud.map((m) => [m.id, Timestamp.now()]),
+    );
   if (rel) patch.resumo = { ...resumoDoBalanco(rel), em: Timestamp.now() };
   if (novas.length)
     patch.historico = Object.fromEntries(

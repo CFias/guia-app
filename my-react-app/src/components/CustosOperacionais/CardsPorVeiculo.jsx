@@ -8,7 +8,7 @@ import { idDoCardVeiculo } from "./custosDatas";
    cada card é um veículo com os serviços dele no dia, o total e, embaixo do
    serviço, a recomendação de troca quando houver. */
 
-const ORIGEM = { lancado: "lançado", tarifa: "tabela", "tarifa-casada": "casado", "sem-tarifa": "sem tarifa" };
+const ORIGEM = { lancado: "lançado", tarifa: "tabela", "tarifa-casada": "casado", "sem-tarifa": "sem tarifa", frota: "frota" };
 
 const LinhaServico = ({ linha, par, onAbrir }) => (
   <button
