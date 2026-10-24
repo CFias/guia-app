@@ -713,3 +713,12 @@ a.usuarios-icon-btn {
   color: inherit;
   text-decoration: none;
 }
+
+.usuarios-badge.role-fornecedor {
+  color: #7c3aed;
+  border-color: color-mix(in srgb, #7c3aed 40%, transparent 60%);
+}
+
+:is(body.dark, body.dark-pro) .usuarios-badge.role-fornecedor {
+  color: #b79cff;
+}

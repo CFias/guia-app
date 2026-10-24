@@ -42,6 +42,7 @@ import {
   vincularDocs,
 } from "../../Services/Services/atendimentoAeroporto";
 import { definirSom, somLigado, tocarNotificacao } from "../../Services/Utils/somNotificacao";
+import { enviarPushDaEscala, gravarStatusEscala, leituraDoRetorno, msDoTimestamp, ouvirRetornosDoDia } from "../../Services/Services/viagemMotorista";
 import "./atendimento.css";
 
 /* PAINEL DO AEROPORTO (conta "Atendimento" ou Operacional).
@@ -320,6 +321,80 @@ const AtendimentoAeroporto = () => {
   };
   const completo = (g) => etapas.every((e, k) => Object.keys(marcasDe(g)[e.id] || {}).length > 0 || (k === 0 && !!recepcaoPelasReservas(g)));
 
+  // Sinal para o link do motorista do fornecedor: quando um veículo é
+  // recepcionado (ou embarcado), grava status_escala da escala do Phoenix — o
+  // celular do motorista toca o aviso. Só grava quando o estado muda.
+  // retorno dos motoristas que usam o app (viu o aviso, a caminho, posicionado…)
+  const [retornos, setRetornos] = useState({ data: "", porEscala: {} });
+  useEffect(() => ouvirRetornosDoDia(data, (porEscala) => setRetornos({ data, porEscala })), [data]);
+  const retornoDe = (g) => {
+    if (!g.escalaId || retornos.data !== data) return null;
+    const m = marcasDe(g);
+    const marcasRec = Object.values(m[etapas[0]?.id] || {}).filter((v) => v && typeof v === "object");
+    const recEm = marcasRec[0]?.em || recepcaoPelasReservas(g)?.[0]?.em || null;
+    const r = retornos.porEscala[String(g.escalaId)];
+    const leitura = leituraDoRetorno(r, msDoTimestamp(recEm));
+    return leitura ? { ...leitura, nome: String(r?.motoristaNome || "").split(" ")[0] } : null;
+  };
+
+  const sinaisRef = useRef(new Map());
+  useEffect(() => {
+    // espera as marcas do dia chegarem: senão, ao abrir a tela, tudo pareceria
+    // "recepcionado agora" e os motoristas receberiam notificações antigas
+    if (!grupos || !etapas.length || docs.data !== data) return;
+    // uma escala pode aparecer em mais de um grupo (fornecedor "separado por
+    // voo"): junta tudo por escala — recepcionado se qualquer grupo foi
+    // recebido, embarcado quando todos embarcaram. (Antes cada grupo gravava
+    // o seu e um desfazia o outro.)
+    const porEscala = new Map();
+    grupos.forEach((g) => {
+      if (!g.escalaId) return;
+      const m = marcasDe(g);
+      const marcasRec = Object.values(m[etapas[0].id] || {}).filter((v) => v && typeof v === "object");
+      const pelasReservas = marcasRec.length ? null : recepcaoPelasReservas(g);
+      const marcasEmb = etapas.length > 1 ? Object.values(m[etapas[etapas.length - 1].id] || {}).filter((v) => v && typeof v === "object") : [];
+      const e = porEscala.get(String(g.escalaId)) || { rec: false, recEm: null, recPor: "", emb: true, embEm: null, pax: 0, voos: new Set(), veiculo: g.veiculo };
+      if (marcasRec.length || pelasReservas) {
+        e.rec = true;
+        e.recEm = e.recEm || marcasRec[0]?.em || pelasReservas?.[0]?.em || null;
+        e.recPor = e.recPor || marcasRec[0]?.nome || pelasReservas?.[0]?.nome || "";
+      }
+      if (!marcasEmb.length) e.emb = false;
+      else e.embEm = e.embEm || marcasEmb[0]?.em || null;
+      e.pax += g.pax || 0;
+      (g.voos || []).forEach((v) => e.voos.add(v));
+      porEscala.set(String(g.escalaId), e);
+    });
+    porEscala.forEach((e, escalaId) => {
+      const emb = etapas.length > 1 && e.emb;
+      const chave = `${data}|${escalaId}`;
+      const sinal = `${e.rec}|${emb}|${msDoTimestamp(e.recEm)}`;
+      const antes = sinaisRef.current.get(chave);
+      if (antes === sinal) return;
+      sinaisRef.current.set(chave, sinal);
+      if (antes === undefined && !e.rec && !emb) return; // nada a avisar
+      gravarStatusEscala({
+        data,
+        escalaId,
+        recepcionado: e.rec,
+        recepcionadoEm: e.recEm,
+        recepcionadoPor: e.recPor,
+        embarcado: emb,
+        embarcadoEm: e.embEm,
+      }).catch((err) => console.error("Aviso ao motorista não gravado:", err));
+      // acabou de ser recepcionado (visto nesta tela): notificação no celular do motorista
+      const recebeuAgora = e.rec && (antes === undefined ? false : antes.split("|")[0] === "false" || antes.split("|")[2] !== String(msDoTimestamp(e.recEm)));
+      if (recebeuAgora) {
+        enviarPushDaEscala({
+          data,
+          escalaId,
+          titulo: "Passageiros recepcionados",
+          corpo: `${[...e.voos].join(", ") || "Chegada"} · ${e.pax} pax · posicione o ${e.veiculo || "veículo"} no desembarque`,
+        });
+      }
+    });
+  }, [grupos, vinculos, data, etapas, docs.data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // regiões do dia (com quantos carros cada); a escolhida só vale se existir hoje
   const regioesDoDia = useMemo(() => {
     const n = new Map();
@@ -592,6 +667,25 @@ const AtendimentoAeroporto = () => {
             <Icon name="users" size={14} /> {g.pax} <small>pax</small>
           </span>
         </div>
+
+        {/* retorno do motorista que usa o app */}
+        {(() => {
+          const r = retornoDe(g);
+          if (!r) return null;
+          return (
+            <div className={`atd-mot is-${r.id}`} title="Informação enviada pelo app do motorista">
+              <span className="atd-mot__ic">
+                <Icon name={r.icone} size={13} />
+              </span>
+              <span>
+                <b>{r.texto}</b>
+                {r.nome ? ` · ${r.nome}` : ""}
+                {r.hora ? ` · ${r.hora}` : ""}
+              </span>
+              <Icon name="phone" size={12} className="atd-mot__app" />
+            </div>
+          );
+        })()}
 
         {/* 2. veículo e motorista */}
         <div className="atd-carro__veiculo">

@@ -532,3 +532,74 @@ body:is(.dark, .dark-pro) {
 :is(body.dark, body.dark-pro) .painel-op-atd__res.is-ok {
   color: #3ccf7f;
 }
+
+/* motorista escolhido pelo fornecedor parceiro (Painel do fornecedor) */
+.painel-op-motforn {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: 2px;
+  color: #6d28d9;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.painel-op-motforn b {
+  font-weight: 800;
+}
+
+.painel-op-motforn a {
+  margin-left: 4px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.painel-op-motforn.is-completo {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #7c3aed 10%, transparent);
+}
+
+:is(body.dark, body.dark-pro) .painel-op-motforn {
+  color: #c4b5fd;
+}
+
+/* etapa marcada pelo motorista (link do dia) */
+.painel-op-motetapa {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2563eb 12%, transparent);
+  color: #2563eb;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.painel-op-motetapa.is-ok {
+  background: color-mix(in srgb, #17834a 12%, transparent);
+  color: #17834a;
+}
+
+.painel-op-motetapa a {
+  margin-left: 2px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+:is(body.dark, body.dark-pro) .painel-op-motetapa {
+  color: #79a8ff;
+}
+
+:is(body.dark, body.dark-pro) .painel-op-motetapa.is-ok {
+  color: #3ccf7f;
+}

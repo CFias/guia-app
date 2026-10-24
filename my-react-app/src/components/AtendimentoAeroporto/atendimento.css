@@ -608,20 +608,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 14px 14px 18px;
+  padding: 16px;
   border: 1px solid var(--atd-borda);
-  border-radius: var(--atd-raio);
+  border-radius: 16px;
   background: var(--surface, #fff);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px -12px rgba(15, 23, 42, 0.12);
   overflow: hidden;
-}
-
-.atd-carro::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--c);
 }
 
 .atd-carro.is-andamento {
@@ -630,7 +622,6 @@
 
 .atd-carro.is-feito {
   --c: var(--atd-rec);
-  background: var(--atd-fundo-2);
 }
 
 .atd-carro__cab {
@@ -644,11 +635,12 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: color-mix(in srgb, var(--c, var(--atd-esp)) 85%, var(--text));
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c, var(--atd-esp)) 9%, transparent);
+  color: color-mix(in srgb, var(--c, var(--atd-esp)) 90%, var(--text));
   font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .atd-status.is-pendente {
@@ -664,11 +656,10 @@
 }
 
 .atd-status i {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--c);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 20%, transparent);
 }
 
 .atd-carro__pax {
@@ -1542,5 +1533,82 @@
 
   .atd-passos {
     grid-auto-flow: row;
+  }
+}
+
+/* retorno do motorista que usa o app (viu o aviso, a caminho, posicionado…) */
+.atd-mot {
+  --c: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 8%, transparent);
+  color: color-mix(in srgb, var(--c) 90%, var(--text));
+  font-size: var(--fs-xs);
+}
+
+.atd-mot>span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.atd-mot b {
+  font-weight: 600;
+}
+
+.atd-mot__ic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+
+.atd-mot__app {
+  flex: none;
+  opacity: 0.55;
+}
+
+.atd-mot.is-conectado {
+  --c: var(--text-3);
+}
+
+.atd-mot.is-avisando {
+  --c: var(--atd-esp);
+}
+
+.atd-mot.is-avisando .atd-mot__ic {
+  animation: atd-mot-pulsa 1.2s ease-in-out infinite;
+}
+
+.atd-mot.is-viu {
+  --c: var(--atd-emb);
+}
+
+.atd-mot.is-acaminho {
+  --c: var(--atd-emb);
+}
+
+.atd-mot.is-posicionado, .atd-mot.is-iniciado, .atd-mot.is-finalizado {
+  --c: var(--atd-rec);
+}
+
+@keyframes atd-mot-pulsa {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atd-mot.is-avisando .atd-mot__ic {
+    animation: none;
   }
 }

@@ -26,6 +26,7 @@ import {
 import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
 import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
+import { colBase } from "../../Services/Services/dadosBase";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { GuiaAvatar, Segmented } from "../ui";
@@ -81,6 +82,7 @@ const ROTULO_GRUPO = {
   [ROLES.COMERCIAL]: ROLE_LABELS[ROLES.COMERCIAL],
   [ROLES.GUIA]: ROLE_LABELS[ROLES.GUIA],
   [ROLES.ATENDIMENTO]: "Atendimento",
+  [ROLES.FORNECEDOR]: "Fornecedores",
   desativadas: "Desativadas",
   guiaSemAcesso: "Guias sem acesso ao sistema",
 };
@@ -95,6 +97,7 @@ const TIPOS_PESSOA = [
   { role: ROLES.OPERACIONAL, nome: "Operacional", dica: "Telas do operacional — a gerência escolhe quais em Acessos.", icone: "briefcase", soGerencia: true },
   { role: ROLES.ATENDIMENTO, nome: "Atendimento", dica: "Só o painel do aeroporto (recepção e embarque).", icone: "planeLanding" },
   { role: ROLES.COMERCIAL, nome: "Comercial", dica: "Só a Central de informações.", icone: "bookOpen" },
+  { role: ROLES.FORNECEDOR, nome: "Fornecedor", dica: "Parceiro plotado: vê os serviços dos veículos dele e escolhe o motorista de cada um.", icone: "truck" },
 ];
 
 /* Foto (opcional) de quem não é guia: user_fotos/{uid} — mesmo formato da
@@ -135,9 +138,9 @@ const CampoFoto = ({ nome, foto, onChange, disabled, destaque = false }) => {
     </div>
   );
 };
-const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.COMERCIAL]: 3, [ROLES.GUIA]: 4, guiaSemAcesso: 5, desativadas: 6 };
-// contas que pertencem a uma base (Operacional e Atendimento)
-const TEM_BASE = [ROLES.OPERACIONAL, ROLES.ATENDIMENTO];
+const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.FORNECEDOR]: 3, [ROLES.COMERCIAL]: 4, [ROLES.GUIA]: 5, guiaSemAcesso: 6, desativadas: 7 };
+// contas que pertencem a uma base (Operacional, Atendimento e Fornecedor)
+const TEM_BASE = [ROLES.OPERACIONAL, ROLES.ATENDIMENTO, ROLES.FORNECEDOR];
 
 // "Último acesso: hoje 14:32" / "Nunca entrou"
 const paraData = (v) => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
@@ -186,7 +189,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
   // Contas do Operacional (e a gerência) só a gerência cria ou altera — a
   // regra também está no firestore.rules. Os demais criam/editam comercial e guia.
   const souGerencia = ehGerencia(perfil);
-  const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA, ROLES.ATENDIMENTO];
+  const rolesPermitidos = souGerencia ? Object.values(ROLES) : [ROLES.COMERCIAL, ROLES.GUIA, ROLES.ATENDIMENTO, ROLES.FORNECEDOR];
   const podeEditar = (u) => souGerencia || (u.role !== ROLES.OPERACIONAL && !u.gerencia);
 
   const { regioes } = useRegiao();
@@ -195,6 +198,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
   const regiaoPorId = (id) => opcoesRegiao.find((r) => r.id === (id || ID_SEDE));
 
   const [usuarios, setUsuarios] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
   const [guias, setGuias] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -225,11 +229,18 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
   const carregar = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersSnap, guidesSnap, fotosSnap] = await Promise.all([
+      const [usersSnap, guidesSnap, fotosSnap, provSnap] = await Promise.all([
         podeContas ? getDocs(collection(db, "users")) : Promise.resolve({ docs: [] }),
         getDocs(collection(db, "guides")),
         podeContas ? getDocs(collection(db, "user_fotos")).catch(() => ({ docs: [] })) : Promise.resolve({ docs: [] }),
+        podeContas ? getDocs(colBase("providers")).catch(() => ({ docs: [] })) : Promise.resolve({ docs: [] }),
       ]);
+      setFornecedores(
+        provSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((f) => f.ativo !== false)
+          .sort((a, b) => Number(!!b.plotado) - Number(!!a.plotado) || (a.nome || "").localeCompare(b.nome || "", "pt-BR")),
+      );
       setFotosContas(Object.fromEntries(fotosSnap.docs.map((d) => [d.id, d.data()?.foto || ""])));
 
       setUsuarios(
@@ -288,7 +299,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
   );
   // contagem de cada grupo já com a busca e a base aplicadas
   const contagem = useMemo(() => {
-    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.ATENDIMENTO]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, guiaSemAcesso: 0, guias: 0, desativadas: 0 };
+    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.ATENDIMENTO]: 0, [ROLES.FORNECEDOR]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, guiaSemAcesso: 0, guias: 0, desativadas: 0 };
     pessoas.filter((u) => passaBusca(u) && passaBase(u)).forEach((u) => {
       c.todos += 1;
       c[grupoDaConta(u)] = (c[grupoDaConta(u)] || 0) + 1;
@@ -321,7 +332,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
 
   /* ---------------- criar ---------------- */
   // cria o login (sem derrubar a sessão de quem está cadastrando) e o perfil
-  const criarContaNoAuth = async ({ nome, email, senha, role, guia, regiao, foto }) => {
+  const criarContaNoAuth = async ({ nome, email, senha, role, guia, regiao, foto, fornecedor }) => {
     const secondaryAuth = getSecondaryAuth();
     let cred = null;
     try {
@@ -332,6 +343,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
         role,
         ativo: true,
         ...(role === ROLES.GUIA && guia ? { guideId: guia.id, guideName: guia.nome } : {}),
+        ...(role === ROLES.FORNECEDOR && fornecedor ? { fornecedorId: fornecedor.id, fornecedorNome: fornecedor.nome } : {}),
         ...(souGerencia && TEM_BASE.includes(role) && regiao && regiao !== ID_SEDE ? { regiao } : {}),
         // primeiro acesso: a pessoa troca a senha temporária pela dela (DefinirSenha)
         senhaTemporaria: true,
@@ -371,9 +383,14 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
       setMsg({ tipo: "erro", texto: erro });
       return;
     }
+    const fornecedor = tipo === ROLES.FORNECEDOR ? fornecedores.find((f) => f.id === form.fornecedorId) : null;
+    if (tipo === ROLES.FORNECEDOR && !fornecedor) {
+      setMsg({ tipo: "erro", texto: "Escolha qual fornecedor do cadastro é esta conta." });
+      return;
+    }
     try {
       setSalvando(true);
-      await criarContaNoAuth({ nome, email, senha: form.senha, role: tipo, regiao: baseDoForm, foto: fotoNova });
+      await criarContaNoAuth({ nome, email, senha: form.senha, role: tipo, regiao: baseDoForm, foto: fotoNova, fornecedor });
       const base = TEM_BASE.includes(tipo) ? regiaoPorId(baseDoForm)?.nome || SEDE.nome : SEDE.nome;
       setCredenciais({ nome, email, senha: form.senha, base });
       setForm({ ...FORM_VAZIO, senha: gerarSenha() });
@@ -621,6 +638,36 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
                 />
               )}
 
+              {tipo === ROLES.FORNECEDOR && (
+                <label className="usuarios-field">
+                  <span>Fornecedor do cadastro</span>
+                  <select
+                    value={form.fornecedorId || ""}
+                    onChange={(e) => {
+                      const f = fornecedores.find((x) => x.id === e.target.value);
+                      setForm((prev) => ({ ...prev, fornecedorId: e.target.value, nome: prev.nome || f?.nome || "" }));
+                    }}
+                    disabled={salvando}
+                  >
+                    <option value="">Escolha o fornecedor…</option>
+                    {fornecedores.map((f) => {
+                      const temConta = usuarios.some((u) => u.role === ROLES.FORNECEDOR && u.fornecedorId === f.id);
+                      return (
+                        <option key={f.id} value={f.id}>
+                          {f.nome}
+                          {f.plotado ? " · plotado" : ""}
+                          {` · ${(f.veiculos || []).length} veículo(s)`}
+                          {temConta ? " · já tem conta" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <small className="usuarios-hint">
+                    A conta vê os serviços dos veículos deste fornecedor (Cadastros → Fornecedores) e escolhe o motorista de cada um. O que ele escolher aparece no Painel do dia.
+                  </small>
+                </label>
+              )}
+
               {tipo === ROLES.ATENDIMENTO && (
                 <small className="usuarios-hint">
                   Depois de criar, defina a função, o turno e a folga fixa da pessoa em Escala da equipe → Configurar escala → Equipe.
@@ -678,6 +725,9 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
                 { value: ROLES.OPERACIONAL, label: ROLE_LABELS[ROLES.OPERACIONAL], count: contagem[ROLES.OPERACIONAL] },
                 ...(contagem[ROLES.ATENDIMENTO] || filtroRole === ROLES.ATENDIMENTO
                   ? [{ value: ROLES.ATENDIMENTO, label: "Atendimento", count: contagem[ROLES.ATENDIMENTO] }]
+                  : []),
+                ...(contagem[ROLES.FORNECEDOR] || filtroRole === ROLES.FORNECEDOR
+                  ? [{ value: ROLES.FORNECEDOR, label: "Fornecedores", count: contagem[ROLES.FORNECEDOR] }]
                   : []),
                 { value: ROLES.COMERCIAL, label: ROLE_LABELS[ROLES.COMERCIAL], count: contagem[ROLES.COMERCIAL] },
                 { value: "guias", label: "Guias", count: contagem.guias },
@@ -737,6 +787,7 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
                         <span>{u.email}</span>
                         <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
                         {u.role === ROLES.GUIA && u.guideName && u.guideName !== u.nome && <span className="usuarios-vinculo">Guia: {u.guideName}</span>}
+                        {u.role === ROLES.FORNECEDOR && <span className="usuarios-vinculo">Fornecedor: {u.fornecedorNome || "não vinculado"}</span>}
                       </>
                     )}
                     </div>
@@ -787,6 +838,11 @@ const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial })
                   </div>
                   ) : (
                   <div className="usuarios-item-acoes">
+                    {u.role === ROLES.FORNECEDOR && u.fornecedorId && (
+                      <a className="usuarios-icon-btn" href={`/ver-como-fornecedor/${u.fornecedorId}`} target="_blank" rel="noopener noreferrer" title="Abrir o painel como o fornecedor vê">
+                        <Icon name="eye" size={16} />
+                      </a>
+                    )}
                     {u.role === ROLES.GUIA && u.guideId && (
                       <a className="usuarios-icon-btn" href={`/ver-como-guia/${u.guideId}`} target="_blank" rel="noopener noreferrer" title="Ver como o guia vê (nada é salvo)">
                         <Icon name="eye" size={16} />

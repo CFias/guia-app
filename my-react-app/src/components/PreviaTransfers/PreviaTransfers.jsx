@@ -24,6 +24,8 @@ import "./previa.css";
 import { semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
 import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 import { colBase } from "../../Services/Services/dadosBase";
+import LiberacaoFornecedor from "../PainelFornecedor/LiberacaoFornecedor";
+import "../PainelFornecedor/liberacao.css";
 
 
 const EXPAND =
@@ -1276,6 +1278,8 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
           {textoAtualizacao}
         </p>
       </FilterBar>
+
+      <LiberacaoFornecedor />
 
       <KpiTiles items={kpis} className="previa-kpis" />
 

@@ -18,6 +18,10 @@ rules_version = '2';
 //        continuam liberados para todo o Operacional.
 //    comercial   → só a Central de Dúvidas (faq_itens)
 //    guia        → própria disponibilidade (dentro da janela configurável), próprios idiomas e própria foto
+//    fornecedor  → parceiro plotado (users/{uid}.fornecedorId): lê o próprio
+//                  cadastro (veículos), cuida dos próprios motoristas e da
+//                  escala de motoristas do dia ({AAAA-MM-DD}__{fornecedorId}).
+//                  Não lê nada do Operacional.
 //  Conta sem documento em `users`, ou com ativo != true → nada.
 //
 //  BALANÇO DE USO — atividade_diaria/{uid}__{dia} e avaliacoes/{uid}:
@@ -119,6 +123,39 @@ service cloud.firestore {
           'reservas', 'marcas', 'noShow', 'recepcoes', 'atualizadoEm'])
         && request.resource.data.data is string
         && request.resource.data.marcas is map;
+    }
+
+    // ---------- Fornecedor parceiro (plotado) ----------
+    function isFornecedor() { return roleIs('fornecedor'); }
+    function meuFornecedor() { return meuPerfil().get('fornecedorId', '--'); }
+    // a coleção da base do fornecedor: providers (Salvador) ou providers__nat
+    function colDaMinhaBase(col, nome) {
+      return (minhaRegiao() == 'ssa' && col == nome) || col == nome + '__' + minhaRegiao();
+    }
+    function motoristaValido() {
+      return request.resource.data.keys().hasOnly(['fornecedorId', 'nome', 'telefone', 'ativo', 'tokenApp', 'criadoEm', 'atualizadoEm'])
+        && request.resource.data.fornecedorId == meuFornecedor()
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 80;
+    }
+    function escalaMotoristasValida(docId) {
+      return docId.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}__' + meuFornecedor())
+        && request.resource.data.keys().hasOnly(['data', 'fornecedorId', 'fornecedorNome', 'servicos', 'links', 'atualizadoEm'])
+        && request.resource.data.fornecedorId == meuFornecedor()
+        && request.resource.data.servicos is map
+        && request.resource.data.servicos.size() <= 300
+        && (!('links' in request.resource.data) || request.resource.data.links.size() <= 100);
+    }
+    // link do dia do motorista (motorista_dia/{token}) montado pelo fornecedor
+    function linkMotoristaValido() {
+      return request.resource.data.keys().hasOnly([
+          'base', 'data', 'fornecedorId', 'fornecedorNome', 'motoristaId', 'motoristaNome',
+          'motoristaTelefone', 'minutosAntesCheguei', 'servicos', 'criadoEm', 'atualizadoEm',
+          'eventos', 'ultimaPosicao'])
+        && request.resource.data.fornecedorId == meuFornecedor()
+        && request.resource.data.base == minhaRegiao()
+        && request.resource.data.servicos is list
+        && request.resource.data.servicos.size() <= 60;
     }
 
     // Balanço de uso: gerência + contas marcadas pela gerência
@@ -223,21 +260,21 @@ service cloud.firestore {
       // Operacional/gerência e não mexe em gerência nem em acessos.
       allow read: if podeArea('usuarios') && daSede();
       allow create: if podeArea('usuarios') && daSede()
-        && request.resource.data.role in ['comercial', 'guia', 'atendimento']
+        && request.resource.data.role in ['comercial', 'guia', 'atendimento', 'fornecedor']
         && request.resource.data.keys().hasOnly([
              'nome', 'email', 'role', 'ativo', 'guideId', 'guideName',
-             'colaboradorId', 'colaboradorNome',
+             'colaboradorId', 'colaboradorNome', 'fornecedorId', 'fornecedorNome',
              'createdAt', 'createdBy', 'senhaTemporaria'
            ]);
       allow update: if podeArea('usuarios') && daSede()
-        && resource.data.role in ['comercial', 'guia', 'atendimento']
+        && resource.data.role in ['comercial', 'guia', 'atendimento', 'fornecedor']
         && resource.data.get('gerencia', false) != true
-        && request.resource.data.role in ['comercial', 'guia', 'atendimento']
+        && request.resource.data.role in ['comercial', 'guia', 'atendimento', 'fornecedor']
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['nome', 'role', 'ativo', 'guideId', 'guideName',
-                       'colaboradorId', 'colaboradorNome', 'updatedAt']);
+                       'colaboradorId', 'colaboradorNome', 'fornecedorId', 'fornecedorNome', 'updatedAt']);
       allow delete: if podeArea('usuarios') && daSede()
-        && resource.data.role in ['comercial', 'guia', 'atendimento'];
+        && resource.data.role in ['comercial', 'guia', 'atendimento', 'fornecedor'];
       // NINGUÉM se promove a gerência: o campo `gerencia` só muda pela
       // própria gerência (regra acima). A primeira gerência é definida pelo
       // administrador direto no console do Firebase.
@@ -261,8 +298,14 @@ service cloud.firestore {
     // valor dos guias) é só do operacional — cai na regra geral.
     match /settings/{settingId} {
       // conta de outra base: só a lista de regiões e os documentos da base dela
-      allow read: if ativo() && settingId != 'custos'
+      allow read: if ativo() && settingId != 'custos' && !isFornecedor()
         && (!isOperacional() || daSede() || settingId in ['regioes', 'acessos'] || docDaMinhaBase(settingId));
+      // fornecedor parceiro: só a lista de bases e o vínculo veículo → fornecedor
+      allow read: if isFornecedor()
+        && (settingId == 'regioes'
+            || (minhaRegiao() == 'ssa' && settingId in ['vinculos_veiculos_fornecedor', 'painel_fornecedor'])
+            || settingId == 'vinculos_veiculos_fornecedor__' + minhaRegiao()
+            || settingId == 'painel_fornecedor__' + minhaRegiao());
       // settings/acessos: só a gerência grava (regra geral, lá embaixo)
     }
 
@@ -369,6 +412,88 @@ service cloud.firestore {
         && request.resource.data.nota >= 0 && request.resource.data.nota <= 5
         && request.resource.data.comentario is string
         && request.resource.data.comentario.size() <= 1000;
+    }
+
+    // ---------- Fornecedor parceiro ----------
+    // providers[__base]/{fornecedorId}: só lê o próprio cadastro (veículos).
+    // motoristas_fornecedor[__base]: os próprios motoristas (não apaga: desativa).
+    // escala_motoristas[__base]/{AAAA-MM-DD}__{fornecedorId}: quem dirige cada
+    //   serviço — o Painel do dia lê pela regra geral do Operacional.
+    match /{colecao}/{docId} {
+      allow get: if isFornecedor() && colDaMinhaBase(colecao, 'providers') && docId == meuFornecedor();
+      allow read: if isFornecedor() && colDaMinhaBase(colecao, 'motoristas_fornecedor')
+        && resource.data.fornecedorId == meuFornecedor();
+      allow create: if isFornecedor() && colDaMinhaBase(colecao, 'motoristas_fornecedor') && motoristaValido();
+      allow update: if isFornecedor() && colDaMinhaBase(colecao, 'motoristas_fornecedor')
+        && resource.data.fornecedorId == meuFornecedor() && motoristaValido();
+      allow get: if isFornecedor() && colDaMinhaBase(colecao, 'escala_motoristas')
+        && docId.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}__' + meuFornecedor());
+      allow create, update: if isFornecedor() && colDaMinhaBase(colecao, 'escala_motoristas')
+        && escalaMotoristasValida(docId);
+    }
+
+    // ---------- Link do dia do motorista (sem login) ----------
+    // motorista_dia/{token}: o token (24+ caracteres aleatórios) é a chave —
+    // quem tem o link lê o documento (não dá para listar). O fornecedor monta
+    // e atualiza; o motorista só grava as etapas e a posição. O Operacional
+    // lê pela regra geral (Salvador) ou só os da própria base.
+    match /motorista_dia/{token} {
+      allow get: if token.size() >= 20;
+      allow list: if isOperacional() && resource.data.base == minhaRegiao();
+      allow create: if isFornecedor() && linkMotoristaValido();
+      allow update: if isFornecedor() && resource.data.fornecedorId == meuFornecedor() && linkMotoristaValido();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['eventos', 'ultimaPosicao', 'atualizadoEm'])
+        && request.resource.data.eventos is map
+        && request.resource.data.eventos.size() <= 60;
+    }
+    // motorista_app/{tokenApp}: link FIXO do app do motorista (o mesmo todo dia),
+    // com o token do link de cada dia. Quem tem o link lê; o fornecedor mantém.
+    match /motorista_app/{tokenApp} {
+      allow get: if tokenApp.size() >= 20;
+      allow create, update: if isFornecedor()
+        && (resource == null || resource.data.fornecedorId == meuFornecedor())
+        && request.resource.data.fornecedorId == meuFornecedor()
+        && request.resource.data.base == minhaRegiao()
+        && request.resource.data.keys().hasOnly([
+             'base', 'fornecedorId', 'fornecedorNome', 'motoristaId', 'motoristaNome', 'dias', 'atualizadoEm'])
+        && request.resource.data.dias is map
+        && request.resource.data.dias.size() <= 400;
+    }
+    // push_escala/{base}__{data}__{escalaId}: inscrições de notificação push dos
+    // celulares que fazem aquela chegada (o app do motorista grava, sem login).
+    // Só o painel do aeroporto (Atendimento/Operacional) lê, para avisar.
+    match /push_escala/{pushId} {
+      allow get: if isAtendimento() || isOperacional();
+      allow create, update: if pushId.matches(request.resource.data.base + '__.*')
+        && request.resource.data.keys().hasOnly(['base', 'data', 'escalaId', 'inscricoes', 'atualizadoEm'])
+        && request.resource.data.inscricoes is map
+        && request.resource.data.inscricoes.size() <= 10;
+    }
+
+    // retorno_escala/{base}__{data}__{escalaId}: o app do motorista (sem login)
+    // devolve para a base: abriu o app, viu o aviso, a caminho, posicionado,
+    // em viagem, finalizado. O painel do aeroporto lê (consulta por base e data).
+    match /retorno_escala/{retornoId} {
+      allow read: if (isAtendimento() || isOperacional()) && resource.data.base == minhaRegiao();
+      allow create, update: if retornoId.matches(request.resource.data.base + '__.*')
+        && request.resource.data.keys().hasOnly([
+             'base', 'data', 'escalaId', 'motoristaNome', 'conectadoEm', 'avisadoEm', 'recepcaoMs',
+             'acaminhoEm', 'posicionadoEm', 'iniciadoEm', 'finalizadoEm', 'atualizadoEm'])
+        && request.resource.data.motoristaNome is string
+        && request.resource.data.motoristaNome.size() <= 80;
+    }
+
+    // status_escala/{base}__{data}__{escalaId}: o painel do aeroporto avisa
+    // "recepcionado / embarcado" para o link do motorista. Sem dados de
+    // passageiro — qualquer um lê um documento pelo id; grava quem marca.
+    match /status_escala/{statusId} {
+      allow get: if true;
+      allow create, update: if (isOperacional() || (isAtendimento() && request.resource.data.base == minhaRegiao()))
+        && statusId.matches(request.resource.data.base + '__.*')
+        && request.resource.data.keys().hasOnly([
+             'base', 'data', 'escalaId', 'recepcionado', 'recepcionadoEm', 'recepcionadoPor',
+             'embarcado', 'embarcadoEm', 'atualizadoEm']);
     }
 
     // ---------- Operacional (inclui coleções futuras) ----------

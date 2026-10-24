@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import webpush from "web-push";
 
 const app = express();
 
@@ -903,6 +904,70 @@ app.get("/api/conferente-voos", async (req, res) => {
       detalhe: error?.message || "Erro desconhecido",
       stack: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
     });
+  }
+});
+
+// ---------------------------------------------------------------------
+// NOTIFICAÇÃO PUSH para o app do motorista (Web Push / VAPID)
+// O painel do aeroporto chama quando a base marca "Recepcionei".
+// Variáveis no Render: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY e VAPID_SUBJECT
+// (ex.: mailto:operacional@luck.com). Gere as chaves com:
+//   npx web-push generate-vapid-keys
+// ---------------------------------------------------------------------
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
+const VAPID_SUBJECT =
+  process.env.VAPID_SUBJECT || "mailto:operacional@luckreceptivo.com.br";
+const pushConfigurado = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (pushConfigurado)
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+// limite simples: no máximo 120 envios por minuto por IP
+const enviosPorIp = new Map();
+function podeEnviar(ip) {
+  const agora = Date.now();
+  const lista = (enviosPorIp.get(ip) || []).filter((t) => agora - t < 60000);
+  if (lista.length >= 120) return false;
+  lista.push(agora);
+  enviosPorIp.set(ip, lista);
+  return true;
+}
+
+app.post("/push", async (req, res) => {
+  if (!pushConfigurado)
+    return res
+      .status(503)
+      .json({ ok: false, erro: "Push não configurado (VAPID)." });
+  if (!podeEnviar(req.ip))
+    return res.status(429).json({ ok: false, erro: "Muitos envios." });
+  const { subscription, titulo, corpo, tag, url } = req.body || {};
+  if (
+    !subscription?.endpoint ||
+    !subscription?.keys?.p256dh ||
+    !subscription?.keys?.auth
+  ) {
+    return res.status(400).json({ ok: false, erro: "Inscrição inválida." });
+  }
+  try {
+    const payload = JSON.stringify({
+      titulo: String(titulo || "Luck Receptivo").slice(0, 80),
+      corpo: String(corpo || "").slice(0, 240),
+      tag: String(tag || "luck").slice(0, 60),
+      url: String(url || "/").slice(0, 200),
+    });
+    // urgência alta: o Android entrega mesmo com o celular em economia de bateria
+    await webpush.sendNotification(subscription, payload, {
+      TTL: 3600,
+      urgency: "high",
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    // 404/410: a inscrição expirou (o motorista desinstalou ou bloqueou)
+    return res
+      .status(
+        error?.statusCode === 404 || error?.statusCode === 410 ? 410 : 500,
+      )
+      .json({ ok: false, erro: error?.body || error?.message });
   }
 });
 

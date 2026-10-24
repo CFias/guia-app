@@ -12,6 +12,9 @@ export const ROLES = {
   GUIA: "guia",
   // equipe do aeroporto: só o painel de atendimento (recepcionou / embarcou)
   ATENDIMENTO: "atendimento",
+  // fornecedor parceiro (plotado): vê os serviços dos próprios veículos e
+  // escolhe o motorista de cada um
+  FORNECEDOR: "fornecedor",
 };
 
 export const ROLE_LABELS = {
@@ -19,14 +22,19 @@ export const ROLE_LABELS = {
   [ROLES.COMERCIAL]: "Comercial",
   [ROLES.GUIA]: "Guia",
   [ROLES.ATENDIMENTO]: "Atendimento (aeroporto)",
+  [ROLES.FORNECEDOR]: "Fornecedor",
 };
 
 export const ROLE_DESCRIPTIONS = {
   [ROLES.OPERACIONAL]:
     "Telas do operacional — a gerência escolhe quais em Controle de acessos.",
-  [ROLES.COMERCIAL]: "Somente as telas de teor comercial (Central de Informações).",
+  [ROLES.COMERCIAL]:
+    "Somente as telas de teor comercial (Central de Informações).",
   [ROLES.GUIA]: "Somente a tela para preencher a própria disponibilidade.",
-  [ROLES.ATENDIMENTO]: "Somente o painel do aeroporto: marca quem recepcionou e embarcou cada veículo.",
+  [ROLES.ATENDIMENTO]:
+    "Somente o painel do aeroporto: marca quem recepcionou e embarcou cada veículo.",
+  [ROLES.FORNECEDOR]:
+    "Somente o painel do fornecedor: os serviços dos próprios veículos e o motorista de cada um.",
 };
 
 /* Quem pode abrir cada área. Pra liberar uma tela nova ao Comercial,
@@ -44,7 +52,15 @@ export const ACESSO = {
   // Configurações: o comercial só vê a aba Tema (tema, cor e tamanho do texto)
   configuracoes: [ROLES.OPERACIONAL, ROLES.COMERCIAL],
   // página "Sobre a FiaSystem": todos os perfis
-  sobre: [ROLES.OPERACIONAL, ROLES.COMERCIAL, ROLES.GUIA, ROLES.ATENDIMENTO],
+  sobre: [
+    ROLES.OPERACIONAL,
+    ROLES.COMERCIAL,
+    ROLES.GUIA,
+    ROLES.ATENDIMENTO,
+    ROLES.FORNECEDOR,
+  ],
+  // painel do fornecedor parceiro (o Operacional abre "como o fornecedor vê")
+  painelFornecedor: [ROLES.FORNECEDOR],
 };
 
 /* Para onde cada nível cai depois do login. Cada destino precisa
@@ -54,4 +70,5 @@ export const HOME_BY_ROLE = {
   [ROLES.COMERCIAL]: "/faqcomercial",
   [ROLES.GUIA]: "/minha-disponibilidade",
   [ROLES.ATENDIMENTO]: "/atendimento",
+  [ROLES.FORNECEDOR]: "/fornecedor",
 };

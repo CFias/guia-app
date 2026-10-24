@@ -27,6 +27,8 @@ import MinhaDisponibilidade from "./components/MinhaDisponibilidade/MinhaDisponi
 import VerComoGuia from "./components/VerComoGuia/VerComoGuia";
 import AtendimentoAeroporto from "./components/AtendimentoAeroporto/AtendimentoAeroporto";
 import Sobre from "./components/Sobre/Sobre";
+import PainelFornecedor from "./components/PainelFornecedor/PainelFornecedor";
+import MotoristaApp from "./components/MotoristaDia/MotoristaApp";
 import Login from "./pages/Login/Login";
 import RedefinirSenha from "./pages/RedefinirSenha/RedefinirSenha";
 import { RedirectHome, RequireArea, RequireRole } from "./components/Auth/RouteGuards";
@@ -42,6 +44,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       {/* Destino do link do e-mail "esqueci minha senha" (pública) */}
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      {/* Link do dia do motorista do fornecedor (sem login: o token do link é a chave) */}
+      <Route path="/m/:token" element={<MotoristaApp />} />
 
       {/* ===== DASHBOARD COMO LAYOUT (menu lateral) =====
           Operacional e Comercial entram; cada um vê só o seu menu. */}
@@ -118,6 +122,8 @@ function App() {
       {/* ===== VER COMO O GUIA (Operacional): prévia da área do guia, sem gravar ===== */}
       <Route element={<RequireRole roles={ACESSO.painel} />}>
         <Route path="/ver-como-guia/:guideId" element={<VerComoGuia />} />
+        {/* o Operacional abre o painel de um fornecedor (e pode escolher motoristas por ele) */}
+        <Route path="/ver-como-fornecedor/:fornecedorId" element={<PainelFornecedor />} />
       </Route>
 
       {/* ===== GUIA: só a própria disponibilidade ===== */}
@@ -134,6 +140,13 @@ function App() {
         <Route path="/atendimento" element={<AtendimentoAeroporto />} />
         <Route path="/atendimento/sobre" element={<Sobre modo="guia" voltar="/atendimento" textoVoltar="Voltar para o atendimento" />} />
         <Route path="/atendimento/tema" element={<Configuracoes voltar="/atendimento" textoVoltar="Voltar para o atendimento" />} />
+      </Route>
+
+      {/* ===== FORNECEDOR PARCEIRO: serviços dos próprios veículos e motoristas ===== */}
+      <Route element={<RequireRole roles={ACESSO.painelFornecedor} />}>
+        <Route path="/fornecedor" element={<PainelFornecedor />} />
+        <Route path="/fornecedor/sobre" element={<Sobre modo="guia" voltar="/fornecedor" textoVoltar="Voltar para o painel" />} />
+        <Route path="/fornecedor/tema" element={<Configuracoes voltar="/fornecedor" textoVoltar="Voltar para o painel" />} />
       </Route>
 
       {/* Qualquer outra URL volta pra home do nível de cada um */}

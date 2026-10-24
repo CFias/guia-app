@@ -1,0 +1,13 @@
+/* faixa "Painel do fornecedor: liberado / fechado" (tela de Prévia) */
+.lib-forn { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--divider); border-left: 4px solid var(--warning); border-radius: var(--radius-lg); background: var(--surface); }
+.lib-forn.is-aberto { border-left-color: var(--success, #1f7a4d); }
+.lib-forn__ic { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--warning-soft); color: var(--warning); }
+.lib-forn.is-aberto .lib-forn__ic { background: var(--success-soft, rgba(31, 122, 77, 0.12)); color: var(--success, #1f7a4d); }
+.lib-forn__txt { display: flex; flex: 1 1 320px; flex-direction: column; gap: 2px; min-width: 0; }
+.lib-forn__txt > b { font-size: var(--fs-sm); }
+.lib-forn__txt small { color: var(--text-3); font-size: var(--fs-xs); line-height: 1.45; }
+.lib-forn__txt small b { color: var(--text-2); }
+.lib-forn__acoes, .lib-forn__form { display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.lib-forn__form label { display: flex; flex-direction: column; gap: 2px; color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+.lib-forn__form input { height: 32px; padding: 0 8px; border: 1px solid var(--divider); border-radius: var(--radius-md); background: var(--input, var(--surface)); color: var(--text); font: inherit; font-size: var(--fs-sm); }
+.lib-forn__form input[type="number"] { width: 80px; }

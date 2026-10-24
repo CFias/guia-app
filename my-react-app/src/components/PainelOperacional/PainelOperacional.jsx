@@ -53,6 +53,8 @@ import {
   recepcaoDaReserva,
 } from "../../Services/Services/atendimentoAeroporto";
 import { carregarConfigTurnos } from "../../Services/Services/relatorioTurnos";
+import { formatarTelefone, ouvirMotoristasDoDia } from "../../Services/Services/fornecedorPainel";
+import { horaDoTimestamp, linkPosicao, ouvirViagensDoDia, situacaoDoServico } from "../../Services/Services/viagemMotorista";
 
 // ícone de cada etapa do atendimento: ✓ = recebido (1ª), carro = embarcado (última)
 const iconeEtapaAtd = (i, n) => (i === 0 ? "check" : i === n - 1 ? "car" : "circleCheck");
@@ -1152,9 +1154,56 @@ const extrairTipoOutOuTransfer = (item) => {
 const montarChaveMonitoramento = (dataMapa, grupoId) =>
   `${dataMapa}__${grupoId}`.replace(/\//g, "-");
 
+/* Motorista escolhido pelo fornecedor parceiro no Painel do fornecedor */
+const MotoristaForn = ({ m, v, texto, completo = false }) => {
+  // sem motorista escolhido: o próprio fornecedor dirige — mostra só a etapa dele
+  if (!m && !texto && !v) return null;
+  const st = v ? situacaoDoServico(v.tipo, v.eventos) : null;
+  const etapa = st?.ultima ? { ...st.ultima, ...v.eventos[st.ultima.id] } : null;
+  return (
+    <>
+    {(m || texto) && (
+    <span className={`painel-op-motforn ${completo ? "is-completo" : ""}`} title={m ? `Motorista escolhido por ${m.fornecedorNome || "o fornecedor"} no painel do fornecedor` : undefined}>
+      <Icon name="user" size={12} />
+      {texto || (
+        <>
+          {completo ? "Motorista: " : ""}
+          <b>{m.motoristaNome}</b>
+          {completo && m.motoristaTelefone ? (
+            <a href={`https://wa.me/55${m.motoristaTelefone}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+              {formatarTelefone(m.motoristaTelefone)}
+            </a>
+          ) : null}
+        </>
+      )}
+    </span>
+    )}
+    {etapa && (
+      <span className={`painel-op-motetapa ${st.concluido ? "is-ok" : ""}`} title="Marcado pelo motorista no link do dia">
+        <Icon name={st.concluido ? "circleCheck" : etapa.id === "iniciado" ? "navigation" : "mapPin"} size={11} />
+        {etapa.feito} {horaDoTimestamp(etapa.em)}
+        {etapa.lat !== undefined && (
+          <a href={linkPosicao(etapa.id === "iniciado" && v.ultimaPosicao ? v.ultimaPosicao : etapa)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+            ver no mapa
+          </a>
+        )}
+      </span>
+    )}
+    </>
+  );
+};
+
 export default function PainelOperacionalUnificado() {
   const [abaAtiva, setAbaAtiva] = useState(ABAS.CHEGADAS);
   const [dataSelecionada, setDataSelecionada] = useState(getHojeIso());
+  // motorista que o fornecedor parceiro escolheu para cada escala (Painel do fornecedor)
+  const [motoristasForn, setMotoristasForn] = useState({});
+  useEffect(() => ouvirMotoristasDoDia(dataSelecionada, setMotoristasForn), [dataSelecionada]);
+  const motoristaForn = (escalaId) => (escalaId ? motoristasForn[String(escalaId)] || null : null);
+  // etapas que o motorista marcou no link do dia (posicionado, em viagem, finalizado)
+  const [viagensMot, setViagensMot] = useState({});
+  useEffect(() => ouvirViagensDoDia(dataSelecionada, setViagensMot), [dataSelecionada]);
+  const viagemDe = (escalaId) => (escalaId ? viagensMot[String(escalaId)] || null : null);
 
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
@@ -1678,6 +1727,7 @@ export default function PainelOperacionalUnificado() {
         mapa[grupoKey] = {
           id: grupoKey,
           escalaId,
+          roadmapId: extrairEscalaId(item),
           escalaCodigo: extrairCodigoEscala(item),
           fornecedor,
           veiculo,
@@ -2953,6 +3003,10 @@ export default function PainelOperacionalUnificado() {
                               title={fornecedores.map((f) => `${f.motorista} (${f.veiculo})`).join(" · ")}
                             >
                               <strong>{fornecedores.length} VEÍCULOS</strong>
+                              {(() => {
+                                const n = fornecedores.filter((f) => motoristaForn(f.reservas?.[0]?.escalaId)).length;
+                                return n ? <MotoristaForn texto={`${n} de ${fornecedores.length} com motorista`} /> : null;
+                              })()}
                               <span>
                                 {fornecedores
                                   .slice(0, 2)
@@ -2968,6 +3022,7 @@ export default function PainelOperacionalUnificado() {
                             >
                               <strong>{fornecedores[0].motorista}</strong>
                               <span>{fornecedores[0].veiculo}</span>
+                              <MotoristaForn m={motoristaForn(fornecedores[0].reservas?.[0]?.escalaId)} v={viagemDe(fornecedores[0].reservas?.[0]?.escalaId)} />
                             </span>
                           )}
                         </span>
@@ -3036,6 +3091,7 @@ export default function PainelOperacionalUnificado() {
                                   {grupo.veiculo} · Modalidade:{" "}
                                   {grupo.reservas[0]?.modalidadeServico || "Não informado"}
                                 </span>
+                                <MotoristaForn m={motoristaForn(grupo.reservas[0]?.escalaId)} v={viagemDe(grupo.reservas[0]?.escalaId)} completo />
                               </span>
                               <span className="painel-op-forn__totais tabular">
                                 <Icon name="users" size={15} />
@@ -3307,6 +3363,7 @@ export default function PainelOperacionalUnificado() {
                           <span className="painel-op-fornecedor-cel__texto">
                             <strong>{grupo.fornecedor}</strong>
                             <span>{grupo.veiculo}</span>
+                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} />
                           </span>
                         </span>
                       ) : (
@@ -3317,6 +3374,7 @@ export default function PainelOperacionalUnificado() {
                           <span className="painel-op-fornecedor-cel__texto">
                             <strong>{grupo.fornecedor}</strong>
                             <span>{grupo.veiculo}</span>
+                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} />
                           </span>
                         </span>
                       )}
@@ -3599,6 +3657,7 @@ export default function PainelOperacionalUnificado() {
                                     <span className="painel-op-forn__sub">
                                       {veiculo.veiculo} · Primeiro horário: {veiculo.primeiraHora}
                                     </span>
+                                    <MotoristaForn m={motoristaForn(veiculo.escalaId)} v={viagemDe(veiculo.escalaId)} completo />
                                   </span>
                                 </header>
                                 <Table
