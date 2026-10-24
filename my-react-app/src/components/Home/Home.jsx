@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDocs, query, where } from "firebase/firestore";
+import "./styles.css"
 import {
   ResponsiveContainer,
   LineChart,

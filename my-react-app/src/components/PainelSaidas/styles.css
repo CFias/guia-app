@@ -27,7 +27,7 @@
 
 .painel-outs-subtitle {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -80,7 +80,7 @@
 
 .painel-outs-card-header p {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -171,7 +171,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 500;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -223,7 +223,7 @@
 .painel-outs-stat span,
 .painel-outs-kpi span {
     display: block;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -314,7 +314,7 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--accent-text);
@@ -337,7 +337,7 @@
     background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     color: var(--text);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 500;
 }
 
@@ -390,7 +390,7 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--accent-text);
@@ -425,7 +425,7 @@
 }
 
 .painel-outs-info-label {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -444,7 +444,7 @@
 }
 
 .painel-outs-observacao-title {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text);
     margin-bottom: 6px;

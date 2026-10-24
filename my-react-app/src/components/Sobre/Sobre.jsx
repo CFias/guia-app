@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { VERSAO_TEXTO } from "../../versao";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
 import { definirTituloAba } from "../Shell/tituloAba";
@@ -181,7 +182,7 @@ const Sobre = ({ modo, voltar = "/minha-disponibilidade", textoVoltar = "Voltar 
 
       <footer className="sobre-rodape">
         <img src="/favicon.svg" alt="" />
-        FiaSystem · feito para a Luck Receptivo SSA · v1.2.0 Beta
+        FiaSystem · feito para a Luck Receptivo SSA · {VERSAO_TEXTO}
       </footer>
     </div>
   );

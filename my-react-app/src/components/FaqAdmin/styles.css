@@ -115,7 +115,7 @@
 
 .faq-admin-card-header p {
     margin: 0;
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: var(--pc-text-muted);
 }
@@ -297,7 +297,7 @@
 
 .faq-admin-veiculo-header span {
     display: block;
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.5;
     color: var(--pc-text-muted);
 }
@@ -319,7 +319,7 @@
 }
 
 .faq-admin-field-hint {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.5;
     color: var(--pc-text-faint);
 }
@@ -329,7 +329,7 @@
     align-items: center;
     gap: 6px;
     margin-bottom: var(--pc-space-3);
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 500;
     color: var(--pc-text-faint);
 }
@@ -347,7 +347,7 @@
     padding: 0 var(--pc-space-3);
     margin-bottom: var(--pc-space-3);
     border-radius: var(--pc-radius-pill);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--pc-text-muted);
     border: 1px solid var(--pc-border);
@@ -374,7 +374,7 @@
     min-height: 38px;
     padding: 0 var(--pc-space-4);
     border-radius: var(--pc-radius-md);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     display: inline-flex;
     align-items: center;
@@ -570,7 +570,7 @@
     min-height: 22px;
     padding: 0 var(--pc-space-2);
     border-radius: var(--pc-radius-pill);
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--pc-text-faint);
     border: 1px solid var(--pc-border-soft);
@@ -961,7 +961,7 @@
     border-radius: var(--radius-pill);
     background: rgba(17, 17, 16, 0.72);
     color: #fff;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 700;
 }
 

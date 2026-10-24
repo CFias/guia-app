@@ -673,3 +673,59 @@
 .app-content [id] {
   scroll-margin-top: calc(var(--topbar-h) + var(--space-4));
 }
+
+/* abas da seção (telas parecidas numa entrada só do menu) */
+.app-secao-abas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: calc(var(--space-2) * -1) 0 var(--space-4);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.app-secao-abas__tit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-secao-abas__lista {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.app-secao-abas__aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.app-secao-abas__aba:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.app-secao-abas__aba.is-on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .app-secao-abas__aba {
+    min-height: 40px;
+  }
+}

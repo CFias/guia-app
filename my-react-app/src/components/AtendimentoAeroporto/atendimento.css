@@ -1,10 +1,31 @@
-/* Painel do atendimento no aeroporto (celular primeiro) */
+/* =========================================================
+   PAINEL DO ATENDIMENTO NO AEROPORTO — celular primeiro
+   Leitura de cima para baixo:
+     topo (quem / dia) → como funciona → o dia em números →
+     busca + situação + recorte → veículos por horário
+   Cores com significado (sempre com texto ao lado):
+     âmbar = aguardando recepção · azul = aguardando embarque ·
+     verde = concluído
+   ========================================================= */
 .atd {
+  --atd-rec: #17834a;
+  --atd-emb: #2563eb;
+  --atd-esp: #b7791f;
+  --atd-raio: 14px;
+  --atd-borda: color-mix(in srgb, var(--text) 10%, transparent);
+  --atd-fundo-2: color-mix(in srgb, var(--text) 3.5%, var(--surface, #fff));
   min-height: 100vh;
   background: var(--bg, #f4f5f7);
   color: var(--text);
 }
 
+:is(body.dark, body.dark-pro) .atd {
+  --atd-rec: #3ccf7f;
+  --atd-emb: #79a8ff;
+  --atd-esp: #f0b429;
+}
+
+/* ---------- topo fixo ---------- */
 .atd-topo {
   position: sticky;
   top: 0;
@@ -12,9 +33,17 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface, #fff);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--atd-borda);
+  background: color-mix(in srgb, var(--surface, #fff) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.atd-topo__linha,
+.atd-dias {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .atd-topo__linha {
@@ -28,8 +57,8 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
@@ -40,10 +69,14 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
+  line-height: 1.25;
 }
 
 .atd-topo__titulo strong {
+  overflow: hidden;
   font-size: var(--fs-md, 15px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .atd-topo__titulo small {
@@ -57,6 +90,7 @@
 .atd-topo__acoes {
   display: inline-flex;
   flex: none;
+  align-items: center;
   gap: 6px;
 }
 
@@ -65,11 +99,11 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 10px;
   background: var(--surface, #fff);
   color: var(--text-2, var(--text));
   font: inherit;
@@ -80,17 +114,13 @@
 }
 
 .atd-btn-leve:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
 }
 
-.atd-em-nome {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: var(--fs-xs, 12px);
-  font-weight: 600;
-  color: var(--text-3);
+.atd-btn-leve.is-on {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
 }
 
 .atd-dias {
@@ -98,17 +128,19 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   padding: 4px;
-  border-radius: 10px;
-  background: var(--raised, rgba(0, 0, 0, 0.05));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .atd-dias button {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
   padding: 6px 4px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 9px;
   background: none;
   color: var(--text-2, var(--text));
   font: inherit;
@@ -119,75 +151,277 @@
 
 .atd-dias button small {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
 .atd-dias button.is-on {
   background: var(--surface, #fff);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.atd-dias button.is-on small {
   color: var(--accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
-.atd-meus {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-}
-
-.atd-meus__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-}
-
-.atd-meus__item b {
-  color: var(--accent);
-  font-size: 22px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.atd-meus__item span {
-  display: flex;
-  flex-direction: column;
-  font-size: var(--fs-xs, 12px);
-  font-weight: 600;
-}
-
-.atd-meus__item small {
-  color: var(--text-3);
-  font-weight: 500;
-}
-
+/* ---------- corpo ---------- */
 .atd-corpo {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   max-width: 760px;
   margin: 0 auto;
-  padding: 14px 16px 40px;
+  padding: 16px 16px 48px;
 }
 
-.atd-filtros {
+/* como funciona */
+.atd-guia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--atd-raio);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface, #fff));
+}
+
+.atd-guia__cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.atd-guia__cab b {
+  font-size: var(--fs-md, 15px);
+}
+
+.atd-guia__cab button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.atd-guia ol {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atd-guia li {
+  --c: var(--accent);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.atd-guia li.is-rec {
+  --c: var(--atd-rec);
+}
+
+.atd-guia li.is-emb {
+  --c: var(--atd-emb);
+}
+
+.atd-guia li.is-ok {
+  --c: var(--text-3);
+}
+
+.atd-guia li>span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.atd-guia li p {
+  margin: 1px 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.atd-guia li p b {
+  color: var(--text);
+}
+
+.atd-guia>small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* o dia em números */
+.atd-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--atd-borda);
+  border-radius: var(--atd-raio);
+  background: var(--surface, #fff);
+}
+
+.atd-resumo__topo {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.atd-resumo__topo>span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atd-resumo__topo b {
+  font-size: var(--fs-md, 15px);
+}
+
+.atd-resumo__topo small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.atd-resumo__pct {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.atd-resumo__pct small {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.atd-resumo__barra {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--atd-esp) 22%, transparent);
+  overflow: hidden;
+}
+
+.atd-resumo__barra span {
+  display: block;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.atd-resumo__barra .is-feito {
+  background: var(--atd-rec);
+}
+
+.atd-resumo__barra .is-andamento {
+  background: var(--atd-emb);
+}
+
+.atd-resumo__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.atd-resumo__legenda button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.atd-resumo__legenda button:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.atd-resumo__legenda i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.atd-resumo__legenda .is-pendente i {
+  background: var(--atd-esp);
+}
+
+.atd-resumo__legenda .is-andamento i {
+  background: var(--atd-emb);
+}
+
+.atd-resumo__legenda .is-feito i {
+  background: var(--atd-rec);
+}
+
+.atd-resumo__legenda b {
+  color: var(--text);
+}
+
+.atd-resumo__eu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--atd-borda);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.atd-resumo__eu b {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+}
+
+/* filtros */
+.atd-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .atd-busca {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 42px;
   padding: 0 12px;
-  height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 12px;
   background: var(--surface, #fff);
   color: var(--text-3);
+}
+
+.atd-busca:focus-within {
+  border-color: var(--accent);
 }
 
 .atd-busca input {
@@ -200,29 +434,97 @@
   outline: none;
 }
 
+.atd-abas {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.atd-abas button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.atd-abas button small {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.atd-abas button.is-on {
+  background: var(--surface, #fff);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.atd-abas button.is-on small {
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}
+
 .atd-chips {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.atd-chips::-webkit-scrollbar {
+  display: none;
 }
 
 .atd-chips i {
+  flex: none;
   width: 1px;
   height: 20px;
-  background: var(--border);
+  background: var(--atd-borda);
 }
 
 .atd-chips button {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--atd-borda);
   border-radius: 999px;
   background: var(--surface, #fff);
-  color: var(--text-2, var(--text));
+  color: var(--text-2);
   font: inherit;
-  font-size: var(--fs-sm, 13px);
+  font-size: var(--fs-sm);
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.atd-chips button small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
 }
 
 .atd-chips button.is-on {
@@ -233,14 +535,61 @@
 
 .atd-vazio {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
-  padding: 36px 12px;
+  padding: 40px 12px;
   color: var(--text-3);
   text-align: center;
+}
+
+.atd-vazio b {
+  color: var(--text-2);
+}
+
+.atd-vazio span {
+  font-size: var(--fs-sm);
+}
+
+/* ---------- veículos agrupados por horário ---------- */
+.atd-blocos {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.atd-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atd-bloco__cab {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 0 2px;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.atd-bloco__hora {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.atd-bloco__info {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .atd-lista {
@@ -252,217 +601,323 @@
   list-style: none;
 }
 
+/* card */
 .atd-carro {
+  --c: var(--atd-esp);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--warning, #c98a14);
-  border-radius: 12px;
+  gap: 12px;
+  padding: 14px 14px 14px 18px;
+  border: 1px solid var(--atd-borda);
+  border-radius: var(--atd-raio);
   background: var(--surface, #fff);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.atd-carro::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--c);
+}
+
+.atd-carro.is-andamento {
+  --c: var(--atd-emb);
 }
 
 .atd-carro.is-feito {
-  border-left-color: var(--success, #1f7a4d);
+  --c: var(--atd-rec);
+  background: var(--atd-fundo-2);
 }
 
-.atd-carro__topo {
+.atd-carro__cab {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  min-width: 0;
 }
 
-.atd-carro__hora {
-  font-size: 20px;
+.atd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: color-mix(in srgb, var(--c, var(--atd-esp)) 85%, var(--text));
+  font-size: var(--fs-xs);
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.atd-carro__voos {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 4px;
-  min-width: 0;
+.atd-status.is-pendente {
+  --c: var(--atd-esp);
 }
 
-.atd-carro__voos b {
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--raised, rgba(0, 0, 0, 0.05));
-  font-size: var(--fs-sm, 13px);
+.atd-status.is-andamento {
+  --c: var(--atd-emb);
+}
+
+.atd-status.is-feito {
+  --c: var(--atd-rec);
+}
+
+.atd-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 20%, transparent);
 }
 
 .atd-carro__pax {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 4px;
-  font-weight: 700;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-carro__pax small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
 }
 
 .atd-carro__veiculo {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  color: var(--text-2, var(--text));
-  font-size: var(--fs-sm, 13px);
-}
-
-.atd-carro__veiculo em {
-  color: var(--text-3);
-}
-
-.atd-carro__nomes {
-  margin: 0;
-  color: var(--text-3);
-  font-size: var(--fs-xs, 12px);
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.atd-etapas {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-.atd-etapa {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  gap: 10px;
   min-width: 0;
 }
 
-.atd-etapa__btn {
+.atd-carro__veic-ic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-2);
+}
+
+.atd-carro__veic-txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.atd-carro__veic-txt b {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-md, 15px);
+  font-weight: 800;
+}
+
+.atd-carro__veic-txt small {
+  overflow-wrap: anywhere;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.atd-carro__veic-txt em {
+  color: var(--text-3);
+}
+
+.atd-carro__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.atd-tag {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1.5px solid var(--accent);
-  border-radius: 10px;
-  background: var(--surface, #fff);
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--fs-md, 15px);
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.atd-tag.is-voo {
+  border: 1px solid var(--atd-borda);
+  background: none;
+  color: var(--text);
   font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.atd-tag.is-info {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.atd-tag svg {
+  color: var(--text-3);
+}
+
+.atd-tag__lupa {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 -6px 0 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
   cursor: pointer;
 }
 
-.atd-etapa__btn.is-meu {
-  border-color: var(--success, #1f7a4d);
-  background: var(--success, #1f7a4d);
-  color: #fff;
+.atd-tag__lupa:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
 }
 
-.atd-etapa__btn:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.atd-etapa__quem {
-  overflow: hidden;
-  color: var(--text-3);
-  font-size: 11px;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.atd-rodape {
-  margin: 4px 0 0;
-  color: var(--text-3);
-  font-size: var(--fs-xs, 12px);
-  text-align: center;
-}
-
-.atd-carro__herdado {
+.atd-carro__nota {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
-.atd-topo__titulo strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 560px) {
-
-  /* no celular, "Avaliar o sistema" vira só a estrela (o texto continua para leitores de tela) */
-  .atd-avaliar {
-    gap: 0;
-    font-size: 0;
-  }
-}
-
-/* reservas do veículo (abre/fecha) */
-.atd-carro__reservas-btn {
+/* reservas */
+.atd-reservas-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 6px 8px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: none;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 12px;
+  background: var(--atd-fundo-2);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.atd-carro__reservas-btn:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+.atd-reservas-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-.atd-carro__reservas-btn .atd-carro__nomes {
+.atd-reservas-btn__nomes {
   flex: 1;
   min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
 }
 
-.atd-carro__reservas-acao {
+.atd-reservas-btn__acao {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   color: var(--accent);
-  font-size: var(--fs-xs, 12px);
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
-.atd-carro__reservas-acao svg {
+.atd-reservas-btn__acao svg {
   transition: transform 0.15s;
 }
 
-.atd-carro__reservas-btn.is-aberto .atd-carro__reservas-acao svg {
+.atd-reservas-btn.is-aberto .atd-reservas-btn__acao svg {
   transform: rotate(180deg);
+}
+
+.atd-mini {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft, #fdf3dc);
+  color: var(--warning, #a96a00);
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-mini.is-ok {
+  background: color-mix(in srgb, var(--atd-rec) 15%, transparent);
+  color: var(--atd-rec);
 }
 
 .atd-reservas {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 0;
+  margin: -4px 0 0;
   padding: 0;
+  border: 1px solid var(--atd-borda);
+  border-radius: 12px;
   list-style: none;
+  overflow: hidden;
 }
 
 .atd-reservas li {
   display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--atd-borda);
+}
+
+.atd-reservas li:first-child {
+  border-top: 0;
+}
+
+.atd-reservas li.is-recebida {
+  background: color-mix(in srgb, var(--atd-rec) 6%, transparent);
+}
+
+.atd-reservas li.is-noshow .atd-reservas__topo b {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.atd-reservas__marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid color-mix(in srgb, var(--atd-rec) 60%, transparent);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--atd-rec);
+  cursor: pointer;
+}
+
+.atd-reservas__marca.is-ok {
+  border-color: var(--atd-rec);
+  background: var(--atd-rec);
+  color: #fff;
+}
+
+.atd-reservas__marca:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.atd-reservas__corpo {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 3px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--raised, rgba(0, 0, 0, 0.04));
+  min-width: 0;
 }
 
 .atd-reservas__topo {
@@ -475,11 +930,12 @@
 .atd-reservas__topo b {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: var(--fs-sm, 13px);
+  font-size: var(--fs-sm);
 }
 
 .atd-reservas__pax {
   flex: none;
+  font-size: var(--fs-sm);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -489,8 +945,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  color: var(--text-2, var(--text));
-  font-size: var(--fs-xs, 12px);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
 }
 
 .atd-reservas__info span {
@@ -503,7 +959,7 @@
 
 .atd-reservas__codigo {
   padding: 0 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--atd-borda);
   border-radius: 5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -511,57 +967,46 @@
 
 .atd-reservas__det {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
-.atd-carro__espera {
+.atd-reservas__recebida {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--text-2, var(--text));
-  font-size: var(--fs-xs, 12px);
-  font-weight: 600;
+  margin-top: 2px;
+  color: var(--atd-rec);
+  font-size: var(--fs-xs);
+  font-weight: 700;
 }
 
-.atd-etapa__quem {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.atd-hora-manual__linha {
-  display: flex;
-  gap: 6px;
-}
-
-.atd-hora-manual__linha input {
-  flex: 1;
-}
-
-.atd-hora-manual small {
-  font-weight: 500;
-}
-
-/* No show por reserva */
+/* no show */
 .atd-noshow-btns {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin-top: 4px;
+}
+
+.atd-noshow-btns>span {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
 }
 
 .atd-noshow-btns button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--atd-borda);
   border-radius: 999px;
   background: var(--surface, #fff);
-  color: var(--text-2, var(--text));
+  color: var(--text-2);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -577,11 +1022,12 @@
 
 .atd-noshow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 4px;
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
   background: var(--warning-soft, #fdf3dc);
   color: var(--warning, #a96a00);
 }
@@ -591,224 +1037,350 @@
   color: var(--alert, #c4402b);
 }
 
-.atd-noshow span {
+.atd-noshow>span {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
-.atd-noshow span b {
-  font-size: 12px;
+.atd-noshow>span b {
+  font-size: var(--fs-xs);
 }
 
-.atd-noshow span small {
-  color: var(--text-2, var(--text));
-  font-size: 11px;
+.atd-noshow>span small {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
 }
 
-.atd-noshow button {
+.atd-noshow>button {
   flex: none;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border: 1px solid currentColor;
   border-radius: 999px;
   background: none;
   color: inherit;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
 }
 
-.atd-noshow-tag {
-  margin-right: 6px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--warning-soft, #fdf3dc);
-  color: var(--warning, #a96a00);
-  font-style: normal;
-  font-weight: 700;
-}
-
-.atd-reservas li.is-noshow b {
-  text-decoration: line-through;
-  opacity: 0.7;
-}
-
-/* Recepção por reserva */
-.atd-por-reserva {
+.atd-relato {
   display: flex;
+  flex-basis: 100%;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
 }
 
-.atd-por-reserva__topo {
+.atd-relato__acoes {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  color: var(--text-2, var(--text));
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  gap: 6px;
 }
 
-.atd-por-reserva__topo b {
-  padding: 1px 8px;
+.atd-relato__copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 0;
   border-radius: 999px;
-  background: var(--warning-soft, #fdf3dc);
-  color: var(--warning, #a96a00);
-  font-variant-numeric: tabular-nums;
+  background: var(--warning, #a96a00);
+  color: #fff;
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.atd-por-reserva__topo b.is-ok {
-  background: color-mix(in srgb, var(--success, #1f7a4d) 15%, transparent);
-  color: var(--success, #1f7a4d);
+.atd-noshow.is-com_custo .atd-relato__copiar {
+  background: var(--alert, #c4402b);
 }
 
-.atd-por-reserva ul {
+.atd-relato__copiar.is-ok {
+  background: #1f7a4d;
+}
+
+.atd-relato__editar {
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.atd-relato__previa {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.atd-relato__desc {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.atd-relato__desc textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  resize: vertical;
+}
+
+/* etapas em passos + o próximo toque */
+.atd-acao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atd-borda);
+}
+
+.atd-passos {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.atd-por-reserva li {
+.atd-passos li {
+  --c: var(--accent);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 6px;
-  border-radius: 8px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.atd-por-reserva li.is-ok {
-  background: color-mix(in srgb, var(--success, #1f7a4d) 10%, transparent);
+.atd-passos li.is-rec {
+  --c: var(--atd-rec);
 }
 
-.atd-por-reserva li.is-ns {
-  opacity: 0.55;
+.atd-passos li.is-emb {
+  --c: var(--atd-emb);
 }
 
-.atd-por-reserva li>button {
+.atd-passos__ic {
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1.5px solid var(--accent);
-  border-radius: 10px;
-  background: var(--surface, #fff);
-  color: var(--accent);
-  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid color-mix(in srgb, var(--text) 18%, transparent);
+  border-radius: 50%;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.atd-por-reserva li.is-ok>button {
-  border-color: var(--success, #1f7a4d);
-  background: var(--success, #1f7a4d);
+.atd-passos li.is-atual .atd-passos__ic {
+  border-color: var(--c);
+  color: var(--c);
+}
+
+.atd-passos li.is-ok .atd-passos__ic {
+  border-color: var(--c);
+  background: var(--c);
   color: #fff;
 }
 
-.atd-por-reserva li>button:disabled {
-  cursor: default;
-}
-
-.atd-por-reserva__nome {
+.atd-passos__txt {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
+  line-height: 1.25;
 }
 
-.atd-por-reserva__nome b {
+.atd-passos__txt b {
   overflow: hidden;
-  font-size: 13px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.atd-por-reserva__nome small {
+.atd-passos li.is-ok .atd-passos__txt b,
+.atd-passos li.is-atual .atd-passos__txt b {
+  color: var(--text);
+}
+
+.atd-passos__txt small {
+  overflow: hidden;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.atd-por-reserva__quem {
-  flex: none;
-  color: var(--text-2, var(--text));
-  font-size: 11px;
+.atd-passos li.is-ok .atd-passos__txt small {
+  color: color-mix(in srgb, var(--c) 80%, var(--text));
   font-weight: 600;
-  text-align: right;
 }
 
-.atd-reservas__recebida {
+.atd-passos__acoes {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  color: var(--success, #1f7a4d);
-  font-size: 12px;
-  font-weight: 700;
+  flex: none;
+  gap: 2px;
 }
 
-/* marcação por reserva dentro da lista */
-.atd-reservas li.com-marca {
-  position: relative;
-  padding-left: 56px;
-  min-height: 44px;
-}
-
-.atd-reservas__marca {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: grid;
+.atd-passos__acoes button {
+  display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1.5px solid var(--accent);
-  border-radius: 10px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 8px;
   background: var(--surface, #fff);
-  color: var(--accent);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
   cursor: pointer;
 }
 
-.atd-reservas__marca.is-ok {
-  border-color: var(--success, #1f7a4d);
-  background: var(--success, #1f7a4d);
-  color: #fff;
+.atd-passos__acoes button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-.atd-reservas__marca:disabled {
+.atd-passos__acoes button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.atd-rec-tag {
-  margin-right: 6px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--warning-soft, #fdf3dc);
-  color: var(--warning, #a96a00);
-  font-style: normal;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.atd-botao {
+  --c: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 14px 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--c);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.08s;
 }
 
-.atd-rec-tag.is-ok {
-  background: color-mix(in srgb, var(--success, #1f7a4d) 15%, transparent);
-  color: var(--success, #1f7a4d);
+.atd-botao.is-rec {
+  --c: #17834a;
+}
+
+.atd-botao.is-emb {
+  --c: #2563eb;
+}
+
+.atd-botao:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.atd-botao:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.atd-botao:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.atd-botao__ic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.atd-botao__txt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.atd-botao__txt b {
+  overflow: hidden;
+  font-size: var(--fs-md, 15px);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atd-botao__txt small {
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  opacity: 0.88;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atd-botao__passo {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.atd-concluido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--atd-rec) 10%, transparent);
+  color: var(--atd-rec);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.atd-concluido small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
 }
 
 /* aviso ao vivo (Operacional): alguém marcou agora */
-.atd-btn-leve.is-on {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-}
-
 .atd-aviso {
   position: fixed;
   z-index: 30;
@@ -820,13 +1392,13 @@
   gap: 10px;
   width: min(440px, calc(100vw - 32px));
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--atd-borda);
   border-left: 4px solid var(--accent);
   border-radius: 12px;
   background: var(--surface, #fff);
   color: var(--text);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-  animation: atd-aviso-entra .3s ease-out;
+  animation: atd-aviso-entra 0.3s ease-out;
 }
 
 .atd-aviso.is-noshow {
@@ -850,13 +1422,13 @@
 }
 
 .atd-aviso b {
-  font-size: var(--fs-sm, 13px);
+  font-size: var(--fs-sm);
 }
 
 .atd-aviso small {
   overflow: hidden;
   color: var(--text-3);
-  font-size: var(--fs-xs, 12px);
+  font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -891,97 +1463,6 @@
   }
 }
 
-/* relato padronizado do no show (copiar para o grupo) */
-.atd-noshow {
-  flex-wrap: wrap;
-}
-
-.atd-relato {
-  display: flex;
-  flex-basis: 100%;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
-}
-
-.atd-relato__acoes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.atd-noshow .atd-relato__copiar {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--warning, #a96a00);
-  color: #fff;
-  font-size: 12px;
-}
-
-.atd-noshow.is-com_custo .atd-relato__copiar {
-  background: var(--alert, #c4402b);
-}
-
-.atd-noshow .atd-relato__copiar.is-ok {
-  background: #1f7a4d;
-}
-
-.atd-noshow .atd-relato__editar {
-  border: 0;
-  padding: 4px 6px;
-  text-decoration: underline;
-  font-weight: 600;
-}
-
-.atd-relato__previa {
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--surface, #fff);
-  color: var(--text);
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.atd-relato__desc {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  color: var(--text-2, var(--text));
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.atd-relato__desc textarea {
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface, #fff);
-  color: var(--text);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 400;
-  resize: vertical;
-}
-
-.atd-carro__porvoo {
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  font-size: 10.5px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 /* conta do Operacional sem liberação */
 .atd--bloqueado {
   display: grid;
@@ -996,7 +1477,7 @@
   gap: 10px;
   max-width: 420px;
   padding: 28px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--atd-borda);
   border-radius: 16px;
   background: var(--surface, #fff);
   text-align: center;
@@ -1008,12 +1489,22 @@
 
 .atd-bloqueio span {
   color: var(--text-2);
-  font-size: var(--fs-sm, 13px);
+  font-size: var(--fs-sm);
 }
 
-@media (max-width: 520px) {
+/* ---------- celular ---------- */
+@media (max-width: 560px) {
+  .atd-avaliar {
+    gap: 0;
+    font-size: 0;
+  }
+
   .atd-btn-txt {
     display: none;
+  }
+
+  .atd-topo {
+    padding: 8px 12px;
   }
 
   .atd-topo__linha {
@@ -1023,639 +1514,33 @@
   .atd-topo__acoes {
     flex-wrap: wrap;
     gap: 4px;
-    justify-content: flex-end;
-  }
-}
-
-/* ===================== card premium ===================== */
-.atd-lista {
-  gap: 14px;
-}
-
-.atd-carro {
-  position: relative;
-  gap: 12px;
-  padding: 18px 16px 16px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
-  border-left-width: 1px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 94%, var(--text) 6%) 0%, var(--surface, #fff) 46%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -12px rgba(0, 0, 0, 0.22);
-}
-
-.atd-carro::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 3px;
-  background: var(--atd-tom, #d4a017);
-}
-
-.atd-carro.is-pendente {
-  --atd-tom: linear-gradient(90deg, #f0b429, #d98b0b);
-}
-
-.atd-carro.is-andamento {
-  --atd-tom: linear-gradient(90deg, #22b268 0%, #22b268 50%, #3b82f6 50%, #3b82f6 100%);
-}
-
-.atd-carro.is-feito {
-  --atd-tom: linear-gradient(90deg, #22b268, #16934f);
-}
-
-.atd-carro.is-feito {
-  border-color: color-mix(in srgb, #22b268 28%, transparent);
-}
-
-.atd-carro__topo {
-  gap: 12px;
-}
-
-.atd-carro__hora {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.atd-carro__voos {
-  gap: 6px;
-}
-
-.atd-carro__voos b {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.atd-carro__voos b svg {
-  color: var(--text-3);
-}
-
-.atd-carro__pax {
-  padding: 5px 11px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  font-size: 14px;
-}
-
-.atd-carro__situacao {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: 6px;
-  margin-top: -4px;
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.atd-carro__situacao i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #e0a21b;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #e0a21b 22%, transparent);
-}
-
-.atd-carro__situacao.is-andamento i {
-  background: #3b82f6;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #3b82f6 22%, transparent);
-}
-
-.atd-carro__situacao.is-feito {
-  color: #1a8a4f;
-}
-
-.atd-carro__situacao.is-feito i {
-  background: #22b268;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #22b268 22%, transparent);
-}
-
-:is(body.dark, body.dark-pro) .atd-carro__situacao.is-feito {
-  color: #4ad48a;
-}
-
-.atd-carro__veiculo {
-  gap: 8px;
-  font-size: 14px;
-}
-
-.atd-carro__veiculo b {
-  color: var(--text);
-}
-
-.atd-carro__veic-ic {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  color: var(--text-2);
-}
-
-.atd-carro__reservas-btn {
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.atd-carro__reservas-btn:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-}
-
-.atd-carro__nomes {
-  color: var(--text-2);
-  font-size: 12.5px;
-}
-
-.atd-carro__espera {
-  color: var(--text-3);
-}
-
-
-/* lupa do voo (Google) */
-.atd-carro__lupa {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  margin: -2px -4px -2px 2px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  color: var(--text-3);
-  cursor: pointer;
-}
-
-.atd-carro__lupa:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-}
-
-/* dois botões: Recepcionei e Embarquei (o seguinte só libera depois do anterior) */
-.atd-botoes {
-  display: grid;
-  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.atd-botao-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.atd-botao {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 62px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 16px;
-  color: #fff;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.08s, filter 0.15s, box-shadow 0.15s, background 0.15s;
-}
-
-.atd-botao__ic {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.atd-botao__txt {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.atd-botao__txt b {
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.atd-botao__txt small {
-  overflow: hidden;
-  font-size: 11.5px;
-  font-weight: 600;
-  opacity: 0.85;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.atd-botao__desfazer {
-  flex: none;
-  opacity: 0.55;
-}
-
-.atd-botao:hover:not(:disabled) {
-  filter: brightness(1.05);
-}
-
-.atd-botao:active:not(:disabled) {
-  transform: translateY(1px) scale(0.995);
-}
-
-/* livre: cheio, com gradiente */
-.atd-botao.is-livre.is-rec {
-  background: linear-gradient(135deg, #2bc277 0%, #16934f 100%);
-  box-shadow: 0 10px 24px -10px rgba(22, 147, 79, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.atd-botao.is-livre.is-emb {
-  background: linear-gradient(135deg, #5b9bff 0%, #2563eb 100%);
-  box-shadow: 0 10px 24px -10px rgba(37, 99, 235, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.atd-botao.is-livre.is-meio {
-  background: var(--accent);
-}
-
-/* feito: suave, com o ícone cheio, quem e a hora */
-.atd-botao.is-feito {
-  border: 1px solid color-mix(in srgb, var(--atd-c) 35%, transparent);
-  background: color-mix(in srgb, var(--atd-c) 10%, var(--surface, #fff));
-  color: var(--text);
-}
-
-.atd-botao.is-feito .atd-botao__ic {
-  background: var(--atd-c);
-  color: #fff;
-  box-shadow: 0 4px 12px -4px var(--atd-c);
-}
-
-.atd-botao.is-feito .atd-botao__txt b {
-  color: color-mix(in srgb, var(--atd-c) 80%, var(--text));
-  font-size: 15px;
-}
-
-.atd-botao.is-feito .atd-botao__txt small {
-  color: var(--text-2);
-  opacity: 1;
-}
-
-.atd-botao.is-feito:hover:not(:disabled) .atd-botao__desfazer {
-  opacity: 1;
-  color: var(--alert, #c4402b);
-}
-
-.atd-botao.is-rec {
-  --atd-c: #22b268;
-}
-
-.atd-botao.is-emb {
-  --atd-c: #3b82f6;
-}
-
-.atd-botao.is-meio {
-  --atd-c: var(--accent);
-}
-
-/* travado: espera a etapa anterior */
-.atd-botao.is-travado {
-  border: 1.5px dashed color-mix(in srgb, var(--text) 18%, transparent);
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  color: var(--text-3);
-  cursor: not-allowed;
-}
-
-.atd-botao.is-travado .atd-botao__ic {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
-}
-
-.atd-botao:disabled:not(.is-travado) {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.atd-botao__eu {
-  align-self: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-:is(body.dark, body.dark-pro) .atd-botao.is-feito .atd-botao__txt b {
-  color: color-mix(in srgb, var(--atd-c) 70%, #fff);
-}
-
-@media (max-width: 400px) {
-  .atd-carro__hora {
-    font-size: 24px;
+    margin-left: auto;
   }
 
-  .atd-botao {
-    min-height: 56px;
-    padding: 8px 10px;
-    gap: 8px;
+  .atd-corpo {
+    padding: 12px 12px 40px;
   }
 
-  .atd-botao__ic {
-    width: 30px;
-    height: 30px;
+  .atd-abas {
+    gap: 0;
   }
 
-  .atd-botao__txt b {
-    font-size: 14.5px;
-  }
-}
-
-/* ===================== leve e didático =====================
-   A FAZER: claro, só contorno, com o número da etapa e a instrução.
-   FEITO: cheio, com ✓, quem e a hora. TRAVADO: tracejado, com cadeado. */
-.atd-carro {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px -16px rgba(0, 0, 0, 0.25);
-  background: var(--surface, #fff);
-}
-
-.atd-carro::before {
-  height: 2px;
-  opacity: 0.85;
-}
-
-.atd-carro.is-andamento {
-  --atd-tom: linear-gradient(90deg, #22b268 50%, color-mix(in srgb, var(--text) 10%, transparent) 50%);
-}
-
-.atd-botao {
-  min-height: 64px;
-  border-radius: 16px;
-  box-shadow: none !important;
-}
-
-.atd-botao__txt b {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.atd-botao__tipo {
-  opacity: 0.7;
-}
-
-.atd-botao__num {
-  font-size: 15px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-/* a fazer: contorno colorido, fundo claro */
-.atd-botao.is-livre.is-rec,
-.atd-botao.is-livre.is-emb,
-.atd-botao.is-livre.is-meio {
-  border: 1.5px solid color-mix(in srgb, var(--atd-c) 55%, transparent);
-  background: var(--surface, #fff);
-  color: var(--text);
-}
-
-.atd-botao.is-livre .atd-botao__ic {
-  border: 1.5px solid var(--atd-c);
-  background: transparent;
-  color: var(--atd-c);
-}
-
-.atd-botao.is-livre .atd-botao__txt b {
-  color: color-mix(in srgb, var(--atd-c) 85%, var(--text));
-}
-
-.atd-botao.is-livre .atd-botao__txt small {
-  color: var(--text-3);
-  opacity: 1;
-}
-
-.atd-botao.is-livre:hover:not(:disabled) {
-  filter: none;
-  background: color-mix(in srgb, var(--atd-c) 7%, var(--surface, #fff));
-  border-color: var(--atd-c);
-}
-
-.atd-botao.is-livre:active:not(:disabled) {
-  background: color-mix(in srgb, var(--atd-c) 14%, var(--surface, #fff));
-}
-
-/* feito: cheio, ✓ branco */
-.atd-botao.is-feito {
-  border: 1.5px solid transparent;
-  background: var(--atd-c);
-  color: #fff;
-}
-
-.atd-botao.is-rec.is-feito {
-  background: linear-gradient(135deg, #27b36d, #16934f);
-}
-
-.atd-botao.is-emb.is-feito {
-  background: linear-gradient(135deg, #4f8ff7, #2563eb);
-}
-
-.atd-botao.is-feito .atd-botao__ic {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-  box-shadow: none;
-}
-
-.atd-botao.is-feito .atd-botao__txt b,
-:is(body.dark, body.dark-pro) .atd-botao.is-feito .atd-botao__txt b {
-  color: #fff;
-}
-
-.atd-botao.is-feito .atd-botao__txt small {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.atd-botao__desfazer {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  opacity: 1;
-}
-
-.atd-botao.is-feito:hover:not(:disabled) .atd-botao__desfazer {
-  background: rgba(255, 255, 255, 0.32);
-  color: #fff;
-}
-
-/* travado */
-.atd-botao.is-travado {
-  border: 1.5px dashed color-mix(in srgb, var(--text) 16%, transparent);
-  background: transparent;
-}
-
-.atd-botao.is-travado .atd-botao__ic {
-  border: 1.5px solid color-mix(in srgb, var(--text) 14%, transparent);
-  background: transparent;
-  color: var(--text-3);
-}
-
-.atd-botao.is-travado .atd-botao__txt b {
-  color: var(--text-3);
-}
-
-.atd-botao__cadeado {
-  flex: none;
-  color: var(--text-3);
-}
-
-/* filtro por região do transfer */
-.atd-regioes {
-  padding-top: 2px;
-}
-
-.atd-regioes__rot {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted, #64748b);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  margin-right: 2px;
-}
-
-.atd-regioes button small {
-  margin-left: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: .65;
-}
-
-.atd-carro__regiao {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--text-2, var(--text));
-  font-style: normal;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-/* botões mais discretos: letra menor e altura mais baixa */
-.atd-botao {
-  min-height: 50px;
-  gap: 9px;
-  padding: 7px 11px;
-  border-radius: 13px;
-}
-
-.atd-botao .atd-botao__ic {
-  width: 28px;
-  height: 28px;
-}
-
-.atd-botao__num {
-  font-size: 13px;
-}
-
-.atd-botao .atd-botao__txt {
-  line-height: 1.25;
-}
-
-.atd-botao .atd-botao__txt b,
-.atd-botao.is-feito .atd-botao__txt b {
-  font-size: 13.5px;
-  font-weight: 700;
-}
-
-.atd-botao .atd-botao__txt small {
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.atd-botao__desfazer {
-  width: 22px;
-  height: 22px;
-}
-
-.atd-botao__eu {
-  font-size: 11px;
-}
-
-@media (max-width: 400px) {
-  .atd-botao {
-    min-height: 46px;
+  .atd-abas button {
+    gap: 4px;
+    padding: 0 2px;
+    font-size: var(--fs-xs);
   }
 
-  .atd-botao .atd-botao__txt b {
-    font-size: 13px;
-  }
-}
-
-.atd-botao .atd-botao__txt b {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  display: block;
-}
-
-@media (max-width: 400px) {
-  .atd-botao {
-    gap: 7px;
-    padding: 6px 8px;
+  .atd-abas button small {
+    min-width: 0;
+    padding: 0 5px;
   }
 
-  .atd-botao .atd-botao__ic {
-    width: 24px;
-    height: 24px;
-  }
-
-  .atd-botao .atd-botao__txt b,
-  .atd-botao.is-feito .atd-botao__txt b {
-    font-size: 12.5px;
-  }
-
-  .atd-botao__tipo {
+  .atd-botao__passo {
     display: none;
   }
 
-  .atd-botao .atd-botao__txt small {
-    font-size: 10.5px;
-  }
-
-  .atd-botao__desfazer {
-    width: 20px;
-    height: 20px;
+  .atd-passos {
+    grid-auto-flow: row;
   }
 }

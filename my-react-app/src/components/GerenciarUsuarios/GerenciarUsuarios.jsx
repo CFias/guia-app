@@ -9,6 +9,7 @@ import {
 import {
   Timestamp,
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDocs,
@@ -20,7 +21,6 @@ import { enviarEmailRedefinicao } from "../../Services/Services/authEmail";
 import { useAuth } from "../../Context/AuthContext";
 import {
   ROLES,
-  ROLE_DESCRIPTIONS,
   ROLE_LABELS,
 } from "../../Context/permissions";
 import { contarBloqueadas, ehGerencia } from "../../Context/acessos";
@@ -28,7 +28,9 @@ import { useRegiao } from "../../Context/regiaoContext";
 import { ID_SEDE, SEDE } from "../../Services/Services/regiaoAtiva";
 import { Link } from "react-router-dom";
 import Icon from "../ui/Icon";
-import { Segmented } from "../ui";
+import { GuiaAvatar, Segmented } from "../ui";
+import RegisterGuias from "../RegisterGuias/RegisterGuias";
+import { prepararFotoGuia } from "../../Services/Utils/fotoGuia";
 import "./styles.css";
 
 /* ---------------------------------------------------------
@@ -80,12 +82,60 @@ const ROTULO_GRUPO = {
   [ROLES.GUIA]: ROLE_LABELS[ROLES.GUIA],
   [ROLES.ATENDIMENTO]: "Atendimento",
   desativadas: "Desativadas",
+  guiaSemAcesso: "Guias sem acesso ao sistema",
 };
 
 // Filtro por grupo: gerência, operacional, comercial, guia ou desativadas
 const grupoDaConta = (u) =>
-  u.ativo === false ? "desativadas" : u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role;
-const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.COMERCIAL]: 3, [ROLES.GUIA]: 4, desativadas: 5 };
+  u.semAcesso ? "guiaSemAcesso" : u.ativo === false ? "desativadas" : u.role === ROLES.OPERACIONAL && u.gerencia === true ? "gerencia" : u.role;
+
+// tipos de pessoa no cadastro (a ordem é a da tela)
+const TIPOS_PESSOA = [
+  { role: ROLES.GUIA, nome: "Guia", dica: "Ficha do guia (idiomas, passeios, motoguia). Acesso ao sistema é opcional.", icone: "flag" },
+  { role: ROLES.OPERACIONAL, nome: "Operacional", dica: "Telas do operacional — a gerência escolhe quais em Acessos.", icone: "briefcase", soGerencia: true },
+  { role: ROLES.ATENDIMENTO, nome: "Atendimento", dica: "Só o painel do aeroporto (recepção e embarque).", icone: "planeLanding" },
+  { role: ROLES.COMERCIAL, nome: "Comercial", dica: "Só a Central de informações.", icone: "bookOpen" },
+];
+
+/* Foto (opcional) de quem não é guia: user_fotos/{uid} — mesmo formato da
+   foto do guia (JPEG quadrado em data URL). A do guia continua em guide_fotos. */
+const salvarFotoConta = (uid, foto) =>
+  foto ? setDoc(doc(db, "user_fotos", uid), { uid, foto, atualizadoEm: Timestamp.now() }) : deleteDoc(doc(db, "user_fotos", uid));
+
+const CampoFoto = ({ nome, foto, onChange, disabled, destaque = false }) => {
+  const [erro, setErro] = useState("");
+  const escolher = async (arquivo) => {
+    if (!arquivo) return;
+    setErro("");
+    try {
+      onChange(await prepararFotoGuia(arquivo));
+    } catch (e) {
+      setErro(e?.message?.startsWith("Escolha") ? e.message : "Não foi possível ler a imagem.");
+    }
+  };
+  return (
+    <div className={`usuarios-foto ${destaque ? "is-destaque" : ""}`}>
+      <GuiaAvatar nome={nome || "?"} foto={foto} soFoto semLink tamanho={52} />
+      <div>
+        <strong>Foto {destaque ? "(recomendada)" : "(opcional)"}</strong>
+        <small>{destaque ? "Com foto, a pessoa é reconhecida na hora nas telas." : "Aparece junto do nome nas listas."}</small>
+        <span className="usuarios-foto__acoes">
+          <label className={`usuarios-btn ${disabled ? "is-off" : ""}`}>
+            <Icon name="image" size={14} /> {foto ? "Trocar" : "Adicionar"}
+            <input type="file" accept="image/*" hidden disabled={disabled} onChange={(e) => escolher(e.target.files?.[0])} />
+          </label>
+          {foto && (
+            <button type="button" className="usuarios-btn ghost" onClick={() => onChange("")} disabled={disabled}>
+              Remover
+            </button>
+          )}
+        </span>
+        {erro && <small className="usuarios-foto__erro">{erro}</small>}
+      </div>
+    </div>
+  );
+};
+const ORDEM_GRUPO = { gerencia: 0, [ROLES.OPERACIONAL]: 1, [ROLES.ATENDIMENTO]: 2, [ROLES.COMERCIAL]: 3, [ROLES.GUIA]: 4, guiaSemAcesso: 5, desativadas: 6 };
 // contas que pertencem a uma base (Operacional e Atendimento)
 const TEM_BASE = [ROLES.OPERACIONAL, ROLES.ATENDIMENTO];
 
@@ -128,7 +178,10 @@ const CampoRegiao = ({ value, onChange, opcoes, disabled }) => (
   </label>
 );
 
-const GerenciarUsuarios = () => {
+/* PESSOAS: guias e contas de acesso num cadastro só.
+   podeContas: a conta pode criar/editar contas (Controle de acessos → usuarios)
+   podeGuias:  a conta pode cadastrar guias (Controle de acessos → cadastros) */
+const GerenciarUsuarios = ({ podeContas = true, podeGuias = true, tipoInicial }) => {
   const { user: usuarioLogado, perfil } = useAuth();
   // Contas do Operacional (e a gerência) só a gerência cria ou altera — a
   // regra também está no firestore.rules. Os demais criam/editam comercial e guia.
@@ -155,6 +208,11 @@ const GerenciarUsuarios = () => {
   const [copiado, setCopiado] = useState(false);
 
   const [editando, setEditando] = useState(null);
+  const [tipo, setTipo] = useState(() => tipoInicial || (podeGuias ? ROLES.GUIA : ROLES.COMERCIAL));
+  const [acessoGuia, setAcessoGuia] = useState(() => ({ ativo: false, email: "", senha: gerarSenha() }));
+  const [fotoNova, setFotoNova] = useState("");
+  const [fotosContas, setFotosContas] = useState({});
+  const [darAcessoA, setDarAcessoA] = useState(null); // guia sem conta
   const [filtroRole, setFiltroRole] = useState("todos");
   const [filtroBase, setFiltroBase] = useState("todas");
   const [busca, setBusca] = useState("");
@@ -167,10 +225,12 @@ const GerenciarUsuarios = () => {
   const carregar = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersSnap, guidesSnap] = await Promise.all([
-        getDocs(collection(db, "users")),
+      const [usersSnap, guidesSnap, fotosSnap] = await Promise.all([
+        podeContas ? getDocs(collection(db, "users")) : Promise.resolve({ docs: [] }),
         getDocs(collection(db, "guides")),
+        podeContas ? getDocs(collection(db, "user_fotos")).catch(() => ({ docs: [] })) : Promise.resolve({ docs: [] }),
       ]);
+      setFotosContas(Object.fromEntries(fotosSnap.docs.map((d) => [d.id, d.data()?.foto || ""])));
 
       setUsuarios(
         usersSnap.docs
@@ -189,7 +249,7 @@ const GerenciarUsuarios = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [podeContas]);
 
   useEffect(() => {
     carregar();
@@ -202,6 +262,17 @@ const GerenciarUsuarios = () => {
     usuarios.forEach((u) => u.guideId && mapa.set(u.guideId, u.id));
     return mapa;
   }, [usuarios]);
+
+  // guias cadastrados que ainda não têm acesso ao sistema entram na lista
+  const pessoas = useMemo(
+    () => [
+      ...usuarios,
+      ...guias
+        .filter((g) => !guiasVinculados.has(g.id))
+        .map((g) => ({ id: `g_${g.id}`, nome: g.nome || "", email: "", role: ROLES.GUIA, semAcesso: true, guideId: g.id, guideName: g.nome, whatsapp: g.whatsapp || "" })),
+    ],
+    [usuarios, guias, guiasVinculados],
+  );
 
   const passaBusca = useCallback(
     (u) => {
@@ -217,24 +288,25 @@ const GerenciarUsuarios = () => {
   );
   // contagem de cada grupo já com a busca e a base aplicadas
   const contagem = useMemo(() => {
-    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.ATENDIMENTO]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, desativadas: 0 };
-    usuarios.filter((u) => passaBusca(u) && passaBase(u)).forEach((u) => {
+    const c = { todos: 0, gerencia: 0, [ROLES.OPERACIONAL]: 0, [ROLES.ATENDIMENTO]: 0, [ROLES.COMERCIAL]: 0, [ROLES.GUIA]: 0, guiaSemAcesso: 0, guias: 0, desativadas: 0 };
+    pessoas.filter((u) => passaBusca(u) && passaBase(u)).forEach((u) => {
       c.todos += 1;
       c[grupoDaConta(u)] = (c[grupoDaConta(u)] || 0) + 1;
+      if (u.role === ROLES.GUIA && u.ativo !== false) c.guias += 1;
     });
     return c;
-  }, [usuarios, passaBusca, passaBase]);
+  }, [pessoas, passaBusca, passaBase]);
 
   const usuariosFiltrados = useMemo(
     () =>
-      usuarios
+      pessoas
         .filter((u) => passaBusca(u) && passaBase(u))
-        .filter((u) => filtroRole === "todos" || grupoDaConta(u) === filtroRole)
+        .filter((u) => filtroRole === "todos" || (filtroRole === "guias" ? u.role === ROLES.GUIA && u.ativo !== false : grupoDaConta(u) === filtroRole))
         .sort(
           (a, b) =>
             ORDEM_GRUPO[grupoDaConta(a)] - ORDEM_GRUPO[grupoDaConta(b)] || (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
         ),
-    [usuarios, filtroRole, passaBusca, passaBase],
+    [pessoas, filtroRole, passaBusca, passaBase],
   );
 
   useEffect(() => {
@@ -248,84 +320,97 @@ const GerenciarUsuarios = () => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
 
   /* ---------------- criar ---------------- */
-  const criarUsuario = async (e) => {
-    e.preventDefault();
-    setMsg(null);
-    setCredenciais(null);
-
-    const nome = form.nome.trim();
-    const email = form.email.trim().toLowerCase();
-
-    if (!nome || !email) {
-      setMsg({ tipo: "erro", texto: "Preencha nome e e-mail." });
-      return;
-    }
-    if (form.senha.length < 6) {
-      setMsg({
-        tipo: "erro",
-        texto: "A senha temporária precisa ter pelo menos 6 caracteres.",
-      });
-      return;
-    }
-    if (form.role === ROLES.GUIA && !form.guideId) {
-      setMsg({
-        tipo: "erro",
-        texto: "Escolha qual guia essa conta vai representar.",
-      });
-      return;
-    }
-
-    const guia = guias.find((g) => g.id === form.guideId);
+  // cria o login (sem derrubar a sessão de quem está cadastrando) e o perfil
+  const criarContaNoAuth = async ({ nome, email, senha, role, guia, regiao, foto }) => {
     const secondaryAuth = getSecondaryAuth();
     let cred = null;
-    let criado = false;
-
     try {
-      setSalvando(true);
-
-      cred = await createUserWithEmailAndPassword(
-        secondaryAuth,
-        email,
-        form.senha,
-      );
-
+      cred = await createUserWithEmailAndPassword(secondaryAuth, email, senha);
       await setDoc(doc(db, "users", cred.user.uid), {
         nome,
         email,
-        role: form.role,
+        role,
         ativo: true,
-        ...(form.role === ROLES.GUIA && guia
-          ? { guideId: guia.id, guideName: guia.nome }
-          : {}),
-        ...(souGerencia && TEM_BASE.includes(form.role) && form.regiao && form.regiao !== ID_SEDE
-          ? { regiao: form.regiao }
-          : {}),
+        ...(role === ROLES.GUIA && guia ? { guideId: guia.id, guideName: guia.nome } : {}),
+        ...(souGerencia && TEM_BASE.includes(role) && regiao && regiao !== ID_SEDE ? { regiao } : {}),
         // primeiro acesso: a pessoa troca a senha temporária pela dela (DefinirSenha)
         senhaTemporaria: true,
         createdAt: Timestamp.now(),
         createdBy: usuarioLogado.uid,
       });
-
-      criado = true;
+      if (foto) await salvarFotoConta(cred.user.uid, foto).catch((e) => console.error("Foto da conta:", e));
+      return cred.user.uid;
     } catch (err) {
       console.error("Erro ao criar usuário:", err);
-
-      // Se a conta de login chegou a ser criada mas o perfil não foi salvo,
-      // desfaz — senão sobra uma conta "órfã" que bloqueia o e-mail.
-      if (cred?.user) await deleteUser(cred.user).catch(() => { });
-
-      setMsg({ tipo: "erro", texto: mensagemErroAuth(err.code) });
+      // conta de login criada mas perfil não salvo: desfaz (senão o e-mail fica preso)
+      if (cred?.user) await deleteUser(cred.user).catch(() => {});
+      throw new Error(mensagemErroAuth(err.code));
     } finally {
-      await signOut(secondaryAuth).catch(() => { });
-      setSalvando(false);
+      await signOut(secondaryAuth).catch(() => {});
     }
+  };
 
-    if (criado) {
-      const base = TEM_BASE.includes(form.role) ? regiaoPorId(baseDoForm)?.nome || SEDE.nome : SEDE.nome;
+  const validarLogin = (email, senha) => {
+    if (!email) return "Informe o e-mail (será o login).";
+    if (String(senha || "").length < 6) return "A senha temporária precisa ter pelo menos 6 caracteres.";
+    return "";
+  };
+
+  const criarUsuario = async (e) => {
+    e.preventDefault();
+    setMsg(null);
+    setCredenciais(null);
+    const nome = form.nome.trim();
+    const email = form.email.trim().toLowerCase();
+    if (!nome) {
+      setMsg({ tipo: "erro", texto: "Preencha o nome." });
+      return;
+    }
+    const erro = validarLogin(email, form.senha);
+    if (erro) {
+      setMsg({ tipo: "erro", texto: erro });
+      return;
+    }
+    try {
+      setSalvando(true);
+      await criarContaNoAuth({ nome, email, senha: form.senha, role: tipo, regiao: baseDoForm, foto: fotoNova });
+      const base = TEM_BASE.includes(tipo) ? regiaoPorId(baseDoForm)?.nome || SEDE.nome : SEDE.nome;
       setCredenciais({ nome, email, senha: form.senha, base });
       setForm({ ...FORM_VAZIO, senha: gerarSenha() });
+      setFotoNova("");
       await carregar();
+    } catch (err) {
+      setMsg({ tipo: "erro", texto: err.message });
+    } finally {
+      setSalvando(false);
     }
+  };
+
+  // guia novo com "Dar acesso ao sistema" marcado
+  const validarAcessoDoGuia = () => (acessoGuia.ativo ? validarLogin(acessoGuia.email.trim(), acessoGuia.senha) : "");
+  const depoisDeCadastrarGuia = async (guia) => {
+    if (acessoGuia.ativo) {
+      const email = acessoGuia.email.trim().toLowerCase();
+      await criarContaNoAuth({ nome: guia.nome, email, senha: acessoGuia.senha, role: ROLES.GUIA, guia });
+      setCredenciais({ nome: guia.nome, email, senha: acessoGuia.senha, base: SEDE.nome });
+      setAcessoGuia({ ativo: false, email: "", senha: gerarSenha() });
+      await carregar();
+      return "\n\nO acesso ao sistema também foi criado — as credenciais estão no topo da tela.";
+    }
+    await carregar();
+    return "";
+  };
+
+  // guia que já existia, sem conta: cria o acesso
+  const darAcessoAoGuia = async ({ email, senha }) => {
+    const g = darAcessoA;
+    const erro = validarLogin(email.trim(), senha);
+    if (erro) throw new Error(erro);
+    const em = email.trim().toLowerCase();
+    await criarContaNoAuth({ nome: g.nome, email: em, senha, role: ROLES.GUIA, guia: { id: g.guideId, nome: g.nome } });
+    setCredenciais({ nome: g.nome, email: em, senha, base: SEDE.nome });
+    setDarAcessoA(null);
+    await carregar();
   };
 
   const copiarCredenciais = async () => {
@@ -370,6 +455,7 @@ const GerenciarUsuarios = () => {
           : {}),
         updatedAt: Timestamp.now(),
       });
+      if (dados.foto !== undefined) await salvarFotoConta(dados.id, dados.foto).catch((e) => console.error("Foto da conta:", e));
 
       setMsg({ tipo: "ok", texto: "Usuário atualizado." });
       await carregar();
@@ -398,11 +484,12 @@ const GerenciarUsuarios = () => {
     <div className="usuarios-page">
       <div className="usuarios-header">
         <h2>
-          Usuários e acessos <Icon name="shield" size={16} />
+          Pessoas <Icon name="users" size={16} />
         </h2>
         <p>
-          Só o operacional cria contas. Escolha o nível de acesso de cada
-          pessoa — não existe cadastro aberto na tela de login.
+          Guias e contas de acesso num cadastro só. Escolha quem você vai
+          cadastrar; o guia pode ou não ter acesso ao sistema. Não existe
+          cadastro aberto na tela de login.
           {souGerencia ? (
             <>
               {" "}
@@ -446,130 +533,112 @@ const GerenciarUsuarios = () => {
       )}
 
       <div className="usuarios-grid">
-        {/* ============ CRIAR ============ */}
-        <form className="usuarios-card" onSubmit={criarUsuario} autoComplete="off">
+        {/* ============ NOVA PESSOA ============ */}
+        <div className="usuarios-card usuarios-nova">
           <h3>
-            <Icon name="userPlus" size={16} /> Nova conta
+            <Icon name="userPlus" size={16} /> Nova pessoa
           </h3>
-
-          <label className="usuarios-field">
-            <span>Nome</span>
-            <input
-              type="text"
-              value={form.nome}
-              onChange={(e) => setCampo("nome", e.target.value)}
-              disabled={salvando}
-            />
-          </label>
-
-          <label className="usuarios-field">
-            <span>E-mail (será o login)</span>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setCampo("email", e.target.value)}
-              disabled={salvando}
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="usuarios-field">
-            <span>Senha temporária</span>
-            <div className="usuarios-senha-row">
-              <input
-                type="text"
-                value={form.senha}
-                onChange={(e) => setCampo("senha", e.target.value)}
-                disabled={salvando}
-                autoComplete="off"
-              />
+          <div className="usuarios-tipos" role="radiogroup" aria-label="Quem você vai cadastrar">
+            {TIPOS_PESSOA.filter((t) => (t.role === ROLES.GUIA ? podeGuias : podeContas && rolesPermitidos.includes(t.role) && (!t.soGerencia || souGerencia))).map((t) => (
               <button
+                key={t.role}
                 type="button"
-                className="usuarios-icon-btn"
-                title="Gerar outra senha"
-                onClick={() => setCampo("senha", gerarSenha())}
-                disabled={salvando}
+                role="radio"
+                aria-checked={tipo === t.role}
+                className={`usuarios-tipo ${tipo === t.role ? "is-on" : ""}`}
+                onClick={() => {
+                  setTipo(t.role);
+                  setMsg(null);
+                }}
               >
-                <Icon name="refresh" size={16} />
+                <Icon name={t.icone} size={16} />
+                <b>{t.nome}</b>
+                <small>{t.dica}</small>
               </button>
-            </div>
-          </label>
-
-          <div className="usuarios-field">
-            <span>Nível de acesso</span>
-            <div className="usuarios-roles">
-              {rolesPermitidos.map((r) => (
-                <label
-                  key={r}
-                  className={`usuarios-role-option ${form.role === r ? "ativo" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value={r}
-                    checked={form.role === r}
-                    onChange={() => setCampo("role", r)}
-                    disabled={salvando}
-                  />
-                  <strong>{ROLE_LABELS[r]}</strong>
-                  <small>{ROLE_DESCRIPTIONS[r]}</small>
-                </label>
-              ))}
-            </div>
+            ))}
           </div>
 
-          {mostrarRegiao && TEM_BASE.includes(form.role) && (
-            <CampoRegiao
-              value={form.regiao}
-              onChange={(v) => setCampo("regiao", v)}
-              opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa)}
-              disabled={salvando}
-            />
-          )}
+          {tipo === ROLES.GUIA ? (
+            <RegisterGuias key="guia" embutido validarExtra={validarAcessoDoGuia} aoSalvar={depoisDeCadastrarGuia}>
+              {podeContas && (
+                <div className={`usuarios-acesso ${acessoGuia.ativo ? "is-on" : ""}`}>
+                  <label className="usuarios-check">
+                    <input type="checkbox" checked={acessoGuia.ativo} onChange={(e) => setAcessoGuia((x) => ({ ...x, ativo: e.target.checked }))} />
+                    <span>
+                      <b>Dar acesso ao sistema</b> — o guia entra para preencher a própria disponibilidade e os idiomas.
+                    </span>
+                  </label>
+                  {acessoGuia.ativo && (
+                    <div className="usuarios-acesso__campos">
+                      <label className="usuarios-field">
+                        <span>E-mail (será o login)</span>
+                        <input type="email" value={acessoGuia.email} onChange={(e) => setAcessoGuia((x) => ({ ...x, email: e.target.value }))} autoComplete="off" />
+                      </label>
+                      <label className="usuarios-field">
+                        <span>Senha temporária</span>
+                        <div className="usuarios-senha-row">
+                          <input type="text" value={acessoGuia.senha} onChange={(e) => setAcessoGuia((x) => ({ ...x, senha: e.target.value }))} autoComplete="off" />
+                          <button type="button" className="usuarios-icon-btn" title="Gerar outra senha" onClick={() => setAcessoGuia((x) => ({ ...x, senha: gerarSenha() }))}>
+                            <Icon name="refresh" size={16} />
+                          </button>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+            </RegisterGuias>
+          ) : (
+            <form className="usuarios-form" onSubmit={criarUsuario} autoComplete="off">
+              <CampoFoto nome={form.nome} foto={fotoNova} onChange={setFotoNova} disabled={salvando} />
 
-          {form.role === ROLES.ATENDIMENTO && (
-            <small className="usuarios-hint">
-              Depois de criar, defina a função, o turno e a folga fixa da pessoa em Demanda por turno → Configurar escala → Equipe.
-            </small>
-          )}
+              <label className="usuarios-field">
+                <span>Nome</span>
+                <input type="text" value={form.nome} onChange={(e) => setCampo("nome", e.target.value)} disabled={salvando} />
+              </label>
 
-          {form.role === ROLES.GUIA && (
-            <label className="usuarios-field">
-              <span>Guia vinculado</span>
-              <select
-                value={form.guideId}
-                onChange={(e) => setCampo("guideId", e.target.value)}
-                disabled={salvando}
-              >
-                <option value="">Selecionar guia</option>
-                {guias.map((g) => (
-                  <option
-                    key={g.id}
-                    value={g.id}
-                    disabled={guiasVinculados.has(g.id)}
-                  >
-                    {g.nome}
-                    {guiasVinculados.has(g.id) ? " (já tem acesso)" : ""}
-                  </option>
-                ))}
-              </select>
-              <small className="usuarios-hint">
-                A disponibilidade que a pessoa preencher é gravada neste guia.
-                O guia precisa estar em “Cadastrar Guias”.
-              </small>
-            </label>
-          )}
+              <label className="usuarios-field">
+                <span>E-mail (será o login)</span>
+                <input type="email" value={form.email} onChange={(e) => setCampo("email", e.target.value)} disabled={salvando} autoComplete="off" />
+              </label>
 
-          <button type="submit" className="usuarios-btn primary" disabled={salvando}>
-            {salvando ? "Criando..." : "Criar conta"}
-          </button>
-        </form>
+              <label className="usuarios-field">
+                <span>Senha temporária</span>
+                <div className="usuarios-senha-row">
+                  <input type="text" value={form.senha} onChange={(e) => setCampo("senha", e.target.value)} disabled={salvando} autoComplete="off" />
+                  <button type="button" className="usuarios-icon-btn" title="Gerar outra senha" onClick={() => setCampo("senha", gerarSenha())} disabled={salvando}>
+                    <Icon name="refresh" size={16} />
+                  </button>
+                </div>
+              </label>
+
+              {mostrarRegiao && TEM_BASE.includes(tipo) && (
+                <CampoRegiao
+                  value={form.regiao}
+                  onChange={(v) => setCampo("regiao", v)}
+                  opcoes={opcoesRegiao.filter((r) => r.id === ID_SEDE || r.ativa)}
+                  disabled={salvando}
+                />
+              )}
+
+              {tipo === ROLES.ATENDIMENTO && (
+                <small className="usuarios-hint">
+                  Depois de criar, defina a função, o turno e a folga fixa da pessoa em Escala da equipe → Configurar escala → Equipe.
+                </small>
+              )}
+
+              <button type="submit" className="usuarios-btn primary" disabled={salvando}>
+                {salvando ? "Criando..." : `Criar acesso · ${ROLE_LABELS[tipo]}`}
+              </button>
+            </form>
+          )}
+        </div>
 
         {/* ============ LISTA ============ */}
         <div className="usuarios-card">
           <div className="usuarios-lista-topo">
             <h3>
-              Contas cadastradas <span className="usuarios-total">{usuarios.length}</span>
+              Pessoas cadastradas <span className="usuarios-total">{pessoas.length}</span>
             </h3>
             {mostrarRegiao && (
               <select value={filtroBase} onChange={(e) => setFiltroBase(e.target.value)} aria-label="Filtrar por base">
@@ -611,7 +680,7 @@ const GerenciarUsuarios = () => {
                   ? [{ value: ROLES.ATENDIMENTO, label: "Atendimento", count: contagem[ROLES.ATENDIMENTO] }]
                   : []),
                 { value: ROLES.COMERCIAL, label: ROLE_LABELS[ROLES.COMERCIAL], count: contagem[ROLES.COMERCIAL] },
-                { value: ROLES.GUIA, label: ROLE_LABELS[ROLES.GUIA], count: contagem[ROLES.GUIA] },
+                { value: "guias", label: "Guias", count: contagem.guias },
                 { value: "desativadas", label: "Desativadas", count: contagem.desativadas },
               ]}
             />
@@ -643,84 +712,109 @@ const GerenciarUsuarios = () => {
             <ul className="usuarios-lista">
               {usuariosVisiveis.map((u, i) => (
                 <Fragment key={u.id}>
-                  {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
-                    <li className="usuarios-grupo" aria-hidden="true">
-                      {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
-                    </li>
-                  )}
-                  <li className={u.ativo === false ? "inativo" : ""}>
-                    <div className="usuarios-item-info">
-                      <strong>
-                        {u.nome}
-                        {u.id === usuarioLogado.uid && (
-                          <span className="usuarios-voce"> (você)</span>
-                        )}
-                      </strong>
-                      <span>{u.email}</span>
-                      <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
-                      {u.role === ROLES.GUIA && (
-                        <span className="usuarios-vinculo">
-                          Guia: {u.guideName || "—"}
-                        </span>
-                      )}
-
-                    </div>
-
-                    <div className="usuarios-item-tags">
-                      <span className={`usuarios-badge role-${u.role}`}>
-                        {ROLE_LABELS[u.role] || u.role}
-                      </span>
-                      {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
-                        <span className="usuarios-badge gerencia">Gerência</span>
-                      )}
-                      {TEM_BASE.includes(u.role) && u.regiao && u.regiao !== ID_SEDE && (
-                        <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
-                          {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
-                        </span>
-                      )}
-                      {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
-                        <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
-                          {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
-                        </span>
-                      )}
-                      {u.ativo === false && (
-                        <span className="usuarios-badge desativado">Desativado</span>
-                      )}
-                      {u.senhaTemporaria === true && u.ativo !== false && (
-                        <span className="usuarios-badge pendente" title="Ainda não entrou para criar a própria senha">
-                          1º acesso pendente
-                        </span>
-                      )}
-                      {u.verBalanco === true && !u.gerencia && (
-                        <span className="usuarios-badge balanco" title="Pode ver o Balanço de uso">
-                          Vê o balanço
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="usuarios-item-acoes">
-                      <button
-                        type="button"
-                        className="usuarios-icon-btn"
-                        title="Enviar link de nova senha"
-                        onClick={() => enviarRedefinicao(u)}
-                      >
-                        <Icon name="key" size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="usuarios-icon-btn"
-                        title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
-                        disabled={!podeEditar(u)}
-                        onClick={() => {
-                          setMsg(null);
-                          setEditando(u);
-                        }}
-                      >
-                        <Icon name="pencil" size={16} />
-                      </button>
-                    </div>
+                {filtroRole === "todos" && (i === 0 || grupoDaConta(usuariosVisiveis[i - 1]) !== grupoDaConta(u)) && (
+                  <li className="usuarios-grupo" aria-hidden="true">
+                    {ROTULO_GRUPO[grupoDaConta(u)]} <span>{contagem[grupoDaConta(u)]}</span>
                   </li>
+                )}
+                <li className={`${u.ativo === false ? "inativo" : ""} ${u.semAcesso ? "sem-acesso" : ""}`}>
+                  <div className="usuarios-item-info usuarios-item-com-foto">
+                    <GuiaAvatar nome={u.nome} id={u.guideId || undefined} foto={u.guideId ? undefined : fotosContas[u.id] || ""} soFoto semLink tamanho={38} />
+                    <div className="usuarios-item-txt">
+                    <strong>
+                      {u.nome}
+                      {u.id === usuarioLogado.uid && (
+                        <span className="usuarios-voce"> (você)</span>
+                      )}
+                    </strong>
+                    {u.semAcesso ? (
+                      <>
+                        <span>{u.whatsapp ? `WhatsApp ${u.whatsapp}` : "Guia cadastrado"}</span>
+                        <span className="usuarios-ultimo">Sem acesso ao sistema</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{u.email}</span>
+                        <span className="usuarios-ultimo">{textoUltimoAcesso(u)}</span>
+                        {u.role === ROLES.GUIA && u.guideName && u.guideName !== u.nome && <span className="usuarios-vinculo">Guia: {u.guideName}</span>}
+                      </>
+                    )}
+                    </div>
+                  </div>
+
+                  <div className="usuarios-item-tags">
+                    <span className={`usuarios-badge role-${u.role}`}>
+                      {ROLE_LABELS[u.role] || u.role}
+                    </span>
+                    {u.gerencia === true && u.role === ROLES.OPERACIONAL && (
+                      <span className="usuarios-badge gerencia">Gerência</span>
+                    )}
+                    {TEM_BASE.includes(u.role) && u.regiao && u.regiao !== ID_SEDE && (
+                      <span className="usuarios-badge regiao" title={`Base ${regiaoPorId(u.regiao)?.nome || u.regiao}`}>
+                        {regiaoPorId(u.regiao)?.sigla || u.regiao.toUpperCase()}
+                      </span>
+                    )}
+                    {u.role === ROLES.OPERACIONAL && !u.gerencia && contarBloqueadas(u.acessos) > 0 && (
+                      <span className="usuarios-badge restrito" title="Telas bloqueadas em Controle de acessos">
+                        {contarBloqueadas(u.acessos)} tela(s) bloqueada(s)
+                      </span>
+                    )}
+                    {u.ativo === false && (
+                      <span className="usuarios-badge desativado">Desativado</span>
+                    )}
+                    {u.senhaTemporaria === true && u.ativo !== false && (
+                      <span className="usuarios-badge pendente" title="Ainda não entrou para criar a própria senha">
+                        1º acesso pendente
+                      </span>
+                    )}
+                    {u.verBalanco === true && !u.gerencia && (
+                      <span className="usuarios-badge balanco" title="Pode ver o Balanço de uso">
+                        Vê o balanço
+                      </span>
+                    )}
+                  </div>
+
+                  {u.semAcesso ? (
+                  <div className="usuarios-item-acoes">
+                    <a className="usuarios-icon-btn" href={`/ver-como-guia/${u.guideId}`} target="_blank" rel="noopener noreferrer" title="Ver como o guia vê (nada é salvo)">
+                      <Icon name="eye" size={16} />
+                    </a>
+                    {podeContas && (
+                      <button type="button" className="usuarios-btn" onClick={() => setDarAcessoA(u)} title="Criar login para o guia preencher a disponibilidade">
+                        <Icon name="key" size={14} /> Dar acesso
+                      </button>
+                    )}
+                  </div>
+                  ) : (
+                  <div className="usuarios-item-acoes">
+                    {u.role === ROLES.GUIA && u.guideId && (
+                      <a className="usuarios-icon-btn" href={`/ver-como-guia/${u.guideId}`} target="_blank" rel="noopener noreferrer" title="Ver como o guia vê (nada é salvo)">
+                        <Icon name="eye" size={16} />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="usuarios-icon-btn"
+                      title="Enviar link de nova senha"
+                      onClick={() => enviarRedefinicao(u)}
+                    >
+                      <Icon name="key" size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="usuarios-icon-btn"
+                      title={podeEditar(u) ? "Editar" : "Só a gerência altera contas do Operacional"}
+                      disabled={!podeEditar(u)}
+                      onClick={() => {
+                        setMsg(null);
+                        setEditando(u);
+                      }}
+                    >
+                      <Icon name="pencil" size={16} />
+                    </button>
+                  </div>
+                  )}
+                </li>
                 </Fragment>
               ))}
             </ul>
@@ -741,9 +835,12 @@ const GerenciarUsuarios = () => {
         </div>
       </div>
 
+      {darAcessoA && <DarAcessoModal guia={darAcessoA} onFechar={() => setDarAcessoA(null)} onCriar={darAcessoAoGuia} />}
+
       {editando && (
         <EditarUsuarioModal
           usuario={editando}
+          fotoAtual={editando.guideId ? null : fotosContas[editando.id] || ""}
           guias={guias}
           guiasVinculados={guiasVinculados}
           ehVoce={editando.id === usuarioLogado.uid}
@@ -761,8 +858,59 @@ const GerenciarUsuarios = () => {
   );
 };
 
+// guia sem conta → cria o login
+const DarAcessoModal = ({ guia, onFechar, onCriar }) => {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState(gerarSenha);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    setErro("");
+    setSalvando(true);
+    try {
+      await onCriar({ email, senha });
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+  return (
+    <div className="usuarios-modal-overlay" onClick={onFechar}>
+      <form className="usuarios-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <h3>Dar acesso a {guia.nome}</h3>
+        <p className="usuarios-hint">O guia entra no sistema para preencher a própria disponibilidade e os idiomas.</p>
+        <label className="usuarios-field">
+          <span>E-mail (será o login)</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" autoFocus />
+        </label>
+        <label className="usuarios-field">
+          <span>Senha temporária</span>
+          <div className="usuarios-senha-row">
+            <input type="text" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="off" />
+            <button type="button" className="usuarios-icon-btn" title="Gerar outra senha" onClick={() => setSenha(gerarSenha())}>
+              <Icon name="refresh" size={16} />
+            </button>
+          </div>
+        </label>
+        {erro && <div className="usuarios-alert erro">{erro}</div>}
+        <div className="usuarios-modal-acoes">
+          <button type="button" className="usuarios-btn ghost" onClick={onFechar}>
+            Cancelar
+          </button>
+          <button type="submit" className="usuarios-btn primary" disabled={salvando}>
+            {salvando ? "Criando..." : "Criar acesso"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 const EditarUsuarioModal = ({
   usuario,
+  fotoAtual = null,
   guias,
   guiasVinculados,
   ehVoce,
@@ -782,6 +930,8 @@ const EditarUsuarioModal = ({
     verBalanco: usuario.verBalanco === true,
   });
   const [salvando, setSalvando] = useState(false);
+  // foto: só de quem não é guia (a do guia fica na Lista de guias); undefined = não mexeu
+  const [foto, setFoto] = useState(undefined);
 
   const set = (campo, valor) => setDados((p) => ({ ...p, [campo]: valor }));
 
@@ -792,7 +942,7 @@ const EditarUsuarioModal = ({
       return;
     }
     setSalvando(true);
-    await onSalvar(dados);
+    await onSalvar(fotoAtual !== null && foto !== undefined ? { ...dados, foto } : dados);
     setSalvando(false);
   };
 
@@ -805,6 +955,8 @@ const EditarUsuarioModal = ({
       >
         <h3>Editar acesso</h3>
         <p className="usuarios-hint">{usuario.email}</p>
+
+        {fotoAtual !== null && <CampoFoto nome={dados.nome} foto={foto === undefined ? fotoAtual : foto} onChange={setFoto} disabled={salvando} />}
 
         <label className="usuarios-field">
           <span>Nome</span>

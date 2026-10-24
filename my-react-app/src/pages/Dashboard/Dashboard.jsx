@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { VERSAO_TEXTO } from "../../versao";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import "./styles.css";
 
@@ -53,6 +54,7 @@ const formatarHora = (ms) =>
   new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 const itemAtivo = (item, pathname) => {
+  if (item.abas) return item.abas.some((a) => pathname === a.to || pathname.startsWith(`${a.to}/`));
   if (item.match) return item.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (item.end) return pathname === item.to;
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
@@ -132,8 +134,10 @@ const Dashboard = ({ loading }) => {
   // Além do nível, no Operacional cada tela pode estar bloqueada para a
   // conta (Controle de acessos — Context/acessos.js).
   const podeVer = useCallback(
-    (item) => {
+    function ver(item) {
       if (!(ACESSO[item.area] || []).includes(role)) return false;
+      // item com abas: aparece se alguma aba estiver liberada
+      if (item.abas) return item.abas.some((a) => ver({ ...a, area: item.area }));
       if (item.somenteBalanco) return podeVerBalanco(perfil);
       if (role !== ROLES.OPERACIONAL) return true;
       if (item.somenteGerencia) return ehGerencia(perfil);
@@ -144,14 +148,18 @@ const Dashboard = ({ loading }) => {
     [role, perfil, regiao],
   );
 
-  // item com várias telas (Cadastros): abre na primeira liberada
+  // item com várias telas (Cadastros, abas): abre na primeira liberada
   const ajustarRota = useCallback(
     (item) => {
+      if (item.abas) {
+        const abas = item.abas.filter((a) => podeVer({ ...a, area: item.area }));
+        return { ...item, abasVisiveis: abas, to: abas[0]?.to || item.to };
+      }
       if (!item.rotaPorChave || role !== ROLES.OPERACIONAL) return item;
       const chave = (Array.isArray(item.chave) ? item.chave : [item.chave]).find((c) => podeArea(perfil, c, regiao));
       return chave ? { ...item, to: item.rotaPorChave[chave] } : item;
     },
-    [role, perfil, regiao],
+    [role, perfil, regiao, podeVer],
   );
 
   // Gerência trocando de base: fica na tela se ela existe na nova base;
@@ -176,11 +184,24 @@ const Dashboard = ({ loading }) => {
     [podeVer, ajustarRota, veOperacao],
   );
 
+  // seção com abas (ex.: Guias → Lista · Afinidade · Disponibilidade)
+  const secaoComAbas = useMemo(() => {
+    for (const g of grupos) {
+      const item = g.itens.find((i) => i.abasVisiveis && itemAtivo(i, pathname));
+      if (item && item.abasVisiveis.length > 1) return item;
+    }
+    return null;
+  }, [grupos, pathname]);
+
   // breadcrumb: Grupo / Página
   const migalhas = useMemo(() => {
     for (const g of grupos) {
       const item = g.itens.find((i) => itemAtivo(i, pathname));
-      if (item) return [g.titulo, item.label];
+      if (item) {
+        const aba = item.abasVisiveis?.find((a) => pathname === a.to || pathname.startsWith(`${a.to}/`));
+        if (aba) return [g.titulo, g.titulo === item.label ? aba.label : `${item.label} · ${aba.label}`];
+        return [g.titulo, item.label];
+      }
     }
     return ROTAS_FORA_DO_MENU[pathname] || null;
   }, [grupos, pathname]);
@@ -329,7 +350,7 @@ const Dashboard = ({ loading }) => {
               </button>
             </div>
 
-            <div className="sidebar-version">v1.2.0 Beta</div>
+            <div className="sidebar-version">{VERSAO_TEXTO}</div>
           </div>
         </aside>
 
@@ -436,6 +457,20 @@ const Dashboard = ({ loading }) => {
               <FotosGuiasProvider>
                 {/* key: trocar de base remonta a tela e refaz as buscas no Phoenix certo */}
                 <Fragment key={regiao.id}>
+                  {secaoComAbas && (
+                    <nav className="app-secao-abas" aria-label={secaoComAbas.label}>
+                      <span className="app-secao-abas__tit">
+                        <Icon name={secaoComAbas.icon} size={15} /> {secaoComAbas.label}
+                      </span>
+                      <span className="app-secao-abas__lista">
+                        {secaoComAbas.abasVisiveis.map((a) => (
+                          <NavLink key={a.to} to={a.to} className={({ isActive }) => `app-secao-abas__aba ${isActive ? "is-on" : ""}`}>
+                            <Icon name={a.icon} size={14} /> {a.label}
+                          </NavLink>
+                        ))}
+                      </span>
+                    </nav>
+                  )}
                   <Outlet />
                 </Fragment>
               </FotosGuiasProvider>

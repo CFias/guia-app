@@ -89,7 +89,7 @@
 .atv-serie__valor {
   margin-bottom: 2px;
   color: var(--text-2, var(--text));
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -97,7 +97,7 @@
   position: absolute;
   bottom: -18px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 
@@ -550,7 +550,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, #e0a100 18%, transparent);
   color: #9a6a00;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -722,7 +722,7 @@
   position: absolute;
   bottom: -18px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 

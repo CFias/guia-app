@@ -6,6 +6,7 @@ import {
 } from "firebase/firestore";
 import { getLanguages } from "../../Services/Services/languages.service";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
+import "./styles.css";
 import "./guias.css";
 import { Bandeira, Drawer, Field, Icon } from "../ui";
 import FotoGuiaEditor from "./FotoGuiaEditor";
@@ -52,6 +53,8 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
 
   const [motoguia, setMotoguia] = useState(false);
   const [ativo, setAtivo] = useState(true);
+  // mensagem que o guia vê no "Meu perfil" (reconhecimento da equipe)
+  const [reconhecimento, setReconhecimento] = useState("");
 
   const [loadingDados, setLoadingDados] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
@@ -65,6 +68,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
     setAtivo(guia.ativo !== false);
     setNivelPrioridade(Number(guia.nivelPrioridade || 2));
     setIdiomasSelecionados(guia.idiomas || []);
+    setReconhecimento(guia.reconhecimento || "");
   }, [guia]);
 
   useEffect(() => {
@@ -162,6 +166,7 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
         idiomas: idiomasSelecionados,
         motoguia,
         ativo,
+        reconhecimento: reconhecimento.trim().slice(0, 400),
         updatedAt: new Date(),
       });
 
@@ -303,6 +308,21 @@ const EditarGuiaModal = ({ guia, onClose, onSaved }) => {
           <option value={3}>3 - Alta</option>
         </select>
       </Field>
+
+      <Field label="Mensagem de reconhecimento" icon="sparkles" hint="Aparece em destaque no “Meu perfil” do guia. Escreva como a equipe o enxerga — ex.: “Seu cuidado com as famílias no City Tour é a cara da Luck.”">
+        <textarea
+          rows={3}
+          maxLength={400}
+          placeholder="Uma mensagem só dele (opcional). Sem mensagem, o perfil mostra um reconhecimento automático pelos idiomas, passeios e tempo de casa."
+          value={reconhecimento}
+          onChange={(e) => setReconhecimento(e.target.value)}
+          disabled={bloqueado}
+        />
+      </Field>
+
+      <a className="ui-btn ui-btn--secondary guia-ver-como" href={`/ver-como-guia/${guia.id}`} target="_blank" rel="noopener noreferrer">
+        <Icon name="eye" size={15} /> Ver como o guia vê
+      </a>
     </Drawer>
   );
 };

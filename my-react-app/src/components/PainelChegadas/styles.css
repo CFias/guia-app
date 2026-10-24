@@ -27,7 +27,7 @@
 
 .painel-chegadas-subtitle {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -80,7 +80,7 @@
 
 .painel-chegadas-card-header p {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -175,7 +175,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 500;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -227,7 +227,7 @@
 .painel-chegadas-stat span,
 .painel-chegadas-kpi span {
     display: block;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -304,7 +304,7 @@
     justify-content: center;
     padding: 6px 10px;
     border-radius: 999px;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
 }
@@ -355,7 +355,7 @@
     background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     color: var(--text);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 500;
 }
 
@@ -372,7 +372,7 @@
 .painel-chegadas-table thead th {
     text-align: left;
     padding: 12px 14px;
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text);
     background: color-mix(in srgb, var(--accent) 8%, var(--surface) 92%);
@@ -504,7 +504,7 @@
 }
 
 .painel-chegadas-alert-main span {
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text);
 }
@@ -524,7 +524,7 @@
     background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     color: var(--text);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 500;
 }
 
@@ -603,7 +603,7 @@
     background: color-mix(in srgb, var(--bg) 20%, var(--surface) 80%);
     border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent 22%);
     color: var(--text);
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 500;
 }
 
@@ -625,7 +625,7 @@
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     transition: all 0.2s ease;
 }

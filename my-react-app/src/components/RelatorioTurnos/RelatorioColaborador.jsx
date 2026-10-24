@@ -29,6 +29,9 @@ const PERIODOS = [
   },
   { value: "90", label: "90 dias", calc: () => [somarDias(hoje(), -89), hoje()] },
 ];
+// ✓ recebeu (1ª etapa), carro embarcou (última)
+const iconeEtapa = (k, n) => (k === 0 ? "check" : k === n - 1 ? "car" : "circleCheck");
+const tomEtapa = (k, n) => (k === 0 ? "rec" : k === n - 1 ? "emb" : "meio");
 const pct = (v) => `${num(v, v && v < 10 ? 1 : 0)}%`;
 
 const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, etapas, regra, onClose }) => {
@@ -62,9 +65,9 @@ const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, eta
     <Drawer
       open
       onClose={onClose}
-      width={620}
-      title={`Relatório de ${pessoa.nome}`}
-      subtitle={`${pessoa.turnoNome || "—"} · ${ini === fim ? dataBr(ini) : `${dataBr(ini)} a ${dataBr(fim)}`}`}
+      width={560}
+      title="Relatório do colaborador"
+      subtitle="Atendimento no aeroporto"
       footer={
         <>
           <Button icon="download" onClick={() => baixarExcelColaborador(saida)} disabled={!r}>
@@ -76,115 +79,163 @@ const RelatorioColaborador = ({ pessoa, docsFiltro, inicioFiltro, fimFiltro, eta
         </>
       }
     >
-      <div className="rtn-colab">
-        <Segmented size="sm" ariaLabel="Período do relatório" value={periodo} onChange={setPeriodo} options={PERIODOS.map(({ value, label }) => ({ value, label }))} />
-        {carga.erro && chave && <p className="rtn-atd__vazio">{carga.erro}</p>}
+      <div className="rcb">
+        <div className="rcb-cab">
+          <span className="rcb-cab__avatar" style={{ background: pessoa.cor || "var(--accent)" }} aria-hidden="true">
+            {String(pessoa.nome || "?").trim().charAt(0).toUpperCase()}
+          </span>
+          <span className="rcb-cab__txt">
+            <b>{pessoa.nome}</b>
+            <small>
+              {pessoa.turnoNome && pessoa.turnoNome !== "—" ? `${pessoa.turnoNome} · ` : ""}
+              {ini === fim ? dataBr(ini) : `${dataBr(ini)} a ${dataBr(fim)}`}
+            </small>
+          </span>
+        </div>
+        <div className="rcb-periodo">
+          <Segmented size="sm" ariaLabel="Período do relatório" value={periodo} onChange={setPeriodo} options={PERIODOS.map(({ value, label }) => ({ value, label }))} />
+        </div>
+        {carga.erro && chave && <p className="rcb-vazio">{carga.erro}</p>}
         {!r ? (
-          <p className="rtn-atd__vazio">
+          <p className="rcb-vazio">
             <Icon name="loader" size={16} className="ui-spin" /> Carregando…
           </p>
         ) : r.totalVeiculos === 0 && r.noShows.length === 0 ? (
-          <p className="rtn-atd__vazio">{pessoa.nome} não marcou nenhum atendimento neste período.</p>
+          <p className="rcb-vazio">{pessoa.nome} não marcou nenhum atendimento neste período.</p>
         ) : (
           <>
-            <div className="rtn-esp__kpis rtn-colab__kpis">
-              {etapas.map((e) => (
-                <div key={e.id}>
-                  <b className="tabular">{num(r.etapas[e.id].pax, 1)}</b>
-                  <span>
-                    pax · {e.nome.toLowerCase()} em {r.etapas[e.id].veiculos} veíc. · {pct(r.etapas[e.id].pct)} do total
-                  </span>
-                </div>
-              ))}
+            {/* o que fez, etapa por etapa */}
+            <div className="rcb-etapas">
+              {etapas.map((e, k) => {
+                const v = r.etapas[e.id];
+                return (
+                  <div key={e.id} className={`rcb-etapa is-${tomEtapa(k, etapas.length)}`}>
+                    <span className="rcb-etapa__ic">
+                      <Icon name={iconeEtapa(k, etapas.length)} size={15} />
+                    </span>
+                    <span className="rcb-etapa__nome">{e.nome}</span>
+                    <b className="rcb-etapa__num tabular">
+                      {num(v.pax, 1)} <small>pax</small>
+                    </b>
+                    <span className="rcb-etapa__sub">
+                      em {v.veiculos} veículo{v.veiculos === 1 ? "" : "s"} · {pct(v.pct)} do total
+                    </span>
+                    <span className="rcb-etapa__barra" aria-hidden="true">
+                      <span style={{ width: `${Math.min(100, v.pct || 0)}%` }} />
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <dl className="rcb-fatos">
               {etapas.length > 1 && (
                 <div>
-                  <b className="tabular">{textoMinutos(r.esperaMedia)}</b>
-                  <span>espera média dos veículos dele(a)</span>
+                  <dt>Espera média</dt>
+                  <dd className="tabular">{textoMinutos(r.esperaMedia)}</dd>
                 </div>
               )}
               <div>
-                <b className="tabular">{r.dias.length}</b>
-                <span>dia(s) com atendimento</span>
+                <dt>Dias com atendimento</dt>
+                <dd className="tabular">{r.dias.length}</dd>
               </div>
               <div>
-                <b className="tabular">{r.noShows.length}</b>
-                <span>no show(s) informado(s) · {r.noShows.filter((n) => n.tipo === "com_custo").length} com custo</span>
+                <dt>No shows informados</dt>
+                <dd className="tabular">
+                  {r.noShows.length}
+                  {r.noShows.length > 0 && <small> · {r.noShows.filter((n) => n.tipo === "com_custo").length} com custo</small>}
+                </dd>
               </div>
-            </div>
+            </dl>
 
             {r.dias.length > 1 && (
-              <section className="rtn-colab__sec">
+              <section className="rcb-sec">
                 <h4>Dia a dia</h4>
-                <ul className="rtn-barras">
+                <ul className="rcb-dias">
                   {r.dias.map((d) => (
                     <li key={d.data}>
-                      <div className="rtn-barras__topo">
-                        <span>{dataBr(d.data)}</span>
-                        <b className="tabular">{etapas.map((e) => `${num(d.etapas[e.id].pax, 1)} ${e.nome.slice(0, 4).toLowerCase()}.`).join(" · ")}</b>
-                      </div>
-                      <div className="rtn-barras__trilho" aria-hidden="true">
+                      <span className="rcb-dias__data tabular">{dataBr(d.data).slice(0, 5)}</span>
+                      <span className="rcb-dias__trilho" aria-hidden="true">
                         <span style={{ width: `${((d.etapas[etapas[0].id]?.pax || 0) / maxDia) * 100}%`, background: pessoa.cor || "var(--accent)" }} />
-                      </div>
+                      </span>
+                      <span className="rcb-dias__num tabular">{etapas.map((e) => num(d.etapas[e.id].pax, 1)).join(" / ")}</span>
                     </li>
                   ))}
                 </ul>
+                <small className="rcb-nota">pax por dia: {etapas.map((e) => e.nome.toLowerCase()).join(" / ")}</small>
               </section>
             )}
 
             {r.noShows.length > 0 && (
-              <section className="rtn-colab__sec">
+              <section className="rcb-sec">
                 <h4>No shows informados ({r.noShows.length})</h4>
-                <ul className="rtn-colab__veic">
+                <ul className="rcb-lista">
                   {r.noShows.map((n) => (
-                    <li key={`${n.docId}-${n.chave}`}>
-                      <div className="rtn-colab__veic-topo">
-                        <b className="tabular">
-                          {dataBr(n.data).slice(0, 5)} {n.hora || ""}
-                        </b>
-                        <span>
-                          {n.titular || "Sem nome"} · {n.codigo || "sem código"} · {n.pax} pax
-                        </span>
-                        <span className={`rtn-ns-tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
-                      </div>
+                    <li key={`${n.docId}-${n.chave}`} className="rcb-ns">
+                      <span className="rcb-v__hora tabular">
+                        {n.hora || "--:--"}
+                        <small>{dataBr(n.data).slice(0, 5)}</small>
+                      </span>
+                      <span className="rcb-ns__txt">
+                        <b>{n.titular || "Sem nome"}</b>
+                        <small>
+                          {n.codigo || "sem código"} · {n.pax} pax
+                        </small>
+                      </span>
+                      <span className={`rcb-ns__tag is-${n.tipo}`}>{n.tipo === "com_custo" ? "Com custo" : "Sem custo"}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            <section className="rtn-colab__sec">
+            <section className="rcb-sec">
               <h4>Veículos atendidos ({r.veiculos.length})</h4>
-              <ul className="rtn-colab__veic">
-                {r.veiculos.map(({ doc, etapas: minhas, espera }) => (
-                  <li key={doc.id}>
-                    <div className="rtn-colab__veic-topo">
-                      <b className="tabular">
-                        {r.dias.length > 1 ? `${dataBr(doc.data).slice(0, 5)} ` : ""}
-                        {doc.hora || "--:--"}
-                      </b>
-                      <span>
-                        {(doc.voos || []).join(", ") || "Sem voo"} · {doc.veiculo || "sem veículo"} · {doc.pax} pax
-                      </span>
-                    </div>
-                    <div className="rtn-colab__tags">
-                      {minhas.map((m) => {
-                        const e = etapas.find((x) => x.id === m.id);
-                        return (
-                          <span key={m.id} className="rtn-colab__tag">
-                            {e?.nome} {horaDe(m.em)}
-                            {m.lancado ? "*" : ""} · {num(m.pax, 1)} pax{m.dividido ? " (dividido)" : ""}
-                          </span>
-                        );
-                      })}
-                      {espera?.min !== null && espera?.min !== undefined && <span className="rtn-colab__espera">espera {textoMinutos(espera.min)}</span>}
-                    </div>
-                    {Array.isArray(doc.reservas) && doc.reservas.length > 0 && (
-                      <small className="rtn-colab__res">{doc.reservas.map((x) => `${x.titular || x.codigo} (${x.pax})`).join(" · ")}</small>
-                    )}
-                  </li>
-                ))}
+              <ul className="rcb-lista">
+                {r.veiculos.map(({ doc, etapas: minhas, espera }, idx) => {
+                  const novoDia = r.dias.length > 1 && (idx === 0 || r.veiculos[idx - 1].doc.data !== doc.data);
+                  return (
+                    <li key={doc.id} className="rcb-v">
+                      {novoDia && <span className="rcb-v__dia">{dataBr(doc.data)}</span>}
+                      <span className="rcb-v__hora tabular">{doc.hora || "--:--"}</span>
+                      <div className="rcb-v__info">
+                        <div className="rcb-v__linha">
+                          <b>{doc.veiculo || "Sem veículo"}</b>
+                          <span className="rcb-v__pax tabular">{doc.pax} pax</span>
+                        </div>
+                        <small className="rcb-v__voo">
+                          <Icon name="planeLanding" size={12} /> {(doc.voos || []).join(", ") || "Sem voo"}
+                        </small>
+                        <div className="rcb-v__etapas">
+                          {minhas.map((m) => {
+                            const k = etapas.findIndex((x) => x.id === m.id);
+                            const e = etapas[k];
+                            return (
+                              <span key={m.id} className={`rcb-chip is-${tomEtapa(k, etapas.length)}`}>
+                                <Icon name={iconeEtapa(k, etapas.length)} size={11} />
+                                {e?.nome} {horaDe(m.em)}
+                                {m.lancado ? "*" : ""}
+                                <i>
+                                  {num(m.pax, 1)} pax{m.dividido ? " · dividido" : ""}
+                                </i>
+                              </span>
+                            );
+                          })}
+                          {espera?.min !== null && espera?.min !== undefined && (
+                            <span className="rcb-chip is-espera">
+                              <Icon name="clock" size={11} /> espera {textoMinutos(espera.min)}
+                            </span>
+                          )}
+                        </div>
+                        {Array.isArray(doc.reservas) && doc.reservas.length > 0 && (
+                          <small className="rcb-v__res">{doc.reservas.map((x) => `${x.titular || x.codigo} (${x.pax})`).join(" · ")}</small>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
-              {r.veiculos.some((v) => v.etapas.some((m) => m.lancado)) && <small className="rtn-colab__nota">* lançado pelo Operacional sem o horário da cartinha.</small>}
+              {r.veiculos.some((v) => v.etapas.some((m) => m.lancado)) && <small className="rcb-nota">* lançado pelo Operacional sem o horário da cartinha.</small>}
             </section>
           </>
         )}

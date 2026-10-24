@@ -63,13 +63,135 @@ const formatarWhatsapp = (valor) => {
     : `(${ddd}) ${n.slice(2, 6)}-${n.slice(6)}`;
 };
 
-const MinhaDisponibilidade = () => {
-  useEffect(() => {
-    definirTituloAba("Minha disponibilidade");
-  }, []);
+/* ---------- reconhecimento (Meu perfil) ----------
+   Mensagem da equipe (Lista de guias → Editar → "Mensagem de reconhecimento")
+   ou, sem ela, um reconhecimento montado com os dados do guia, mais selos. */
+const primeiroNome = (n = "") => String(n).trim().split(/\s+/)[0] || "";
+const anoDe = (v) => {
+  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.getFullYear() : null;
+};
+const semanasComEnvio = (salvos = [], hojeIso, n = 6) => {
+  if (!hojeIso) return 0;
+  const inicio = somarDias(hojeIso, -7 * n);
+  const semanas = new Set(
+    salvos
+      .filter((s) => s.date >= inicio && s.date <= hojeIso)
+      .map((s) => {
+        const dow = (new Date(`${s.date}T12:00:00Z`).getUTCDay() + 6) % 7;
+        return somarDias(s.date, -dow);
+      }),
+  );
+  return semanas.size;
+};
+const montarReconhecimento = ({ guia, idiomas = [], salvos = [], hojeIso }) => {
+  const nome = primeiroNome(guia?.nome);
+  const ano = anoDe(guia?.createdAt);
+  const anoAtual = new Date().getFullYear();
+  const presenca = semanasComEnvio(salvos, hojeIso, 6);
+  const selos = [];
+  if (idiomas.length >= 3) selos.push({ icone: "languages", texto: "Poliglota" });
+  else if (idiomas.length === 2) selos.push({ icone: "languages", texto: "Bilíngue" });
+  if (guia?.motoguia) selos.push({ icone: "bike", texto: "Motoguia" });
+  if (presenca >= 4) selos.push({ icone: "calendarCheck", texto: "Presença constante" });
+  if (ano && ano < anoAtual) selos.push({ icone: "star", texto: `Com a Luck desde ${ano}` });
 
-  const { perfil, user, logout } = useAuth();
+  if (guia?.reconhecimento) return { texto: guia.reconhecimento, daEquipe: true, selos };
+  // sem números de passeios: o repertório real é sempre maior do que o cadastro
+  const frases = [];
+  if (idiomas.length >= 2) frases.push("Os idiomas que você fala abrem as portas da Bahia para o mundo inteiro.");
+  if (guia?.motoguia) frases.push("Você une guia e direção com uma segurança que poucos têm.");
+  if (presenca >= 4) frases.push("Sua presença constante deixa a escala de toda a equipe mais tranquila.");
+  if (ano && ano < anoAtual) frases.push(`Já são ${anoAtual - ano} ano(s) fazendo Salvador brilhar com a gente.`);
+  const [f1] = frases;
+  const fecho = "Cada passeio que você guia é uma memória nova criada para cada turista que chega a Salvador — obrigado por fazer parte da história de tanta gente.";
+  const texto = f1 ? `${nome}, ${f1.charAt(0).toLowerCase()}${f1.slice(1)} ${fecho}` : `${nome}, cada passeio que você guia é uma memória nova criada para cada turista que chega a Salvador. Que bom ter você no time!`;
+  return { texto, daEquipe: false, selos };
+};
+
+const CartaoReconhecimento = (props) => {
+  const r = montarReconhecimento(props);
+  return (
+    <section className="minha-disp-card guia-reconhece">
+      <span className="guia-reconhece__ic" aria-hidden="true">
+        <Icon name="sparkles" size={18} />
+      </span>
+      <div>
+        <small className="guia-reconhece__tit">{r.daEquipe ? "Uma mensagem da equipe Luck" : "Como a equipe enxerga você"}</small>
+        <p className="guia-reconhece__txt">“{r.texto}”</p>
+        {r.daEquipe && <small className="guia-reconhece__assin">— Equipe Operacional · Luck Receptivo SSA</small>}
+        {r.selos.length > 0 && (
+          <ul className="guia-reconhece__selos">
+            {r.selos.map((s) => (
+              <li key={s.texto}>
+                <Icon name={s.icone} size={13} /> {s.texto}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+};
+
+/* ---------- agradecimento depois do envio ---------- */
+const FRASES_OBRIGADO = [
+  (n) => `Obrigado, ${n}! Sua disponibilidade já chegou para a equipe. Contar com você faz toda a diferença na nossa semana.`,
+  (n) => `Recebemos seus dias, ${n}! Ficamos felizes com a sua disponibilidade — é assim que a Luck faz bonito em Salvador.`,
+  (n) => `Valeu, ${n}! Com a sua disponibilidade a gente monta uma escala melhor para cada turista que chega a Salvador.`,
+  (n) => `${n}, obrigado pela parceria de sempre! Sua disponibilidade foi recebida e já está com a operação.`,
+];
+const AgradecimentoEnvio = ({ nome, tipo, dias, inicio, fim, onFechar }) => {
+  const n = primeiroNome(nome) || "guia";
+  const semana = Number(String(inicio || "").replace(/-/g, "")) || 0;
+  const texto =
+    tipo === "cancelamento"
+      ? `Tudo certo, ${n}. Suas datas foram retiradas e a equipe já foi avisada. Obrigado por avisar com antecedência — isso ajuda muito a operação.`
+      : FRASES_OBRIGADO[semana % FRASES_OBRIGADO.length](n);
+  useEffect(() => {
+    const esc = (e) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onFechar]);
+  return (
+    <div className="guia-obrigado" role="dialog" aria-modal="true" aria-label="Disponibilidade enviada" onClick={onFechar}>
+      <div className="guia-obrigado__card" onClick={(e) => e.stopPropagation()}>
+        <span className="guia-obrigado__ic" aria-hidden="true">
+          <Icon name={tipo === "cancelamento" ? "circleCheck" : "sparkles"} size={26} />
+        </span>
+        <h2>{tipo === "cancelamento" ? "Datas retiradas" : "Disponibilidade enviada!"}</h2>
+        <p>{texto}</p>
+        {tipo !== "cancelamento" && (
+          <span className="guia-obrigado__resumo">
+            <Icon name="calendarCheck" size={14} /> {dias} dia(s) disponível(is) · semana de {dataBr(inicio)} a {dataBr(fim)}
+          </span>
+        )}
+        <button type="button" className="minha-disp-btn primary" onClick={onFechar}>
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* previa: { guideId, nome } — a gerência vê exatamente o que o guia vê
+   (Lista de guias → "Ver como o guia"). Nada é gravado: salvar mostra o
+   agradecimento e a mensagem, mas não escreve no banco. */
+const MinhaDisponibilidade = ({ previa = null }) => {
+  useEffect(() => {
+    definirTituloAba(previa ? `Prévia · ${previa.nome || "guia"}` : "Minha disponibilidade");
+  }, [previa]);
+
+  const { perfil: perfilConta, user, logout } = useAuth();
+  const perfil = useMemo(
+    () => (previa ? { nome: previa.nome, guideId: previa.guideId, guideName: previa.nome } : perfilConta),
+    [previa, perfilConta],
+  );
   const guideId = perfil?.guideId;
+  // na prévia dá para ver o envio aberto mesmo fora da janela
+  const [simularAberta, setSimularAberta] = useState(true);
+  // agradecimento depois de enviar a disponibilidade
+  const [obrigado, setObrigado] = useState(null);
 
   const [aba, setAba] = useState("disponibilidade");
 
@@ -112,10 +234,10 @@ const MinhaDisponibilidade = () => {
     };
   }, []);
 
-  const janela = useMemo(
-    () => getEstadoJanela(agora, janelaConfig),
-    [agora, janelaConfig],
-  );
+  const janela = useMemo(() => {
+    const j = getEstadoJanela(agora, janelaConfig);
+    return previa && simularAberta && !j.aberta ? { ...j, aberta: true, restanteMin: 24 * 60 } : j;
+  }, [agora, janelaConfig, previa, simularAberta]);
 
   /* ---------- disponibilidade ---------- */
   const [salvos, setSalvos] = useState([]); // [{ day, date }]
@@ -159,7 +281,7 @@ const MinhaDisponibilidade = () => {
     let vivo = true;
     getDoc(doc(db, "guide_fotos", guideId))
       .then((snap) => vivo && setFoto(snap.exists() ? snap.data()?.foto || "" : ""))
-      .catch(() => { });
+      .catch(() => {});
     return () => {
       vivo = false;
     };
@@ -167,6 +289,11 @@ const MinhaDisponibilidade = () => {
 
   const trocarFoto = async (arquivo) => {
     if (!arquivo || !guideId) return;
+    if (previa) {
+      setMsgFoto({ tipo: "ok", texto: "Prévia: a foto do guia não é trocada por aqui." });
+      if (inputFotoRef.current) inputFotoRef.current.value = "";
+      return;
+    }
     setSalvandoFoto(true);
     setMsgFoto(null);
     try {
@@ -185,6 +312,10 @@ const MinhaDisponibilidade = () => {
 
   const tirarFoto = async () => {
     if (!guideId || !foto) return;
+    if (previa) {
+      setMsgFoto({ tipo: "ok", texto: "Prévia: a foto do guia não é removida por aqui." });
+      return;
+    }
     setSalvandoFoto(true);
     setMsgFoto(null);
     try {
@@ -306,7 +437,7 @@ const MinhaDisponibilidade = () => {
 
     // Confere de novo na hora de salvar (a janela pode ter fechado no meio).
     const agoraMesmo = getEstadoJanela(new Date(), janelaConfig);
-    if (!agoraMesmo.aberta) {
+    if (!agoraMesmo.aberta && !previa) {
       setAgora(new Date());
       setMsg({
         tipo: "erro",
@@ -362,19 +493,21 @@ const MinhaDisponibilidade = () => {
         total: depois.size,
         createdAt: serverTimestamp(),
       });
-      await lote.commit();
+      if (!previa) await lote.commit();
 
       setSalvos(final);
       setAtualizadoEm(new Date());
       setEdicao(null);
-      registrarAcao("disponibilidade", tipo === "cancelamento" ? "Removeu datas da disponibilidade" : "Enviou a disponibilidade", `${depois.size} dia(s)`); // Balanço de uso
+      if (!previa) registrarAcao("disponibilidade", tipo === "cancelamento" ? "Removeu datas da disponibilidade" : "Enviou a disponibilidade", `${depois.size} dia(s)`); // Balanço de uso
       setMsg({
         tipo: "ok",
-        texto:
-          tipo === "cancelamento"
+        texto: previa
+          ? "Prévia: nada foi salvo — é só para ver como fica para o guia."
+          : tipo === "cancelamento"
             ? "Datas removidas. O operacional foi avisado."
             : "Disponibilidade salva! O operacional foi avisado.",
       });
+      setObrigado({ tipo, dias: depois.size, inicio: janela.semanaInicio, fim: janela.semanaFim });
     } catch (err) {
       console.error("Erro ao salvar disponibilidade:", err);
       setMsg({
@@ -442,11 +575,11 @@ const MinhaDisponibilidade = () => {
         total: depois.length,
         createdAt: serverTimestamp(),
       });
-      await lote.commit();
+      if (!previa) await lote.commit();
 
       setGuia((g) => ({ ...g, idiomas: depois }));
       setIdiomasEdicao(null);
-      setMsgIdiomas({ tipo: "ok", texto: "Idiomas salvos! O operacional foi avisado." });
+      setMsgIdiomas({ tipo: "ok", texto: previa ? "Prévia: nada foi salvo." : "Idiomas salvos! O operacional foi avisado." });
     } catch (err) {
       console.error("Erro ao salvar idiomas:", err);
       setMsgIdiomas({
@@ -527,7 +660,21 @@ const MinhaDisponibilidade = () => {
   const todosMarcados = janela.dias.every((d) => marcadas.has(d.date));
 
   return (
-    <div className="minha-disp-page">
+    <div className={`minha-disp-page ${previa ? "is-previa" : ""}`}>
+      {previa && (
+        <div className="guia-previa-faixa" role="status">
+          <Icon name="eye" size={16} />
+          <span>
+            <b>Prévia:</b> você está vendo o que {previa.nome || "o guia"} vê. Nada é salvo nem avisado.
+          </span>
+          <label>
+            <input type="checkbox" checked={simularAberta} onChange={(e) => setSimularAberta(e.target.checked)} /> Simular envio aberto
+          </label>
+          <button type="button" onClick={() => (window.opener ? window.close() : window.history.back())}>
+            <Icon name="x" size={14} /> Fechar prévia
+          </button>
+        </div>
+      )}
       <header className="guia-hero">
         <PaisagemNordeste className="guia-hero__paisagem" />
 
@@ -556,11 +703,13 @@ const MinhaDisponibilidade = () => {
               <Icon name="info" size={16} />
               Sobre
             </Link>
-            <AvaliacaoSistema variante="botao" className="minha-disp-sair" />
-            <button type="button" className="minha-disp-sair" onClick={logout}>
-              <Icon name="logout" size={16} />
-              Sair
-            </button>
+            {!previa && <AvaliacaoSistema variante="botao" className="minha-disp-sair" />}
+            {!previa && (
+              <button type="button" className="minha-disp-sair" onClick={logout}>
+                <Icon name="logout" size={16} />
+                Sair
+              </button>
+            )}
           </span>
         </div>
 
@@ -680,10 +829,11 @@ const MinhaDisponibilidade = () => {
                 <p>
                   {janela.aberta
                     ? `Você pode enviar, alterar ou remover datas até ${janela.nomeDiaFechamento.toLowerCase()} às 23h59.`
-                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${janela.diasAteAbrir > 0
-                      ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
-                      : ""
-                    }.`}
+                    : `Reabre ${janela.nomeDiaAbertura.toLowerCase()} (${dataBr(janela.proximaAberturaIso)}) às 00h${
+                        janela.diasAteAbrir > 0
+                          ? `, em ${janela.diasAteAbrir} dia${janela.diasAteAbrir > 1 ? "s" : ""}`
+                          : ""
+                      }.`}
                 </p>
                 {janela.aberta && (
                   <div
@@ -721,14 +871,14 @@ const MinhaDisponibilidade = () => {
                   <section className="minha-disp-card guia-semana">
                     <div className="guia-semana__topo">
                       <div>
-                        <h2>
-                          <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
-                        </h2>
-                        <p className="minha-disp-nota">
-                          {janela.aberta
-                            ? "Toque só nos dias em que você está totalmente livre."
-                            : "O envio dos dias da semana que vem abre na quinta-feira."}
-                        </p>
+                      <h2>
+                        <Icon name="calendar" size={16} /> Semana que vem: {intervalo}
+                      </h2>
+                      <p className="minha-disp-nota">
+                        {janela.aberta
+                          ? "Toque só nos dias em que você está totalmente livre."
+                          : "O envio dos dias da semana que vem abre na quinta-feira."}
+                      </p>
                       </div>
                       <span className="guia-contador" aria-label={`${marcadas.size} de ${janela.dias.length} dias marcados`}>
                         <strong>{marcadas.size}</strong>/{janela.dias.length}
@@ -936,6 +1086,7 @@ const MinhaDisponibilidade = () => {
                 </div>
               ) : (
                 <>
+                  <CartaoReconhecimento guia={guia} idiomas={idiomasSalvos} salvos={salvos} hojeIso={janela.hojeIso} />
                   <section className="minha-disp-card guia-perfil">
                     <div className="guia-perfil__topo">
                       <span className="guia-foto-wrap">
@@ -1107,12 +1258,12 @@ const MinhaDisponibilidade = () => {
                             {(Array.isArray(p.frequencia)
                               ? p.frequencia.length > 0
                               : p.frequencia) && (
-                                <span className="minha-disp-freq">
-                                  {Array.isArray(p.frequencia)
-                                    ? p.frequencia.join(" · ")
-                                    : p.frequencia}
-                                </span>
-                              )}
+                              <span className="minha-disp-freq">
+                                {Array.isArray(p.frequencia)
+                                  ? p.frequencia.join(" · ")
+                                  : p.frequencia}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -1124,6 +1275,8 @@ const MinhaDisponibilidade = () => {
           )}
         </>
       )}
+
+      {obrigado && <AgradecimentoEnvio nome={perfil?.nome} {...obrigado} onFechar={() => setObrigado(null)} />}
     </div>
   );
 };

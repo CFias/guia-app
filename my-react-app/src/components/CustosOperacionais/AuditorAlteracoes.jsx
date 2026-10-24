@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles, useToast } from "../ui";
+import { Button, Card, CardHeader, EmptyState, Icon, KpiTiles, MoreMenu, useToast } from "../ui";
 import { useAuth } from "../../Context/AuthContext";
 import { useRegiao } from "../../Context/regiaoContext";
 import {
@@ -136,7 +136,7 @@ const TabelaRegras = ({ config, onFechar }) => {
     setSalvando(true);
     try {
       await salvarConfigCustos({ auditoria: normalizarAuditoria(r) });
-      mostrarToast("Tabela de custos das alterações salva");
+      mostrarToast("Custos extras por atualização salvos");
       onFechar?.();
     } catch (e) {
       console.error(e);
@@ -149,12 +149,12 @@ const TabelaRegras = ({ config, onFechar }) => {
     <Card className="aud-regras">
       <CardHeader
         icon="tag"
-        title="Tabela de custos das alterações"
-        subtitle="Quanto cada tipo de alteração custa além da diferença da tabela de tarifas. Valor fixo, % do valor do serviço e valor por passageiro somam."
+        title="Custos extras por atualização"
+        subtitle="Quanto cada tipo de atualização custa além da diferença da tabela de tarifas. Valor fixo, % do valor do serviço e valor por passageiro somam."
       />
       <div className="aud-regras__gerais">
         <span className="aud-regras__info">
-          <Icon name="clock" size={14} /> A programação do dia é guardada sozinha à meia-noite; as alterações são registradas ao longo do dia.
+          <Icon name="clock" size={14} /> A programação do dia é guardada sozinha à meia-noite; as atualizações são registradas ao longo do dia.
         </span>
         <label className="aud-check">
           <input type="checkbox" checked={r.contarTabela} onChange={(e) => setR((x) => ({ ...x, contarTabela: e.target.checked }))} />
@@ -307,6 +307,17 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     }
   }, [rel, doc, data, hoje, resumoGravado]);
 
+  // cards: fechados mostram só o resumo; "abrir todos" inverte
+  const [cardsAbertos, setCardsAbertos] = useState(() => new Set());
+  const [todosAbertos, setTodosAbertos] = useState(false);
+  const alternarCard = (id) =>
+    setCardsAbertos((x) => {
+      const n = new Set(x);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const [ordem, setOrdem] = useState("hora");
   // reservas abertas (por veículo); serviço novo/cancelado já abre
   const [abertas, setAbertas] = useState(() => new Set());
   const alternarReservas = (k) =>
@@ -319,7 +330,9 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
   const passaFiltro = (a) =>
     (!filtroTipo || a.classe === filtroTipo) &&
     (!filtroImpacto || (filtroImpacto === "mais" ? a.impacto > 0 : filtroImpacto === "menos" ? a.impacto < 0 : a.impacto === 0));
-  const lista = rel ? rel.alteracoes.filter(passaFiltro) : [];
+  const lista = rel
+    ? rel.alteracoes.filter(passaFiltro).sort((x, y) => (ordem === "impacto" ? Math.abs(y.impacto) - Math.abs(x.impacto) : 0))
+    : [];
   const nImpacto = (f) => (rel ? rel.alteracoes.filter((a) => (f === "mais" ? a.impacto > 0 : f === "menos" ? a.impacto < 0 : a.impacto === 0)).length : 0);
 
   const baixarExcel = () => {
@@ -328,7 +341,7 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
       [`Auditor da programação · ${dataBr(data)}`],
       [`Programação fechada: ${quando(foto.em)} (${ORIGEM[foto.origem] || foto.origem})`],
       [],
-      ["Hora", "Tipo", "Atualização", "Serviço", "Programado", "Agora", "Detalhes", "Custo programado", "Custo agora", "Diferença da tabela", "Tabela das alterações", "Impacto", "Resultado"],
+      ["Hora", "Tipo", "Atualização", "Serviço", "Programado", "Agora", "Detalhes", "Custo programado", "Custo agora", "Diferença da tabela", "Custos extras", "Impacto", "Resultado"],
       ...rel.alteracoes.map((a) => [
         a.hora,
         NOME_TIPO[a.tipoServico] || a.tipoServico,
@@ -402,43 +415,99 @@ ${
             </Button>
           </span>
           <span className="aud-barra__acoes">
-            <Button size="sm" icon="refresh" onClick={() => setRecarga((x) => x + 1)} loading={carregando && !!foto && doDia} disabled={carregando}>
-              Atualizar
-            </Button>
-            <Button size="sm" icon="download" onClick={baixarExcel} disabled={!rel}>
-              Excel
-            </Button>
-            <Button size="sm" icon="printer" onClick={imprimirDia} disabled={!rel}>
-              Relatório
-            </Button>
-            <Button size="sm" icon="eye" onClick={() => setObsAberto((x) => !x)}>
-              O que observar
-            </Button>
-            <Button size="sm" icon="tag" onClick={() => setRegrasAbertas((x) => !x)}>
-              Tabela de custos
-            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              iconOnly
+              icon="refresh"
+              onClick={() => setRecarga((x) => x + 1)}
+              loading={carregando && !!foto && doDia}
+              disabled={carregando}
+              title="Conferir agora (o sistema já confere sozinho a cada 10 min)"
+              aria-label="Conferir agora"
+            />
+            <MoreMenu
+              label="Exportar"
+              buttonLabel="Exportar"
+              icon="download"
+              items={[
+                { label: "Relatório (imprimir / PDF)", icon: "printer", onClick: imprimirDia, disabled: !rel },
+                { label: "Planilha Excel", icon: "fileText", onClick: baixarExcel, disabled: !rel },
+              ]}
+            />
+            <MoreMenu
+              label="Ajustes do auditor"
+              buttonLabel="Ajustes"
+              icon="settings"
+              items={[
+                { label: "O que observar", icon: "eye", onClick: () => setObsAberto((x) => !x) },
+                { label: "Custos extras por atualização", icon: "tag", onClick: () => setRegrasAbertas((x) => !x) },
+              ]}
+            />
           </span>
         </div>
-        <div className="aud-fotos">
-          <span className={`aud-foto ${foto ? "is-ok" : data > hoje ? "" : "is-falta"} ${foto?.origem === "atrasada" ? "is-atrasada" : ""}`}>
-            <Icon name={foto ? (foto.origem === "atrasada" ? "alert" : "circleCheck") : "clock"} size={15} />
-            {foto ? (
-              <span>
-                <b>Programação de {dataBr(data).slice(0, 5)}</b> · {ORIGEM[foto.origem] || foto.origem} ({quando(foto.em)}) · {foto.servicos} serviço(s)
-                {rel ? <> · {formatarReais(rel.totais.totalFoto, { semCentavos: true })}</> : null}
-              </span>
-            ) : (
-              <span>
-                <b>Programação de {dataBr(data).slice(0, 5)}</b> ·{" "}
-                {data > hoje
-                  ? `em montagem — fecha às 23:59 e, a partir da meia-noite, cada atualização aparece aqui.${doc?.previa?.servicos ? ` Por enquanto: ${doc.previa.servicos} serviço(s).` : ""}`
+        {(() => {
+          // a linha do dia: Montagem (véspera) → Fechada (00:00) → Operação
+          const vespera = dataBr(somarDias(data, -1)).slice(0, 5);
+          const passou = data < hoje;
+          const nAt = rel ? rel.alteracoes.length : null;
+          const passos = [
+            {
+              id: "montagem",
+              icone: "pencil",
+              nome: "Montagem",
+              sub: `${vespera} · a base monta a programação`,
+              estado: data > hoje ? "atual" : "feito",
+            },
+            {
+              id: "fechada",
+              icone: foto?.origem === "atrasada" ? "alert" : "lock",
+              nome: "Programação fechada",
+              sub: foto
+                ? `${quando(foto.em)} · ${foto.servicos} serviço(s)${rel ? ` · ${formatarReais(rel.totais.totalFoto, { semCentavos: true })}` : ""}`
+                : data > hoje
+                  ? `fecha às 23:59${doc?.previa?.servicos ? ` · por enquanto ${doc.previa.servicos} serviço(s)` : ""}`
                   : data === hoje
                     ? "guardando agora…"
-                    : "não foi guardada (o sistema não estava aberto nesse dia)."}
-              </span>
-            )}
-          </span>
-        </div>
+                    : "não foi guardada",
+              estado: foto ? (foto.origem === "atrasada" ? "aviso" : "feito") : data > hoje ? "futuro" : "aviso",
+            },
+            {
+              id: "operacao",
+              icone: "activity",
+              nome: passou ? "Operação encerrada" : "Operação",
+              sub:
+                data > hoje
+                  ? "começa à meia-noite"
+                  : nAt === null
+                    ? "comparando com o Phoenix…"
+                    : `${nAt} atualização(ões)${data === hoje ? " até agora" : ""}`,
+              estado: data > hoje ? "futuro" : passou ? "feito" : "atual",
+            },
+          ];
+          return (
+            <>
+              <ol className="aud-trilha" aria-label="Linha do dia">
+                {passos.map((p) => (
+                  <li key={p.id} className={`is-${p.estado}`}>
+                    <span className="aud-trilha__ic">
+                      <Icon name={p.estado === "feito" && p.id !== "operacao" ? "check" : p.icone} size={14} />
+                    </span>
+                    <span className="aud-trilha__txt">
+                      <b>{p.nome}</b>
+                      <small>{p.sub}</small>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {foto?.origem && foto.origem !== "meia-noite" && (
+                <p className="aud-trilha__nota">
+                  <Icon name="info" size={13} /> Programação {ORIGEM[foto.origem] || foto.origem}.
+                </p>
+              )}
+            </>
+          );
+        })()}
       </Card>
 
       {obsAberto && <OQueObservar config={config} onFechar={() => setObsAberto(false)} />}
@@ -466,23 +535,54 @@ ${
       ) : !rel ? (
         <Card>
           <p className="aud-carregando">
-            <Icon name="loader" size={16} className="ui-spin" /> Comparando a foto com o Phoenix…
+            <Icon name="loader" size={16} className="ui-spin" /> Comparando a programação com o Phoenix…
           </p>
         </Card>
       ) : (
         <>
+          {!config.tarifas?.length && config.frota?.modelo !== "frota" && (
+            <div className="ui-aviso-acao" role="status">
+              <Icon name="tag" size={18} />
+              <span className="ui-aviso-acao__txt">
+                <b>Esta base ainda não tem tarifas cadastradas.</b> O auditor mostra o que mudou, mas o custo das atualizações sai R$ 0 até preencher o tarifário (ou a frota própria) em Configurar custos.
+              </span>
+            </div>
+          )}
+          <p className="aud-manchete">
+            {rel.alteracoes.length ? (
+              <>
+                <b>{pl(rel.alteracoes.length, "atualização", "atualizações")}</b> desde a programação fechada.{" "}
+                {rel.totais.impacto > 0 ? (
+                  <>
+                    O custo <b className="is-mais">subiu {formatarReais(rel.totais.impacto)}</b>
+                  </>
+                ) : rel.totais.impacto < 0 ? (
+                  <>
+                    O custo <b className="is-menos">caiu {formatarReais(-rel.totais.impacto)}</b>
+                  </>
+                ) : (
+                  <>O custo não mudou</>
+                )}{" "}
+                ({nImpacto("mais")} encareceram, {nImpacto("menos")} enxugaram).
+              </>
+            ) : (
+              <>Nenhuma atualização desde a programação fechada. O custo segue o programado.</>
+            )}
+          </p>
           <KpiTiles
+            highlightFirst={false}
             items={[
-              { key: "n", label: "Atualizações no dia", value: rel.alteracoes.length, hint: `desde a programação fechada · ${rel.totais.servicosFoto} → ${rel.totais.servicosAgora} serviço(s)`, icon: "listCheck" },
-              { key: "mais", label: "Custo maior", value: sinal(rel.totais.aumentos), hint: `${nImpacto("mais")} atualização(ões) encareceram`, icon: "trendingUp", tone: rel.totais.aumentos > 0 ? "alert" : undefined },
-              { key: "menos", label: "Custo enxugado", value: sinal(rel.totais.reducoes), hint: `${nImpacto("menos")} atualização(ões) economizaram`, icon: "trendingDown" },
+              { key: "n", info: "Cada grupo de passageiros que mudou depois da programação fechada conta como uma atualização.", label: "Atualizações no dia", value: rel.alteracoes.length, hint: `desde a programação fechada · ${rel.totais.servicosFoto} → ${rel.totais.servicosAgora} serviço(s)`, icon: "listCheck" },
+              { key: "mais", info: "Soma das atualizações que deixaram o serviço mais caro (tabela de tarifas ou frota, mais os custos extras por atualização).", label: "Custo maior", value: sinal(rel.totais.aumentos), hint: `${nImpacto("mais")} atualização(ões) encareceram`, icon: "trendingUp", tone: rel.totais.aumentos > 0 ? "alert" : undefined },
+              { key: "menos", info: "Soma das atualizações que deixaram o serviço mais barato.", label: "Custo enxugado", value: sinal(rel.totais.reducoes), hint: `${nImpacto("menos")} atualização(ões) economizaram`, icon: "trendingDown", tone: rel.totais.reducoes < 0 ? "success" : undefined },
               {
                 key: "saldo",
+                info: "Custo maior + custo enxugado: quanto o dia ficou acima (ou abaixo) do programado.",
                 label: "Saldo do dia",
                 value: sinal(rel.totais.impacto),
                 hint: `programado ${formatarReais(rel.totais.totalFoto, { semCentavos: true })} → agora ${formatarReais(rel.totais.totalAgora, { semCentavos: true })}`,
                 icon: "activity",
-                tone: rel.totais.impacto > 0 ? "alert" : undefined,
+                tone: rel.totais.impacto > 0 ? "alert" : rel.totais.impacto < 0 ? "success" : undefined,
               },
             ]}
           />
@@ -527,33 +627,62 @@ ${
                 <span className="is-saiu"><i /> saiu</span>
                 <span className="is-trocou"><i /> trocou</span>
                 <span className="is-continua"><i /> continua</span>
-                <span className="aud-legenda__dica">
-                  <Icon name="info" size={12} /> comparado com a programação fechada à meia-noite
+                <span className="aud-legenda__acoes">
+                  <select className="ui-input aud-ordem" value={ordem} onChange={(e) => setOrdem(e.target.value)} aria-label="Ordenar">
+                    <option value="hora">Ordenar por horário</option>
+                    <option value="impacto">Ordenar por maior impacto</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={todosAbertos ? "chevronUp" : "chevronDown"}
+                    onClick={() => {
+                      setTodosAbertos((x) => !x);
+                      setCardsAbertos(new Set());
+                    }}
+                  >
+                    {todosAbertos ? "Fechar todos" : "Abrir todos"}
+                  </Button>
                 </span>
               </div>
               <ul className="aud-ats">
                 {lista.map((a) => {
                   const res = a.impacto > 0 ? "mais" : a.impacto < 0 ? "menos" : "zero";
                   const rg = reservasDoGrupo(a);
+                  const aberto = cardsAbertos.has(a.id) !== todosAbertos;
                   return (
-                    <li key={a.id} className={`aud-at is-${res}`}>
-                      <div className="aud-at__topo">
-                        <span className={`aud-classe is-${a.classe}`}>
-                          <Icon name={ICONE_CLASSE[a.classe] || "sliders"} size={14} /> {a.titulo}
+                    <li key={a.id} className={`aud-at is-${res} ${aberto ? "is-aberto" : ""}`}>
+                      <button type="button" className="aud-at__cab" onClick={() => alternarCard(a.id)} aria-expanded={aberto}>
+                        <span className="aud-at__cab-txt">
+                          <span className="aud-at__topo">
+                            <span className={`aud-classe is-${a.classe}`}>
+                              <Icon name={ICONE_CLASSE[a.classe] || "sliders"} size={14} /> {a.titulo}
+                            </span>
+                            <span className="aud-at__quando">
+                              <Icon name="clock" size={13} /> <b className="tabular">{a.hora || "--:--"}</b>
+                              <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
+                              {a.servico ? <span className="aud-at__serv">{a.servico}</span> : null}
+                            </span>
+                          </span>
+                          <span className="aud-at__frase">{fraseDaAtualizacao(a)}</span>
                         </span>
-                        <span className="aud-at__quando">
-                          <Icon name="clock" size={13} /> <b className="tabular">{a.hora || "--:--"}</b>
-                          <span className={`cst-tipo cst-tipo--${a.tipoServico}`}>{NOME_TIPO[a.tipoServico] || a.tipoServico}</span>
-                          {a.servico ? <span className="aud-at__serv">{a.servico}</span> : null}
+                        <span className={`aud-at__imp is-${res}`}>
+                          <b className="tabular">{a.impacto ? sinal(a.impacto) : formatarReais(0)}</b>
+                          <span className={`aud-res is-${res}`}>
+                            <Icon name={res === "mais" ? "trendingUp" : res === "menos" ? "trendingDown" : "minus"} size={13} />
+                            {res === "mais" ? "Custo maior" : res === "menos" ? "Custo enxugado" : "Sem impacto"}
+                          </span>
+                          <small className="tabular">
+                            {formatarReais(a.totalAntes, { semCentavos: true })} → {formatarReais(a.totalDepois, { semCentavos: true })}
+                          </small>
                         </span>
-                        <span className={`aud-res is-${res}`}>
-                          <Icon name={res === "mais" ? "trendingUp" : res === "menos" ? "trendingDown" : "minus"} size={14} />
-                          {res === "mais" ? "Custo maior" : res === "menos" ? "Custo enxugado" : "Sem impacto"}
+                        <span className="aud-at__chev" aria-hidden="true">
+                          <Icon name={aberto ? "chevronUp" : "chevronDown"} size={18} />
                         </span>
-                      </div>
+                      </button>
 
-                      <p className="aud-at__frase">{fraseDaAtualizacao(a)}</p>
-
+                      {aberto && (
+                      <>
                       <div className="aud-at__meio">
                         <div className="aud-at__fluxo">
                           {[
@@ -689,14 +818,6 @@ ${
                           ))}
                         </div>
 
-                        <div className="aud-at__custo">
-                          <span className="aud-at__custo-rot">Impacto no custo</span>
-                          <b className="tabular">{a.impacto ? sinal(a.impacto) : formatarReais(0)}</b>
-                          <small className="tabular">
-                            {formatarReais(a.totalAntes, { semCentavos: true })} → {formatarReais(a.totalDepois, { semCentavos: true })}
-                          </small>
-                          {a.custoRegras ? <small className="aud-at__regra">inclui {formatarReais(a.custoRegras)} da tabela de alterações</small> : null}
-                        </div>
                       </div>
 
                       {(() => {
@@ -720,6 +841,13 @@ ${
                           </div>
                         );
                       })()}
+                      {a.custoRegras ? (
+                        <p className="aud-at__regra">
+                          <Icon name="info" size={12} /> O impacto inclui {formatarReais(a.custoRegras)} de custos extras por atualização.
+                        </p>
+                      ) : null}
+                      </>
+                      )}
                     </li>
                   );
                 })}

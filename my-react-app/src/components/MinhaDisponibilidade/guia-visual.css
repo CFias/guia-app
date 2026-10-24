@@ -125,7 +125,7 @@
 }
 
 .guia-resumo small {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: var(--text-3);
 }
 
@@ -235,7 +235,7 @@
 
 .guia-dia__estado {
   margin-top: auto;
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: var(--text-3);
 }
 
@@ -297,7 +297,7 @@
 }
 
 .guia-calendario__dia small {
-  font-size: calc(10px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -360,7 +360,7 @@
 }
 
 .guia-perfil__numeros small {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: var(--text-3);
   text-align: center;
 }
@@ -596,4 +596,206 @@ a.minha-disp-sair {
 
 .guia-foto-msg.is-erro {
   color: var(--alert, #d9480f);
+}
+
+/* ---------- prévia (ver como o guia) ---------- */
+.guia-previa-faixa {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 13px;
+}
+
+.guia-previa-faixa span {
+  flex: 1;
+  min-width: 220px;
+}
+
+.guia-previa-faixa label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.guia-previa-faixa button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guia-previa-faixa button:hover {
+  background: rgba(255, 255, 255, .12);
+}
+
+/* ---------- reconhecimento (Meu perfil) ---------- */
+.guia-reconhece {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--divider));
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    var(--surface);
+}
+
+.guia-reconhece__ic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.guia-reconhece>div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.guia-reconhece__tit {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guia-reconhece__txt {
+  margin: 0;
+  color: var(--text);
+  font-size: calc(17px * var(--escala-fonte, 1));
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.guia-reconhece__assin {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.guia-reconhece__selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guia-reconhece__selos li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: color-mix(in srgb, var(--accent) 85%, var(--text));
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* ---------- agradecimento depois do envio ---------- */
+.guia-obrigado {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  animation: guia-obrigado-entra .18s ease-out;
+}
+
+.guia-obrigado__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 28px 24px 22px;
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .45);
+  animation: guia-obrigado-sobe .28s cubic-bezier(.2, .9, .3, 1.2);
+}
+
+.guia-obrigado__ic {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.guia-obrigado__card h2 {
+  margin: 4px 0 0;
+  font-size: calc(20px * var(--escala-fonte, 1));
+}
+
+.guia-obrigado__card p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+}
+
+.guia-obrigado__resumo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.guia-obrigado__card .minha-disp-btn {
+  margin-top: 6px;
+  min-width: 140px;
+}
+
+@keyframes guia-obrigado-entra {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes guia-obrigado-sobe {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guia-obrigado, .guia-obrigado__card {
+    animation: none;
+  }
 }

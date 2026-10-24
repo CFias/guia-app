@@ -1145,7 +1145,7 @@
         left: 6px;
         justify-content: center;
         padding: 0 4px;
-        font-size: calc(10px * var(--escala-fonte, 1));
+        font-size: var(--fs-xs);
     }
 
     .faq-cat-veiculo-selos {
@@ -1604,7 +1604,7 @@
     border-radius: var(--radius-pill);
     background: rgba(255, 255, 255, 0.9);
     color: #1d2322;
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     text-overflow: ellipsis;
@@ -1623,7 +1623,7 @@
     border-radius: var(--radius-pill);
     background: #fff3c9;
     color: #8a6a00;
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     font-weight: 700;
 }
 
@@ -1742,7 +1742,7 @@
 
 .faq-cat-faixa-texto small {
     color: rgba(255, 255, 255, 0.82);
-    font-size: 11px;
+    font-size: var(--fs-xs);
 }
 
 /* a faixa ocupa a base da foto: os outros selos sobem */
@@ -1809,7 +1809,7 @@
     .faq-cat-faixa-avatar .ui-guia-avatar__foto {
         width: 22px !important;
         height: 22px !important;
-        font-size: 10px !important;
+        font-size: var(--fs-xs) !important;
     }
 
     .faq-cat-faixa-texto small {
@@ -1887,7 +1887,7 @@
     background: #fff;
     color: #1d2125;
     font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     line-height: 1;

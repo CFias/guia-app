@@ -7,6 +7,7 @@ import {
   melhorCombinacaoDoDia,
   pesoDoServico,
 } from "./plannerEncaixe";
+import { bonusAprendido, chavePasseio } from "./escalaAprendizado";
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -1142,6 +1143,8 @@ export const gerarPlanoAlocacaoSemana = ({
   //  experienciaPorGuiaId:    guiaId -> { passeioId -> dias que fez }
   cargaHistoricaPorGuiaId = null,
   experienciaPorGuiaId = {},
+  // o que a equipe ensinou editando a escala (escalaAprendizado.js)
+  aprendizado = null,
 }) => {
   const modoIdioma = normalizarModoIdioma(modoIdiomaBruto);
   const usarEncaixe = motorEscala !== "fila";
@@ -1170,6 +1173,26 @@ export const gerarPlanoAlocacaoSemana = ({
   });
 
   const atualizacoes = [];
+
+  // quantas vezes cada guia já faz cada passeio nesta semana (evita o
+  // mesmo guia repetir o mesmo passeio quando há outro apto)
+  const chaveDoItem = (item) =>
+    chavePasseio(
+      resolverServiceIdDoItem(item, servicesData, normalizarTexto),
+      item?.serviceName,
+      normalizarTexto,
+    );
+  const passeiosDaSemana = {};
+  const contarPasseio = (guiaId, chave) => {
+    if (!guiaId || !chave) return;
+    if (!passeiosDaSemana[guiaId]) passeiosDaSemana[guiaId] = {};
+    passeiosDaSemana[guiaId][chave] =
+      (passeiosDaSemana[guiaId][chave] || 0) + 1;
+  };
+  registrosSemana.forEach((r) => {
+    if (r?.guiaId && r.allocationStatus !== "CLOSED")
+      contarPasseio(r.guiaId, chaveDoItem(r));
+  });
 
   // Relatório: o que ficou sem guia e por quê (nada some sem explicação).
   const naoAlocados = [];
@@ -1273,6 +1296,19 @@ export const gerarPlanoAlocacaoSemana = ({
           servicesData,
           normalizarTexto,
         );
+        const chave = chavePasseio(
+          passeioId,
+          item.serviceName,
+          normalizarTexto,
+        );
+        const experienciaMaisAlta = passeioId
+          ? Math.max(
+              0,
+              ...candidatosDia.map((g) =>
+                Number(experienciaPorGuiaId?.[g.id]?.[passeioId] || 0),
+              ),
+            )
+          : 0;
 
         return candidatosDia.map((g) => {
           if (!elegiveis.has(g.id)) return null;
@@ -1295,6 +1331,11 @@ export const gerarPlanoAlocacaoSemana = ({
             experiencia: passeioId
               ? Number(experienciaPorGuiaId?.[g.id]?.[passeioId] || 0)
               : 0,
+            experienciaMaisAlta,
+            repeticoesNaSemana: Number(passeiosDaSemana[g.id]?.[chave] || 0),
+            aprendido: aprendizado
+              ? bonusAprendido(aprendizado, g.id, chave)
+              : null,
             pesos: pesosEscala,
           });
           detalhes[i][g.id] = r;
@@ -1320,6 +1361,7 @@ export const gerarPlanoAlocacaoSemana = ({
         });
 
         alocadosNoDia.add(item.id);
+        contarPasseio(guiaSelecionado.id, chaveDoItem(item));
         atualizarEstadoAposAlocacao({
           guiaSelecionado,
           date: dia.date,

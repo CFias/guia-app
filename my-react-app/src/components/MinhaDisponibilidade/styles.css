@@ -358,7 +358,7 @@
 }
 
 .minha-disp-dados dt {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: var(--m-muted);
   margin-bottom: 2px;
 }
@@ -423,7 +423,7 @@
 }
 
 .minha-disp-freq {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--accent-text);
 }

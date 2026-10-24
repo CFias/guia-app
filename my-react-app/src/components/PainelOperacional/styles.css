@@ -93,7 +93,7 @@
   gap: var(--pc-space-2);
   margin-bottom: var(--pc-space-3);
   color: var(--pc-text-muted);
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -156,7 +156,7 @@
 
 .painel-chegadas-card-header p {
   margin: 0;
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   line-height: 1.6;
   color: var(--pc-text-muted);
 }
@@ -319,7 +319,7 @@
   min-height: 38px;
   padding: 0 var(--pc-space-4);
   border-radius: var(--pc-radius-md);
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -467,7 +467,7 @@
 .painel-chegadas-stat span,
 .painel-chegadas-kpi span {
   display: block;
-  font-size: calc(10px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--pc-text-faint);
@@ -591,7 +591,7 @@
   min-height: 30px;
   padding: 0 var(--pc-space-2);
   border-radius: var(--pc-radius-pill);
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--pc-text-muted);
   cursor: pointer;
@@ -666,7 +666,7 @@
   min-height: 24px;
   padding: 0 var(--pc-space-3);
   border-radius: var(--pc-radius-pill);
-  font-size: calc(10px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -726,7 +726,7 @@
   border: 1px solid var(--pc-border-soft);
   background: var(--pc-surface);
   color: var(--text);
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 500;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -838,7 +838,7 @@
 .painel-chegadas-table thead th {
   text-align: left;
   padding: var(--pc-space-3) var(--pc-space-4);
-  font-size: calc(10px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--pc-text-muted);
@@ -1024,7 +1024,7 @@
 .painel-chegadas-modal-label {
   display: block;
   margin-bottom: var(--pc-space-2);
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--pc-text-muted);
 }

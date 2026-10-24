@@ -8,6 +8,7 @@ import {
   GuiaAvatar,
   Icon,
   KpiTiles,
+  MoreMenu,
   SearchInput,
   Segmented,
   StatusDot,
@@ -390,6 +391,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
   };
 
   /* ---------- números ---------- */
+  const semTarifa = linhas.filter((l) => l.origemValor === "sem-tarifa").length;
   const totais = useMemo(() => {
     const t = { fornecedores: 0, guias: 0, economia: 0, pax: 0, casados: 0, pendentes: 0, guiaAConfirmar: 0, guiaRef: 0, comGuia: 0, noShow: 0, economiaNoShow: 0 };
     linhas.forEach((l) => {
@@ -505,12 +507,21 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           <StatusDot tone={conferido ? "accent" : "muted"} icon={conferido ? "circleCheck" : undefined}>
             {conferido ? `Conferido${docDia?.conferidoPor ? ` por ${docDia.conferidoPor}` : ""}` : "Rascunho"}
           </StatusDot>
-          <Button icon="refresh" onClick={() => setRecarga((n) => n + 1)} loading={phoenix.estado === "carregando" && phoenix.data === data}>
-            Atualizar do Phoenix
-          </Button>
-          <Button icon="download" onClick={exportar} disabled={!linhas.length}>
-            CSV
-          </Button>
+          <Button
+            variant="ghost"
+            iconOnly
+            icon="refresh"
+            onClick={() => setRecarga((n) => n + 1)}
+            loading={phoenix.estado === "carregando" && phoenix.data === data}
+            title="Buscar de novo no Phoenix"
+            aria-label="Buscar de novo no Phoenix"
+          />
+          <MoreMenu
+            label="Exportar"
+            buttonLabel="Exportar"
+            icon="download"
+            items={[{ label: "Planilha (CSV)", icon: "fileText", onClick: exportar, disabled: !linhas.length }]}
+          />
           <Button variant={conferido ? "secondary" : "primary"} icon={conferido ? "undo" : "check"} onClick={alternarConferido} disabled={!linhas.length}>
             {conferido ? "Reabrir dia" : "Marcar como conferido"}
           </Button>
@@ -534,10 +545,55 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
         </div>
       )}
 
+      {!carregando && linhas.length > 0 && (
+        <p className="ui-manchete">
+          <b>
+            {diaDaSemanaLongo(data)}, {dataBr(data).slice(0, 5)}:
+          </b>{" "}
+          {linhas.length} serviço(s) com custo de <b>{formatarReais(totais.fornecedores + totais.guias)}</b>
+          {totais.economia + totais.economiaNoShow > 0 ? (
+            <>
+              {" "}
+              e <b className="is-menos">{formatarReais(totais.economia + totais.economiaNoShow, { semCentavos: true })} de economia</b>
+            </>
+          ) : null}
+          .{" "}
+          {totais.pendentes || alertas.length ? (
+            <>
+              Para revisar:{" "}
+              {[
+                totais.pendentes ? <b key="p" className="is-atencao">{totais.pendentes} pendência(s)</b> : null,
+                alertas.length ? <b key="a" className="is-alerta">{alertas.length} alerta(s)</b> : null,
+              ]
+                .filter(Boolean)
+                .reduce((acc, el, i) => (i ? [...acc, " e ", el] : [el]), [])}
+              .
+            </>
+          ) : (
+            <b className="is-ok">Tudo conferido, sem pendências.</b>
+          )}
+        </p>
+      )}
+
+      {!carregando && semTarifa > 0 && (
+        <div className="ui-aviso-acao" role="status">
+          <Icon name="tag" size={18} />
+          <span className="ui-aviso-acao__txt">
+            <b>{semTarifa} serviço(s) sem tarifa</b> — o custo deles entra como R$ 0 e o auditor não consegue dizer se uma atualização encareceu ou enxugou.
+            {!config.tarifas.length ? " Esta base ainda não tem nenhuma tarifa cadastrada." : ""}
+          </span>
+          <Button size="sm" variant="primary" icon="plus" onClick={() => onCriarTarifa?.({})}>
+            Cadastrar tarifas
+          </Button>
+        </div>
+      )}
+
       <KpiTiles
+        highlightFirst={false}
         items={[
           {
             key: "total",
+            info: "Soma do que se paga aos fornecedores (pela tabela de tarifas, frota própria ou valor lançado) e aos guias.",
             label: "Custo do dia",
             value: formatarReais(totais.fornecedores + totais.guias),
             hint: `Fornecedores ${formatarReais(totais.fornecedores, { semCentavos: true })} · Guias ${formatarReais(totais.guias, { semCentavos: true })}`,
@@ -554,6 +610,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           },
           {
             key: "economia",
+            info: "Serviço casado e valores lançados abaixo da tabela, mais o desconto de no-show.",
             label: "Economia",
             value: formatarReais(totais.economia + totais.economiaNoShow, { semCentavos: true }),
             hint:
@@ -563,10 +620,12 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
                   ? `+ no-show: ${formatarReais(totais.economiaNoShow, { semCentavos: true })} a menos`
                   : "casados e valores abaixo da tabela",
             icon: "trendingDown",
+            tone: totais.economia + totais.economiaNoShow > 0 ? "success" : undefined,
             loading: carregando,
           },
           {
             key: "pendencias",
+            info: "Serviços sem fornecedor, sem tarifa, sem categoria do veículo ou com guia sem valor. Clique para filtrar.",
             label: "Pendências",
             value: totais.pendentes,
             hint: "sem fornecedor, tarifa, categoria ou guia",
@@ -578,6 +637,7 @@ const CustoDia = ({ config, pronto, vinculos, fornecedores, onCriarTarifa }) => 
           },
           {
             key: "alertas",
+            info: "Passageiros acima da lotação, reserva marcada para não escalar e horários apertados no mesmo veículo. Clique para filtrar.",
             label: "Alertas",
             value: alertas.length,
             hint: alertas.length

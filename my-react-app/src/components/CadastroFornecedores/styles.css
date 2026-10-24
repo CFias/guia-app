@@ -23,7 +23,7 @@
 
 .cadastro-fornecedor-subtitle {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -75,7 +75,7 @@
 
 .cadastro-fornecedor-card-header p {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -246,7 +246,7 @@
     background: color-mix(in srgb, var(--accent-text) 10%, transparent 90%);
     border: 1px solid color-mix(in srgb, var(--accent-text) 16%, transparent 84%);
     color: var(--accent-text);
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
 }
 
@@ -481,7 +481,7 @@
 }
 
 .cadastro-fornecedor-item-top span {
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
 
@@ -532,7 +532,7 @@
     align-items: center;
     padding: 8px 10px;
     border-radius: 999px;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
     border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
@@ -540,7 +540,7 @@
 }
 
 .cadastro-fornecedor-empty-mini {
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     opacity: 0.75;
 }
 

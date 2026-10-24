@@ -103,7 +103,7 @@
   background: transparent;
   color: var(--accent-text);
   font: inherit;
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -213,7 +213,7 @@
 
 .notif-sub,
 .notif-hora {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: color-mix(in srgb, var(--text) 60%, transparent 40%);
 }
 
@@ -226,7 +226,7 @@
 .notif-chip {
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   font-weight: 600;
   border: 1px solid transparent;
 }
@@ -282,7 +282,7 @@
 }
 
 .notif-toast-corpo>span:not(.notif-chip) {
-  font-size: calc(11px * var(--escala-fonte, 1));
+  font-size: var(--fs-xs);
   color: color-mix(in srgb, var(--text) 60%, transparent 40%);
 }
 

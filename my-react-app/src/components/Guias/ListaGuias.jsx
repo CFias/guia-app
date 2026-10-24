@@ -4,6 +4,7 @@ import { getDocs } from "firebase/firestore";
 import EditarGuiaModal from "./EditarGuiaModal.jsx";
 import FotoRapidaGuia from "./FotoRapidaGuia";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
+import "./styles.css";
 import "./guias.css";
 import {
   Button,
@@ -11,8 +12,10 @@ import {
   EmptyState,
   Field,
   FilterBar,
+  Icon,
   IdiomaTag,
   PageHeader,
+  PrioridadeSinal,
   StatusDot,
   Table,
   TableHead,
@@ -211,20 +214,22 @@ const ListaGuias = () => {
                     <IdiomaTag key={idioma} idioma={idioma} />
                   ))}
                 </span>
-                <span
-                  className="guias-prioridade"
-                  title={`Prioridade ${prioridade} de 3`}
-                  aria-label={`Prioridade ${prioridade} de 3`}
-                >
-                  {[1, 2, 3].map((n) => (
-                    <span key={n} className={n <= prioridade ? "is-on" : ""} />
-                  ))}
-                </span>
+                <PrioridadeSinal nivel={prioridade} />
                 <span>{guia.motoguia ? "Sim" : "Não"}</span>
                 <StatusDot tone={guia.ativo ? "accent" : "muted"}>
                   {guia.ativo ? "Ativo" : "Inativo"}
                 </StatusDot>
-                <span className="ui-cell-end">
+                <span className="ui-cell-end guias-acoes">
+                  <a
+                    className="ui-btn ui-btn--ghost ui-btn--sm ui-btn--icon"
+                    href={`/ver-como-guia/${guia.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Ver como o guia vê (abre em outra aba, nada é salvo)"
+                    aria-label={`Ver como ${guia.nome} vê`}
+                  >
+                    <Icon name="eye" size={15} />
+                  </a>
                   <Button size="sm" icon="pencil" onClick={() => abrirPerfil(guia)}>
                     Editar
                   </Button>

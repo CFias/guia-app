@@ -221,17 +221,18 @@ const BalancoAlteracoes = () => {
       ) : (
         <>
           <KpiTiles
+            highlightFirst={false}
             items={[
               { key: "n", label: "Atualizações", value: t.alteracoes, hint: `${t.comResumo} dia(s) auditado(s) · ${t.mudancas} mudança(s)`, icon: "listCheck" },
               { key: "mais", label: "Custo maior", value: sinal(t.aumentos), hint: `${t.comAumento} atualização(ões)`, icon: "trendingUp", tone: t.aumentos > 0 ? "alert" : undefined },
-              { key: "menos", label: "Custo enxugado", value: sinal(t.reducoes), hint: `${t.comReducao} atualização(ões)`, icon: "trendingDown" },
+              { key: "menos", label: "Custo enxugado", value: sinal(t.reducoes), hint: `${t.comReducao} atualização(ões)`, icon: "trendingDown", tone: t.reducoes < 0 ? "success" : undefined },
               {
                 key: "saldo",
                 label: "Saldo do período",
                 value: sinal(t.impacto),
                 hint: `programado ${formatarReais(t.totalFoto, { semCentavos: true })} → final ${formatarReais(t.totalAgora, { semCentavos: true })}`,
                 icon: "activity",
-                tone: t.impacto > 0 ? "alert" : undefined,
+                tone: t.impacto > 0 ? "alert" : t.impacto < 0 ? "success" : undefined,
               },
             ]}
           />

@@ -427,9 +427,7 @@
 }
 
 @keyframes bv-flutuar {
-
-  0%,
-  100% {
+  0%, 100% {
     translate: 0 0;
   }
 
@@ -463,20 +461,15 @@
 }
 
 @keyframes bv-aceno {
-
-  0%,
-  60%,
-  100% {
+  0%, 60%, 100% {
     transform: rotate(0);
   }
 
-  10%,
-  30% {
+  10%, 30% {
     transform: rotate(16deg);
   }
 
-  20%,
-  40% {
+  20%, 40% {
     transform: rotate(-8deg);
   }
 }
@@ -564,7 +557,7 @@
   border: 2px solid var(--surface, #fff);
   background: var(--text, #1b1a19);
   color: var(--surface, #fff);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   line-height: 1;
 }

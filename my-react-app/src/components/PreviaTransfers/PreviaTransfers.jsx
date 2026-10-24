@@ -1044,13 +1044,15 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
           description={`Gerada automaticamente do Phoenix · ${formatarDataTitulo(dataSelecionada)} · ${loading ? "…" : resumo.veiculos} veículo(s)`}
           actions={
             <Button
+              variant="ghost"
+              iconOnly
               icon="refresh"
               onClick={carregarServicos}
               loading={loading}
               disabled={loading}
-            >
-              {loading ? "Atualizando serviços..." : "Atualizar"}
-            </Button>
+              title="Buscar os serviços de novo no Phoenix"
+              aria-label="Atualizar serviços"
+            />
           }
           more={[
             { label: "Prévia e envio aos fornecedores", icon: "send", onClick: () => navigate("/previas") },
@@ -1107,7 +1109,7 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
                       const arrastando =
                         draggingVehicle &&
                         normalizarNomeVeiculo(draggingVehicle) ===
-                        normalizarNomeVeiculo(grupo.veiculo);
+                          normalizarNomeVeiculo(grupo.veiculo);
 
                       return (
                         <div
@@ -1245,21 +1247,24 @@ const PreviaEscalasPlanilha = ({ secao } = {}) => {
         description="Prévia por veículo, com envio consolidado ao fornecedor pelo WhatsApp."
         actions={
           <>
-            <Button icon="alert" onClick={() => envioGeral(true)}>
-              Enviar todas atualizadas
-            </Button>
+            <Button
+              variant="ghost"
+              iconOnly
+              icon="refresh"
+              onClick={carregarServicos}
+              loading={loading}
+              disabled={loading}
+              title="Buscar os serviços de novo no Phoenix"
+              aria-label="Atualizar serviços"
+            />
             <Button variant="primary" icon="send" onClick={() => envioGeral(false)}>
               Enviar todas as prévias
             </Button>
           </>
         }
         more={[
-          {
-            label: loading ? "Atualizando serviços..." : "Atualizar serviços",
-            icon: "refresh",
-            onClick: carregarServicos,
-            disabled: loading,
-          },
+          { label: "Enviar só as atualizadas", icon: "alert", onClick: () => envioGeral(true) },
+          "divider",
           { label: "Abrir planilha operacional", icon: "planilha", onClick: () => navigate("/planilha") },
         ]}
       />

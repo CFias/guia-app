@@ -40,6 +40,11 @@ export const PESOS_ESCALA_PADRAO = {
   experienciaMax: 20, // teto do bônus de experiência (não vira "sempre o mesmo")
   // no modo Equilibrado o equilíbrio pesa mais
   equilibrioModoEquilibrado: 40,
+  // diversificar: guia apto (afinidade alta) que quase não faz o passeio,
+  // quando outros já fazem muito — dá chance de variar sem perder qualidade
+  diversificar: 10,
+  // mesmo guia repetindo o mesmo passeio na semana (por vez)
+  repetirNaSemana: 8,
 };
 
 // Serviço mais exigente pede guia mais experiente: o peso multiplica a
@@ -71,6 +76,9 @@ export const notaDeEncaixe = ({
   indicadores, // de calcularIndicadoresGuia
   modoPrioridade = false,
   experiencia = 0, // dias que o guia fez o passeio nas últimas 8 semanas
+  experienciaMaisAlta = 0, // maior experiência entre os candidatos do dia
+  repeticoesNaSemana = 0, // quantas vezes já faz esse passeio nesta semana
+  aprendido = null, // { pontos, motivo } — o que a equipe costuma fazer (escalaAprendizado.js)
   pesos = PESOS_ESCALA_PADRAO,
 }) => {
   const p = { ...PESOS_ESCALA_PADRAO, ...pesos };
@@ -95,6 +103,26 @@ export const notaDeEncaixe = ({
   if (experiencia > 0) {
     nota += Math.min(p.experienciaMax, experiencia * p.experienciaPorVez);
     motivos.push(`fez esse passeio ${experiencia}× nas últimas 8 semanas`);
+  }
+
+  // 1c) diversificar: apto, mas quase nunca escalado nesse passeio, enquanto
+  //     outro guia concentra — varia sem abrir mão da aptidão
+  if (
+    usarAfinidade &&
+    afinidadeUsada >= 70 &&
+    experiencia === 0 &&
+    experienciaMaisAlta >= 3
+  ) {
+    nota += p.diversificar;
+    motivos.push("apto e pouco escalado nesse passeio (diversifica)");
+  }
+  if (repeticoesNaSemana > 0) nota -= repeticoesNaSemana * p.repetirNaSemana;
+
+  // 1d) o que a equipe costuma fazer nas edições (critério secundário)
+  if (aprendido?.pontos) {
+    nota += aprendido.pontos;
+    if (aprendido.motivo && aprendido.pontos > 0)
+      motivos.push(aprendido.motivo);
   }
 
   // 2) idioma do grupo

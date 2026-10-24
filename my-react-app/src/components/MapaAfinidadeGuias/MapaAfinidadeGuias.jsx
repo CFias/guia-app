@@ -30,6 +30,7 @@ import {
 import { encontrarServiceCatalogo } from "../../Services/Services/plannerApi";
 import { normalizarTexto } from "../../Services/Services/plannerUtils";
 import CardSkeleton from "../CardSkeleton/CardSkeleton";
+import "./styles.css";
 import "./afinidade.css";
 import {
   Button,

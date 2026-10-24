@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/ui/PageHeader";
 import Segmented from "../../components/ui/Segmented";
-import RegisterGuias from "../../components/RegisterGuias/RegisterGuias";
 import CadastroFornecedores from "../../components/CadastroFornecedores/CadastroFornecedores";
 import GerenciarUsuarios from "../../components/GerenciarUsuarios/GerenciarUsuarios";
 import { useAuth } from "../../Context/AuthContext";
@@ -16,35 +15,38 @@ import "./styles.css";
    ========================================================= */
 
 const ABAS = [
-  { value: "guias", label: "Guias", icon: "users", rota: "/register-guias", chave: "cadastros" },
-  { value: "fornecedores", label: "Fornecedores", icon: "truck", rota: "/register-fornecedores", chave: "cadastros" },
-  { value: "usuarios", label: "Usuários e acessos", icon: "shield", rota: "/usuarios", chave: "usuarios" },
+  // Pessoas: guias e contas de acesso num cadastro só (as duas rotas antigas abrem aqui)
+  { value: "pessoas", label: "Pessoas", icon: "users", rota: "/usuarios", chaves: ["cadastros", "usuarios"] },
+  { value: "fornecedores", label: "Fornecedores", icon: "truck", rota: "/register-fornecedores", chaves: ["cadastros"] },
 ];
 
-const Cadastros = ({ aba = "guias" }) => {
+const Cadastros = ({ aba = "pessoas" }) => {
   const navigate = useNavigate();
   const { perfil } = useAuth();
+  const ativa = aba === "guias" || aba === "usuarios" ? "pessoas" : aba;
   // só as abas liberadas para a conta (Controle de acessos)
-  const abas = ABAS.filter((a) => podeArea(perfil, a.chave));
+  const abas = ABAS.filter((a) => a.chaves.some((c) => podeArea(perfil, c)));
 
   return (
     <div className="cadastros-page ui-page">
-      <PageHeader
-        title="Cadastros"
-        description="Guias, fornecedores e as contas de acesso ao sistema."
-      />
+      <PageHeader title="Cadastros" description="Pessoas (guias e contas de acesso) e fornecedores." />
 
       <Segmented
         ariaLabel="Tipo de cadastro"
-        value={aba}
-        onChange={(v) => navigate(ABAS.find((a) => a.value === v).rota)}
+        value={ativa}
+        onChange={(v) => navigate(v === "pessoas" && !podeArea(perfil, "usuarios") ? "/register-guias" : ABAS.find((a) => a.value === v).rota)}
         options={abas}
       />
 
       <div className="cadastros-conteudo">
-        {aba === "guias" && <RegisterGuias />}
-        {aba === "fornecedores" && <CadastroFornecedores />}
-        {aba === "usuarios" && <GerenciarUsuarios />}
+        {ativa === "pessoas" && (
+          <GerenciarUsuarios
+            podeContas={podeArea(perfil, "usuarios")}
+            podeGuias={podeArea(perfil, "cadastros")}
+            tipoInicial={aba === "guias" ? "guia" : undefined}
+          />
+        )}
+        {ativa === "fornecedores" && <CadastroFornecedores />}
       </div>
     </div>
   );

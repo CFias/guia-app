@@ -14,37 +14,6 @@
   gap: 6px;
 }
 
-.guias-prioridade {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 16px;
-}
-
-.guias-prioridade span {
-  width: 6px;
-  border-radius: 2px;
-  background: var(--raised);
-  border: 1px solid var(--divider);
-}
-
-.guias-prioridade span:nth-child(1) {
-  height: 6px;
-}
-
-.guias-prioridade span:nth-child(2) {
-  height: 11px;
-}
-
-.guias-prioridade span:nth-child(3) {
-  height: 16px;
-}
-
-.guias-prioridade span.is-on {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
 /* ---- drawer ---- */
 .editar-guia-bloco {
   display: flex;
@@ -311,4 +280,17 @@
   border-radius: 50%;
   background: none;
   cursor: zoom-in;
+}
+
+.guias-acoes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.guia-ver-como {
+  align-self: flex-start;
+  margin-top: 4px;
+  text-decoration: none;
 }

@@ -1,11 +1,13 @@
 import Icon from "./Icon";
 
 /* Tiles de indicadores.
-   items: [{ key, label, value, hint?, icon?, tone? ("alert"|"warning"),
-             active?, onClick?, title?, loading? }]
-   highlightFirst: o primeiro tile (ou o ativo) ganha fundo accent.
+   items: [{ key, label, value, hint?, icon?, tone? ("alert"|"warning"|"success"),
+             active?, onClick?, title?, loading?, info? }]
+   info: de onde vem o número (aparece num ⓘ ao lado do rótulo)
+   highlightFirst (desligado por padrão: cor só com significado): o primeiro
+   tile ganha fundo accent. O tile ativo (filtro ligado) sempre ganha.
    Tiles com onClick viram botões (para filtrar a tabela abaixo). */
-const KpiTiles = ({ items = [], highlightFirst = true, className = "" }) => {
+const KpiTiles = ({ items = [], highlightFirst = false, className = "" }) => {
   const algumAtivo = items.some((i) => i.active);
 
   return (
@@ -35,6 +37,11 @@ const KpiTiles = ({ items = [], highlightFirst = true, className = "" }) => {
             <span className="ui-kpi__label">
               {item.icon && <Icon name={item.icon} size={14} />}
               {item.label}
+              {item.info && (
+                <span className="ui-kpi__info" title={item.info} aria-label={item.info} role="img">
+                  <Icon name="info" size={13} />
+                </span>
+              )}
             </span>
             {item.hint && <span className="ui-kpi__hint">{item.hint}</span>}
           </Tag>

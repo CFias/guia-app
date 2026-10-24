@@ -18,7 +18,12 @@ const ROTULOS = (() => {
     "/register-fornecedores": "Cadastros · Fornecedores",
     "/register-guias": "Cadastros · Guias",
   };
-  GRUPOS_MENU.forEach((g) => g.itens.forEach((i) => (m[i.to] = m[i.to] || i.label)));
+  GRUPOS_MENU.forEach((g) =>
+    g.itens.forEach((i) => {
+      (i.abas || []).forEach((a) => (m[a.to] = m[a.to] || `${i.label} · ${a.label}`));
+      m[i.to] = m[i.to] || i.label;
+    }),
+  );
   [ITEM_CONFIGURACOES, ITEM_SOBRE].forEach((i) => (m[i.to] = i.label));
   Object.entries(ROTAS_FORA_DO_MENU).forEach(([r, [, label]]) => (m[r] = m[r] || label));
   return m;

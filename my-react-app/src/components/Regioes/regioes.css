@@ -293,7 +293,7 @@
   border-radius: 999px;
   background: var(--warning-soft);
   color: var(--warning);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-style: normal;
   font-weight: 700;
   vertical-align: 1px;

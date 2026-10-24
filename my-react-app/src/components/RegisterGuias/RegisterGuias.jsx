@@ -8,7 +8,11 @@ import GuiaAvatar from "../ui/GuiaAvatar";
 import { prepararFotoGuia, salvarFotoGuia } from "../../Services/Utils/fotoGuia";
 import { colBase } from "../../Services/Services/dadosBase";
 
-const CadastroGuia = () => {
+/* embutido: dentro de Cadastros → Pessoas (sem cabeçalho nem resumo).
+   children: campos extras antes do botão (ex.: "Dar acesso ao sistema").
+   validarExtra(): devolve uma mensagem de erro ou "" antes de salvar.
+   aoSalvar({ id, nome }): roda depois que o guia e a foto foram gravados. */
+const CadastroGuia = ({ embutido = false, children, validarExtra, aoSalvar }) => {
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
 
@@ -107,6 +111,11 @@ const CadastroGuia = () => {
       alert("Nome e WhatsApp são obrigatórios");
       return;
     }
+    const erroExtra = validarExtra?.() || "";
+    if (erroExtra) {
+      alert(erroExtra);
+      return;
+    }
 
     try {
       setSalvando(true);
@@ -131,7 +140,17 @@ const CadastroGuia = () => {
         }
       }
 
-      alert("Guia cadastrado com sucesso!");
+      let avisoAcesso = "";
+      if (aoSalvar) {
+        try {
+          avisoAcesso = (await aoSalvar({ id: novoGuia.id, nome })) || "";
+        } catch (e) {
+          console.error(e);
+          avisoAcesso = `\n\nO guia foi cadastrado, mas o acesso ao sistema não foi criado: ${e?.message || "erro"}. Use "Dar acesso" na lista.`;
+        }
+      }
+
+      alert(`Guia cadastrado com sucesso!${avisoAcesso}`);
 
       setFoto("");
 
@@ -154,7 +173,8 @@ const CadastroGuia = () => {
   const bloqueado = salvando || loadingInicial;
 
   return (
-    <div className="cadastro-guia-page">
+    <div className={`cadastro-guia-page ${embutido ? "is-embutido" : ""}`}>
+      {!embutido && (
       <div className="cadastro-guia-header">
         <div>
           <h2 className="cadastro-guia-title">
@@ -166,10 +186,12 @@ const CadastroGuia = () => {
           </p>
         </div>
       </div>
+      )}
 
       <div className="cadastro-guia-layout">
         <section className="cadastro-guia-grid">
           <div className="cadastro-guia-card cadastro-guia-card-large">
+            {!embutido && (
             <div className="cadastro-guia-card-header">
               <div className="cadastro-guia-card-title-row">
                 <h3>Informações do guia</h3>
@@ -180,6 +202,7 @@ const CadastroGuia = () => {
                 características operacionais.
               </p>
             </div>
+            )}
 
             {loadingInicial ? (
               <CardSkeleton variant="filters" />
@@ -200,7 +223,7 @@ const CadastroGuia = () => {
                   </button>
                   <div>
                     <strong>Foto do perfil</strong>
-                    <small>Opcional. Aparece junto do nome do guia nas telas do sistema.</small>
+                    <small>Recomendado: com foto o guia é reconhecido na hora nas escalas, no painel e na Central.</small>
                     <div className="cadastro-guia-foto__acoes">
                       <button type="button" onClick={() => inputFotoRef.current?.click()} disabled={bloqueado}>
                         {foto ? "Trocar foto" : "Adicionar foto"}
@@ -377,6 +400,8 @@ const CadastroGuia = () => {
                   />
                 </div>
 
+                {children}
+
                 <div className="cadastro-guia-actions">
                   <button
                     type="submit"
@@ -391,6 +416,7 @@ const CadastroGuia = () => {
             )}
           </div>
 
+          {!embutido && (
           <div className="cadastro-guia-card">
             <div className="cadastro-guia-card-header">
               <div className="cadastro-guia-card-title-row">
@@ -439,6 +465,7 @@ const CadastroGuia = () => {
               </div>
             )}
           </div>
+          )}
         </section>
       </div>
     </div>

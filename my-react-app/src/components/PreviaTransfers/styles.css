@@ -27,7 +27,7 @@
 
 .previa-operacional-subtitle {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
@@ -80,7 +80,7 @@
 
 .previa-operacional-card-header p {
     margin: 0;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.6;
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
@@ -167,7 +167,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     font-weight: 500;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -237,7 +237,7 @@
 
 .previa-operacional-stat span {
     display: block;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -299,7 +299,7 @@
 
 .previa-operacional-kpi span {
     display: block;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 70%, transparent 30%);
 }
 
@@ -410,14 +410,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 700;
     color: #4b5563;
     background: #ffffff;
 }
 
 .previa-operacional-coluna-subtitulo strong {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: #111827;
 }
 
@@ -441,7 +441,7 @@
 }
 
 .previa-operacional-linha .texto-linha {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 700;
     color: #111827;
     white-space: nowrap;
@@ -611,7 +611,7 @@
 }
 
 .previa-operacional-sheet-loading span {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: color-mix(in srgb, var(--text) 72%, transparent 28%);
@@ -762,7 +762,7 @@
     color: #0369a1;
     border-radius: 999px;
     padding: 4px 10px;
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     font-weight: 700;
 }
 
@@ -863,7 +863,7 @@
 
 .envio-veiculo-motorista {
     display: block;
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 68%, transparent 32%);
 }
 
@@ -888,7 +888,7 @@
 }
 
 .envio-veiculo-label {
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 60%, transparent 40%);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -919,7 +919,7 @@
 
 .envio-veiculo-resumo-item span {
     display: block;
-    font-size: calc(10px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: color-mix(in srgb, var(--text) 62%, transparent 38%);
     margin-bottom: 4px;
 }
@@ -936,7 +936,7 @@
 }
 
 .envio-veiculo-preview-linha {
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     line-height: 1.45;
     color: var(--text);
     padding: 8px 10px;
@@ -946,7 +946,7 @@
 }
 
 .envio-veiculo-preview-more {
-    font-size: calc(11px * var(--escala-fonte, 1));
+    font-size: var(--fs-xs);
     color: var(--accent-text);
     font-weight: 600;
 }

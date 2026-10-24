@@ -1,90 +1,513 @@
 /* Simulador de bagagem (assistente da Central) */
-.assist-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 4px 0 12px; padding: 4px; border-radius: 10px; background: var(--surface-2, rgba(0, 0, 0, 0.05)); }
-.assist-modos button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 8px; border: 0; border-radius: 7px; background: none; color: var(--text-2, var(--text)); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
-.assist-modos button.is-on { background: var(--surface, #fff); color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14); }
-.assist-simular { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.assist-modos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 4px 0 12px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+}
 
-.sim { display: flex; flex-direction: column; gap: 14px; min-width: 0; max-width: 100%; }
-.assist-saida { min-width: 0; }
-.sim-escolha { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.sim-chip { position: relative; display: inline-flex; flex: none; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface, #fff); color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.sim-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.sim-chip.is-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
-.sim-chip__ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--success, #1f7a4d); }
-.sim-chip.is-naocabe .sim-chip__ponto { background: var(--alert, #c4402b); }
+.assist-modos button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-2, var(--text));
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
 
-.sim-veiculo { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; }
-.sim-veiculo__foto { display: grid; flex: none; place-items: center; width: 84px; height: 60px; overflow: hidden; border-radius: 8px; background: var(--surface-2, rgba(0, 0, 0, 0.05)); color: var(--text-3); }
-.sim-veiculo__foto img { width: 100%; height: 100%; object-fit: cover; }
-.sim-veiculo__info { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
-.sim-veiculo__info strong { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--fs-md); }
-.sim-veiculo__info small { color: var(--text-3); font-size: var(--fs-xs); }
-.sim-veiculo__acessorio { color: var(--warning) !important; }
-.sim-360 { display: inline-flex; flex: none; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--accent); border-radius: 999px; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
+.assist-modos button.is-on {
+  background: var(--surface, #fff);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
 
-.sim-status { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: var(--fs-sm); }
-.sim-status > svg { flex: none; margin-top: 1px; }
-.sim-status small { display: block; margin-top: 2px; color: var(--text-3); font-size: var(--fs-xs); }
-.sim-status.is-ok { background: color-mix(in srgb, var(--success, #1f7a4d) 10%, transparent); color: var(--success, #1f7a4d); }
-.sim-status.is-limite { background: var(--warning-soft); color: var(--warning); }
-.sim-status.is-nao { background: var(--alert-soft, color-mix(in srgb, #c4402b 12%, transparent)); color: var(--alert, #c4402b); }
-.sim-status b { color: inherit; }
+.assist-simular {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
 
-.sim-bloco { display: flex; flex-direction: column; gap: 8px; }
-.sim-bloco__titulo { display: flex; align-items: center; gap: 6px; color: var(--text-2, var(--text)); font-size: var(--fs-sm); font-weight: 700; }
-.sim-bloco__titulo em { margin-left: auto; color: var(--text-3); font-size: var(--fs-xs); font-style: normal; font-weight: 600; }
-.sim-erro { color: var(--alert, #c4402b); }
+.sim {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+}
 
-.sim-lugares { display: flex; flex-wrap: wrap; gap: 4px; }
-.sim-lugar { width: 24px; height: 24px; fill: none; stroke: var(--border-strong, #c8ccd0); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.2s, fill 0.2s; }
-.sim-lugar.is-ocupado { fill: color-mix(in srgb, var(--accent) 20%, transparent); stroke: var(--accent); }
-.sim-lugar.is-fora { fill: color-mix(in srgb, var(--alert, #c4402b) 16%, transparent); stroke: var(--alert, #c4402b); }
-.sim-barra-lugares { height: 10px; border-radius: 999px; background: var(--surface-2, rgba(0, 0, 0, 0.06)); overflow: hidden; }
-.sim-barra-lugares i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.25s; }
-.sim-barra-lugares i.is-fora { background: var(--alert, #c4402b); }
+.assist-saida {
+  min-width: 0;
+}
+
+.sim-escolha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sim-chip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sim-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.sim-chip.is-on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.sim-chip__ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success, #1f7a4d);
+}
+
+.sim-chip.is-naocabe .sim-chip__ponto {
+  background: var(--alert, #c4402b);
+}
+
+.sim-veiculo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.sim-veiculo__foto {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 84px;
+  height: 60px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+  color: var(--text-3);
+}
+
+.sim-veiculo__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sim-veiculo__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sim-veiculo__info strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+}
+
+.sim-veiculo__info small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.sim-veiculo__acessorio {
+  color: var(--warning) !important;
+}
+
+.sim-360 {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sim-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: var(--fs-sm);
+}
+
+.sim-status>svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.sim-status small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.sim-status.is-ok {
+  background: color-mix(in srgb, var(--success, #1f7a4d) 10%, transparent);
+  color: var(--success, #1f7a4d);
+}
+
+.sim-status.is-limite {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.sim-status.is-nao {
+  background: var(--alert-soft, color-mix(in srgb, #c4402b 12%, transparent));
+  color: var(--alert, #c4402b);
+}
+
+.sim-status b {
+  color: inherit;
+}
+
+.sim-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-bloco__titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2, var(--text));
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.sim-bloco__titulo em {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.sim-erro {
+  color: var(--alert, #c4402b);
+}
+
+.sim-lugares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sim-lugar {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--border-strong, #c8ccd0);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.2s, fill 0.2s;
+}
+
+.sim-lugar.is-ocupado {
+  fill: color-mix(in srgb, var(--accent) 20%, transparent);
+  stroke: var(--accent);
+}
+
+.sim-lugar.is-fora {
+  fill: color-mix(in srgb, var(--alert, #c4402b) 16%, transparent);
+  stroke: var(--alert, #c4402b);
+}
+
+.sim-barra-lugares {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  overflow: hidden;
+}
+
+.sim-barra-lugares i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.25s;
+}
+
+.sim-barra-lugares i.is-fora {
+  background: var(--alert, #c4402b);
+}
 
 /* porta-malas: o "chão" do veículo com as vagas */
-.sim-porta-malas { position: relative; padding: 16px 14px 14px; border: 2px solid color-mix(in srgb, var(--text) 22%, transparent); border-top-width: 6px; border-radius: 10px 10px 18px 18px; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 2px, transparent 2px 18px), color-mix(in srgb, var(--text) 3%, var(--surface, #fff)); }
-.sim-porta-malas.is-van, .sim-porta-malas.is-micro, .sim-porta-malas.is-onibus { border-radius: 8px 8px 12px 12px; }
-.sim-vagas { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; align-items: end; }
-.sim-porta-malas.is-compacto .sim-vagas { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
-.sim-vaga { display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: 8px; transition: background 0.2s; }
-.sim-vaga.is-grande { height: 74px; }
-.sim-vaga.is-bordo { height: 52px; }
-.sim-porta-malas.is-compacto .sim-vaga.is-grande { height: 54px; }
-.sim-porta-malas.is-compacto .sim-vaga.is-bordo { height: 40px; }
-.sim-vaga.is-livre { align-items: center; border: 1.5px dashed color-mix(in srgb, var(--text) 25%, transparent); }
-.sim-vaga__livre { color: var(--text-3); font-size: 11px; font-weight: 700; }
-.sim-vaga .sim-mala { height: 100%; width: auto; max-width: 100%; animation: sim-entrar 0.28s ease-out; }
-.sim-vaga.is-grande .sim-mala.is-bordo { height: 70%; }
+.sim-porta-malas {
+  position: relative;
+  padding: 16px 14px 14px;
+  border: 2px solid color-mix(in srgb, var(--text) 22%, transparent);
+  border-top-width: 6px;
+  border-radius: 10px 10px 18px 18px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 2px, transparent 2px 18px), color-mix(in srgb, var(--text) 3%, var(--surface, #fff));
+}
 
-.sim-mala { width: 28px; height: 36px; }
-.sim-mala__corpo { fill: var(--accent); }
-.sim-mala__alca { fill: none; stroke: var(--accent); stroke-width: 2.4; }
-.sim-mala__friso { stroke: rgba(255, 255, 255, 0.45); stroke-width: 2; }
-.sim-mala__roda { fill: color-mix(in srgb, var(--text) 60%, transparent); }
-.sim-mala.is-bordo .sim-mala__corpo { fill: #d9962b; }
-.sim-mala.is-bordo .sim-mala__alca { stroke: #d9962b; }
-.sim-mala.is-fora .sim-mala__corpo { fill: var(--alert, #c4402b); }
-.sim-mala.is-fora .sim-mala__alca { stroke: var(--alert, #c4402b); }
+.sim-porta-malas.is-van, .sim-porta-malas.is-micro, .sim-porta-malas.is-onibus {
+  border-radius: 8px 8px 12px 12px;
+}
 
-.sim-acessorio { position: absolute; left: 50%; transform: translateX(-50%); padding: 1px 10px; border-radius: 999px; background: var(--warning-soft); color: var(--warning); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-.sim-acessorio.is-bagageiro { top: -15px; }
-.sim-acessorio.is-carretinha { bottom: -11px; }
+.sim-vagas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+  align-items: end;
+}
 
-.sim-fora { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1.5px dashed var(--alert, #c4402b); border-radius: 10px; color: var(--alert, #c4402b); font-size: var(--fs-sm); font-weight: 700; }
-.sim-fora__malas { display: flex; flex-wrap: wrap; gap: 3px; }
-.sim-fora .sim-mala { width: 22px; height: 29px; animation: sim-entrar 0.28s ease-out; }
+.sim-porta-malas.is-compacto .sim-vagas {
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 5px;
+}
 
-.sim-legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--text-3); font-size: var(--fs-xs); }
-.sim-legenda span { display: inline-flex; align-items: center; gap: 4px; }
-.sim-legenda .sim-mala { width: 13px; height: 17px; }
-.sim-legenda__livre { display: inline-block; width: 13px; height: 15px; border: 1.5px dashed color-mix(in srgb, var(--text) 30%, transparent); border-radius: 3px; }
+.sim-vaga {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
 
-.sim-sugestao { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--text); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
-.sim-sugestao > svg { color: var(--accent); }
+.sim-vaga.is-grande {
+  height: 74px;
+}
 
-@keyframes sim-entrar { from { transform: translateY(-10px) scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.sim-vaga.is-bordo {
+  height: 52px;
+}
+
+.sim-porta-malas.is-compacto .sim-vaga.is-grande {
+  height: 54px;
+}
+
+.sim-porta-malas.is-compacto .sim-vaga.is-bordo {
+  height: 40px;
+}
+
+.sim-vaga.is-livre {
+  align-items: center;
+  border: 1.5px dashed color-mix(in srgb, var(--text) 25%, transparent);
+}
+
+.sim-vaga__livre {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.sim-vaga .sim-mala {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  animation: sim-entrar 0.28s ease-out;
+}
+
+.sim-vaga.is-grande .sim-mala.is-bordo {
+  height: 70%;
+}
+
+.sim-mala {
+  width: 28px;
+  height: 36px;
+}
+
+.sim-mala__corpo {
+  fill: var(--accent);
+}
+
+.sim-mala__alca {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+}
+
+.sim-mala__friso {
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 2;
+}
+
+.sim-mala__roda {
+  fill: color-mix(in srgb, var(--text) 60%, transparent);
+}
+
+.sim-mala.is-bordo .sim-mala__corpo {
+  fill: #d9962b;
+}
+
+.sim-mala.is-bordo .sim-mala__alca {
+  stroke: #d9962b;
+}
+
+.sim-mala.is-fora .sim-mala__corpo {
+  fill: var(--alert, #c4402b);
+}
+
+.sim-mala.is-fora .sim-mala__alca {
+  stroke: var(--alert, #c4402b);
+}
+
+.sim-acessorio {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.sim-acessorio.is-bagageiro {
+  top: -15px;
+}
+
+.sim-acessorio.is-carretinha {
+  bottom: -11px;
+}
+
+.sim-fora {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1.5px dashed var(--alert, #c4402b);
+  border-radius: 10px;
+  color: var(--alert, #c4402b);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.sim-fora__malas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sim-fora .sim-mala {
+  width: 22px;
+  height: 29px;
+  animation: sim-entrar 0.28s ease-out;
+}
+
+.sim-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.sim-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sim-legenda .sim-mala {
+  width: 13px;
+  height: 17px;
+}
+
+.sim-legenda__livre {
+  display: inline-block;
+  width: 13px;
+  height: 15px;
+  border: 1.5px dashed color-mix(in srgb, var(--text) 30%, transparent);
+  border-radius: 3px;
+}
+
+.sim-sugestao {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sim-sugestao>svg {
+  color: var(--accent);
+}
+
+@keyframes sim-entrar {
+  from {
+    transform: translateY(-10px) scale(0.85);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sim-vaga .sim-mala, .sim-fora .sim-mala { animation: none; }
+  .sim-vaga .sim-mala, .sim-fora .sim-mala {
+    animation: none;
+  }
 }

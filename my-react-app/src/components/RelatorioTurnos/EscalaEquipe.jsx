@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Button, Card, Icon, KpiTiles, Segmented } from "../ui";
+import { Button, Card, Icon, KpiTiles, MoreMenu, Segmented } from "../ui";
 import {
   DIAS_SEMANA_CURTO,
   DIAS_SEMANA_LONGO,
@@ -208,8 +208,9 @@ const htmlEscala = ({ config, equipe, dias, rascunho, turnoPorId, titulo = "Esca
                   }
                   if (mes) return s.trabalha ? `<td class="t" style="background:${tom(s.turno?.cor || "#1f2328", 16)}">${esc(codigoDoDia(s))}</td>` : `<td class="f">F</td>`;
                   return s.trabalha
-                    ? `<td class="t" style="background:${tom(s.turno?.cor || "#1f2328", 16)}">${esc(s.exc === "cobre" ? `Cobre ${s.rotulo}` : s.exc === "extra" ? "Extra" : s.rotulo)}${s.exc === "atraso" ? `<br><small style="color:#b45309">atraso ${s.minutos} min</small>` : comHorario && s.detalhe && !s.exc ? `<br><small>${esc(s.detalhe)}</small>` : ""
-                    }</td>`
+                    ? `<td class="t" style="background:${tom(s.turno?.cor || "#1f2328", 16)}">${esc(s.exc === "cobre" ? `Cobre ${s.rotulo}` : s.exc === "extra" ? "Extra" : s.rotulo)}${
+                        s.exc === "atraso" ? `<br><small style="color:#b45309">atraso ${s.minutos} min</small>` : comHorario && s.detalhe && !s.exc ? `<br><small>${esc(s.detalhe)}</small>` : ""
+                      }</td>`
                     : `<td class="f">${s.domingo ? "Folga<br><small>dom. do mês</small>" : "Folga"}</td>`;
                 })
                 .join("")}</tr>`,
@@ -308,12 +309,12 @@ const htmlOcorrencias = ({ rel, inicio, fim }) => {
   const agora = new Date();
   const corpo = rel.linhas.length
     ? rel.linhas
-      .map(
-        (l) => `<tr><td class="e"><b>${esc(l.nome)}</b>${l.funcaoNome ? `<br><small>${esc(l.funcaoNome)}</small>` : ""}</td>
+        .map(
+          (l) => `<tr><td class="e"><b>${esc(l.nome)}</b>${l.funcaoNome ? `<br><small>${esc(l.funcaoNome)}</small>` : ""}</td>
 <td class="n">${l.falta || "—"}</td><td class="n">${l.atestado || "—"}</td><td class="n">${l.atraso ? `${l.atraso}<small> · ${l.minutosAtraso} min</small>` : "—"}</td><td class="n">${l.ferias ? `${l.ferias} dia${l.ferias > 1 ? "s" : ""}` : "—"}</td>
 <td class="d">${esc(textoOcorrencias(l)) || "—"}</td></tr>`,
-      )
-      .join("")
+        )
+        .join("")
     : `<tr><td colspan="6" class="d" style="text-align:center;padding:16px">Nenhuma ocorrência no período.</td></tr>`;
   const t = rel.total;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ocorrências ${esc(dataBr(inicio))} a ${esc(dataBr(fim))}</title><style>${CSS_IMPRESSAO}
@@ -702,14 +703,14 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
     const dados = { config, equipe: equipe.filter((c) => visiveis.some((g) => g.pessoas.includes(c))), dias, rascunho, turnoPorId };
     return ehFds
       ? htmlPlantao({
-        ...dados,
-        subtitulo: fdsOcultos.size
-          ? `Fim de semana: ${finsDoMes
-            .filter((f) => !fdsOcultos.has(f.sab))
-            .map((f) => f.dias.map((d) => dataBr(d).slice(0, 5)).join(" e "))
-            .join(" · ")}`
-          : `Sábados e domingos de ${nomeMes(mesRef)}`,
-      })
+          ...dados,
+          subtitulo: fdsOcultos.size
+            ? `Fim de semana: ${finsDoMes
+                .filter((f) => !fdsOcultos.has(f.sab))
+                .map((f) => f.dias.map((d) => dataBr(d).slice(0, 5)).join(" e "))
+                .join(" · ")}`
+            : `Sábados e domingos de ${nomeMes(mesRef)}`,
+        })
       : htmlEscala({ ...dados, ...(ehMes ? { titulo: "Escala do mês", subtitulo: nomeMes(mesRef).replace(/^./, (l) => l.toUpperCase()) } : {}) });
   };
   const imprimir = () => {
@@ -1047,6 +1048,7 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
                 </option>
               ))}
             </select>
+            <span className="esc-barra__sep" aria-hidden="true" />
             <label className="esc-letra" title="Tamanho da letra na imagem (PNG) e no PDF">
               <span>Letra</span>
               <button type="button" onClick={() => setLetra(TAMANHOS_LETRA[Math.max(0, TAMANHOS_LETRA.indexOf(letra) - 1)])} disabled={letra === TAMANHOS_LETRA[0]} aria-label="Diminuir a letra">
@@ -1063,12 +1065,15 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
                 A+
               </button>
             </label>
-            <Button size="sm" icon="image" onClick={baixarPng} loading={gerandoPng} disabled={gerandoPng} title="Baixar a escala como imagem para mandar nos grupos">
-              Baixar PNG
-            </Button>
-            <Button size="sm" icon="printer" onClick={imprimir}>
-              {ehFds ? "Imprimir fins de semana" : "Imprimir / PDF"}
-            </Button>
+            <MoreMenu
+              label="Exportar a escala"
+              buttonLabel={gerandoPng ? "Gerando…" : "Exportar"}
+              icon={gerandoPng ? "loader" : "download"}
+              items={[
+                { label: "Imagem (PNG) para os grupos", icon: "image", onClick: baixarPng, disabled: gerandoPng },
+                { label: ehFds ? "Imprimir fins de semana / PDF" : "Imprimir / PDF", icon: "printer", onClick: imprimir },
+              ]}
+            />
           </div>
         </div>
 
@@ -1289,12 +1294,15 @@ const EscalaEquipe = ({ config, excecoes, onSalvar, onRemoverDaEquipe, onConfigu
             </small>
           </span>
           <span className="esc-oc__acoes">
-            <Button size="sm" icon="image" onClick={pngOcorrencias} disabled={!ocorr.linhas.length}>
-              PNG
-            </Button>
-            <Button size="sm" icon="printer" onClick={imprimirOcorrencias} disabled={!ocorr.linhas.length}>
-              Imprimir / PDF
-            </Button>
+            <MoreMenu
+              label="Exportar ocorrências"
+              buttonLabel="Exportar"
+              icon="download"
+              items={[
+                { label: "Imagem (PNG)", icon: "image", onClick: pngOcorrencias, disabled: !ocorr.linhas.length },
+                { label: "Imprimir / PDF", icon: "printer", onClick: imprimirOcorrencias, disabled: !ocorr.linhas.length },
+              ]}
+            />
           </span>
         </div>
         {ocorr.linhas.length === 0 ? (
