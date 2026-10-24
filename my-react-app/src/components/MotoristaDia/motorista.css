@@ -714,48 +714,6 @@
 }
 
 /* instalar o app */
-.mt-instalar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--mt-borda);
-  border-radius: 16px;
-  background: var(--surface, #fff);
-  box-shadow: var(--mt-sombra);
-}
-
-.mt-instalar>svg {
-  flex: none;
-  color: var(--accent);
-}
-
-.mt-instalar span {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.mt-instalar small {
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.mt-instalar button {
-  flex: none;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--accent);
-  color: var(--on-accent, #fff);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
 
 /* aviso de recepcionado — compacto, sem encostar nas bordas */
 .mt-alerta {

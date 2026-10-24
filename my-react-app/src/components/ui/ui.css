@@ -1455,3 +1455,88 @@
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/* ---------- cartão "Instale o app" (motorista e fornecedor) ---------- */
+.ui-instalar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+
+.ui-instalar__ic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.ui-instalar__txt {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-instalar__txt>b {
+  font-size: var(--fs-md, 15px);
+  font-weight: 700;
+}
+
+.ui-instalar__txt small {
+  color: var(--text-2);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.45;
+}
+
+.ui-instalar__txt small svg {
+  vertical-align: -2px;
+}
+
+.ui-instalar__acoes {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ui-instalar__btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-instalar__depois {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-instalar__depois:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}

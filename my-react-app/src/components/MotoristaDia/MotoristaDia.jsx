@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
+import CartaoInstalar from "../ui/CartaoInstalar";
 import { definirTituloAba } from "../Shell/tituloAba";
 import {
   distanciaMetros,
@@ -257,29 +258,15 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
 
   // ---- app no celular: notificação com o app fechado e "instalar" ----
   const [push, setPush] = useState(() => (typeof Notification !== "undefined" && Notification.permission === "granted" ? "ok" : ""));
-  const [instalar, setInstalar] = useState(null); // evento do Chrome para instalar
-  const [instalado, setInstalado] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)")?.matches);
   useEffect(() => {
     registrarServiceWorker();
     if (embutido) lembrarLinkDoApp(`${window.location.origin}/fornecedor`);
-    const antes = (e) => {
-      e.preventDefault();
-      setInstalar(e);
-    };
-    const depois = () => setInstalado(true);
-    window.addEventListener("beforeinstallprompt", antes);
-    window.addEventListener("appinstalled", depois);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", antes);
-      window.removeEventListener("appinstalled", depois);
-    };
   }, [embutido]);
   // com a permissão já dada, a inscrição acompanha as chegadas do dia
   useEffect(() => {
     if (push !== "ok" || !dia || !escalasIn) return;
     inscreverPush().then((sub) => sub && gravarInscricaoNasEscalas(sub, dia.base || "ssa", dia.data, escalasIn.split("|")));
   }, [push, dia?.base, dia?.data, escalasIn]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ehIphone = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   const ativarAvisos = async () => {
     const ok = prepararSom();
@@ -537,31 +524,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </div>
         )}
 
-        {!embutido && !instalado && (instalar || ehIphone) && (
-          <div className="mt-instalar">
-            <Icon name="download" size={18} />
-            <span>
-              <b>Instale o app no celular</b>
-              <small>
-                {instalar
-                  ? "Fica na tela inicial e avisa mesmo com o celular bloqueado."
-                  : "No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”. Assim os avisos chegam com o celular bloqueado."}
-              </small>
-            </span>
-            {instalar && (
-              <button
-                type="button"
-                onClick={async () => {
-                  instalar.prompt();
-                  await instalar.userChoice.catch(() => null);
-                  setInstalar(null);
-                }}
-              >
-                Instalar
-              </button>
-            )}
-          </div>
-        )}
+        {!embutido && <CartaoInstalar chave="motorista.instalarAdiado" />}
 
         {push === "negado" && (
           <p className="mt-nota">

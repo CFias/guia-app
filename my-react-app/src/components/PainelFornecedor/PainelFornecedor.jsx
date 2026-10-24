@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
 import MoreMenu from "../ui/MoreMenu";
+import CartaoInstalar from "../ui/CartaoInstalar";
+import { useInstalarApp } from "../../Services/Services/instalarApp";
 import { useAuth } from "../../Context/AuthContext";
 import { ROLES } from "../../Context/permissions";
 import { definirTituloAba } from "../Shell/tituloAba";
@@ -26,12 +28,16 @@ import {
 import {
   assinaturaServicos,
   baseAtual,
+  gravarInscricaoNasEscalas,
   gravarMotoristaApp,
   gravarMotoristaDia,
   horaDoTimestamp,
+  inscreverPush,
+  lembrarLinkDoApp,
   linkDoMotorista,
   novoToken,
   ouvirMotoristaDia,
+  registrarServiceWorker,
   servicoParaMotorista,
   situacaoDoServico,
 } from "../../Services/Services/viagemMotorista";
@@ -135,6 +141,7 @@ const PainelFornecedor = () => {
   const [novoPara, setNovoPara] = useState(null); // { servicos } esperando um motorista novo
   const [guiaAberto, setGuiaAberto] = useState(() => !lerGuiaVisto());
   const [pedidoAvaliacao, setPedidoAvaliacao] = useState(0);
+  const app = useInstalarApp();
   const navigate = useNavigate();
   const [aviso, setAviso] = useState("");
 
@@ -310,6 +317,22 @@ const PainelFornecedor = () => {
   // Links criados sozinhos, sem precisar reenviar: o do próprio fornecedor
   // ("Eu mesmo") e o dia de cada motorista que já tem o app (link fixo).
   const meusServicos = porMotorista[EU_MESMO] || [];
+
+  // App no celular do fornecedor: instalável e com o aviso de "passageiros
+  // recepcionados" mesmo fora da aba Minha viagem (ou usando outro app).
+  useEffect(() => {
+    if (previa) return;
+    registrarServiceWorker();
+    lembrarLinkDoApp(`${window.location.origin}/fornecedor`);
+  }, [previa]);
+  const minhasChegadas = meusServicos
+    .filter((s) => s.tipo === "IN" && s.escalaId)
+    .map((s) => s.escalaId)
+    .join("|");
+  useEffect(() => {
+    if (previa || !minhasChegadas || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    inscreverPush().then((sub) => sub && gravarInscricaoNasEscalas(sub, baseAtual(), data, minhasChegadas.split("|")));
+  }, [previa, minhasChegadas, data]);
   const criandoLinks = useRef(new Set());
   useEffect(() => {
     if (!fornecedor || !liberado || carga.chave !== chaveCarga) return;
@@ -498,6 +521,7 @@ const PainelFornecedor = () => {
               label="Menu"
               items={[
                 { label: guiaAberto ? "Esconder o guia" : "Como funciona", icon: "help", onClick: () => setGuiaAberto((x) => !x) },
+                !previa && app.temBotao && { label: "Instalar o app", icon: "download", onClick: app.instalar },
                 !previa && { label: "Avaliar o sistema", icon: "star", onClick: () => setPedidoAvaliacao((n) => n + 1) },
                 !previa && { label: "Cores e tamanho do texto", icon: "palette", onClick: () => navigate("/fornecedor/tema") },
                 !previa && "divider",
@@ -518,6 +542,7 @@ const PainelFornecedor = () => {
       </header>
 
       <main className="pf-corpo">
+        {!previa && <CartaoInstalar chave="fornecedor.instalarAdiado" />}
         {guiaAberto && (
           <section className="pf-guia" aria-label="Como funciona">
             <div className="pf-guia__cab">

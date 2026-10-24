@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./styles/tokens.css"; // primeiro: tokens de cor/fonte/raio de todo o app
 import "./components/ui/ui.css";
+import "./Services/Services/instalarApp"; // guarda o "instalar app" do navegador desde o início
 import App from "./App";
 import RegistroAtividade from "./components/Atividade/RegistroAtividade";
 import { ThemeProvider } from "./Context/ThemeContext";
