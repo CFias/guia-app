@@ -1232,3 +1232,176 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ---------- rota com paradas (mais de um hotel na escala) ---------- */
+.mt-rota {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-rota>li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.mt-rota>li:last-child {
+  padding-bottom: 0;
+}
+
+/* linha que liga os pontos */
+.mt-rota>li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  bottom: 0;
+  left: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--mt-borda);
+}
+
+.mt-rota>li.is-ok:not(:last-child)::before {
+  background: color-mix(in srgb, var(--mt-ok) 55%, transparent);
+}
+
+.mt-rota__ponto {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mt-borda);
+  border-radius: 50%;
+  background: var(--surface, #fff);
+  color: var(--text-3);
+}
+
+.mt-rota>li.is-hotel .mt-rota__ponto {
+  border-radius: 7px;
+}
+
+.mt-rota>li.is-ok .mt-rota__ponto {
+  border-color: var(--mt-ok);
+  background: var(--mt-ok);
+  color: #fff;
+}
+
+.mt-rota>li.is-atual .mt-rota__ponto {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.mt-rota__txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.mt-rota__rot {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mt-rota>li.is-atual .mt-rota__rot {
+  color: var(--accent);
+}
+
+.mt-rota__txt>b {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.mt-rota>li:not(.is-ok):not(.is-atual) .mt-rota__txt>b {
+  color: var(--text-2);
+}
+
+.mt-rota__txt>em {
+  color: var(--mt-ok);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.mt-rota__pax {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.mt-rota__pax span {
+  margin-left: 4px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-rota__antes {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* passageiros: nome + ADT/CHD/INF, reserva, rota e a observação discreta */
+.mt-res__linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mt-res__linha b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mt-res__pax {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-res__obs {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--mt-borda);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  color: var(--text-3);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}

@@ -1301,3 +1301,40 @@
     line-height: 16px;
   }
 }
+
+/* reservas: nome + ADT/CHD/INF, reserva, rota e observação discreta */
+.pf-res__linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-res__linha b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pf-serv__reservas .pf-res__pax {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-res__obs {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--pf-linha);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-style: italic;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}

@@ -37,6 +37,8 @@ import {
   linkDoMotorista,
   novoToken,
   ouvirMotoristaDia,
+  paradasDoServico,
+  paxDetalhado,
   registrarServiceWorker,
   servicoParaMotorista,
   situacaoDoServico,
@@ -833,13 +835,20 @@ const PainelFornecedor = () => {
                                 <ul className="pf-serv__reservas">
                                   {s.reservasLista.map((r, i) => (
                                     <li key={`${r.codigo}-${i}`}>
-                                      <b>{r.titular || "Sem nome"}</b>
+                                      <div className="pf-res__linha">
+                                        <b>{r.titular || "Passageiro sem nome no sistema"}</b>
+                                        <span className="pf-res__pax" title="Adultos / crianças / bebês">
+                                          {paxDetalhado(r)}
+                                        </span>
+                                      </div>
                                       <span>
-                                        {r.pax} pax{r.voo ? ` · voo ${r.voo}${r.horaVoo ? ` ${r.horaVoo}` : ""}` : ""}
+                                        {r.codigo ? `Reserva ${r.codigo}` : "Reserva sem código"}
+                                        {r.voo ? ` · voo ${r.voo}${r.horaVoo ? ` ${r.horaVoo}` : ""}` : ""}
                                       </span>
                                       <small>
                                         {r.origem || "—"} → {r.destino || "—"}
                                       </small>
+                                      {r.obs && <p className="pf-res__obs">{r.obs}</p>}
                                     </li>
                                   ))}
                                 </ul>
@@ -849,9 +858,13 @@ const PainelFornecedor = () => {
                                 if (!ev) return null;
                                 const st = situacaoDoServico(s.tipo, ev);
                                 if (!st.ultima) return null;
+                                // mais de um hotel: quantas paradas já foram feitas
+                                const paradas = paradasDoServico(servicoParaMotorista(s));
+                                const feitas = paradas.filter((p) => ev[p.id]?.em).length;
                                 return (
                                   <span className={`pf-serv__etapa ${st.concluido ? "is-ok" : ""}`}>
                                     <Icon name={st.concluido ? "circleCheck" : "navigation"} size={12} /> {ev[st.ultima.id]?.porta ? `Porta ${ev[st.ultima.id].porta}` : st.ultima.feito} · {horaDoTimestamp(ev[st.ultima.id]?.em)}
+                                    {paradas.length > 0 && !st.concluido && ` · ${feitas} de ${paradas.length} hotéis`}
                                   </span>
                                 );
                               })()}

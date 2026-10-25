@@ -419,6 +419,11 @@ const detalheDaReserva = (item, tipo) => {
         item?.passenger_name,
     ),
     pax: paxDo(item),
+    // adultos / crianças / bebês, como o Phoenix detalha (exibido "2/0/1")
+    adt: n0(item?.is_adult_count, item?.adult_count),
+    chd: n0(item?.is_child_count, item?.child_count),
+    inf: n0(item?.is_baby_count, item?.is_infant_count, item?.infant_count),
+    obs: resumirObsLonga(observacoesDoItem(item)),
     voo: voo && voo !== "0" ? voo : "",
     horaVoo: horaVoo && horaVoo !== "00:00" ? horaVoo : "",
     hora: extrairHora(item),
@@ -431,6 +436,8 @@ const codigoReserva = (item) =>
   String(item?.reserve?.code || item?.reserve?.id || item?.id || "");
 const resumirObs = (t = "") =>
   String(t).length > 140 ? `${String(t).slice(0, 137)}…` : String(t);
+const resumirObsLonga = (t = "") =>
+  String(t).length > 300 ? `${String(t).slice(0, 297)}…` : String(t);
 
 // Anota a reserva no serviço: as que têm CLD / não escalar / cancelado /
 // dispensado não contam passageiro (e viram alerta); as que pedem

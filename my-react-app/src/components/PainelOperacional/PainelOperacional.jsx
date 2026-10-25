@@ -1185,6 +1185,7 @@ const MotoristaForn = ({ m, v, texto, completo = false }) => {
       <span>
         {textoDaEtapa(etapa)}
         {hora ? <small> · {hora}</small> : null}
+        {v.paradas && !st.concluido ? <small> · {v.paradas.feitas} de {v.paradas.total} hotéis</small> : null}
       </span>
       {posicao && (
         <a className="painel-op-mot__acao" href={posicao} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Ver no mapa" aria-label="Ver no mapa">

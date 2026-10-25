@@ -19,7 +19,11 @@ import {
   linkWaze,
   localizarEndereco,
   marcarEtapaMotorista,
+  paradasDoServico,
+  paxDetalhado,
   PORTAS_DESEMBARQUE,
+  proximaAcao,
+  ultimaMarcacao,
   ouvirMotoristaDia,
   ouvirStatusEscala,
   pegarPosicao,
@@ -348,6 +352,64 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     }
   };
 
+  /* Parada de uma viagem com mais de um hotel (tipo Uber com paradas):
+     chegada → o último hotel também FINALIZA; saída → o primeiro hotel
+     também vale como "Cheguei no hotel". */
+  const marcarParada = async (s, acao) => {
+    const { parada, final, primeira } = acao;
+    const ev = eventos[s.chave] || {};
+    setSalvando(`${s.chave}|${parada.id}`);
+    try {
+      const [pos, t] = await Promise.all([pegarPosicao(), token ? token : garantirToken?.()]);
+      if (!t) throw new Error("sem link");
+      const reg = { ...(pos ? pos : { semLocalizacao: true }), hotel: parada.nome, ...(final ? { final: true } : {}) };
+      await marcarEtapaMotorista(t, s.chave, parada.id, reg);
+      if (s.tipo === "OUT" && primeira && !ev.posicionado?.em) {
+        await marcarEtapaMotorista(t, s.chave, "posicionado", reg);
+        retornar(s, { posicionadoEm: new Date() });
+      }
+      if (final) {
+        await marcarEtapaMotorista(t, s.chave, "finalizado", reg);
+        retornar(s, { finalizadoEm: new Date() });
+      }
+      setAviso(`${final ? "Viagem finalizada" : `Chegou no ${parada.nome}`}${pos ? " · localização enviada" : ""}`);
+    } catch (e) {
+      console.error(e);
+      window.alert("Não foi possível salvar. Confira a internet e tente de novo.");
+    } finally {
+      setSalvando("");
+    }
+  };
+
+  // desfaz o último toque (etapa ou parada), mantendo as regras das paradas
+  const desfazerUltima = async (s) => {
+    const u = ultimaMarcacao(s, eventos[s.chave] || {});
+    if (!u) return;
+    if (u.tipo === "etapa" && !paradasDoServico(s).length) return marcar(s, u.etapa, true);
+    if (!window.confirm(`Desfazer "${u.nome}"?`)) return;
+    const ev = eventos[s.chave] || {};
+    setSalvando(`${s.chave}|${u.id}`);
+    try {
+      const paradas = paradasDoServico(s);
+      const apagar = new Set([u.id]);
+      // finalizar pelo último hotel: desfaz o hotel junto (e vice-versa)
+      if (u.id === "finalizado") paradas.filter((p) => ev[p.id]?.final).forEach((p) => apagar.add(p.id));
+      if (u.tipo === "parada" && ev[u.id]?.final) apagar.add("finalizado");
+      // saída: tirar o único hotel marcado desfaz o "Cheguei no hotel"
+      if (s.tipo === "OUT" && u.tipo === "parada" && !ev.iniciado?.em && paradas.filter((p) => ev[p.id]?.em).length === 1) apagar.add("posicionado");
+      const t = token || (await garantirToken?.());
+      for (const id of apagar) await marcarEtapaMotorista(t, s.chave, id, null);
+      const ret = {};
+      ["posicionado", "iniciado", "finalizado"].forEach((id) => apagar.has(id) && (ret[`${id}Em`] = null));
+      if (Object.keys(ret).length) retornar(s, ret);
+    } catch (e) {
+      console.error(e);
+      window.alert("Não foi possível desfazer. Confira a internet e tente de novo.");
+    } finally {
+      setSalvando("");
+    }
+  };
+
   /* ---------------- estados de carga ---------------- */
   if (dia === undefined) {
     return (
@@ -366,16 +428,87 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     );
   }
 
+  // lista de passageiros: nome, reserva, ADT/CHD/INF, voo, origem → destino e a observação
+  const listaPassageiros = (reservas) => (
+    <ul className="mt-res">
+      {reservas.map((r, i) => (
+        <li key={`${r.codigo}-${i}`}>
+          <div className="mt-res__linha">
+            <b>{r.titular || "Passageiro sem nome no sistema"}</b>
+            <span className="mt-res__pax" title="Adultos / crianças / bebês">
+              {paxDetalhado(r)}
+            </span>
+          </div>
+          <small>
+            {r.codigo ? `Reserva ${r.codigo}` : "Reserva sem código"}
+            {r.voo ? ` · ${r.voo}` : ""}
+          </small>
+          <small>
+            {r.origem || "—"} → {r.destino || "—"}
+          </small>
+          {r.obs && <p className="mt-res__obs">{r.obs}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+
   const cardServico = (s, destaque) => {
     const ev = eventos[s.chave] || {};
     const st = situacaoDoServico(s.tipo, ev);
     const etapas = etapasDoTipo(s.tipo);
+    const paradas = paradasDoServico(s);
+    const acao = proximaAcao(s, ev);
+    const ultima = ultimaMarcacao(s, ev);
     const rec = s.tipo === "IN" ? status[s.escalaId] : null;
     const min = minutosDe(s.hora);
     const liberaEm = s.tipo === "OUT" && min !== null ? Math.max(0, min - (dia.minutosAntesCheguei ?? 60)) : null;
-    const travado = st.proxima?.id === "posicionado" && liberaEm !== null && ehHoje && minuto < liberaEm;
-    const dest = destinoAgora(s, ev);
+    // saída: o primeiro "Cheguei" (no hotel) só libera perto do horário
+    const primeiroToque = acao && ((acao.tipo === "etapa" && acao.etapa.id === "posicionado") || (acao.tipo === "parada" && acao.primeira && s.tipo === "OUT"));
+    const travado = primeiroToque && liberaEm !== null && ehHoje && minuto < liberaEm;
+    const dest = acao?.tipo === "parada" ? acao.parada.nome : destinoAgora(s, ev);
     const aberto = abertas.has(s.chave);
+    const salvandoAcao = acao && salvando === `${s.chave}|${acao.tipo === "parada" ? acao.parada.id : acao.etapa.id}`;
+    const titulo = paradas.length ? (s.tipo === "IN" ? `${s.origens[0] || "Aeroporto"} → ${paradas.length} hotéis` : `${paradas.length} hotéis → ${s.destinos[0] || "Aeroporto"}`) : s.descricao;
+
+    // texto do botão grande
+    const botao = !acao
+      ? null
+      : acao.tipo === "parada"
+        ? {
+            acao: `Cheguei no ${acao.parada.nome}`,
+            dica: acao.final
+              ? `último hotel · finaliza a viagem`
+              : s.tipo === "IN"
+                ? `parada ${acao.indice + 1} de ${acao.total} · desembarque de ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`
+                : `busca ${acao.indice + 1} de ${acao.total} · ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`,
+            icone: acao.final ? "flag" : "mapPin",
+            classe: acao.final ? "is-finalizado" : "is-posicionado",
+          }
+        : {
+            acao: acao.etapa.acao,
+            dica: acao.etapa.dica,
+            icone: acao.etapa.id === "iniciado" ? "navigation" : acao.etapa.id === "finalizado" ? "flag" : "mapPin",
+            classe: `is-${acao.etapa.id}`,
+          };
+
+    // rota com as paradas (chegada: desembarque → saída → hotéis; saída: hotéis → saída → aeroporto)
+    const noEtapa = (id, nome) => ({ chave: id, nome, feito: ev[id]?.em, hora: horaDoTimestamp(ev[id]?.em), porta: ev[id]?.porta, atual: acao?.tipo === "etapa" && acao.etapa.id === id });
+    const noParada = (p, i) => ({
+      chave: p.id,
+      parada: p,
+      nome: p.nome,
+      rotulo: s.tipo === "IN" ? (i === paradas.length - 1 ? "Destino final" : `Parada ${i + 1}`) : `Busca ${i + 1}`,
+      feito: ev[p.id]?.em,
+      hora: horaDoTimestamp(ev[p.id]?.em),
+      atual: acao?.tipo === "parada" && acao.parada.id === p.id,
+    });
+    const rota = paradas.length
+      ? s.tipo === "IN"
+        ? [noEtapa("posicionado", "Desembarque"), noEtapa("iniciado", "Saída com os passageiros"), ...paradas.map(noParada)]
+        : [...paradas.map(noParada), noEtapa("iniciado", "Saída para o aeroporto"), noEtapa("finalizado", s.destinos[0] || "Aeroporto")]
+      : [];
+    const faltamParadas = paradas.filter((p) => !ev[p.id]?.em).length;
+
     return (
       <li key={s.chave} className={`mt-serv is-${String(s.tipo).toLowerCase()} ${st.concluido ? "is-ok" : ""} ${destaque ? "is-atual" : ""}`}>
         <div className="mt-serv__cab">
@@ -387,7 +520,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             <Icon name="users" size={13} /> {s.pax}
           </span>
         </div>
-        <b className="mt-serv__desc">{s.descricao}</b>
+        <b className="mt-serv__desc">{titulo}</b>
         <div className="mt-serv__meta">
           <span>
             <Icon name="car" size={12} /> {s.veiculo}
@@ -415,28 +548,71 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </div>
         )}
 
-        <ol className="mt-passos">
-          {etapas.map((e, k) => {
-            const ok = !!ev[e.id]?.em;
-            const prox = st.proxima?.id === e.id;
-            return (
-              <li key={e.id} className={`${ok ? "is-ok" : ""} ${prox ? "is-prox" : ""}`}>
-                <span>{ok ? <Icon name="check" size={11} /> : k + 1}</span>
-                <small>
-                  {ok ? (ev[e.id]?.porta ? `Porta ${ev[e.id].porta}` : e.feito) : e.acao}
-                  {ok && <em>{horaDoTimestamp(ev[e.id].em)}</em>}
-                </small>
+        {paradas.length ? (
+          <ol className="mt-rota" aria-label="Rota com paradas">
+            {rota.map((n) => (
+              <li key={n.chave} className={`${n.feito ? "is-ok" : ""} ${n.atual ? "is-atual" : ""} ${n.parada ? "is-hotel" : ""}`}>
+                <span className="mt-rota__ponto" aria-hidden="true">
+                  {n.feito ? <Icon name="check" size={11} /> : n.parada ? <Icon name="building" size={11} /> : null}
+                </span>
+                <div className="mt-rota__txt">
+                  {n.rotulo && <small className="mt-rota__rot">{n.rotulo}</small>}
+                  <b>{n.nome}</b>
+                  {n.feito && (
+                    <em>
+                      {n.porta ? `Porta ${n.porta} · ` : ""}
+                      {n.parada ? (s.tipo === "IN" ? "deixou às " : "buscou às ") : "às "}
+                      {n.hora}
+                    </em>
+                  )}
+                  {n.parada && (
+                    <ul className="mt-rota__pax">
+                      {n.parada.passageiros.map((r, i) => (
+                        <li key={`${r.codigo}-${i}`}>
+                          {r.titular || "Sem nome no sistema"} <span>{paxDetalhado(r)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {/* fora da ordem: o motorista pode chegar antes em outro hotel */}
+                  {n.parada && !n.feito && !n.atual && acao?.tipo === "parada" && !travado && (
+                    <button
+                      type="button"
+                      className="mt-rota__antes"
+                      onClick={() => marcarParada(s, { parada: n.parada, final: s.tipo === "IN" && faltamParadas === 1, primeira: s.tipo === "OUT" && !ev.posicionado?.em })}
+                      disabled={!!salvando}
+                    >
+                      Cheguei aqui antes
+                    </button>
+                  )}
+                </div>
               </li>
-            );
-          })}
-        </ol>
+            ))}
+          </ol>
+        ) : (
+          <ol className="mt-passos">
+            {etapas.map((e, k) => {
+              const ok = !!ev[e.id]?.em;
+              const prox = st.proxima?.id === e.id;
+              return (
+                <li key={e.id} className={`${ok ? "is-ok" : ""} ${prox ? "is-prox" : ""}`}>
+                  <span>{ok ? <Icon name="check" size={11} /> : k + 1}</span>
+                  <small>
+                    {ok ? (ev[e.id]?.porta ? `Porta ${ev[e.id].porta}` : e.feito) : e.acao}
+                    {ok && <em>{horaDoTimestamp(ev[e.id].em)}</em>}
+                  </small>
+                </li>
+              );
+            })}
+          </ol>
+        )}
 
-        {!st.concluido && (
+        {botao && (
           <>
             {dest && (
               <div className="mt-nav">
                 <span>
-                  <Icon name="mapPin" size={13} /> {ev.iniciado?.em ? "Destino" : s.tipo === "IN" ? "Embarque" : "Buscar em"}: <b>{dest}</b>
+                  <Icon name="mapPin" size={13} /> {acao.tipo === "parada" ? (s.tipo === "IN" ? "Próximo hotel" : "Buscar em") : ev.iniciado?.em ? "Destino" : s.tipo === "IN" ? "Embarque" : "Buscar em"}: <b>{dest}</b>
                 </span>
                 <span className="mt-nav__btns">
                   <a href={linkGoogleMaps(dest)} target="_blank" rel="noopener noreferrer">
@@ -450,23 +626,27 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             )}
             <button
               type="button"
-              className={`mt-botao is-${st.proxima.id}`}
-              onClick={() => marcar(s, st.proxima)}
+              className={`mt-botao ${botao.classe}`}
+              onClick={() => (acao.tipo === "parada" ? marcarParada(s, acao) : marcar(s, acao.etapa))}
               disabled={!!salvando || travado}
             >
-              <span className="mt-botao__ic">
-                {salvando === `${s.chave}|${st.proxima.id}` ? <Icon name="loader" size={18} className="ui-spin" /> : <Icon name={travado ? "lock" : st.proxima.id === "iniciado" ? "navigation" : st.proxima.id === "finalizado" ? "flag" : "mapPin"} size={18} />}
-              </span>
+              <span className="mt-botao__ic">{salvandoAcao ? <Icon name="loader" size={18} className="ui-spin" /> : <Icon name={travado ? "lock" : botao.icone} size={18} />}</span>
               <span className="mt-botao__txt">
-                <b>{st.proxima.acao}</b>
-                <small>{travado ? `libera às ${textoMin(liberaEm)} (${dia.minutosAntesCheguei ?? 60} min antes)` : st.proxima.dica}</small>
+                <b>{botao.acao}</b>
+                <small>{travado ? `libera às ${textoMin(liberaEm)} (${dia.minutosAntesCheguei ?? 60} min antes)` : botao.dica}</small>
               </span>
             </button>
+            {/* saída com hotéis: dá para seguir sem um hotel (ex.: no show) */}
+            {s.tipo === "OUT" && acao.tipo === "parada" && !acao.primeira && (
+              <button type="button" className="mt-desfazer" onClick={() => marcar(s, etapas.find((e) => e.id === "iniciado"))} disabled={!!salvando}>
+                <Icon name="navigation" size={12} /> Iniciar viagem sem os outros hotéis
+              </button>
+            )}
           </>
         )}
-        {st.ultima && (
-          <button type="button" className="mt-desfazer" onClick={() => marcar(s, st.ultima, true)} disabled={!!salvando}>
-            <Icon name="undo" size={12} /> Desfazer "{st.ultima.feito}"
+        {ultima && (
+          <button type="button" className="mt-desfazer" onClick={() => desfazerUltima(s)} disabled={!!salvando}>
+            <Icon name="undo" size={12} /> Desfazer "{ultima.id === "posicionado" && ev.posicionado?.porta ? `Porta ${ev.posicionado.porta}` : ultima.nome}"
           </button>
         )}
 
@@ -487,18 +667,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             >
               {aberto ? "Fechar passageiros" : `Ver passageiros (${s.reservas.length})`} <Icon name="chevronDown" size={13} />
             </button>
-            {aberto && (
-              <ul className="mt-res">
-                {s.reservas.map((r, i) => (
-                  <li key={i}>
-                    <b>{r.titular || "Sem nome"}</b> · {r.pax} pax{r.voo ? ` · ${r.voo}` : ""}
-                    <small>
-                      {r.origem || "—"} → {r.destino || "—"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {aberto && listaPassageiros(s.reservas)}
           </>
         )}
       </li>
@@ -710,7 +879,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
       </main>
 
       {/* chegando ao destino */}
-      {chegando && emViagem && !alerta && (
+      {chegando && emViagem && !alerta && !paradasDoServico(emViagem).length && (
         <div className="mt-chegando" role="status">
           <Icon name="mapPin" size={18} />
           <span>

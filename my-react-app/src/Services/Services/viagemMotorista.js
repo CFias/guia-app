@@ -162,15 +162,18 @@ export const servicoParaMotorista = (s) => {
     ),
     origens: unicos(res.map((r) => r.origem)),
     destinos: unicos(res.map((r) => r.destino)),
-    reservas: res
-      .slice(0, 40)
-      .map((r) => ({
-        titular: r.titular || "",
-        pax: r.pax || 0,
-        voo: r.voo || "",
-        origem: r.origem || "",
-        destino: r.destino || "",
-      })),
+    reservas: res.slice(0, 40).map((r) => ({
+      codigo: r.codigo || "",
+      titular: r.titular || "",
+      pax: r.pax || 0,
+      adt: r.adt ?? null,
+      chd: r.chd ?? null,
+      inf: r.inf ?? null,
+      voo: r.voo || "",
+      origem: r.origem || "",
+      destino: r.destino || "",
+      obs: r.obs || "",
+    })),
   };
 };
 
@@ -179,9 +182,115 @@ export const assinaturaServicos = (lista = []) =>
   lista
     .map(
       (s) =>
-        `${s.chave}|${s.hora}|${s.pax}|${s.destinos.join(",")}|${s.origens.join(",")}|${s.reservas.length}`,
+        `${s.chave}|${s.hora}|${s.pax}|${s.destinos.join(",")}|${s.origens.join(",")}|${s.reservas.map((r) => `${r.codigo}:${r.titular}:${r.adt}/${r.chd}/${r.inf}:${r.obs?.length || 0}`).join(",")}`,
     )
     .join(";");
+
+/* ---------------- paradas (mais de um hotel na mesma escala) ----------------
+   Chegada com 2+ hotéis: depois de "Iniciar viagem", o motorista marca
+   "Cheguei" em cada hotel; o último hotel FINALIZA a viagem.
+   Saída com 2+ hotéis: marca "Cheguei" em cada hotel de busca (o primeiro
+   vale como "Cheguei no hotel"); depois inicia a viagem e finaliza no aeroporto.
+   Cada parada fica em eventos[chave]["parada_<hotel>"]. */
+const slug = (t = "") =>
+  String(t)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 40) || "hotel";
+export const paradasDoServico = (s) => {
+  const lista =
+    s?.tipo === "IN" ? s.destinos : s?.tipo === "OUT" ? s.origens : [];
+  if (!Array.isArray(lista) || lista.length < 2) return [];
+  return lista.map((nome) => ({
+    id: `parada_${slug(nome)}`,
+    nome,
+    // passageiros de cada hotel (para o motorista saber quem desce/sobe ali)
+    passageiros: (s.reservas || []).filter(
+      (r) => (s.tipo === "IN" ? r.destino : r.origem) === nome,
+    ),
+  }));
+};
+// "2/0/1" (adultos/crianças/bebês); sem o detalhe, o total de pax
+export const paxDetalhado = (r = {}) =>
+  r.adt === null || r.adt === undefined
+    ? `${r.pax || 0} pax`
+    : `${r.adt || 0}/${r.chd || 0}/${r.inf || 0}`;
+
+export const paradasFeitas = (s, ev = {}) =>
+  paradasDoServico(s).filter((p) => ev?.[p.id]?.em);
+
+/* Próxima ação do motorista, contando as paradas (viagem tipo Uber com
+   paradas adicionais). Devolve { tipo: "etapa", etapa } ou
+   { tipo: "parada", parada, indice, total, final, primeira } ou null (acabou). */
+export const proximaAcao = (s, ev = {}) => {
+  const st = situacaoDoServico(s.tipo, ev);
+  const paradas = paradasDoServico(s);
+  if (!paradas.length || st.concluido)
+    return st.proxima ? { tipo: "etapa", etapa: st.proxima } : null;
+  const faltam = paradas.filter((p) => !ev?.[p.id]?.em);
+  const indice = paradas.length - faltam.length; // 0 = primeira parada
+  if (s.tipo === "IN") {
+    // desembarque e saída como sempre; depois, hotel a hotel — o último finaliza
+    if (st.proxima?.id !== "finalizado")
+      return { tipo: "etapa", etapa: st.proxima };
+    if (!faltam.length) return { tipo: "etapa", etapa: st.proxima };
+    return {
+      tipo: "parada",
+      parada: faltam[0],
+      indice,
+      total: paradas.length,
+      final: faltam.length === 1,
+      primeira: indice === 0,
+    };
+  }
+  // OUT: busca hotel a hotel (o primeiro vale como "Cheguei no hotel"), depois sai para o aeroporto
+  if (!ev?.iniciado?.em && faltam.length) {
+    return {
+      tipo: "parada",
+      parada: faltam[0],
+      indice,
+      total: paradas.length,
+      final: false,
+      primeira: indice === 0,
+    };
+  }
+  return st.proxima ? { tipo: "etapa", etapa: st.proxima } : null;
+};
+
+// o que foi marcado por último (etapa ou parada), para o "Desfazer"
+export const ultimaMarcacao = (s, ev = {}) => {
+  const etapas = etapasDoTipo(s.tipo).map((e) => ({
+    tipo: "etapa",
+    id: e.id,
+    nome: e.feito,
+    etapa: e,
+  }));
+  const paradas = paradasDoServico(s).map((p) => ({
+    tipo: "parada",
+    id: p.id,
+    nome: `No ${p.nome}`,
+    parada: p,
+  }));
+  const ms = (v) =>
+    v?.toMillis
+      ? v.toMillis()
+      : v?.seconds
+        ? v.seconds * 1000
+        : v instanceof Date
+          ? v.getTime()
+          : 0;
+  const feitas = [...etapas, ...paradas].filter((x) => ev?.[x.id]?.em);
+  if (!feitas.length) return null;
+  // finalizado ganha da parada final (mesmo horário): desfaz os dois juntos
+  return feitas.sort(
+    (a, b) =>
+      ms(ev[b.id].em) - ms(ev[a.id].em) ||
+      (a.id === "finalizado" ? -1 : b.id === "finalizado" ? 1 : 0),
+  )[0];
+};
 
 export const gravarMotoristaDia = (token, dados) =>
   setDoc(
@@ -216,11 +325,20 @@ export const ouvirViagensDoDia = (data, aoMudar) =>
         if ((v.base || ID_SEDE) !== base) return;
         (v.servicos || []).forEach((s) => {
           if (!s.escalaId) return;
+          const paradas = paradasDoServico(s);
           porEscala[String(s.escalaId)] = {
             tipo: s.tipo,
             eventos: v.eventos?.[s.chave] || {},
             motoristaNome: v.motoristaNome,
             ultimaPosicao: v.ultimaPosicao || null,
+            paradas: paradas.length
+              ? {
+                  total: paradas.length,
+                  feitas: paradas.filter(
+                    (p) => v.eventos?.[s.chave]?.[p.id]?.em,
+                  ).length,
+                }
+              : null,
           };
         });
       });
