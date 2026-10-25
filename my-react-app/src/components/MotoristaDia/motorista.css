@@ -1405,3 +1405,17 @@
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
+
+.mt-rota__km {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.mt-rota__nota {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+}

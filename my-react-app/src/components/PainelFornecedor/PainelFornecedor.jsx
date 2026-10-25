@@ -44,6 +44,7 @@ import {
   situacaoDoServico,
 } from "../../Services/Services/viagemMotorista";
 import MotoristaDia from "../MotoristaDia/MotoristaDia";
+import { aeroportoDaBase, hoteisParaOrdenar, ordenarHoteisDoServico, pontosDosHoteis } from "../../Services/Services/ordemHoteis";
 import AvaliacaoSistema from "../Atividade/AvaliacaoSistema";
 import { useTheme } from "../../Context/ThemeContext";
 import "./fornecedor.css";
@@ -226,19 +227,37 @@ const PainelFornecedor = () => {
   const escolhas = escala.data === data ? escala.servicos : {};
   const links = escala.data === data ? escala.links || {} : {};
 
+  // ---- ordem dos hotéis (escala com 2+ hotéis), a partir do aeroporto ----
+  // cada hotel é localizado uma vez (fica guardado) — ver ordemHoteis.js
+  const [geo, setGeo] = useState({ pontos: {}, aeroporto: null });
+  const nomesHoteis = useMemo(
+    () => [...new Set(hoteisParaOrdenar(veiculos.flatMap((v) => v.servicos.map(servicoParaMotorista))))].sort().join("|"),
+    [veiculos],
+  );
+  useEffect(() => {
+    if (!nomesHoteis) return undefined;
+    let vivo = true;
+    Promise.all([pontosDosHoteis(nomesHoteis.split("|")), aeroportoDaBase()])
+      .then(([pontos, aeroporto]) => vivo && setGeo({ pontos, aeroporto }))
+      .catch((e) => console.error("Ordem dos hotéis:", e));
+    return () => {
+      vivo = false;
+    };
+  }, [nomesHoteis]);
+
   // ---- link do dia de cada motorista ----
-  // os serviços de cada motorista no dia (para o link dele)
+  // os serviços de cada motorista no dia (para o link dele), com os hotéis na ordem da viagem
   const porMotorista = useMemo(() => {
     const m = {};
     veiculos.forEach((v) =>
       v.servicos.forEach((s) => {
         const id = escolhas[s.chave]?.motoristaId || EU_MESMO;
-        (m[id] = m[id] || []).push(servicoParaMotorista(s));
+        (m[id] = m[id] || []).push(ordenarHoteisDoServico(servicoParaMotorista(s), geo.pontos, geo.aeroporto));
       }),
     );
     Object.values(m).forEach((l) => l.sort((a, b) => String(a.hora).localeCompare(String(b.hora))));
     return m;
-  }, [veiculos, escolhas]);
+  }, [veiculos, escolhas, geo]);
 
   const euMesmo = useMemo(
     () =>
@@ -820,6 +839,30 @@ const PainelFornecedor = () => {
                                     {voos.length > 0 && <em>{voos.join(", ")}</em>}
                                   </span>
                                   <b className="pf-serv__desc">{s.descricao}</b>
+                                  {(() => {
+                                    // 2+ hotéis: a ordem da viagem, a partir do aeroporto
+                                    const sm = ordenarHoteisDoServico(servicoParaMotorista(s), geo.pontos, geo.aeroporto);
+                                    const hoteis = s.tipo === "IN" ? sm.destinos : s.tipo === "OUT" ? sm.origens : [];
+                                    if (!hoteis || hoteis.length < 2) return null;
+                                    return (
+                                      <ol className="pf-serv__ordem" aria-label="Ordem dos hotéis">
+                                        {hoteis.map((h, i) => (
+                                          <li key={h}>
+                                            <i>{i + 1}</i>
+                                            {h}
+                                            {sm.kmHoteis?.[h] !== undefined && <small> · {sm.kmHoteis[h]} km do aeroporto</small>}
+                                          </li>
+                                        ))}
+                                        {sm.ordemHoteis !== "auto" && (
+                                          <li className="is-aviso">{sm.ordemHoteis === "parcial"
+                                              ? "Algum hotel não foi achado no mapa: ficou no fim."
+                                              : sm.ordemHoteis === "sem"
+                                                ? "Hotéis não achados no mapa: ordem do Phoenix."
+                                                : "Calculando a ordem pelo mapa…"}</li>
+                                        )}
+                                      </ol>
+                                    );
+                                  })()}
                                   <span className="pf-serv__meta">
                                     <Icon name="users" size={12} /> {s.pax} pax
                                     {(s.reservasLista || []).length > 0 && (

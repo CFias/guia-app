@@ -484,6 +484,21 @@ service cloud.firestore {
         && request.resource.data.motoristaNome.size() <= 80;
     }
 
+    // hoteis_geo/{base}__{hotel}: ponto no mapa de cada hotel (busca gratuita
+    // do OpenStreetMap), para ordenar as paradas a partir do aeroporto.
+    // Qualquer conta ativa lê e grava o ponto de um hotel da própria base.
+    match /hoteis_geo/{hotelId} {
+      allow read: if ativo();
+      allow create, update: if ativo()
+        && hotelId == request.resource.data.base + '__' + request.resource.data.chave
+        && request.resource.data.base == minhaRegiao()
+        && request.resource.data.keys().hasOnly(['base', 'chave', 'nome', 'lat', 'lng', 'achado', 'fonte', 'em'])
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 120
+        && request.resource.data.chave is string && request.resource.data.chave.size() <= 80
+        && (request.resource.data.lat == null || request.resource.data.lat is number)
+        && (request.resource.data.lng == null || request.resource.data.lng is number);
+    }
+
     // status_escala/{base}__{data}__{escalaId}: o painel do aeroporto avisa
     // "recepcionado / embarcado" para o link do motorista. Sem dados de
     // passageiro — qualquer um lê um documento pelo id; grava quem marca.

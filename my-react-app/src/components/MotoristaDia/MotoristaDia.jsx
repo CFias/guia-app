@@ -549,6 +549,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
         )}
 
         {paradas.length ? (
+          <>
           <ol className="mt-rota" aria-label="Rota com paradas">
             {rota.map((n) => (
               <li key={n.chave} className={`${n.feito ? "is-ok" : ""} ${n.atual ? "is-atual" : ""} ${n.parada ? "is-hotel" : ""}`}>
@@ -558,6 +559,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                 <div className="mt-rota__txt">
                   {n.rotulo && <small className="mt-rota__rot">{n.rotulo}</small>}
                   <b>{n.nome}</b>
+                  {n.parada && !n.feito && s.kmHoteis?.[n.nome] !== undefined && <small className="mt-rota__km">{s.kmHoteis[n.nome]} km do aeroporto</small>}
                   {n.feito && (
                     <em>
                       {n.porta ? `Porta ${n.porta} · ` : ""}
@@ -589,6 +591,12 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
               </li>
             ))}
           </ol>
+          {(s.ordemHoteis === "auto" || s.ordemHoteis === "parcial") && (
+            <p className="mt-rota__nota">
+              <Icon name="map" size={12} /> Ordem pelo mapa, a partir do aeroporto{s.ordemHoteis === "parcial" ? " (hotel não achado ficou no fim)" : ""}.
+            </p>
+          )}
+          </>
         ) : (
           <ol className="mt-passos">
             {etapas.map((e, k) => {

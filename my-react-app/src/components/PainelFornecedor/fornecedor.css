@@ -1338,3 +1338,47 @@
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
+
+/* ordem dos hotéis (escala com 2+ hotéis), a partir do aeroporto */
+.pf-serv__ordem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 2px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+}
+
+.pf-serv__ordem li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pf-serv__ordem li small {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.pf-serv__ordem i {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pf-serv__ordem li.is-aviso {
+  color: var(--text-3);
+  font-weight: 500;
+  font-style: italic;
+}
