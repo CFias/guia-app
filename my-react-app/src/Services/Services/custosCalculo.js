@@ -300,6 +300,8 @@ const roadmapDo = (item) =>
   item?.auxRoadmapService?.roadmap ||
   item?.roadmap ||
   null;
+// código da escala como aparece no Phoenix (coluna "Escala", ex.: RO-WVPI-4623)
+const codigoDaEscala = (item) => String(roadmapDo(item)?.code || "").trim();
 
 const extrairGuia = (item) =>
   String(roadmapDo(item)?.guide?.nickname || roadmapDo(item)?.guide?.name || "")
@@ -519,6 +521,7 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
         mapa.set(chave, {
           chave,
           escalaId: escalaId ? String(escalaId) : "",
+          escalaCodigo: codigoDaEscala(item),
           tipo: "SERVICO",
           tipoPhoenix: tipoDoItem(item),
           tarifaFixaId: parceiro.id,
@@ -575,6 +578,8 @@ export const consolidarServicos = (itens = [], dataAlvo = "", tarifas = []) => {
       mapa.set(chave, {
         chave,
         escalaId: String(escalaId),
+        // como aparece no Phoenix (coluna "Escala", ex.: RO-WVPI-4623)
+        escalaCodigo: codigoDaEscala(item),
         tipo,
         data,
         hora,
@@ -1804,6 +1809,7 @@ export const textoDaRecomendacao = (r) => {
 export const CAMPOS_RETRATO = [
   "chave",
   "escalaId",
+  "escalaCodigo",
   "tipo",
   "data",
   "hora",

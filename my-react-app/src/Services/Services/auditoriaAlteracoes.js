@@ -248,6 +248,8 @@ export const fotoDaLinha = (l) => ({
   codigos: Array.isArray(l.codigos) ? l.codigos.slice(0, 60).map(String) : [],
   // número da escala no Phoenix e as reservas com voo, horário e destino
   escala: String(l.escalaId || String(l.chave || "").replace(/^[A-Z]+_/, "")),
+  // código da escala como o Phoenix mostra (RO-WVPI-4623); programação antiga não tem
+  escalaCodigo: String(l.escalaCodigo || ""),
   reservasLista: Array.isArray(l.reservasLista)
     ? l.reservasLista.slice(0, 40).map((r) => ({
         codigo: String(r.codigo || ""),
@@ -410,6 +412,11 @@ export const CLASSES_ATUALIZACAO = [
     dica: "reservas passaram de um veículo para outro",
   },
   {
+    id: "duplicado",
+    nome: "Mesma reserva em 2 veículos",
+    dica: "a mesma reserva estava (ou ficou) escalada em mais de um veículo — não é junção",
+  },
+  {
     id: "ajuste",
     nome: "Ajuste no serviço",
     dica: "horário, passageiros, motorista ou guia",
@@ -491,9 +498,21 @@ export const fraseDaAtualizacao = (a) => {
       return `Saiu da programação: ${lista((a.antesLista || []).map(nomeDoVeiculo))}.`;
     case "remanejou":
       return "Passageiros passaram de um veículo para outro.";
+    case "duplicado": {
+      const d = a.duplicados || [];
+      const codigos = [...new Set(d.flatMap((x) => x.codigos))];
+      const res =
+        codigos.length > 1
+          ? `As reservas ${lista(codigos)}`
+          : `A reserva ${codigos[0] || ""}`;
+      const esta = codigos.length > 1 ? "estavam" : "estava";
+      if (d.some((x) => x.lado === "A"))
+        return `${res} ${esta} escalada${codigos.length > 1 ? "s" : ""} em 2 veículos. Saiu ${lista(d.filter((x) => x.lado === "A").map((x) => x.nome))}; os passageiros seguem ${d[0].em ? `em ${d[0].em}` : "no outro veículo"}. Não foi junção: são os mesmos passageiros.`;
+      return `${res} passou a aparecer também em ${lista(d.map((x) => x.nome))} (já ${codigos.length > 1 ? "estavam" : "estava"} ${d[0].em ? `em ${d[0].em}` : "em outro veículo"}). Confira a escala no Phoenix.`;
+    }
     case "escala": {
       const e = m1("escala");
-      return `Escala refeita no mesmo veículo${e ? ` (nº ${e.de} → ${e.para})` : ""}.`;
+      return `Escala refeita no mesmo veículo${e ? ` (${e.de} → ${e.para})` : ""}.`;
     }
     default: {
       const partes = det.slice(0, 2).map((m) => {
@@ -658,11 +677,20 @@ export const reservasDoGrupo = (a) => {
       ? x.reservasLista
       : (x.codigos || []).map((codigo) => ({ codigo, soCodigo: true }));
   const porVeiculo = {};
+  const dup = new Map(
+    (a.duplicados || []).map((d) => [`${d.lado}:${d.chave}`, d]),
+  );
   antes.forEach((x) => {
+    const d = dup.get(`A:${x.chave}`);
+    const par = depois.find((y) => y.chave === a.parA?.[x.chave]);
     porVeiculo[`A:${x.chave}`] = lista(x).map((r) => {
+      if (d) return { ...r, estado: "duplicada", outro: d.em };
+      // a reserva pode estar em 2 veículos agora: o par deste veículo vem primeiro
+      if (par && (par.codigos || []).includes(r.codigo))
+        return { ...r, estado: "continua" };
       const y = ondeDepois.get(r.codigo);
       if (!y) return { ...r, estado: "saiu" };
-      if (a.parA?.[x.chave] && y.chave !== a.parA[x.chave])
+      if (y.chave !== a.parA?.[x.chave])
         return { ...r, estado: "foiPara", outro: nomeDoVeiculo(y) };
       return { ...r, estado: "continua" };
     });
@@ -671,7 +699,12 @@ export const reservasDoGrupo = (a) => {
     const parB = Object.entries(a.parA || {}).find(
       ([, b]) => b === y.chave,
     )?.[0];
+    const d = dup.get(`B:${y.chave}`);
+    const parX = antes.find((x) => x.chave === parB);
     porVeiculo[`B:${y.chave}`] = lista(y).map((r) => {
+      if (d) return { ...r, estado: "duplicada", outro: d.em };
+      if (parX && (parX.codigos || []).includes(r.codigo))
+        return { ...r, estado: "continua" };
       const x = ondeAntes.get(r.codigo);
       if (!x) return { ...r, estado: "nova" };
       if (x.chave !== parB)
@@ -709,9 +742,26 @@ export const linhasDoQueMudou = (a) => {
       lista.forEach((m) => usados.add(m));
       out.push({ icone, texto, ids: lista.map((m) => m.id), tom });
     };
-    if (pega("novo")) linha("plus", `Entrou ${veic}`, [pega("novo")], "entrou");
-    if (pega("cancelado"))
-      linha("x", `Saiu ${de}`, [pega("cancelado")], "saiu");
+    const copia = (lado, ch) =>
+      (a.duplicados || []).find((d) => d.lado === lado && d.chave === ch);
+    const nv = pega("novo");
+    const cn = pega("cancelado");
+    if (nv && copia("B", nv.chaveB))
+      linha(
+        "copy",
+        `${veic} entrou com a mesma reserva que já estava em ${copia("B", nv.chaveB).em} (escalada 2 vezes)`,
+        [nv],
+        "duplicado",
+      );
+    else if (nv) linha("plus", `Entrou ${veic}`, [nv], "entrou");
+    if (cn && copia("A", cn.chaveA))
+      linha(
+        "copy",
+        `${de} saiu: era a mesma reserva que está em ${copia("A", cn.chaveA).em} (escalada 2 vezes) — os passageiros seguem lá`,
+        [cn],
+        "duplicado",
+      );
+    else if (cn) linha("x", `Saiu ${de}`, [cn], "saiu");
     const v = pega("veiculo");
     const c = pega("categoria");
     if (v)
@@ -792,8 +842,7 @@ export const linhasDoQueMudou = (a) => {
     const f = pega("fornecedor");
     if (f) linha("building", `${veic}: fornecedor ${f.de} → ${f.para}`, [f]);
     const e = pega("escala");
-    if (e)
-      linha("hash", `${veic}: escala refeita (nº ${e.de} → ${e.para})`, [e]);
+    if (e) linha("hash", `${veic}: escala refeita (${e.de} → ${e.para})`, [e]);
     ms.filter((m) => !usados.has(m)).forEach((m) =>
       linha("sliders", `${veic}: ${textoDaMudanca(m)}`, [m]),
     );
@@ -804,18 +853,156 @@ export const linhasDoQueMudou = (a) => {
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const somaTotal = (l) => r2(l.reduce((s, x) => s + (Number(x.total) || 0), 0));
 
+/* Veículo "duplicado": todas as reservas dele também estão em outro veículo
+   do mesmo lado (a mesma reserva escalada duas vezes). Devolve o outro
+   veículo (prefere o que continua) ou null. */
+const duplicadoDe = (x, lado, preferidos = new Set()) => {
+  const cx = x.codigos || [];
+  if (!cx.length) return null;
+  const outros = lado.filter(
+    (w) =>
+      w.chave !== x.chave && cx.every((c) => (w.codigos || []).includes(c)),
+  );
+  return outros.find((w) => preferidos.has(w.chave)) || outros[0] || null;
+};
+// pax sem contar a mesma reserva duas vezes
+const paxUnico = (l = []) => {
+  const vistos = new Set();
+  return l.reduce((soma, x) => {
+    const rs = x.reservasLista || [];
+    if (rs.length && rs.every((r) => r.codigo)) {
+      return (
+        soma +
+        rs.reduce((t, r) => {
+          if (vistos.has(r.codigo)) return t;
+          vistos.add(r.codigo);
+          return t + (Number(r.pax) || 0);
+        }, 0)
+      );
+    }
+    const cx = x.codigos || [];
+    if (cx.length && cx.every((c) => vistos.has(c))) return soma;
+    cx.forEach((c) => vistos.add(c));
+    return soma + (x.pax || 0);
+  }, 0);
+};
+
+/* PROGRAMAÇÃO COM VERSÕES MISTURADAS.
+   Até a correção da prévia (custosRepository → guardarPreviaDeAmanha), cada
+   gravação da véspera era MISTURADA com a anterior: escala apagada à noite
+   ficava na programação. Resultado: a mesma reserva aparecia em vários
+   veículos (ônibus → outro ônibus → carro A → carro B), como se todos
+   existissem ao mesmo tempo.
+   Uma reserva só pode estar em UMA escala de cada vez, e o número da escala
+   no Phoenix cresce com o tempo: a escala mais nova que tem a reserva é onde
+   ela estava por último. As outras viram "versão antiga" — não contam veículo,
+   pax nem custo — e aparecem só no caminho da reserva. */
+const numEscala = (l) =>
+  Number(String(l?.escala || l?.chave || "").replace(/\D/g, "")) || 0;
+export const limparProgramacao = (linhas = {}) => {
+  const lista = Object.values(linhas || {});
+  const dono = new Map();
+  lista.forEach((l) =>
+    (l.codigos || []).forEach((c) => {
+      const k = `${l.tipo || ""}|${c}`;
+      const d = dono.get(k);
+      if (!d || numEscala(l) > numEscala(d)) dono.set(k, l);
+    }),
+  );
+  const base = {};
+  const antigas = [];
+  lista.forEach((l) => {
+    const cs = l.codigos || [];
+    const meus = cs.filter((c) => dono.get(`${l.tipo || ""}|${c}`) === l);
+    if (!cs.length || meus.length === cs.length) {
+      base[l.chave] = l;
+      return;
+    }
+    if (!meus.length) {
+      antigas.push(l);
+      return;
+    }
+    // ficou com parte das reservas: as outras já tinham ido para outra escala
+    const rl = (l.reservasLista || []).filter((r) => meus.includes(r.codigo));
+    const temDetalhe = rl.length === meus.length;
+    base[l.chave] = {
+      ...l,
+      codigos: meus,
+      reservasLista: temDetalhe ? rl : l.reservasLista || [],
+      pax: temDetalhe
+        ? rl.reduce((t, r) => t + (Number(r.pax) || 0), 0)
+        : l.pax,
+      reservas: meus.length,
+      foramAntes: cs.filter((c) => !meus.includes(c)),
+    };
+  });
+  return {
+    base,
+    antigas,
+    misturada:
+      antigas.length > 0 ||
+      Object.values(base).some((l) => l.foramAntes?.length),
+  };
+};
+
+/* Caminho de cada reserva: os veículos (escalas) em que ela apareceu na
+   programação, na ordem em que as escalas foram criadas, e onde está agora. */
+const caminhosDoGrupo = (codigos, tipo, originais, agoraLista) =>
+  [...new Set(codigos)]
+    .map((c) => {
+      const passos = originais
+        .filter(
+          (l) =>
+            (l.tipo || "") === (tipo || "") && (l.codigos || []).includes(c),
+        )
+        .sort((x, y) => numEscala(x) - numEscala(y))
+        .map((l) => ({
+          veiculo: nomeDoVeiculo(l),
+          escala: l.escalaCodigo || l.escala || "",
+        }));
+      const agora = agoraLista
+        .filter(
+          (y) =>
+            (y.tipo || "") === (tipo || "") && (y.codigos || []).includes(c),
+        )
+        .map((y) => ({
+          veiculo: nomeDoVeiculo(y),
+          escala: y.escalaCodigo || y.escala || "",
+        }));
+      const r = [...originais, ...agoraLista]
+        .flatMap((l) => l.reservasLista || [])
+        .find((x) => x.codigo === c) || { codigo: c };
+      return {
+        codigo: c,
+        titular: r.titular || "",
+        pax: Number(r.pax) || 0,
+        passos,
+        agora,
+      };
+    })
+    // só o que andou: passou por mais de um veículo ou não está onde estava
+    .filter(
+      (x) =>
+        x.passos.length > 1 ||
+        x.agora.length !== 1 ||
+        (x.passos[0] && x.passos[0].veiculo !== x.agora[0].veiculo),
+    );
+
 export const compararComFoto = (
   foto,
   atuais = [],
   config = normalizarAuditoria(),
 ) => {
-  const base = foto?.linhas || {};
+  const original = foto?.linhas || {};
+  const { base, antigas, misturada } = limparProgramacao(original);
+  const originais = Object.values(original);
   const agora = new Map(atuais.map((l) => [l.chave, fotoDaLinha(l)]));
   const grupos = juntarSemCodigos(gruposPorReserva(base, agora));
   const alteracoes = [];
 
   const obs = normalizarObservar(config.observar);
-  const escalaDe = (l) => String(l?.chave || "").replace(/^[A-Z]+_/, "");
+  const escalaDe = (l) =>
+    l?.escalaCodigo || String(l?.chave || "").replace(/^[A-Z]+_/, "");
 
   grupos.forEach(({ a: a0, b: b0 }) => {
     // serviço novo / cancelado inteiro
@@ -823,6 +1010,19 @@ export const compararComFoto = (
     if (!b0.length && !obs.cancelado) return;
     const { pares, soA, soB } = parear(a0, b0);
     const misto = a0.length > 0 && b0.length > 0;
+    // a mesma reserva em 2 veículos: o que sobra é cópia de outro, não junção/divisão
+    const continuaA = new Set(pares.map(([x]) => x.chave));
+    const continuaB = new Set(pares.map(([, y]) => y.chave));
+    const dupA = new Map(
+      soA
+        .map((x) => [x.chave, duplicadoDe(x, a0, continuaA)])
+        .filter(([, w]) => w),
+    );
+    const dupB = new Map(
+      soB
+        .map((y) => [y.chave, duplicadoDe(y, b0, continuaB)])
+        .filter(([, w]) => w),
+    );
     // sem "veículo a mais / retirado", o grupo fica só com os veículos que continuam
     const a = misto && !obs.estrutura ? pares.map(([x]) => x) : a0;
     const b = misto && !obs.estrutura ? pares.map(([, y]) => y) : b0;
@@ -876,7 +1076,12 @@ export const compararComFoto = (
     if (!mudancas.length) return;
 
     mudancas.forEach((m) => {
-      m.custo = custoDaRegra(m, m._a, m._b, config.regras);
+      // veículo que só repetia a mesma reserva: sair/entrar não custa nada
+      const copia =
+        (m.tipo === "cancelado" && m._a && dupA.has(m._a.chave)) ||
+        (m.tipo === "novo" && m._b && dupB.has(m._b.chave));
+      m.custo = copia ? 0 : custoDaRegra(m, m._a, m._b, config.regras);
+      if (copia) m.duplicado = true;
       // de qual veículo (programado → agora) é a mudança: serve para a hora de cada uma
       m.chaveA = m._a?.chave || "";
       m.chaveB = m._b?.chave || "";
@@ -884,29 +1089,41 @@ export const compararComFoto = (
       delete m._a;
       delete m._b;
     });
-    const totalAntes = somaTotal(a);
-    const totalDepois = somaTotal(b);
+    // a cópia não entra no total (era a mesma reserva contada de novo)
+    const totalAntes = somaTotal(a.filter((x) => !dupA.has(x.chave)));
+    const totalDepois = somaTotal(b.filter((y) => !dupB.has(y.chave)));
     const deltaTabela = config.contarTabela ? r2(totalDepois - totalAntes) : 0;
     const custoRegras = r2(mudancas.reduce((s, m) => s + m.custo, 0));
     const impacto = r2(deltaTabela + custoRegras);
 
     const trocouVeiculo = mudancas.some((m) => m.tipo === "veiculo");
-    const classe = !a.length
-      ? "novo"
-      : !b.length
-        ? "cancelado"
-        : b.length > a.length
-          ? "veiculoMais"
-          : b.length < a.length
-            ? "juntou"
-            : trocouVeiculo
-              ? "troca"
-              : mudancas.every((m) => m.tipo === "escala")
-                ? "escala"
-                : a.length > 1 &&
-                    mudancas.some((m) => /^(pax|reservas)/.test(m.tipo))
-                  ? "remanejou"
-                  : "ajuste";
+    const saiuSoCopia =
+      b.length < a.length &&
+      soA.length > 0 &&
+      soA.every((x) => dupA.has(x.chave));
+    const entrouSoCopia =
+      b.length > a.length &&
+      soB.length > 0 &&
+      soB.every((y) => dupB.has(y.chave));
+    const classe =
+      saiuSoCopia || entrouSoCopia
+        ? "duplicado"
+        : !a.length
+          ? "novo"
+          : !b.length
+            ? "cancelado"
+            : b.length > a.length
+              ? "veiculoMais"
+              : b.length < a.length
+                ? "juntou"
+                : trocouVeiculo
+                  ? "troca"
+                  : mudancas.every((m) => m.tipo === "escala")
+                    ? "escala"
+                    : a.length > 1 &&
+                        mudancas.some((m) => /^(pax|reservas)/.test(m.tipo))
+                      ? "remanejou"
+                      : "ajuste";
     const ordenar = (l) =>
       [...l].sort((x, y) =>
         `${x.hora}${x.chave}`.localeCompare(`${y.hora}${y.chave}`),
@@ -933,17 +1150,57 @@ export const compararComFoto = (
       }
     });
     antesL.forEach(
-      (x) => (estadoAntes[x.chave] = estadoAntes[x.chave] || "saiu"),
+      (x) =>
+        (estadoAntes[x.chave] =
+          estadoAntes[x.chave] || (dupA.has(x.chave) ? "duplicado" : "saiu")),
     );
     depoisL.forEach(
-      (y) => (estadoDepois[y.chave] = estadoDepois[y.chave] || "entrou"),
+      (y) =>
+        (estadoDepois[y.chave] =
+          estadoDepois[y.chave] ||
+          (dupB.has(y.chave) ? "duplicado" : "entrou")),
     );
+    // de qual veículo cada cópia repetia a reserva
+    const duplicados = [
+      ...[...dupA].map(([ch, w]) => ({
+        lado: "A",
+        chave: ch,
+        nome: nomeDoVeiculo(antesL.find((x) => x.chave === ch)),
+        em: nomeDoVeiculo(w),
+        codigos: antesL.find((x) => x.chave === ch)?.codigos || [],
+      })),
+      ...[...dupB].map(([ch, w]) => ({
+        lado: "B",
+        chave: ch,
+        nome: nomeDoVeiculo(depoisL.find((y) => y.chave === ch)),
+        em: nomeDoVeiculo(w),
+        codigos: depoisL.find((y) => y.chave === ch)?.codigos || [],
+      })),
+    ];
+    // reservas deste grupo (e as que saíram dos veículos dele ainda na véspera)
+    const codigosGrupo = [...a, ...b].flatMap((x) => [
+      ...(x.codigos || []),
+      ...(x.foramAntes || []),
+    ]);
+    const caminhos = caminhosDoGrupo(codigosGrupo, ref.tipo, originais, [
+      ...agora.values(),
+    ]);
+    const versoesAntigas = antigas
+      .filter((l) => (l.codigos || []).some((c) => codigosGrupo.includes(c)))
+      .map((l) => ({
+        veiculo: nomeDoVeiculo(l),
+        escala: l.escalaCodigo || l.escala || "",
+        pax: l.pax || 0,
+      }));
     alteracoes.push({
+      caminhos,
+      versoesAntigas,
       estadoAntes,
       estadoDepois,
       trocadoPor,
       noLugarDe,
       parA,
+      duplicados,
       id: `${chaves}|${mudancas.map((m) => `${m.tipo}:${m.para ?? ""}`).join(",")}`,
       chave: ref.chave,
       classe,
@@ -959,8 +1216,9 @@ export const compararComFoto = (
       veiculosDepois: depoisL.map(nomeDoVeiculo).join(" + "),
       contagemAntes: contagemDeVeiculos(antesL),
       contagemDepois: contagemDeVeiculos(depoisL),
-      paxAntes: antesL.reduce((s, x) => s + (x.pax || 0), 0),
-      paxDepois: depoisL.reduce((s, x) => s + (x.pax || 0), 0),
+      // sem contar a mesma reserva duas vezes
+      paxAntes: paxUnico(antesL),
+      paxDepois: paxUnico(depoisL),
       totalAntes,
       totalDepois,
       mudancas,
@@ -999,6 +1257,8 @@ export const compararComFoto = (
   const custoRegras = alteracoes.reduce((s, x) => s + x.custoRegras, 0);
   return {
     alteracoes,
+    // programação guardada com versões misturadas da véspera (corrigida aqui)
+    programacaoMisturada: misturada ? { versoesAntigas: antigas.length } : null,
     totais: {
       servicosFoto: Object.keys(base).length,
       servicosAgora: agora.size,

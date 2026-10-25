@@ -611,6 +611,9 @@ export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
   const fotos = Object.fromEntries(
     linhas.map((l) => [l.chave, fotoDaLinha(l)]),
   );
+  // mergeFields: a prévia é SUBSTITUÍDA a cada vez. Com { merge: true } o
+  // Firestore misturava as linhas — escala apagada na véspera ficava lá e a
+  // "programação" virava a soma de todas as versões da noite.
   await setDoc(
     REF_AUDITORIA(data, ctx.regiao),
     {
@@ -622,7 +625,7 @@ export const guardarPreviaDeAmanha = async (ctx, agora = new Date()) => {
         linhas: fotos,
       },
     },
-    { merge: true },
+    { mergeFields: ["data", "previa"] },
   );
   return linhas.length;
 };

@@ -4700,3 +4700,156 @@
     gap: 10px;
   }
 }
+
+/* mesma reserva escalada em 2 veículos (não é junção nem veículo a mais) */
+.aud-legenda .is-duplicado {
+  --c: #4f46e5;
+}
+
+.aud-veic.is-duplicado {
+  --c: #4f46e5;
+}
+
+.aud-veic.is-duplicado .aud-veic__nome b {
+  color: var(--text-3);
+}
+
+.aud-linha li.is-duplicado {
+  --c: #4f46e5;
+}
+
+.aud-res-lista li.is-duplicada {
+  --c: #4f46e5;
+}
+
+.aud-classe.is-duplicado {
+  --c: #4f46e5;
+}
+
+:is(body.dark, body.dark-pro) .aud-legenda .is-duplicado,
+:is(body.dark, body.dark-pro) .aud-veic.is-duplicado,
+:is(body.dark, body.dark-pro) .aud-linha li.is-duplicado,
+:is(body.dark, body.dark-pro) .aud-res-lista li.is-duplicada,
+:is(body.dark, body.dark-pro) .aud-classe.is-duplicado {
+  --c: #818cf8;
+}
+
+/* caminho das reservas: por onde a reserva passou (escalas em ordem) → onde está agora */
+.aud-caminho li {
+  grid-template-columns: minmax(150px, 210px) 1fr;
+  align-items: start;
+}
+
+.aud-caminho__res {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.aud-caminho__res b {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aud-caminho__res small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aud-caminho__passos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.aud-caminho__passo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border, var(--divider));
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2, var(--text));
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aud-caminho__passo.is-antes {
+  border-style: dashed;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.aud-caminho__passo.is-agora {
+  border-color: color-mix(in srgb, #16a34a 45%, transparent);
+  background: color-mix(in srgb, #16a34a 10%, var(--surface));
+  color: #15803d;
+}
+
+.aud-caminho__passo.is-agora em {
+  color: color-mix(in srgb, #15803d 70%, var(--text-3));
+  font-style: normal;
+  font-weight: 500;
+}
+
+.aud-caminho__passo.is-saiu {
+  border-color: color-mix(in srgb, #dc2626 40%, transparent);
+  background: color-mix(in srgb, #dc2626 8%, var(--surface));
+  color: #b91c1c;
+}
+
+:is(body.dark, body.dark-pro) .aud-caminho__passo.is-agora {
+  color: #4ade80;
+}
+
+:is(body.dark, body.dark-pro) .aud-caminho__passo.is-agora em {
+  color: #86efac;
+}
+
+:is(body.dark, body.dark-pro) .aud-caminho__passo.is-saiu {
+  color: #f87171;
+}
+
+.aud-caminho__seta {
+  flex: none;
+  color: var(--text-3);
+}
+
+.aud-caminho__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.aud-caminho__nota svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.aud-misturada {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .aud-caminho li {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aud-caminho__passo.is-programado em {
+  color: var(--text-3);
+  font-style: normal;
+  font-weight: 500;
+}

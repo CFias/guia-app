@@ -3415,7 +3415,7 @@ export default function PainelOperacionalUnificado() {
                         title="Escala no Phoenix"
                       >
                         <Icon name="clipboardCheck" size={14} />
-                        {grupo.escalaId}
+                        {grupo.escalaCodigo || grupo.escalaId}
                       </span>
                       {fornecedorInformado(grupo.fornecedor) ? (
                         <span className="painel-op-fornecedor-cel">

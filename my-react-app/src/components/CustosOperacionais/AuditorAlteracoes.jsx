@@ -67,9 +67,9 @@ const ORIGEM = {
 
 const textoMudanca = textoDaMudanca;
 const pl = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
-const ICONE_CLASSE = { veiculoMais: "split", juntou: "merge", troca: "swap", novo: "plus", cancelado: "x", remanejou: "users", ajuste: "sliders", escala: "hash" };
+const ICONE_CLASSE = { veiculoMais: "split", juntou: "merge", troca: "swap", novo: "plus", cancelado: "x", remanejou: "users", ajuste: "sliders", escala: "hash", duplicado: "copy" };
 const ICONE_CATEGORIA = { carro: "car", van: "van", "van-alongada": "van", micro: "bus", onibus: "bus" };
-const ROTULO_ESTADO = { entrou: "entrou", saiu: "saiu", trocou: "trocou" };
+const ROTULO_ESTADO = { entrou: "entrou", saiu: "saiu", trocou: "trocou", duplicado: "mesma reserva" };
 
 /* ---------- o que o auditor observa (configurável) ---------- */
 const OQueObservar = ({ config, onFechar }) => {
@@ -373,7 +373,7 @@ const AuditorDoDia = ({ config, pronto, vinculos, fornecedores }) => {
     const lado = (l) =>
       l.length
         ? l
-            .map((x) => `${esc(nomeDoVeiculo(x))}<br><span class="det">${x.escala ? `escala ${esc(x.escala)} · ` : ""}${x.pax} pax · ${(x.codigos || []).length || x.reservas || 0} reserva(s)${(x.codigos || []).length ? `: ${esc(x.codigos.join(", "))}` : ""}</span>`)
+            .map((x) => `${esc(nomeDoVeiculo(x))}<br><span class="det">${x.escalaCodigo || x.escala ? `escala ${esc(x.escalaCodigo || x.escala)} · ` : ""}${x.pax} pax · ${(x.codigos || []).length || x.reservas || 0} reserva(s)${(x.codigos || []).length ? `: ${esc(x.codigos.join(", "))}` : ""}</span>`)
             .join("<br>")
         : "<i>—</i>";
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Auditor da programação ${esc(dataBr(data))}</title><style>${CSS_IMPRESSAO}
@@ -548,6 +548,16 @@ ${
               </span>
             </div>
           )}
+          {rel.programacaoMisturada && (
+            <div className="ui-aviso-acao aud-misturada" role="note">
+              <Icon name="info" size={18} />
+              <span className="ui-aviso-acao__txt">
+                <b>A programação deste dia foi guardada com versões da véspera misturadas</b> (falha já corrigida para os próximos dias). Quando a mesma reserva
+                aparecia em mais de um veículo, vale a escala mais nova; as outras ({rel.programacaoMisturada.versoesAntigas}) aparecem só no caminho das reservas e
+                não contam como veículo nem custo.
+              </span>
+            </div>
+          )}
           <p className="aud-manchete">
             {rel.alteracoes.length ? (
               <>
@@ -626,6 +636,7 @@ ${
                 <span className="is-entrou"><i /> entrou</span>
                 <span className="is-saiu"><i /> saiu</span>
                 <span className="is-trocou"><i /> trocou</span>
+                <span className="is-duplicado"><i /> mesma reserva em 2 veículos</span>
                 <span className="is-continua"><i /> continua</span>
                 <span className="aud-legenda__acoes">
                   <select className="ui-input aud-ordem" value={ordem} onChange={(e) => setOrdem(e.target.value)} aria-label="Ordenar">
@@ -742,9 +753,9 @@ ${
                                             return (
                                               <>
                                                 <div className="aud-veic__meta">
-                                                  {x.escala ? (
-                                                    <span title="Número da escala no Phoenix">
-                                                      <Icon name="hash" size={11} /> Escala {x.escala}
+                                                  {x.escalaCodigo || x.escala ? (
+                                                    <span title={x.escalaCodigo ? "Escala no Phoenix (coluna Escala)" : "Número interno da escala (programação guardada antes do código do Phoenix)"}>
+                                                      <Icon name="hash" size={11} /> Escala {x.escalaCodigo || x.escala}
                                                     </span>
                                                   ) : null}
                                                   <span>
@@ -770,7 +781,15 @@ ${
                                                           <b>{r.codigo}</b>
                                                           {r.estado !== "continua" && (
                                                             <em className={`aud-res-lista__tag is-${r.estado}`}>
-                                                              {r.estado === "nova" ? "nova" : r.estado === "saiu" ? "saiu" : r.estado === "veioDe" ? `veio de ${r.outro}` : `foi para ${r.outro}`}
+                                                              {r.estado === "nova"
+                                                                ? "nova"
+                                                                : r.estado === "saiu"
+                                                                  ? "saiu"
+                                                                  : r.estado === "duplicada"
+                                                                    ? `também em ${r.outro}`
+                                                                    : r.estado === "veioDe"
+                                                                      ? `veio de ${r.outro}`
+                                                                      : `foi para ${r.outro}`}
                                                             </em>
                                                           )}
                                                         </span>
@@ -819,6 +838,59 @@ ${
                         </div>
 
                       </div>
+
+                      {/* caminho de cada reserva: por onde passou (na ordem das escalas) e onde está agora */}
+                      {a.caminhos?.length > 0 && (
+                        <div className="aud-linha aud-caminho">
+                          <span className="aud-linha__tit">
+                            <Icon name="map" size={13} /> Caminho das reservas
+                          </span>
+                          <ol>
+                            {a.caminhos.map((c) => (
+                              <li key={c.codigo}>
+                                <span className="aud-caminho__res">
+                                  <b>{c.codigo}</b>
+                                  <small>
+                                    {c.titular ? `${c.titular} · ` : ""}
+                                    {c.pax} pax
+                                  </small>
+                                </span>
+                                <span className="aud-caminho__passos">
+                                  {c.passos.map((p, k) => (
+                                    <Fragment key={`${p.escala}-${k}`}>
+                                      <span
+                                        className={`aud-caminho__passo ${k < c.passos.length - 1 ? "is-antes" : "is-programado"}`}
+                                        title={k < c.passos.length - 1 ? `Escala ${p.escala} · versão da véspera` : `Escala ${p.escala} · na programação fechada`}
+                                      >
+                                        {p.veiculo}
+                                        {k === c.passos.length - 1 && <em>programado</em>}
+                                      </span>
+                                      <Icon name="chevronRight" size={12} className="aud-caminho__seta" />
+                                    </Fragment>
+                                  ))}
+                                  {c.agora.length ? (
+                                    c.agora.map((p) => (
+                                      <span key={p.escala} className="aud-caminho__passo is-agora" title={`Escala ${p.escala}`}>
+                                        <Icon name="circleCheck" size={11} /> {p.veiculo} <em>agora</em>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="aud-caminho__passo is-saiu">
+                                      <Icon name="x" size={11} /> não está mais no Phoenix
+                                    </span>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                          {a.versoesAntigas?.length > 0 && (
+                            <p className="aud-caminho__nota">
+                              <Icon name="info" size={12} /> {a.versoesAntigas.map((v) => v.veiculo).join(", ")}{" "}
+                              {a.versoesAntigas.length > 1 ? "foram versões" : "foi uma versão"} da véspera (a reserva passou por lá antes de fechar a programação): não {a.versoesAntigas.length > 1 ? "contam" : "conta"} como veículo nem custo.
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {(() => {
                         const linhas = linhasDoQueMudou(a);
