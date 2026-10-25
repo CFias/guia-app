@@ -12,7 +12,6 @@ import { minimoPositivo, nivelCalor } from "./calor";
 import {
   DIAS_SEMANA_CURTO,
   DIAS_SEMANA_LONGO,
-  PAPEIS,
   dataBr,
   dataCurta,
   diaDaSemana,
@@ -23,6 +22,14 @@ import {
 } from "../../Services/Services/relatorioTurnos";
 import { registrarImpressao } from "../../Services/Services/atividadeRepository";
 
+// "Concierge" (funções que recebem os passageiros) ou "quem recebe"
+const quemRecebe = (r) =>
+  r.recepcao?.nomesFuncoes?.length
+    ? r.recepcao.nomesFuncoes.join(" e ")
+    : "quem recebe";
+const porPessoaDoTurno = (r, t) =>
+  t.apoio ? null : (r.recepcao?.porTurno?.[t.id]?.porPessoa ?? null);
+
 export const esc = (t) =>
   String(t ?? "")
     .replace(/&/g, "&amp;")
@@ -31,12 +38,42 @@ export const esc = (t) =>
     .replace(/"/g, "&quot;");
 
 const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
-const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const MESES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
 // mesma escala de cor da tela (laranja), em tons fixos para impressão
-const CALOR = ["#f6f8fa", "#fde4cf", "#fbc597", "#f79d5c", "#e8590c", "#a63c06"];
-const TEXTO_CALOR = ["#8c959f", "#1f2328", "#1f2328", "#1f2328", "#ffffff", "#ffffff"];
+const CALOR = [
+  "#f6f8fa",
+  "#fde4cf",
+  "#fbc597",
+  "#f79d5c",
+  "#e8590c",
+  "#a63c06",
+];
+const TEXTO_CALOR = [
+  "#8c959f",
+  "#1f2328",
+  "#1f2328",
+  "#1f2328",
+  "#ffffff",
+  "#ffffff",
+];
 
-export const textoPico = (s) => (s ? `${s.pax} em ${DIAS_SEMANA_CURTO[diaDaSemana(s.data)].toLowerCase()} ${dataCurta(s.data)}` : "—");
+export const textoPico = (s) =>
+  s
+    ? `${s.pax} em ${DIAS_SEMANA_CURTO[diaDaSemana(s.data)].toLowerCase()} ${dataCurta(s.data)}`
+    : "—";
 
 export const CSS_IMPRESSAO = `
 @page { size: A4 portrait; margin: 11mm 11mm 13mm; }
@@ -116,7 +153,10 @@ const equipeHtml = (t) =>
   t.colaboradores
     .map(
       (c) =>
-        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${c.dias?.length || (c.escala?.modelo && c.escala.modelo !== "semanal") ? `, ${esc(textoEscala(c))}` : ""
+        `${c.papel === "principal" ? `<b>${esc(c.nome)}</b>` : `${esc(c.nome)} (sinergia)`}${c.obs ? ` — ${esc(c.obs)}` : ""}${
+          c.dias?.length || (c.escala?.modelo && c.escala.modelo !== "semanal")
+            ? `, ${esc(textoEscala(c))}`
+            : ""
         }${c.inicio && c.fim ? `, ${horaTexto(c.inicio)}–${horaTexto(c.fim)}` : ""}`,
     )
     .join(" · ") || "Sem colaboradores";
@@ -131,7 +171,9 @@ const calendarioHtml = (calendario) => {
       const [a, m] = mes.split("-").map(Number);
       const vazios = (new Date(a, m - 1, 1, 12).getDay() + 6) % 7;
       const ultimo = new Date(a, m, 0, 12).getDate();
-      let cel = ORDEM_SEMANA.map((w) => `<span class="ds">${DIAS_SEMANA_CURTO[w]}</span>`).join("");
+      let cel = ORDEM_SEMANA.map(
+        (w) => `<span class="ds">${DIAS_SEMANA_CURTO[w]}</span>`,
+      ).join("");
       cel += "<span></span>".repeat(vazios);
       for (let dia = 1; dia <= ultimo; dia += 1) {
         const iso = `${mes}-${String(dia).padStart(2, "0")}`;
@@ -146,7 +188,10 @@ const calendarioHtml = (calendario) => {
       return `<div class="mes"><h4>${MESES[m - 1]} ${a}</h4><div class="cal">${cel}</div></div>`;
     })
     .join("");
-  const top = [...calendario].sort((a, b) => b.pax - a.pax).slice(0, 3).filter((d) => d.pax > 0);
+  const top = [...calendario]
+    .sort((a, b) => b.pax - a.pax)
+    .slice(0, 3)
+    .filter((d) => d.pax > 0);
   return `<div class="meses">${blocos}</div>
 <div class="leg">Menos ${CALOR.map((c) => `<i style="background:${c}"></i>`).join("")} Mais <span>(${min > 0 && min < max ? `de ${num(min, 0)} a ` : "até "}${num(max, 0)} pessoas no dia)</span></div>
 ${top.length ? `<p class="top">Dias de maior demanda: ${top.map((d) => `<b>${DIAS_SEMANA_CURTO[diaDaSemana(d.data)].toLowerCase()} ${dataCurta(d.data)}</b> (${d.pax})`).join(" · ")}</p>` : ""}`;
@@ -180,7 +225,7 @@ export const montarHtmlRelatorioTurnos = (r) => {
 <div class="eq">${equipeHtml(t)}</div>
 <div class="big">${num(t.mediaPax)}<small>pessoas por ${t.apoio ? "dia na janela" : "turno"} (média)</small></div>
 <ul>
-${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</span><b>${num(t.porPrincipal)}</b></li>` : ""}
+${porPessoaDoTurno(r, t) !== null ? `<li><span>Chegadas por ${esc(quemRecebe(r).toLowerCase())}</span><b>${num(porPessoaDoTurno(r, t))}</b></li>` : ""}
 <li><span>Reservas</span><b>${num(t.mediaReservas)}</b></li>
 <li><span>${esc(r.grupo)}</span><b>${num(t.mediaGrupos)}</b></li>
 <li><span>Pessoas por hora</span><b>${num(t.paxPorHora)}</b></li>
@@ -197,24 +242,35 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
       const vals = ORDEM_SEMANA.map((w) => t.semana[w]);
       const max = Math.max(...vals.filter((v) => v !== null));
       return `<tr><td class="e"><span class="dot" style="--c:${t.cor}"></span>${esc(t.nome)}${t.apoio ? " (apoio)" : ""}</td>${vals
-        .map((v) => `<td class="${v !== null && v === max && v > 0 ? "max" : ""}">${v === null ? "—" : num(v)}</td>`)
+        .map(
+          (v) =>
+            `<td class="${v !== null && v === max && v > 0 ? "max" : ""}">${v === null ? "—" : num(v)}</td>`,
+        )
         .join("")}</tr>`;
     })
     .join("");
 
-  const colabs = r.colaboradores
+  const rec = r.recepcao;
+  const comMarca = !!rec?.temAtendimento;
+  const linhasRec = (rec?.linhas || [])
     .map(
-      (c) => `<tr><td class="e"><b>${esc(c.nome)}</b>${c.obs ? ` <span style="color:#57606a">· ${esc(c.obs)}</span>` : ""}</td>
-<td class="e"><span class="papel ${c.papel}">${esc(PAPEIS.find((p) => p.id === c.papel)?.curto)}</span></td>
-<td class="e"><span class="dot" style="--c:${c.cor}"></span>${esc(c.turnoNome)}</td>
-<td class="e">${horaTexto(c.janela.inicio)}–${horaTexto(c.janela.fim)}</td>
-<td class="e">${esc(textoEscala(c))}</td>
-<td><b>${num(c.mediaPax)}</b></td><td>${c.totalPax.toLocaleString("pt-BR")}</td></tr>`,
+      (
+        l,
+      ) => `<tr><td class="e"><b>${esc(l.nome)}</b>${l.funcaoNome ? ` <span style="color:#57606a">· ${esc(l.funcaoNome)}</span>` : ""}</td>
+<td class="e"><span class="dot" style="--c:${l.cor}"></span>${esc(l.turnoNome)}</td>
+<td>${l.diasEscalado || "—"}</td><td>${l.diasEscalado ? num(l.mediaDemanda) : "—"}</td><td><b>${l.diasEscalado ? num(l.mediaEsperado) : "—"}</b></td>${
+        comMarca
+          ? `<td>${num(l.mediaRecebido)}</td><td>${Math.round(l.recebido).toLocaleString("pt-BR")}</td><td>${l.pctDoEsperado === null ? "—" : `${num(l.pctDoEsperado, 0)}%`}</td>`
+          : ""
+      }</tr>`,
     )
     .join("");
 
   const horas = r.porHora
-    .map((v, h) => `<div style="--c:${corDaHora(h, r.turnos)};height:${Math.max(1, (v / maxHora) * 100)}%">${v >= maxHora * 0.12 ? `<span>${num(v, 0)}</span>` : ""}</div>`)
+    .map(
+      (v, h) =>
+        `<div style="--c:${corDaHora(h, r.turnos)};height:${Math.max(1, (v / maxHora) * 100)}%">${v >= maxHora * 0.12 ? `<span>${num(v, 0)}</span>` : ""}</div>`,
+    )
     .join("");
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Demanda por turno ${esc(dataBr(r.inicio))} a ${esc(dataBr(r.fim))}</title><style>${CSS_IMPRESSAO}</style></head><body>
@@ -227,23 +283,34 @@ ${!t.apoio && t.porPrincipal !== null ? `<li><span>Por colaborador principal</sp
 <div class="kpi"><span>Turno mais movimentado</span><b>${esc(maisMov?.nome || "—")}</b><small>${maisMov ? `${num(maisMov.mediaPax)} pessoas por turno` : ""}</small></div>
 <div class="kpi"><span>Na troca de turno</span><b>${num(r.troca.mediaPax)}</b><small>pessoas por dia, nos dois turnos</small></div>
 </div>
-${Object.keys(r.porTipo).length > 1
-      ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
-        .map(([k, v]) => `${esc(nomeTipo(k))} <b>${v.pax.toLocaleString("pt-BR")}</b>`)
+${
+  Object.keys(r.porTipo).length > 1
+    ? `<p class="top">Por tipo: ${Object.entries(r.porTipo)
+        .map(
+          ([k, v]) =>
+            `${esc(nomeTipo(k))} <b>${v.pax.toLocaleString("pt-BR")}</b>`,
+        )
         .join(" · ")}</p>`
-      : ""
-    }
+    : ""
+}
 
 <h2>Média por turno</h2>
 <div class="turnos">${cards}</div>
 
 <div class="blk">
-<h2>Colaboradores</h2>
-<table><thead><tr><th class="e">Colaborador</th><th class="e">Papel</th><th class="e">Turno</th><th class="e">Horário</th><th class="e">Dias</th><th>Média/dia</th><th>Total</th></tr></thead><tbody>${colabs}</tbody></table>
-${r.folguistas.length
-      ? `<p class="top"><b>Folguista${r.folguistas.length > 1 ? "s" : ""}:</b> ${esc(r.folguistas.map((f) => f.nome + (f.obs ? ` (${f.obs})` : "")).join(", "))} — cobre as folgas.</p>`
-      : ""
-    }
+<h2>Quem recebe os passageiros (${esc(quemRecebe(r))})</h2>
+${
+  !rec
+    ? `<p class="top">Inclua Chegadas no relatório para ver a conta de quem recebe.</p>`
+    : rec.linhas.length
+      ? `<table><thead><tr><th class="e">Pessoa</th><th class="e">Turno</th><th>Dias na escala</th><th>Chegadas do turno/dia</th><th>Parte esperada/dia</th>${
+          comMarca
+            ? "<th>Recebeu/dia</th><th>Recebeu no período</th><th>Do esperado</th>"
+            : ""
+        }</tr></thead><tbody>${linhasRec}</tbody></table>`
+      : `<p class="top">Ninguém com função que recebe estava na escala nesse período.</p>`
+}
+${rec?.foraDaConta?.length ? `<p class="top"><b>Fora da conta</b> (não recebem passageiros): ${esc(rec.foraDaConta.map((c) => `${c.nome} (${c.funcaoNome})`).join(", "))}.</p>` : ""}
 </div>
 
 <div class="blk">
@@ -268,8 +335,11 @@ ${semanaHoraHtml(r.semanaHora)}
 </div>
 
 <div class="notas blk">
-<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${r.pelaApresentacao ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)` : ""
-    }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Por colaborador principal" divide a demanda do turno pelos colaboradores de função principal escalados no dia; quem está em sinergia não divide a conta.</p>
+<p><b>Como foi calculado:</b> pessoas = adultos + crianças + bebês de cada reserva do Phoenix (${esc(r.tituloServicos)}). Nas chegadas vale o horário do voo${
+    r.pelaApresentacao
+      ? ` (${r.pelaApresentacao} reservas sem horário de voo usaram a apresentação)`
+      : ""
+  }; nos demais serviços, a apresentação. Reservas com CLD, cancelado, não escalar ou dispensado não contam. Quando dois turnos se sobrepõem, a reserva conta para os dois. Turno que passa da meia-noite é contado pelo dia em que começa. "Chegadas por ${esc(quemRecebe(r).toLowerCase())}" divide só as chegadas do turno por quem recebe os passageiros escalado no dia, pela escala real (folgas, trocas, coberturas e folguistas); quem tem outra função não entra na conta. "Recebeu" vem das marcas de Recepcionei no painel do aeroporto.</p>
 </div>
 </body></html>`;
 };
@@ -284,7 +354,8 @@ export const imprimirRelatorioTurnos = (r) => {
 export const imprimirHtml = (html) => {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();
@@ -309,7 +380,11 @@ export const imprimirHtml = (html) => {
 /* Baixar a MESMA página da impressão como imagem PNG (para mandar nos grupos).
    Monta a página num quadro escondido com a largura de uma folha A4 deitada
    e fotografa com o html2canvas (carregado só na hora). */
-export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura = 1123 } = {}) => {
+export const baixarPngHtml = async (
+  html,
+  nomeArquivo = "escala.png",
+  { largura = 1123 } = {},
+) => {
   const { default: html2canvas } = await import("html2canvas");
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
@@ -319,11 +394,26 @@ export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura 
     const doc = iframe.contentDocument || iframe.contentWindow.document;
     doc.open();
     // margem da folha vira respiro em volta da imagem
-    doc.write(html.replace("</head>", `<style>html,body{background:#fff}body{margin:0;padding:28px 30px 32px;width:${largura}px;box-sizing:border-box}*{font-variant-numeric:normal!important}</style></head>`));
+    doc.write(
+      html.replace(
+        "</head>",
+        `<style>html,body{background:#fff}body{margin:0;padding:28px 30px 32px;width:${largura}px;box-sizing:border-box}*{font-variant-numeric:normal!important}</style></head>`,
+      ),
+    );
     doc.close();
-    await new Promise((ok) => (doc.readyState === "complete" ? ok() : iframe.addEventListener("load", ok, { once: true })));
-    await doc.fonts?.ready?.catch?.(() => { });
-    await Promise.all([...doc.images].map((img) => (img.complete ? null : new Promise((ok) => ((img.onload = ok), (img.onerror = ok))))));
+    await new Promise((ok) =>
+      doc.readyState === "complete"
+        ? ok()
+        : iframe.addEventListener("load", ok, { once: true }),
+    );
+    await doc.fonts?.ready?.catch?.(() => {});
+    await Promise.all(
+      [...doc.images].map((img) =>
+        img.complete
+          ? null
+          : new Promise((ok) => ((img.onload = ok), (img.onerror = ok))),
+      ),
+    );
     // se algo ficou mais largo que a folha (muitas colunas), a imagem acompanha
     const larg = Math.max(largura, Math.ceil(doc.documentElement.scrollWidth));
     if (larg > largura) {
@@ -332,7 +422,16 @@ export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura 
     }
     const alto = Math.ceil(doc.body.scrollHeight);
     iframe.style.height = `${alto}px`;
-    const canvas = await html2canvas(doc.body, { backgroundColor: "#ffffff", scale: 2, width: larg, height: alto, windowWidth: larg, windowHeight: alto, logging: false, useCORS: true });
+    const canvas = await html2canvas(doc.body, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      width: larg,
+      height: alto,
+      windowWidth: larg,
+      windowHeight: alto,
+      logging: false,
+      useCORS: true,
+    });
     const blob = await new Promise((ok) => canvas.toBlob(ok, "image/png"));
     if (!blob) throw new Error("Não foi possível gerar a imagem.");
     const url = URL.createObjectURL(blob);
@@ -349,20 +448,39 @@ export const baixarPngHtml = async (html, nomeArquivo = "escala.png", { largura 
   }
 };
 
-// Excel: resumo por turno, colaboradores e uma linha por dia
+// Excel: resumo por turno, quem recebe e uma linha por dia
 export const baixarExcelTurnos = (r) => {
   if (!r) return;
   const resumo = [
-    [`Demanda por turno · ${r.tituloServicos} · ${dataBr(r.inicio)} a ${dataBr(r.fim)} (${r.nDias} dias)`],
+    [
+      `Demanda por turno · ${r.tituloServicos} · ${dataBr(r.inicio)} a ${dataBr(r.fim)} (${r.nDias} dias)`,
+    ],
     [],
-    ["TURNO", "HORÁRIO", "TIPO", "EQUIPE", "MÉDIA PESSOAS", "POR COLABORADOR PRINCIPAL", "MÉDIA RESERVAS", `MÉDIA ${r.grupo.toUpperCase()}`, "PESSOAS/HORA", "TOTAL", "DIA MAIS CHEIO", "DIA MAIS VAZIO"],
+    [
+      "TURNO",
+      "HORÁRIO",
+      "TIPO",
+      "EQUIPE",
+      "MÉDIA PESSOAS",
+      `CHEGADAS POR ${quemRecebe(r).toUpperCase()}`,
+      "MÉDIA RESERVAS",
+      `MÉDIA ${r.grupo.toUpperCase()}`,
+      "PESSOAS/HORA",
+      "TOTAL",
+      "DIA MAIS CHEIO",
+      "DIA MAIS VAZIO",
+    ],
     ...r.turnos.map((t) => [
       t.nome,
       `${t.inicio} às ${t.fim}`,
       t.apoio ? "Janela de apoio" : "Turno",
-      t.colaboradores.map((c) => `${c.nome}${c.papel === "sinergia" ? " (sinergia)" : ""}`).join(", "),
+      t.colaboradores
+        .map((c) => `${c.nome}${c.papel === "sinergia" ? " (sinergia)" : ""}`)
+        .join(", "),
       Number(t.mediaPax.toFixed(1)),
-      t.porPrincipal === null || t.apoio ? "" : Number(t.porPrincipal.toFixed(1)),
+      porPessoaDoTurno(r, t) === null
+        ? ""
+        : Number(porPessoaDoTurno(r, t).toFixed(1)),
       Number(t.mediaReservas.toFixed(1)),
       Number(t.mediaGrupos.toFixed(1)),
       Number(t.paxPorHora.toFixed(1)),
@@ -373,32 +491,64 @@ export const baixarExcelTurnos = (r) => {
     [],
     [r.rotuloPessoas, r.totalPax],
     ["Média por dia", Number(r.mediaPaxDia.toFixed(1))],
-    ["Na troca de turno (média/dia, conta nos dois turnos)", Number(r.troca.mediaPax.toFixed(1))],
+    [
+      "Na troca de turno (média/dia, conta nos dois turnos)",
+      Number(r.troca.mediaPax.toFixed(1)),
+    ],
     ...Object.entries(r.porTipo).map(([k, v]) => [nomeTipo(k), v.pax]),
   ];
   const abaResumo = XLSX.utils.aoa_to_sheet(resumo);
-  abaResumo["!cols"] = [20, 14, 14, 36, 14, 22, 14, 14, 12, 10, 20, 20].map((wch) => ({ wch }));
+  abaResumo["!cols"] = [20, 14, 14, 36, 14, 22, 14, 14, 12, 10, 20, 20].map(
+    (wch) => ({ wch }),
+  );
 
+  const rec = r.recepcao;
   const colabs = [
-    ["COLABORADOR", "PAPEL", "OBSERVAÇÃO", "TURNO", "HORÁRIO", "DIAS", "DIAS NO PERÍODO", "MÉDIA PESSOAS/DIA", "TOTAL"],
-    ...r.colaboradores.map((c) => [
-      c.nome,
-      PAPEIS.find((p) => p.id === c.papel)?.nome,
-      c.obs,
-      c.turnoNome,
-      `${c.janela.inicio}–${c.janela.fim}`,
-      textoEscala(c),
-      c.diasNoPeriodo,
-      Number(c.mediaPax.toFixed(1)),
-      c.totalPax,
+    [
+      "PESSOA",
+      "FUNÇÃO",
+      "TURNO",
+      "DIAS NA ESCALA",
+      "CHEGADAS DO TURNO/DIA",
+      "PARTE ESPERADA/DIA",
+      "RECEBEU/DIA",
+      "RECEBEU NO PERÍODO",
+      "% DO ESPERADO",
+    ],
+    ...(rec?.linhas || []).map((l) => [
+      l.nome,
+      l.funcaoNome,
+      l.turnoNome,
+      l.diasEscalado,
+      Number(l.mediaDemanda.toFixed(1)),
+      Number(l.mediaEsperado.toFixed(1)),
+      rec.temAtendimento ? Number(l.mediaRecebido.toFixed(1)) : "",
+      rec.temAtendimento ? Math.round(l.recebido) : "",
+      rec.temAtendimento && l.pctDoEsperado !== null
+        ? Math.round(l.pctDoEsperado)
+        : "",
     ]),
-    ...r.folguistas.map((f) => [f.nome, "Folguista", f.obs, "", "", "", "", "", ""]),
+    ...(rec?.foraDaConta?.length
+      ? [
+          [],
+          ["Fora da conta (não recebem passageiros)"],
+          ...rec.foraDaConta.map((c) => [c.nome, c.funcaoNome]),
+        ]
+      : []),
   ];
   const abaColabs = XLSX.utils.aoa_to_sheet(colabs);
-  abaColabs["!cols"] = [18, 18, 24, 20, 12, 16, 14, 16, 10].map((wch) => ({ wch }));
+  abaColabs["!cols"] = [22, 18, 18, 14, 20, 18, 14, 18, 14].map((wch) => ({
+    wch,
+  }));
 
   const porDia = [
-    ["DATA", "DIA", "PESSOAS NO DIA", "RESERVAS NO DIA", ...r.turnos.map((t) => `${t.nome.toUpperCase()} (${t.inicio}–${t.fim})`)],
+    [
+      "DATA",
+      "DIA",
+      "PESSOAS NO DIA",
+      "RESERVAS NO DIA",
+      ...r.turnos.map((t) => `${t.nome.toUpperCase()} (${t.inicio}–${t.fim})`),
+    ],
     ...r.calendario.map((d, i) => [
       dataBr(d.data),
       DIAS_SEMANA_LONGO[diaDaSemana(d.data)],
@@ -408,11 +558,13 @@ export const baixarExcelTurnos = (r) => {
     ]),
   ];
   const abaDias = XLSX.utils.aoa_to_sheet(porDia);
-  abaDias["!cols"] = [12, 10, 14, 14, ...r.turnos.map(() => 22)].map((wch) => ({ wch }));
+  abaDias["!cols"] = [12, 10, 14, 14, ...r.turnos.map(() => 22)].map((wch) => ({
+    wch,
+  }));
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, abaResumo, "Resumo");
-  XLSX.utils.book_append_sheet(wb, abaColabs, "Colaboradores");
+  XLSX.utils.book_append_sheet(wb, abaColabs, "Quem recebe");
   XLSX.utils.book_append_sheet(wb, abaDias, "Por dia");
   XLSX.writeFile(wb, `demanda-por-turno-${r.inicio}-a-${r.fim}.xlsx`);
 };
@@ -423,5 +575,8 @@ export const escalarFontes = (html, k = 1) => {
   const r = (n) => Math.round(parseFloat(n) * k * 10) / 10;
   return String(html)
     .replace(/font-size:\s*([\d.]+)px/g, (m, n) => `font-size: ${r(n)}px`)
-    .replace(/min-width:\s*([\d.]+)px/g, (m, n) => `min-width: ${Math.round(parseFloat(n) * Math.max(1, k))}px`);
+    .replace(
+      /min-width:\s*([\d.]+)px/g,
+      (m, n) => `min-width: ${Math.round(parseFloat(n) * Math.max(1, k))}px`,
+    );
 };

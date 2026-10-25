@@ -3364,3 +3364,81 @@ button.rtn-cal__dia:hover {
   background: var(--alert-soft);
   color: var(--alert);
 }
+
+/* Demanda → Quem recebe os passageiros (concierge) */
+.rtn-qr {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.rtn-qr .rtn-semana, .rtn-qr .rtn-folg {
+  padding: 0;
+}
+
+.rtn-qr__funcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.rtn-qr__funcoes>small {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.rtn-qr__auto {
+  font-style: italic;
+}
+
+.rtn-qr__vazio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.rtn-qr__vazio>svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.rtn-qr__fora {
+  color: var(--warning);
+}
+
+.rtn-qr__pct {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+
+.rtn-qr__trilho {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--raised);
+}
+
+.rtn-qr__trilho i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.rtn-turno__dados div.is-alerta dt, .rtn-turno__dados div.is-alerta dd {
+  color: var(--warning);
+}

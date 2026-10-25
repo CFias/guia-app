@@ -38,6 +38,19 @@ import "./motorista.css";
 const NOME_TIPO = { IN: "Chegada", OUT: "Saída", TRF: "Transfer", PASSEIO: "Passeio" };
 const ICONE_TIPO = { IN: "planeLanding", OUT: "planeTakeoff", PASSEIO: "compass" };
 const PERTO_METROS = 400;
+// período do dia de um horário "HH:MM"
+const PERIODOS = [
+  { id: "madrugada", nome: "Madrugada", ate: 5 * 60 },
+  { id: "manha", nome: "Manhã", ate: 12 * 60 },
+  { id: "tarde", nome: "Tarde", ate: 18 * 60 },
+  { id: "noite", nome: "Noite", ate: 24 * 60 },
+];
+const periodoDe = (hora) => {
+  const [h, m] = String(hora || "").split(":").map(Number);
+  if (Number.isNaN(h)) return PERIODOS[1];
+  const min = h * 60 + (m || 0);
+  return PERIODOS.find((p) => min < p.ate) || PERIODOS[3];
+};
 const POSICAO_A_CADA = 60 * 1000;
 
 const minutosDe = (hhmm) => {
@@ -108,6 +121,9 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   const [avisosAtivos, setAvisosAtivos] = useState(false);
   const [salvando, setSalvando] = useState("");
   const [abertas, setAbertas] = useState(() => new Set());
+  // serviços abertos na lista (só o "agora" fica aberto sozinho)
+  const [expandidos, setExpandidos] = useState(() => new Set());
+  const [verFeitos, setVerFeitos] = useState(false);
   const [vistos, setVistos] = useState(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem(`m.vistos.${token || "proprio"}`) || "[]"));
@@ -492,6 +508,75 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   const proximos = servicos.filter((s) => s !== atual && !situacaoDoServico(s.tipo, eventos[s.chave]).concluido);
   const concluidos = servicos.filter((s) => situacaoDoServico(s.tipo, eventos[s.chave]).concluido);
 
+  const alternarExpandido = (chave) =>
+    setExpandidos((a) => {
+      const n = new Set(a);
+      if (n.has(chave)) n.delete(chave);
+      else n.add(chave);
+      return n;
+    });
+
+  // situação curta do serviço, para a linha compacta
+  const situacaoCurta = (s) => {
+    const ev = eventos[s.chave] || {};
+    const st = situacaoDoServico(s.tipo, ev);
+    if (st.concluido) return { texto: `Finalizado ${horaDoTimestamp(ev[st.ultima.id]?.em)}`.trim(), tom: "ok", icone: "circleCheck" };
+    if (st.ultima) return { texto: ev[st.ultima.id]?.porta ? `Porta ${ev[st.ultima.id].porta}` : st.ultima.feito, tom: "andamento", icone: st.ultima.id === "iniciado" ? "navigation" : "mapPin" };
+    if (s.tipo === "IN" && status[s.escalaId]?.recepcionado) return { texto: "Recepcionados", tom: "ok", icone: "circleCheck" };
+    return null;
+  };
+
+  // linha compacta (toque abre o cartão completo no lugar)
+  const linhaServico = (s) => {
+    if (expandidos.has(s.chave)) {
+      return (
+        <li key={s.chave} className="mt-linha is-aberta">
+          <button type="button" className="mt-linha__fechar" onClick={() => alternarExpandido(s.chave)}>
+            <Icon name="chevronUp" size={14} /> Recolher
+          </button>
+          <ul className="mt-lista">{cardServico(s, false)}</ul>
+        </li>
+      );
+    }
+    const sit = situacaoCurta(s);
+    return (
+      <li key={s.chave} className={`mt-linha is-${String(s.tipo).toLowerCase()}`}>
+        <button type="button" className="mt-linha__btn" onClick={() => alternarExpandido(s.chave)} aria-expanded="false">
+          <span className="mt-linha__hora">{s.hora || "--:--"}</span>
+          <span className="mt-linha__txt">
+            <span className="mt-linha__tipo">
+              <Icon name={ICONE_TIPO[s.tipo] || "car"} size={12} /> {NOME_TIPO[s.tipo] || s.tipo}
+              {s.voos.length > 0 && <em>{s.voos.join(", ")}</em>}
+            </span>
+            <b>{s.descricao}</b>
+            <small>
+              {s.veiculo}
+              {s.placa ? ` · ${s.placa}` : ""} · {s.pax} pax
+            </small>
+          </span>
+          <span className="mt-linha__fim">
+            {sit && (
+              <span className={`mt-linha__sit is-${sit.tom}`}>
+                <Icon name={sit.icone} size={11} /> {sit.texto}
+              </span>
+            )}
+            <Icon name="chevronDown" size={16} />
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  // próximos agrupados por período do dia
+  const porPeriodo = PERIODOS.map((p) => ({ ...p, lista: proximos.filter((s) => periodoDe(s.hora).id === p.id) })).filter((p) => p.lista.length);
+  const totalPax = servicos.reduce((a, s) => a + (Number(s.pax) || 0), 0);
+  const porTipo = Object.entries(
+    servicos.reduce((m, s) => {
+      m[s.tipo] = (m[s.tipo] || 0) + 1;
+      return m;
+    }, {}),
+  );
+
   return (
     <div className={`mt ${embutido ? "mt--embutido" : ""}`}>
       {!embutido && (
@@ -556,9 +641,37 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </div>
         ) : (
           <>
+            {/* resumo do dia */}
+            <section className="mt-resumo" aria-label="Resumo do dia">
+              <div className="mt-resumo__topo">
+                <span>
+                  <b>
+                    {servicos.length} serviço{servicos.length > 1 ? "s" : ""} · {totalPax} pax
+                  </b>
+                  <small>
+                    {porTipo.map(([t, n]) => `${n} ${(NOME_TIPO[t] || t).toLowerCase()}${n > 1 ? "s" : ""}`).join(" · ")}
+                  </small>
+                </span>
+                <span className="mt-resumo__conta">
+                  <b>
+                    {concluidos.length} de {servicos.length}
+                  </b>
+                  <small>finalizados</small>
+                </span>
+              </div>
+              <div className="mt-resumo__barra" role="progressbar" aria-valuemin={0} aria-valuemax={servicos.length} aria-valuenow={concluidos.length} aria-label="Serviços finalizados">
+                {servicos.map((s) => {
+                  const st = situacaoDoServico(s.tipo, eventos[s.chave]);
+                  return <i key={s.chave} className={st.concluido ? "is-ok" : s === atual ? "is-agora" : ""} title={`${s.hora} ${s.descricao}`} />;
+                })}
+              </div>
+            </section>
+
             {atual ? (
               <section>
-                <h2 className="mt-secao">Agora</h2>
+                <h2 className="mt-secao">
+                  <span className="mt-secao__ponto" aria-hidden="true" /> Agora
+                </h2>
                 <ul className="mt-lista">{cardServico(atual, true)}</ul>
               </section>
             ) : (
@@ -567,16 +680,29 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                 <b>Todos os serviços finalizados. Bom descanso!</b>
               </div>
             )}
-            {proximos.length > 0 && (
+
+            {porPeriodo.length > 0 && (
               <section>
-                <h2 className="mt-secao">Depois ({proximos.length})</h2>
-                <ul className="mt-lista">{proximos.map((s) => cardServico(s, false))}</ul>
+                <h2 className="mt-secao">Próximos ({proximos.length})</h2>
+                <div className="mt-grupos">
+                  {porPeriodo.map((p) => (
+                    <div key={p.id} className="mt-grupo">
+                      <h3 className="mt-grupo__nome">
+                        {p.nome} <small>{p.lista.length}</small>
+                      </h3>
+                      <ul className="mt-linhas">{p.lista.map(linhaServico)}</ul>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
+
             {concluidos.length > 0 && (
               <section>
-                <h2 className="mt-secao">Finalizados ({concluidos.length})</h2>
-                <ul className="mt-lista is-feitos">{concluidos.map((s) => cardServico(s, false))}</ul>
+                <button type="button" className="mt-secao mt-secao--btn" onClick={() => setVerFeitos((v) => !v)} aria-expanded={verFeitos}>
+                  Finalizados ({concluidos.length}) <Icon name={verFeitos ? "chevronUp" : "chevronDown"} size={14} />
+                </button>
+                {verFeitos && <ul className="mt-linhas is-feitos">{concluidos.map(linhaServico)}</ul>}
               </section>
             )}
           </>

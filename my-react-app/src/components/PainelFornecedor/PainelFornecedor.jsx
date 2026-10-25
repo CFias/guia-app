@@ -578,13 +578,25 @@ const PainelFornecedor = () => {
 
         <div className="pf-abas" role="tablist" aria-label="Seções">
           <button type="button" role="tab" aria-selected={abaAtual === "viagem"} className={abaAtual === "viagem" ? "is-on" : ""} onClick={() => setAba("viagem")}>
-            <Icon name="navigation" size={14} /> Minha viagem {liberado && meusServicos.length > 0 && <small>{meusServicos.length}</small>}
+            <span className="pf-abas__ic">
+              <Icon name="navigation" size={14} />
+              {liberado && meusServicos.length > 0 && <small>{meusServicos.length}</small>}
+            </span>
+            Minha viagem
           </button>
           <button type="button" role="tab" aria-selected={abaAtual === "servicos"} className={abaAtual === "servicos" ? "is-on" : ""} onClick={() => setAba("servicos")}>
-            <Icon name="car" size={14} /> Carros {liberado && <small>{totalServicos}</small>}
+            <span className="pf-abas__ic">
+              <Icon name="car" size={14} />
+              {liberado && <small>{totalServicos}</small>}
+            </span>
+            Carros
           </button>
           <button type="button" role="tab" aria-selected={abaAtual === "motoristas"} className={abaAtual === "motoristas" ? "is-on" : ""} onClick={() => setAba("motoristas")}>
-            <Icon name="users" size={14} /> Motoristas <small>{ativos.length}</small>
+            <span className="pf-abas__ic">
+              <Icon name="users" size={14} />
+              <small>{ativos.length}</small>
+            </span>
+            Motoristas
           </button>
         </div>
 

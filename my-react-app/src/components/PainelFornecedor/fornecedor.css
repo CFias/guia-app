@@ -371,6 +371,14 @@
   color: var(--accent);
 }
 
+.pf-abas__ic {
+  display: contents;
+}
+
+.pf-abas__ic small {
+  order: 2;
+}
+
 /* resumo */
 .pf-resumo {
   display: flex;
@@ -1265,3 +1273,31 @@
 }
 
 /* avaliar o sistema no topo: só a estrela (o texto fica para leitores de tela) */
+
+/* abas no celular: ícone e número em cima, nome embaixo (antes passavam da borda) */
+@media (max-width: 480px) {
+  .pf-abas button {
+    flex-direction: column;
+    gap: 2px;
+    min-height: 52px;
+    padding: 6px 4px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .pf-abas__ic {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pf-abas button {
+    gap: 3px;
+  }
+
+  .pf-abas button small {
+    padding: 0 6px;
+    font-size: 10.5px;
+    line-height: 16px;
+  }
+}
