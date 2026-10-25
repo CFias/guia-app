@@ -493,21 +493,34 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
 
     // rota com as paradas (chegada: desembarque → saída → hotéis; saída: hotéis → saída → aeroporto)
     const noEtapa = (id, nome) => ({ chave: id, nome, feito: ev[id]?.em, hora: horaDoTimestamp(ev[id]?.em), porta: ev[id]?.porta, atual: acao?.tipo === "etapa" && acao.etapa.id === id });
-    const noParada = (p, i) => ({
-      chave: p.id,
-      parada: p,
-      nome: p.nome,
-      rotulo: s.tipo === "IN" ? (i === paradas.length - 1 ? "Destino final" : `Parada ${i + 1}`) : `Busca ${i + 1}`,
-      feito: ev[p.id]?.em,
-      hora: horaDoTimestamp(ev[p.id]?.em),
-      atual: acao?.tipo === "parada" && acao.parada.id === p.id,
-    });
+    /* Paradas SOLTAS: o motorista marca o hotel em que chegou, na ordem que
+       for. Os já marcados aparecem na ordem em que aconteceram (1º, 2º…);
+       os que faltam, na ordem sugerida pelo mapa. Na chegada, o último que
+       faltar finaliza a viagem. */
+    const emParadas = acao?.tipo === "parada";
+    const msDe = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : v instanceof Date ? v.getTime() : 0);
+    const feitasOrdem = paradas.filter((p) => ev[p.id]?.em).sort((a, b) => msDe(ev[a.id].em) - msDe(ev[b.id].em));
+    const pendentes = paradas.filter((p) => !ev[p.id]?.em);
+    const faltamParadas = pendentes.length;
+    const noParada = (p) => {
+      const k = feitasOrdem.indexOf(p);
+      const final = s.tipo === "IN" && !ev[p.id]?.em && faltamParadas === 1;
+      return {
+        chave: p.id,
+        parada: p,
+        nome: p.nome,
+        rotulo: k >= 0 ? `${k + 1}º hotel` : final ? "Último hotel · finaliza a viagem" : s.tipo === "IN" ? "Falta ir" : "Falta buscar",
+        feito: ev[p.id]?.em,
+        hora: horaDoTimestamp(ev[p.id]?.em),
+        final,
+      };
+    };
+    const hoteisNaRota = [...feitasOrdem, ...pendentes].map(noParada);
     const rota = paradas.length
       ? s.tipo === "IN"
-        ? [noEtapa("posicionado", "Desembarque"), noEtapa("iniciado", "Saída com os passageiros"), ...paradas.map(noParada)]
-        : [...paradas.map(noParada), noEtapa("iniciado", "Saída para o aeroporto"), noEtapa("finalizado", s.destinos[0] || "Aeroporto")]
+        ? [noEtapa("posicionado", "Desembarque"), noEtapa("iniciado", "Saída com os passageiros"), ...hoteisNaRota]
+        : [...hoteisNaRota, noEtapa("iniciado", "Saída para o aeroporto"), noEtapa("finalizado", s.destinos[0] || "Aeroporto")]
       : [];
-    const faltamParadas = paradas.filter((p) => !ev[p.id]?.em).length;
 
     return (
       <li key={s.chave} className={`mt-serv is-${String(s.tipo).toLowerCase()} ${st.concluido ? "is-ok" : ""} ${destaque ? "is-atual" : ""}`}>
@@ -576,24 +589,39 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                       ))}
                     </ul>
                   )}
-                  {/* fora da ordem: o motorista pode chegar antes em outro hotel */}
-                  {n.parada && !n.feito && !n.atual && acao?.tipo === "parada" && !travado && (
-                    <button
-                      type="button"
-                      className="mt-rota__antes"
-                      onClick={() => marcarParada(s, { parada: n.parada, final: s.tipo === "IN" && faltamParadas === 1, primeira: s.tipo === "OUT" && !ev.posicionado?.em })}
-                      disabled={!!salvando}
-                    >
-                      Cheguei aqui antes
-                    </button>
+                  {/* cada hotel que falta tem o próprio "Cheguei" (qualquer ordem) */}
+                  {n.parada && !n.feito && emParadas && (
+                    <div className="mt-rota__acoes">
+                      <button
+                        type="button"
+                        className={`mt-rota__cheguei ${n.final ? "is-final" : ""}`}
+                        onClick={() => marcarParada(s, { parada: n.parada, final: n.final, primeira: s.tipo === "OUT" && !ev.posicionado?.em })}
+                        disabled={!!salvando || travado}
+                      >
+                        {salvando === `${s.chave}|${n.parada.id}` ? (
+                          <Icon name="loader" size={15} className="ui-spin" />
+                        ) : (
+                          <Icon name={travado ? "lock" : n.final ? "flag" : "mapPin"} size={15} />
+                        )}
+                        {travado ? `Libera às ${textoMin(liberaEm)}` : n.final ? "Cheguei · finalizar" : "Cheguei aqui"}
+                      </button>
+                      <a href={linkGoogleMaps(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Google Maps`}>
+                        Maps
+                      </a>
+                      <a href={linkWaze(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Waze`}>
+                        Waze
+                      </a>
+                    </div>
                   )}
                 </div>
               </li>
             ))}
           </ol>
-          {(s.ordemHoteis === "auto" || s.ordemHoteis === "parcial") && (
+          {!st.concluido && (
             <p className="mt-rota__nota">
-              <Icon name="map" size={12} /> Ordem pelo mapa, a partir do aeroporto{s.ordemHoteis === "parcial" ? " (hotel não achado ficou no fim)" : ""}.
+              <Icon name="info" size={12} />
+              {s.ordemHoteis === "auto" || s.ordemHoteis === "parcial" ? "Ordem sugerida pelo mapa, a partir do aeroporto. " : ""}
+              Marque cada hotel quando chegar, na ordem que for{s.tipo === "IN" ? " — o último finaliza a viagem" : ""}.
             </p>
           )}
           </>
@@ -615,7 +643,13 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </ol>
         )}
 
-        {botao && (
+        {/* saída com hotéis: dá para seguir sem buscar todos (ex.: no show) */}
+        {emParadas && s.tipo === "OUT" && feitasOrdem.length > 0 && (
+          <button type="button" className="mt-desfazer" onClick={() => marcar(s, etapas.find((e) => e.id === "iniciado"))} disabled={!!salvando}>
+            <Icon name="navigation" size={12} /> Iniciar viagem sem os outros hotéis
+          </button>
+        )}
+        {botao && !emParadas && (
           <>
             {dest && (
               <div className="mt-nav">
@@ -644,12 +678,6 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                 <small>{travado ? `libera às ${textoMin(liberaEm)} (${dia.minutosAntesCheguei ?? 60} min antes)` : botao.dica}</small>
               </span>
             </button>
-            {/* saída com hotéis: dá para seguir sem um hotel (ex.: no show) */}
-            {s.tipo === "OUT" && acao.tipo === "parada" && !acao.primeira && (
-              <button type="button" className="mt-desfazer" onClick={() => marcar(s, etapas.find((e) => e.id === "iniciado"))} disabled={!!salvando}>
-                <Icon name="navigation" size={12} /> Iniciar viagem sem os outros hotéis
-              </button>
-            )}
           </>
         )}
         {ultima && (

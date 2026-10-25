@@ -533,6 +533,11 @@ body:is(.dark, .dark-pro) {
   color: #3ccf7f;
 }
 
+.painel-op-atd__res.is-hotel {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-text, var(--accent));
+}
+
 /* motorista do fornecedor parceiro + etapa marcada no link do dia
    (mesmo vocabulário do sistema: ui-chip neutro + status ícone/texto) */
 .painel-op-mot {
@@ -639,4 +644,52 @@ body:is(.dark, .dark-pro) {
 
 .painel-op-mot__passos i.is-feito {
   background: currentColor;
+}
+
+/* andamento de cada passageiro (Recebido / No hotel, um por linha), no padrão ui-status:
+   ícone + texto na cor do tom, sem pílula; a hora fica discreta */
+.painel-op-paxst {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.painel-op-paxst__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.painel-op-paxst__item small {
+  color: var(--text-3);
+  font-size: inherit;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.painel-op-paxst__item.is-ok {
+  color: #17804a;
+}
+
+.painel-op-paxst__item.is-hotel {
+  color: var(--accent-text, var(--accent));
+}
+
+.painel-op-paxst__item.is-pendente {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.painel-op-paxst__item.is-alerta {
+  color: var(--alert);
+}
+
+:is(body.dark, body.dark-pro) .painel-op-paxst__item.is-ok {
+  color: #3ccf7f;
 }

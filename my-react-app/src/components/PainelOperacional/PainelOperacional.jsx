@@ -54,7 +54,7 @@ import {
 } from "../../Services/Services/atendimentoAeroporto";
 import { carregarConfigTurnos } from "../../Services/Services/relatorioTurnos";
 import { formatarTelefone, ouvirMotoristasDoDia } from "../../Services/Services/fornecedorPainel";
-import { horaDoTimestamp, linkPosicao, ouvirViagensDoDia, situacaoDoServico } from "../../Services/Services/viagemMotorista";
+import { horaDoTimestamp, idDaParada, linkPosicao, ouvirViagensDoDia, situacaoDoServico } from "../../Services/Services/viagemMotorista";
 
 // ícone de cada etapa do atendimento: ✓ = recebido (1ª), carro = embarcado (última)
 const iconeEtapaAtd = (i, n) => (i === 0 ? "check" : i === n - 1 ? "car" : "circleCheck");
@@ -3185,25 +3185,43 @@ export default function PainelOperacionalUnificado() {
                                 <TableRow key={reserva.id}>
                                   <span className="ui-cell-main">
                                     {obterNomePlaca(reserva)}
-                                    {atd &&
-                                      (() => {
-                                        const doc = atd.veiculos[i]?.doc;
-                                        if (!doc) return null;
-                                        const r = { codigo: reserva.codigoReserva, titular: reserva.cliente };
-                                        const ns = noShowDaReserva(doc, r);
-                                        if (ns)
-                                          return (
-                                            <span className="painel-op-atd__res is-noshow" title={`${nomeNoShow(ns.tipo)}${ns.porNome ? ` · ${ns.porNome}` : ""}`}>
-                                              <Icon name="x" size={11} /> no show
+                                    {(() => {
+                                      /* andamento DESTE passageiro, no padrão de status do sistema:
+                                         ✓ Recebido (painel do aeroporto) e, embaixo, No hotel (marcado pelo motorista) */
+                                      const doc = atd ? atd.veiculos[i]?.doc : null;
+                                      const r = { codigo: reserva.codigoReserva, titular: reserva.cliente };
+                                      const ns = doc ? noShowDaReserva(doc, r) : null;
+                                      const rec = doc && !ns ? recepcaoDaReserva(doc, r) : null;
+                                      const v = viagemDe(reserva.escalaId);
+                                      const ev = v?.eventos || {};
+                                      // escala de um hotel só: vale o "finalizado"
+                                      const noHotel = ev[idDaParada(reserva.destino)]?.em || (!v?.paradas ? ev.finalizado?.em : null);
+                                      const aCaminho = !noHotel && ev.iniciado?.em;
+                                      if (!ns && !rec && !noHotel && !aCaminho) return null;
+                                      return (
+                                        <span className="painel-op-paxst">
+                                          {ns && (
+                                            <span className="painel-op-paxst__item is-alerta" title={`${nomeNoShow(ns.tipo)}${ns.porNome ? ` · ${ns.porNome}` : ""}`}>
+                                              <Icon name="x" size={12} /> No show
                                             </span>
-                                          );
-                                        const rec = recepcaoDaReserva(doc, r);
-                                        return rec ? (
-                                          <span className="painel-op-atd__res is-ok" title={`Recebida por ${rec.nome} às ${horaDe(rec.em)}`}>
-                                            <Icon name="check" size={11} /> {horaDe(rec.em)}
-                                          </span>
-                                        ) : null;
-                                      })()}
+                                          )}
+                                          {rec && (
+                                            <span className="painel-op-paxst__item is-ok" title={`Recepcionado no aeroporto por ${rec.nome} às ${horaDe(rec.em)}`}>
+                                              <Icon name="check" size={12} /> Recebido <small>{horaDe(rec.em)}</small>
+                                            </span>
+                                          )}
+                                          {noHotel ? (
+                                            <span className="painel-op-paxst__item is-hotel" title={`O motorista marcou a chegada em ${reserva.destino} às ${horaDoTimestamp(noHotel)}`}>
+                                              <Icon name="building" size={12} /> No hotel <small>{horaDoTimestamp(noHotel)}</small>
+                                            </span>
+                                          ) : aCaminho ? (
+                                            <span className="painel-op-paxst__item is-pendente" title="Viagem iniciada; o motorista ainda não marcou este hotel">
+                                              <Icon name="navigation" size={12} /> A caminho
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      );
+                                    })()}
                                   </span>
                                   <span className="tabular">
                                     {reserva.codigoReserva}

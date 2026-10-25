@@ -845,7 +845,8 @@ const PainelFornecedor = () => {
                                     const hoteis = s.tipo === "IN" ? sm.destinos : s.tipo === "OUT" ? sm.origens : [];
                                     if (!hoteis || hoteis.length < 2) return null;
                                     return (
-                                      <ol className="pf-serv__ordem" aria-label="Ordem dos hotéis">
+                                      <ol className="pf-serv__ordem" aria-label="Ordem sugerida dos hotéis">
+                                        <li className="is-titulo">Ordem sugerida · o motorista marca cada hotel na ordem em que chegar</li>
                                         {hoteis.map((h, i) => (
                                           <li key={h}>
                                             <i>{i + 1}</i>

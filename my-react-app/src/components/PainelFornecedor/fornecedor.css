@@ -1382,3 +1382,8 @@
   font-weight: 500;
   font-style: italic;
 }
+
+.pf-serv__ordem li.is-titulo {
+  color: var(--text-3);
+  font-weight: 500;
+}

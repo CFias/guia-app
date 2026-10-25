@@ -200,12 +200,14 @@ const slug = (t = "") =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "")
     .slice(0, 40) || "hotel";
+// id da parada de um hotel no evento do motorista (o mesmo nome do Phoenix)
+export const idDaParada = (nome = "") => `parada_${slug(nome)}`;
 export const paradasDoServico = (s) => {
   const lista =
     s?.tipo === "IN" ? s.destinos : s?.tipo === "OUT" ? s.origens : [];
   if (!Array.isArray(lista) || lista.length < 2) return [];
   return lista.map((nome) => ({
-    id: `parada_${slug(nome)}`,
+    id: idDaParada(nome),
     nome,
     // passageiros de cada hotel (para o motorista saber quem desce/sobe ali)
     passageiros: (s.reservas || []).filter(
