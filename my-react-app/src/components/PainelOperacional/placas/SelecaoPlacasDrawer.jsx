@@ -9,7 +9,8 @@ import Grupo from "./Grupo";
    - Por operadora: marque uma ou mais operadoras; cada uma abre um painel com
      "Todas", "Privativas" ou "Escolher reservas" (marcar uma a uma), e o guia
      escalado como filtro opcional. Tudo o que for marcado entra no mesmo lote;
-   - Uma reserva: busca e escolhe uma.
+   - Escolher reservas: busca e marca quantas quiser (a marcação fica ao
+     buscar outro nome); entram no mesmo lote, no formato escolhido.
    Formato: individual (uma placa por reserva), em grupo (placa coleção,
    uma por voo) ou "Juntar voos" (coleção com voos diferentes na mesma folha —
    também dá para ligar na pré-visualização). Os voos podem ser desmarcados um
@@ -127,7 +128,8 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   const [fora, setFora] = useState({});
   const [vooAberto, setVooAberto] = useState("");
   const [busca, setBusca] = useState("");
-  const [escolhida, setEscolhida] = useState(null); // `${chaveVoo}|${idReserva}`
+  // "Escolher reservas": `${chaveVoo}|${idReserva}` → true (várias)
+  const [marcadas, setMarcadas] = useState({});
   // operadoras marcadas: nome → { modo: "todas" | "privativas" | "escolhidas", guia, escolhidas: { chave: true } }
   const [ops, setOps] = useState({});
   const [aberta, setAberta] = useState(""); // operadora com o painel aberto
@@ -210,6 +212,7 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
   const filtroReserva = (r, v) => {
     if (quais === "privativas") return ehPrivativa(r);
     if (quais === "operadora") return entraPelaOperadora(r, `${v.chave}|${r.id}`);
+    if (quais === "escolher") return !!marcadas[`${v.chave}|${r.id}`];
     return true;
   };
 
@@ -235,29 +238,32 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
     return todas.filter((r) => semAcento(`${r.nome} ${r.codigo} ${r.voo} ${r.hotel}`).includes(t)).slice(0, 40);
   }, [voos, busca]);
 
-  const reservaEscolhida = useMemo(() => {
-    if (!escolhida) return null;
-    const [chaveVoo, id] = escolhida.split("|");
-    const v = voos.find((x) => x.chave === chaveVoo);
-    const r = v?.reservas.find((x) => String(x.id) === id);
-    return v && r ? { voo: v.voo, reserva: r } : null;
-  }, [escolhida, voos]);
-
-  const umaReserva = quais === "uma";
-  const placasEstimadas = umaReserva
-    ? reservaEscolhida ? 1 : 0
-    : formato === "individual"
-      ? totalReservas
-      : formato === "juncao"
-        ? Math.ceil(totalReservas / 6)
-        : lote.length;
+  const escolher = quais === "escolher";
+  const nMarcadas = Object.keys(marcadas).length;
+  const alternarMarcada = (chave) =>
+    setMarcadas((m) => {
+      const novo = { ...m };
+      if (novo[chave]) delete novo[chave];
+      else novo[chave] = true;
+      return novo;
+    });
+  const marcarVisiveis = (valor) =>
+    setMarcadas((m) => {
+      const novo = { ...m };
+      resultados.forEach((r) => {
+        const k = `${r.chaveVoo}|${r.id}`;
+        if (valor) novo[k] = true;
+        else delete novo[k];
+      });
+      return novo;
+    });
+  const placasEstimadas = formato === "individual"
+    ? totalReservas
+    : formato === "juncao"
+      ? Math.ceil(totalReservas / 6)
+      : lote.length;
 
   const continuar = () => {
-    if (umaReserva) {
-      if (!reservaEscolhida) return;
-      onContinuar({ modo: "individual", lote: [{ voo: reservaEscolhida.voo, reservas: [reservaEscolhida.reserva] }] });
-      return;
-    }
     onContinuar({
       modo: formato === "individual" ? "individual" : "colecao",
       juncao: formato === "juncao",
@@ -279,9 +285,9 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
         <>
           <Button onClick={onClose}>Cancelar</Button>
           <Button variant="primary" icon="arrowRight" onClick={continuar} disabled={!placasEstimadas}>
-            {!umaReserva && formato === "grupo"
+            {formato === "grupo"
               ? `Escolher modelo (${lote.length} ${lote.length === 1 ? "voo" : "voos"})`
-              : !umaReserva && formato === "juncao"
+              : formato === "juncao"
                 ? `Juntar ${totalReservas} ${totalReservas === 1 ? "nome" : "nomes"} (${lote.length} ${lote.length === 1 ? "voo" : "voos"})`
                 : `Escolher modelo (${placasEstimadas} ${placasEstimadas === 1 ? "placa" : "placas"})`}
           </Button>
@@ -302,12 +308,12 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
               { value: "privativas", label: "Privativas", count: totalPrivativas },
               { value: "todas", label: "Todas", count: totalTodas },
               { value: "operadora", label: "Por operadora" },
-              { value: "uma", label: "Uma reserva" },
+              { value: "escolher", label: "Escolher reservas", count: nMarcadas || undefined },
             ]}
           />
         </Grupo>
 
-        {!umaReserva && (
+        {(
           <div className="plc-sel__formato" role="radiogroup" aria-label="Formato das placas">
             {[
               { value: "individual", titulo: "Individual", texto: "Uma placa por reserva", icone: "fileText" },
@@ -333,34 +339,49 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
           </div>
         )}
 
-        {umaReserva ? (
-          <>
+        {escolher && (
+          <div className="plc-sel__bloco">
             <SearchInput value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, código da reserva, voo ou hotel" autoFocus />
+            <div className="plc-sel__voos-topo">
+              <span>
+                {nMarcadas ? `${nMarcadas} ${nMarcadas === 1 ? "reserva marcada" : "reservas marcadas"}` : "Marque as reservas (dá para buscar outra sem perder as marcadas)"}
+              </span>
+              <span>
+                <button type="button" onClick={() => marcarVisiveis(true)} disabled={!resultados.length}>
+                  Marcar {busca.trim() ? "as encontradas" : "as da lista"}
+                </button>
+                <button type="button" onClick={() => setMarcadas({})} disabled={!nMarcadas}>
+                  Limpar
+                </button>
+              </span>
+            </div>
             {resultados.length === 0 ? (
               <p className="plc-sel__vazio">Nenhuma reserva com “{busca}”.</p>
             ) : (
-              <ul className="plc-sel__lista" role="radiogroup" aria-label="Reserva">
+              <ul className="plc-sel__lista plc-sel__reservas" aria-label="Reservas">
                 {resultados.map((r) => {
                   const chave = `${r.chaveVoo}|${r.id}`;
+                  const on = !!marcadas[chave];
                   return (
                     <li key={chave}>
-                      <label className={`plc-sel__res ${escolhida === chave ? "is-on" : ""}`}>
-                        <input type="radio" name="reserva-placa" checked={escolhida === chave} onChange={() => setEscolhida(chave)} />
+                      <label className={`plc-sel__res ${on ? "is-on" : ""}`}>
+                        <input type="checkbox" checked={on} onChange={() => alternarMarcada(chave)} />
                         <span className="plc-sel__res-info">
                           <b>{r.nome || "Sem nome"}</b>
-                          <small>
-                            {[r.voo && `Voo ${r.voo}`, r.hora, r.codigo, r.hotel].filter(Boolean).join(" · ")}
-                          </small>
+                          <small>{[r.voo && `Voo ${r.voo}`, r.hora, r.codigo, r.hotel].filter(Boolean).join(" · ")}</small>
                         </span>
                         {ehPrivativa(r) && <span className="plc-sel__tag">{/EXECUT/i.test(r.modalidade) ? "Executivo" : "Privativo"}</span>}
+                        <span className="plc-sel__tag">{textoPax(paxDe(r))}</span>
                       </label>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </>
-        ) : (
+            {nMarcadas > 0 && <span className="ui-field__label plc-sel__titulo-marcadas">Marcadas, por voo</span>}
+          </div>
+        )}
+        {(!escolher || nMarcadas > 0) && (
           <>
             {quais === "operadora" && (
               <div className="plc-sel__bloco">
@@ -434,13 +455,15 @@ const SelecaoPlacasDrawer = ({ open, onClose, voos = [], onContinuar }) => {
             </div>
             {porVoo.length === 0 ? (
               <p className="plc-sel__vazio">
-                {quais === "privativas"
-                  ? "Nenhuma reserva privativa nas chegadas da tela."
-                  : quais === "operadora"
-                    ? Object.keys(ops).length
-                      ? "Nenhuma reserva com essa escolha."
-                      : "Marque uma operadora."
-                    : "Nenhuma chegada na tela."}
+                {escolher
+                  ? "Marque as reservas acima."
+                  : quais === "privativas"
+                    ? "Nenhuma reserva privativa nas chegadas da tela."
+                    : quais === "operadora"
+                      ? Object.keys(ops).length
+                        ? "Nenhuma reserva com essa escolha."
+                        : "Marque uma operadora."
+                      : "Nenhuma chegada na tela."}
               </p>
             ) : (
               <ul className="plc-sel__lista">

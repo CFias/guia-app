@@ -1180,3 +1180,8 @@
 .plc-juncao__busca:focus-within {
   border-color: var(--accent);
 }
+
+.plc-sel__titulo-marcadas {
+  display: block;
+  margin-top: var(--space-3, 12px);
+}
