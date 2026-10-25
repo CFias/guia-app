@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDocs, query, where } from "firebase/firestore";
-import "./styles.css"
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,6 +13,8 @@ import {
   Bar,
   Line,
 } from "recharts";
+import logo from "../../assets/logo4.png";
+import "./styles.css";
 import "./home.css";
 import {
   Button,
@@ -60,6 +61,7 @@ import { colBase } from "../../Services/Services/dadosBase";
 import { useAuth } from "../../Context/AuthContext";
 import { useRegiao } from "../../Context/regiaoContext";
 import { podeArea } from "../../Context/acessos";
+import AvisoCancelados from "../ListaPasseios/AvisoCancelados";
 
 // Modalidade do Phoenix → "Regular" / "Privativo" (outro texto passa como veio)
 const categoriaDoModo = (modo = "") => {
@@ -493,6 +495,8 @@ const Home = () => {
   const [guias, setGuias] = useState([]);
   const [services, setServices] = useState([]);
   const [weeklyServices, setWeeklyServices] = useState([]);
+  // passeios que saíram do Phoenix (cancelados / mudaram de data) e tinham guia
+  const [canceladosComGuia, setCanceladosComGuia] = useState([]);
   const [availabilityDocs, setAvailabilityDocs] = useState([]);
   const [affinityDocs, setAffinityDocs] = useState([]);
   const [apiSemana, setApiSemana] = useState([]);
@@ -837,12 +841,13 @@ const Home = () => {
           })),
         );
 
-        setWeeklyServices(
-          snapWeekly.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...docSnap.data(),
-          })),
-        );
+        const registrosSemana = snapWeekly.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+        // passeio cancelado/mudou de data que tinha guia: fora da escala, só no aviso
+        setWeeklyServices(registrosSemana.filter((r) => !r.cancelamento));
+        setCanceladosComGuia(registrosSemana.filter((r) => r.cancelamento));
       } catch (error) {
         console.error("Erro ao carregar Home:", error);
       } finally {
@@ -1898,6 +1903,9 @@ Operacional - Luck Receptivo
           )}
         </span>
       </FilterBar>
+
+      {/* passeios que saíram do Phoenix depois de escalados: quem era o guia */}
+      <AvisoCancelados lista={canceladosComGuia} />
 
       {abaAtiva === "operacao" && (
         <>

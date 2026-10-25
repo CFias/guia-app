@@ -1,0 +1,19 @@
+/* Aviso: passeios que saíram do Phoenix depois de escalados (guia preservado) */
+.avc { overflow: hidden; border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border, var(--divider))); border-radius: var(--radius-lg, 14px); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+.avc__topo { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.avc__ic { display: grid; flex: none; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.avc__tit { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.avc__tit b { font-size: var(--fs-md, 15px); font-weight: 700; }
+.avc__tit small { color: var(--text-2); font-size: var(--fs-xs); }
+.avc__lista { display: flex; flex-direction: column; margin: 0; padding: 0 14px 12px; list-style: none; }
+.avc__lista li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-size: var(--fs-sm); }
+.avc__guia { display: inline-flex; align-items: center; gap: 5px; color: var(--text); }
+.avc__guia svg { color: var(--text-3); }
+.avc__txt { flex: 1 1 220px; min-width: 0; color: var(--text-2); }
+.avc__txt b { color: var(--text); font-weight: 600; }
+.avc__status { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.avc__status.is-cancelado { color: var(--alert); }
+.avc__status.is-mudou { color: var(--accent-text, var(--accent)); }
+.avc__quando { color: var(--text-3); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.avc__ciente { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 10px; border: 1px solid var(--border, var(--divider)); border-radius: 999px; background: var(--surface); color: var(--text-2); font: inherit; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+.avc__ciente:hover { border-color: var(--accent); color: var(--accent); }
