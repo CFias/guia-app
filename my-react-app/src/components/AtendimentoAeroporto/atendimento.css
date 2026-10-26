@@ -1612,3 +1612,148 @@
     animation: none;
   }
 }
+
+/* ---------- relógio: "há 20 min" / "em 15 min", linha do agora e atrasados ---------- */
+.atd-resumo__agora {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.atd-bloco__quando {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.atd-bloco__quando.is-futuro {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-text, var(--accent));
+}
+
+.atd-bloco__quando.is-passou {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-2);
+}
+
+.atd-bloco__quando.is-atrasado {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+
+.atd-bloco.is-atrasado .atd-bloco__hora {
+  color: var(--warning);
+}
+
+.atd-bloco.is-atrasado .atd-carro:not(.is-feito) {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border, var(--divider)));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning) 20%, transparent);
+}
+
+.atd-agora {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.atd-agora::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.atd-agora span {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-ver-concluidos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px dashed var(--border, var(--divider));
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.atd-ver-concluidos svg {
+  color: var(--success, #16a34a);
+}
+
+/* ---------- chamar o motorista ---------- */
+.atd-contato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.atd-contato__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border, var(--divider));
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.atd-contato__btn.is-zap {
+  border-color: color-mix(in srgb, #16a34a 40%, transparent);
+  background: color-mix(in srgb, #16a34a 9%, var(--surface));
+  color: #15803d;
+}
+
+:is(body.dark, body.dark-pro) .atd-contato__btn.is-zap {
+  color: #4ade80;
+}
+
+.atd-contato__tel {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* busca: o passageiro achado fica em destaque */
+.atd-reservas li.is-achada {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}

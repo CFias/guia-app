@@ -13,6 +13,7 @@ import {
   estadoLiberacao,
   ouvirConfigPainel,
   salvarLinkMotorista,
+  linkGravadoDoMotorista,
   textoAbertura,
   buscarServicosBrutos,
   servicosDoFornecedor,
@@ -35,6 +36,7 @@ import {
   inscreverPush,
   lembrarLinkDoApp,
   linkDoMotorista,
+  migrarEtapas,
   novoToken,
   ouvirMotoristaDia,
   paradasDoServico,
@@ -171,6 +173,10 @@ const PainelFornecedor = () => {
 
   useEffect(() => (fornecedorId ? ouvirMotoristas(fornecedorId, setMotoristas) : undefined), [fornecedorId]);
   useEffect(() => (fornecedorId ? ouvirEscalaMotoristas(data, fornecedorId, (e) => setEscala({ data, ...e })) : undefined), [data, fornecedorId]);
+  // a escala (com os links de cada motorista) DESTE dia já chegou do banco?
+  // Antes disso, nenhum link novo é criado — senão, ao trocar de dia, o painel
+  // achava que não havia link e criava outro vazio ("zerava" as etapas).
+  const escalaDoDiaLida = escala.data === data;
   useEffect(() => ouvirConfigPainel(setConfig), []);
   // relógio do cadeado (abre sozinho na hora configurada)
   useEffect(() => {
@@ -285,22 +291,36 @@ const PainelFornecedor = () => {
 
   // Serviço que já teve etapa marcada NÃO sai do link do motorista (mesmo que a
   // Luck troque o veículo no Phoenix): a viagem feita fica registrada.
+  // Escala refeita no Phoenix (número novo, mesma viagem): as etapas passam para
+  // o serviço novo (migrarEtapas) e o antigo não fica repetido na tela.
+  const viagensLidas = Object.keys(viagens).sort().join("|");
   const comHistorico = (token, servicos) => {
     const anterior = token ? viagensRef.current[token] : null;
     if (!anterior) return servicos;
+    const { migradas } = migrarEtapas(anterior.servicos || [], anterior.eventos || {}, servicos);
     const ficam = (anterior.servicos || []).filter(
-      (sv) => !servicos.some((x) => x.chave === sv.chave) && Object.keys(anterior.eventos?.[sv.chave] || {}).length > 0,
+      (sv) => !migradas.has(sv.chave) && !servicos.some((x) => x.chave === sv.chave) && Object.keys(anterior.eventos?.[sv.chave] || {}).length > 0,
     );
     return ficam.length ? [...servicos, ...ficam].sort((a, b) => String(a.hora).localeCompare(String(b.hora))) : servicos;
+  };
+  const etapasMigradas = (token, servicos) => {
+    const anterior = token ? viagensRef.current[token] : null;
+    return anterior ? migrarEtapas(anterior.servicos || [], anterior.eventos || {}, servicos).eventos : {};
   };
 
   // cria (ou atualiza) o link do dia do motorista; para os motoristas, o link
   // enviado é o FIXO do app (/m/<tokenApp>), que acha o dia sozinho
   const prepararLink = async (mot) => {
-    const atual = links[mot.id];
+    // confere no banco antes de criar: se já existe link do dia, reaproveita
+    const atual = links[mot.id] || (await linkGravadoDoMotorista(data, fornecedor.id, mot.id));
     const token = atual?.token || novoToken();
     const servicos = comHistorico(atual?.token, porMotorista[mot.id] || []);
-    await gravarMotoristaDia(token, { ...dadosDoLink(mot, servicos), ...(atual?.token ? {} : { criadoEm: new Date() }) });
+    const migradas = etapasMigradas(atual?.token, servicos);
+    await gravarMotoristaDia(token, {
+      ...dadosDoLink(mot, servicos),
+      ...(Object.keys(migradas).length ? { eventos: migradas } : {}),
+      ...(atual?.token ? {} : { criadoEm: new Date() }),
+    });
     await salvarLinkMotorista(data, fornecedor, mot.id, { token, assinatura: assinaturaServicos(servicos) });
     if (mot.id === EU_MESMO) return linkDoMotorista(token);
     let tokenApp = mot.tokenApp;
@@ -321,19 +341,22 @@ const PainelFornecedor = () => {
 
   // a escala mudou (troca de motorista, horário, reserva nova): o link de quem já recebeu acompanha
   useEffect(() => {
-    if (!fornecedor || !liberado || carga.chave !== chaveCarga) return;
+    if (!fornecedor || !liberado || carga.chave !== chaveCarga || !escalaDoDiaLida) return;
     Object.entries(links).forEach(([motId, l]) => {
       const mot = motId === EU_MESMO ? euMesmo : motoristaPorIdRef.current[motId];
       if (!l?.token || !mot) return;
       const servicos = comHistorico(l.token, porMotorista[motId] || []);
       const assinatura = assinaturaServicos(servicos);
-      if (assinatura === l.assinatura) return;
-      gravarMotoristaDia(l.token, dadosDoLink(mot, servicos))
+      const migradas = etapasMigradas(l.token, servicos);
+      // nada mudou e não há etapa para passar para uma escala refeita
+      if (assinatura === l.assinatura && !Object.keys(migradas).length) return;
+      gravarMotoristaDia(l.token, { ...dadosDoLink(mot, servicos), ...(Object.keys(migradas).length ? { eventos: migradas } : {}) })
         .then(() => salvarLinkMotorista(data, fornecedor, motId, { token: l.token, assinatura }))
         .catch((e) => console.error("Não foi possível atualizar o link do motorista:", e));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [porMotorista, links, liberado, carga.chave]);
+    // viagensLidas: quando o link chega do banco, confere se há etapas para migrar
+  }, [porMotorista, links, liberado, carga.chave, escalaDoDiaLida, viagensLidas]);
 
   // Links criados sozinhos, sem precisar reenviar: o do próprio fornecedor
   // ("Eu mesmo") e o dia de cada motorista que já tem o app (link fixo).
@@ -356,7 +379,7 @@ const PainelFornecedor = () => {
   }, [previa, minhasChegadas, data]);
   const criandoLinks = useRef(new Set());
   useEffect(() => {
-    if (!fornecedor || !liberado || carga.chave !== chaveCarga) return;
+    if (!fornecedor || !liberado || carga.chave !== chaveCarga || !escalaDoDiaLida) return;
     Object.keys(porMotorista).forEach((motId) => {
       const mot = motId === EU_MESMO ? euMesmo : motoristaPorIdRef.current[motId];
       if (!mot || (motId !== EU_MESMO && !mot.tokenApp)) return;
@@ -369,7 +392,7 @@ const PainelFornecedor = () => {
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [porMotorista, links, liberado, carga.chave, data]);
+  }, [porMotorista, links, liberado, carga.chave, data, escalaDoDiaLida]);
 
   // etapas que os motoristas já marcaram (para mostrar aqui também)
   const tokensDoDia = Object.values(links)
@@ -648,7 +671,7 @@ const PainelFornecedor = () => {
             </div>
           ) : (
             // abre na hora com os serviços já carregados; o link é só para gravar as etapas
-            <MotoristaDia token={links[EU_MESMO]?.token || ""} embutido diaLocal={dadosDoLink(euMesmo, meusServicos)} garantirToken={tokenEuMesmo} />
+            <MotoristaDia token={links[EU_MESMO]?.token || ""} embutido diaLocal={dadosDoLink(euMesmo, comHistorico(links[EU_MESMO]?.token, meusServicos))} garantirToken={tokenEuMesmo} />
           )
         ) : abaAtual === "servicos" ? (
           <>

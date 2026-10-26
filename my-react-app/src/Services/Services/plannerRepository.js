@@ -64,8 +64,8 @@ export const carregarBasePlanner = async () => {
     // serviços com menos pax que isso não recebem guia (0/1 = desligado)
     paxMinimoParaGuia:
       settings.paxMinimoParaGuia === undefined ||
-        settings.paxMinimoParaGuia === null ||
-        !Number.isFinite(Number(settings.paxMinimoParaGuia))
+      settings.paxMinimoParaGuia === null ||
+      !Number.isFinite(Number(settings.paxMinimoParaGuia))
         ? 2
         : Number(settings.paxMinimoParaGuia),
     // pasta do Google Drive pra onde "Salvar no Drive" grava (vazio = raiz)
@@ -131,14 +131,47 @@ export const limparModoGeradoSemana = async (semanaRef = []) => {
   );
 };
 
+// passeio que saiu do Phoenix mas tinha guia: fica guardado com `cancelamento`
+// (quem estava, quantos pax, se mudou de data) e NÃO entra na escala.
+export const estaCancelado = (r) => !!r?.cancelamento;
+
 export const carregarWeeklyServicesDoDia = async (date) => {
   const q = query(collection(db, "weekly_services"), where("date", "==", date));
   const snap = await getDocs(q);
 
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  }));
+  return snap.docs
+    .map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }))
+    .filter((r) => !estaCancelado(r));
+};
+
+/* Passeios cancelados (ou que mudaram de data) que tinham guia, na semana:
+   [{ id, date, serviceName, guiaNome, cancelamento: { em, motivo: "saiu" | "mudou",
+      novaData, novoServico, paxAntes } }] */
+export const carregarCanceladosDaSemana = async (semana = []) => {
+  if (!semana.length) return [];
+  const q = query(
+    collection(db, "weekly_services"),
+    where("date", ">=", semana[0].date),
+    where("date", "<=", semana[semana.length - 1].date),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter(estaCancelado)
+    .sort(
+      (a, b) =>
+        String(a.date).localeCompare(String(b.date)) ||
+        String(a.serviceName).localeCompare(String(b.serviceName)),
+    );
+};
+
+// "Ciente": tira o aviso do passeio cancelado (apaga o registro guardado)
+export const descartarCancelado = async (id) => {
+  if (!id) return;
+  await deleteDoc(doc(db, "weekly_services", id));
 };
 
 export const carregarWeeklyServicesDaSemana = async (semana = []) => {
@@ -155,10 +188,12 @@ export const carregarWeeklyServicesDaSemana = async (semana = []) => {
 
   const snap = await getDocs(q);
 
-  const lista = snap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  }));
+  const lista = snap.docs
+    .map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }))
+    .filter((r) => !estaCancelado(r));
 
   return mapearRegistrosPorData(semana, lista);
 };

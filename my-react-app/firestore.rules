@@ -428,6 +428,9 @@ service cloud.firestore {
         && resource.data.fornecedorId == meuFornecedor() && motoristaValido();
       allow get: if isFornecedor() && colDaMinhaBase(colecao, 'escala_motoristas')
         && docId.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}__' + meuFornecedor());
+      // conta Atendimento (aeroporto): vê quem dirige cada veículo da própria
+      // base (nome e telefone do motorista) para chamar o motorista — só leitura
+      allow read: if isAtendimento() && colDaMinhaBase(colecao, 'escala_motoristas');
       allow create, update: if isFornecedor() && colDaMinhaBase(colecao, 'escala_motoristas')
         && escalaMotoristasValida(docId);
     }

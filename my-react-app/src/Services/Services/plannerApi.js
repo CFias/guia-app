@@ -20,6 +20,7 @@ import {
   deleteDoc,
   setDoc,
   addDoc,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "../../Services/Services/firebase";
 import { phoenixReserveService } from "./regiaoAtiva";
@@ -29,7 +30,10 @@ import {
   listarCamposParecidosComIdioma,
   listarIdiomasExigidos,
 } from "../Utils/idiomas";
-import { exigeConfirmacao, situacaoConfirmacao } from "../Utils/confirmacaoPasseio";
+import {
+  exigeConfirmacao,
+  situacaoConfirmacao,
+} from "../Utils/confirmacaoPasseio";
 import { semReservasExcluidas } from "../Utils/reservasExcluidas";
 
 const extrairListaRespostaBruta = (json) => {
@@ -55,7 +59,8 @@ const extrairListaRespostaBruta = (json) => {
 };
 
 // sem as reservas com CLD / cancelado / não escalar / dispensado na observação
-export const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
+export const extrairListaResposta = (json) =>
+  semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -227,13 +232,13 @@ export const encontrarServiceCatalogo = (
     typeof normalizarTextoFn === "function"
       ? normalizarTextoFn
       : (texto) =>
-        String(texto || "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^\w\s-]/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
+          String(texto || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^\w\s-]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
 
   const services = Array.isArray(listaServices) ? listaServices : [];
 
@@ -385,7 +390,7 @@ const avisarSeNaoHouverIdioma = (lista, totalDetectados) => {
 
   console.info(
     `[Idioma] Nenhum idioma reconhecido nos ${lista.length} itens do Phoenix. ` +
-    "Campos com nome parecido no 1º item:",
+      "Campos com nome parecido no 1º item:",
     listarCamposParecidosComIdioma(lista[0]),
     "| Chaves do 1º item:",
     Object.keys(lista[0] || {}),
@@ -400,6 +405,10 @@ export const sincronizarPasseiosDaApiNaSemana = async (
   normalizarTexto,
 ) => {
   const servicesSeguros = Array.isArray(servicesData) ? servicesData : [];
+  // reserva → em que data/passeio ela está agora (para "mudou de data")
+  const reservasNaSemana = new Map();
+  // passeios com guia que saíram do Phoenix nesta sincronização
+  const canceladosAgora = [];
   for (const dia of semanaAtual) {
     try {
       const response = await fetch(montarUrlApi(dia.date), {
@@ -435,7 +444,11 @@ export const sincronizarPasseiosDaApiNaSemana = async (
         if (!nomeFinal) return;
         if (deveIgnorarServico(nomeFinal)) return;
         // Praia do Forte 4h: só escala reserva confirmada (observação ou vendedor)
-        if (exigeConfirmacao(nomeFinal) && !situacaoConfirmacao(item).confirmada) return;
+        if (
+          exigeConfirmacao(nomeFinal) &&
+          !situacaoConfirmacao(item).confirmada
+        )
+          return;
 
         const chave = montarChaveImportacao({
           date: dataServico,
@@ -453,7 +466,18 @@ export const sincronizarPasseiosDaApiNaSemana = async (
             totalCriancas: 0,
             totalInfants: 0,
             idiomas: {}, // pax por idioma estrangeiro, ex.: { en: 3, es: 2 }
+            reservas: new Set(), // códigos das reservas (para achar se mudou de data)
           };
+        }
+        const codigoReserva = String(
+          item?.reserve?.code || item?.reserve_code || item?.reserve?.id || "",
+        ).trim();
+        if (codigoReserva) {
+          agregados[chave].reservas.add(codigoReserva);
+          reservasNaSemana.set(codigoReserva, {
+            date: dataServico,
+            serviceName: nomeFinal,
+          });
         }
 
         // idioma dos passageiros desta reserva (Phoenix)
@@ -544,13 +568,24 @@ export const sincronizarPasseiosDaApiNaSemana = async (
           day: dia.day,
           manual: false,
           importedFromApi: true,
+          reservas: [...passeioApi.reservas].slice(0, 80),
           updatedAt: new Date(),
         };
 
         if (principal) {
-          await setDoc(doc(db, "weekly_services", principal.id), payload, {
-            merge: true,
-          });
+          // voltou para o Phoenix: deixa de estar cancelado (e mantém o guia)
+          await setDoc(
+            doc(db, "weekly_services", principal.id),
+            {
+              ...payload,
+              ...(principal.cancelamento
+                ? { cancelamento: deleteField() }
+                : {}),
+            },
+            {
+              merge: true,
+            },
+          );
         } else {
           await addDoc(collection(db, "weekly_services"), {
             ...payload,
@@ -581,10 +616,61 @@ export const sincronizarPasseiosDaApiNaSemana = async (
       });
 
       for (const antigo of obsoletos) {
+        // tinha guia: NÃO apaga — guarda quem estava no passeio e marca como
+        // cancelado (sem passageiros / mudou de data). Sem guia: apaga como antes.
+        if (antigo.guiaId || antigo.guiaNome) {
+          if (!antigo.cancelamento) {
+            const cancelamento = {
+              em: new Date(),
+              motivo: "saiu",
+              guiaId: antigo.guiaId || null,
+              guiaNome: antigo.guiaNome || null,
+              paxAntes: Number(antigo.passengers || 0),
+            };
+            await setDoc(
+              doc(db, "weekly_services", antigo.id),
+              { cancelamento },
+              { merge: true },
+            );
+            canceladosAgora.push({ ...antigo, cancelamento });
+          }
+          continue;
+        }
         await deleteDoc(doc(db, "weekly_services", antigo.id));
       }
     } catch (err) {
       console.error(`Erro ao sincronizar API no dia ${dia.date}:`, err);
+    }
+  }
+
+  // as reservas do passeio cancelado estão em outra data da semana? → "mudou de data"
+  for (const c of canceladosAgora) {
+    const destinos = (c.reservas || [])
+      .map((r) => reservasNaSemana.get(r))
+      .filter((x) => x && x.date !== c.date);
+    if (!destinos.length) continue;
+    const contagem = new Map();
+    destinos.forEach((x) => {
+      const k = `${x.date}|${x.serviceName}`;
+      contagem.set(k, { ...x, n: (contagem.get(k)?.n || 0) + 1 });
+    });
+    const principal = [...contagem.values()].sort((a, b) => b.n - a.n)[0];
+    try {
+      await setDoc(
+        doc(db, "weekly_services", c.id),
+        {
+          cancelamento: {
+            ...c.cancelamento,
+            motivo: "mudou",
+            novaData: principal.date,
+            novoServico: principal.serviceName,
+            reservasMovidas: destinos.length,
+          },
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.error("Não foi possível marcar a mudança de data:", err);
     }
   }
 };

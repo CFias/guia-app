@@ -1457,3 +1457,62 @@
   font-weight: 600;
   text-decoration: none;
 }
+
+/* serviço da vez pelo relógio */
+.mt-serv__quando {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mt-serv__quando.is-passou {
+  background: color-mix(in srgb, var(--mt-esp, #d97706) 14%, transparent);
+  color: var(--mt-esp, #b45309);
+}
+
+.mt-linha__hora {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.mt-linha__hora small {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.mt-resumo__agora {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mt-suave);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-ficaram .mt-secao {
+  color: var(--mt-esp, #b45309);
+}
+
+.mt-ficaram__nota {
+  margin: -2px 0 8px 2px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.mt-ficaram .mt-linhas {
+  border-color: color-mix(in srgb, var(--mt-esp, #d97706) 35%, var(--mt-borda));
+}

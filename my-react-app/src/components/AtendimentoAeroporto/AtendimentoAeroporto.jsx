@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import MoreMenu from "../ui/MoreMenu";
 import { onSnapshot, query, where } from "firebase/firestore";
 import Icon from "../ui/Icon";
 import { useAuth } from "../../Context/AuthContext";
@@ -43,6 +44,7 @@ import {
 } from "../../Services/Services/atendimentoAeroporto";
 import { definirSom, somLigado, tocarNotificacao } from "../../Services/Utils/somNotificacao";
 import { enviarPushDaEscala, gravarStatusEscala, leituraDoRetorno, msDoTimestamp, ouvirRetornosDoDia } from "../../Services/Services/viagemMotorista";
+import { formatarTelefone, ouvirMotoristasDoDia } from "../../Services/Services/fornecedorPainel";
 import "./atendimento.css";
 
 /* PAINEL DO AEROPORTO (conta "Atendimento" ou Operacional).
@@ -144,6 +146,17 @@ const buscarVooNoGoogle = (voo) => {
   window.open(`https://www.google.com/search?q=${encodeURIComponent(`voo ${String(voo).replace(/\s*-\s*/g, " ")}`)}`, "_blank", "noopener,noreferrer");
 };
 
+// "07:40" → 460; relógio da tela em texto e "há 25 min" / "em 1h10"
+const paraMinutosBloco = (h) => {
+  const [a, b] = String(h || "").split(":").map(Number);
+  return Number.isNaN(a) ? null : a * 60 + (b || 0);
+};
+const textoHora = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+const textoRelativo = (d) => {
+  const t = (x) => (x >= 60 ? `${Math.floor(x / 60)}h${String(x % 60).padStart(2, "0")}` : `${x} min`);
+  if (Math.abs(d) <= 2) return "agora";
+  return d > 0 ? `em ${t(d)}` : `há ${t(-d)}`;
+};
 const pl = (n, um, varios) => `${num(n, 0)} ${Math.round(n) === 1 ? um : varios}`;
 
 const AtendimentoAeroporto = () => {
@@ -151,6 +164,8 @@ const AtendimentoAeroporto = () => {
   const ehOperacional = role === ROLES.OPERACIONAL;
   const uid = user?.uid || "";
   const [data, setData] = useState(hoje);
+  const navigate = useNavigate();
+  const [pedidoAvaliacao, setPedidoAvaliacao] = useState(0);
   const [config, setConfig] = useState(null);
   const [configLida, setConfigLida] = useState(false);
   const [excecoes, setExcecoes] = useState({ dias: {} });
@@ -332,6 +347,30 @@ const AtendimentoAeroporto = () => {
   // recepcionado (ou embarcado), grava status_escala da escala do Phoenix — o
   // celular do motorista toca o aviso. Só grava quando o estado muda.
   // retorno dos motoristas que usam o app (viu o aviso, a caminho, posicionado…)
+  // motorista escolhido pelo fornecedor em cada escala (quem dirige de fato)
+  const [motoristasForn, setMotoristasForn] = useState({ data: "", porEscala: {} });
+  useEffect(() => ouvirMotoristasDoDia(data, (porEscala) => setMotoristasForn({ data, porEscala })), [data]);
+  /* quem chamar no veículo: o motorista que o fornecedor escolheu (nome e
+     telefone) → o que usa o app → o da escala do Phoenix */
+  const motoristaDe = (g) => {
+    const f = g.escalaId && motoristasForn.data === data ? motoristasForn.porEscala[String(g.escalaId)] : null;
+    const r = g.escalaId && retornos.data === data ? retornos.porEscala[String(g.escalaId)] : null;
+    const nome = f?.motoristaNome || r?.motoristaNome || g.motorista || "";
+    const tel = String(f?.motoristaTelefone || g.motoristaTelefone || "").replace(/\D/g, "");
+    return nome || tel ? { nome, tel, fornecedor: f?.fornecedorNome || "", doFornecedor: !!f } : null;
+  };
+  // relógio da tela (para "há 20 min" / "em 15 min" e a linha do agora)
+  const [agoraMin, setAgoraMin] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      const d = new Date();
+      setAgoraMin(d.getHours() * 60 + d.getMinutes());
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
   const [retornos, setRetornos] = useState({ data: "", porEscala: {} });
   useEffect(() => ouvirRetornosDoDia(data, (porEscala) => setRetornos({ data, porEscala })), [data]);
   const retornoDe = (g) => {
@@ -665,7 +704,9 @@ const AtendimentoAeroporto = () => {
     const doc = docDe(g);
     const nNoShow = doc ? g.reservas.filter((r, i) => noShowDaReserva(doc, r, i)).length : 0;
     const esp = esperaDoDoc({ marcas: m }, etapas);
-    const aberto = abertos.has(g.chave);
+    // buscando um passageiro: as reservas do veículo abrem sozinhas
+    const achadas = t ? new Set(g.reservas.filter((r) => semAcento(`${r.titular} ${r.codigo} ${r.hotel}`).includes(t)).map((r) => r.codigo || r.titular)) : null;
+    const aberto = abertos.has(g.chave) || !!(achadas && achadas.size);
 
     return (
       <li key={g.chave} className={`atd-carro is-${situacao}`}>
@@ -705,7 +746,15 @@ const AtendimentoAeroporto = () => {
           {g.veiculo ? (
             <span className="atd-carro__veic-txt">
               <b>{g.veiculo}</b>
-              {g.motorista && <small>{g.motorista}</small>}
+              {(() => {
+                const mt = motoristaDe(g);
+                return mt?.nome ? (
+                  <small>
+                    {mt.nome}
+                    {mt.doFornecedor ? " · escolhido pelo fornecedor" : ""}
+                  </small>
+                ) : null;
+              })()}
             </span>
           ) : (
             <span className="atd-carro__veic-txt">
@@ -713,6 +762,24 @@ const AtendimentoAeroporto = () => {
             </span>
           )}
         </div>
+
+        {/* chamar o motorista: WhatsApp e ligação, sem precisar procurar */}
+        {(() => {
+          const mt = motoristaDe(g);
+          if (!mt?.tel) return null;
+          const tel = mt.tel.length <= 11 ? `55${mt.tel}` : mt.tel;
+          return (
+            <div className="atd-contato" aria-label={`Contato de ${mt.nome || "motorista"}`}>
+              <a className="atd-contato__btn is-zap" href={`https://wa.me/${tel}`} target="_blank" rel="noopener noreferrer">
+                <Icon name="message" size={14} /> WhatsApp
+              </a>
+              <a className="atd-contato__btn" href={`tel:+${tel}`}>
+                <Icon name="phone" size={14} /> Ligar
+              </a>
+              <small className="atd-contato__tel tabular">{formatarTelefone(mt.tel)}</small>
+            </div>
+          );
+        })()}
 
         {/* 3. voo e região */}
         <div className="atd-carro__meta">
@@ -771,7 +838,7 @@ const AtendimentoAeroporto = () => {
               const ocupadoR = salvando === `${g.chave}|rr|${i}`;
               const ocupadoNs = salvando === `${g.chave}|ns|${i}`;
               return (
-                <li key={`${r.codigo}-${i}`} className={`${porReserva(g) ? "com-marca" : ""} ${ns ? "is-noshow" : ""} ${rec ? "is-recebida" : ""}`}>
+                <li key={`${r.codigo}-${i}`} className={`${porReserva(g) ? "com-marca" : ""} ${ns ? "is-noshow" : ""} ${rec ? "is-recebida" : ""} ${achadas?.has(r.codigo || r.titular) ? "is-achada" : ""}`}>
                   {porReserva(g) && (
                     <button
                       type="button"
@@ -918,33 +985,21 @@ const AtendimentoAeroporto = () => {
             <button type="button" className={`atd-btn-leve ${guiaAberto ? "is-on" : ""}`} onClick={() => setGuiaAberto((x) => !x)} title="Como funciona" aria-label="Como funciona" aria-pressed={guiaAberto}>
               <Icon name="help" size={15} />
             </button>
-            <AvaliacaoSistema variante="botao" className="atd-btn-leve atd-avaliar" />
-            {ehOperacional && (
-              <button type="button" className={`atd-btn-leve ${som ? "is-on" : ""}`} onClick={alternarSom} aria-pressed={som} title={som ? "Desligar o som das marcações" : "Ligar o som das marcações"}>
-                <Icon name="bell" size={15} />
-              </button>
-            )}
-            {ehOperacional && (
-              <Link to="/recepcao-turnos" className="atd-btn-leve" title="Relatório do atendimento">
-                <Icon name="barChart" size={15} /> <span className="atd-btn-txt">Relatório</span>
-              </Link>
-            )}
-            {ehOperacional && (
-              <Link to="/" className="atd-btn-leve" title="Voltar para o sistema">
-                <Icon name="chevronLeft" size={15} /> <span className="atd-btn-txt">Sistema</span>
-              </Link>
-            )}
-            {!ehOperacional && (
-              <Link to="/atendimento/sobre" className="atd-btn-leve" title="Sobre a FiaSystem" aria-label="Sobre">
-                <Icon name="info" size={15} />
-              </Link>
-            )}
-            <Link to="/atendimento/tema" className="atd-btn-leve" title="Tema, cor e tamanho do texto" aria-label="Tema">
-              <Icon name="palette" size={15} />
-            </Link>
-            <button type="button" className="atd-btn-leve" onClick={logout} title="Sair" aria-label="Sair">
-              <Icon name="logout" size={15} />
-            </button>
+            {/* o resto num menu só (no celular o título ficava espremido) */}
+            <MoreMenu
+              label="Menu"
+              items={[
+                { label: "Avaliar o sistema", icon: "star", onClick: () => setPedidoAvaliacao((n) => n + 1) },
+                ehOperacional && { label: som ? "Desligar o som das marcações" : "Ligar o som das marcações", icon: "bell", onClick: alternarSom },
+                ehOperacional && { label: "Relatório do atendimento", icon: "barChart", onClick: () => navigate("/recepcao-turnos") },
+                !ehOperacional && { label: "Sobre a FiaSystem", icon: "info", onClick: () => navigate("/atendimento/sobre") },
+                { label: "Tema, cor e tamanho do texto", icon: "palette", onClick: () => navigate("/atendimento/tema") },
+                "divider",
+                ehOperacional && { label: "Voltar para o sistema", icon: "chevronLeft", onClick: () => navigate("/") },
+                { label: "Sair", icon: "logout", danger: true, onClick: logout },
+              ]}
+            />
+            <AvaliacaoSistema variante="oculto" pedido={pedidoAvaliacao} />
           </span>
         </div>
         <div className="atd-dias" role="tablist" aria-label="Dia">
@@ -1004,6 +1059,11 @@ const AtendimentoAeroporto = () => {
                   {pl(resumo.total, "veículo", "veículos")} · {pl(resumo.pax, "passageiro", "passageiros")}
                 </small>
               </span>
+              {data === hoje() && (
+                <span className="atd-resumo__agora tabular" title="Hora agora">
+                  <Icon name="clock" size={13} /> {textoHora(agoraMin)}
+                </span>
+              )}
               <span className="atd-resumo__pct tabular">
                 {num(pctDe(resumo.prontos), 0)}%<small>concluído</small>
               </span>
@@ -1111,10 +1171,30 @@ const AtendimentoAeroporto = () => {
           </div>
         ) : (
           <div className="atd-blocos">
-            {blocos.map((bl) => (
-              <section key={`${bl.hora}-${bl.itens[0].chave}`} className="atd-bloco">
+            {blocos.map((bl, bi) => {
+              // relógio: "há 25 min" / "em 15 min"; o que passou e ainda falta fica em destaque
+              const minBl = paraMinutosBloco(bl.hora);
+              const ehHojeTela = data === hoje();
+              const dif = ehHojeTela && minBl !== null ? minBl - agoraMin : null;
+              const falta = bl.itens.some((g) => !completo(g));
+              const atrasado = dif !== null && dif < -20 && falta;
+              const anterior = bi > 0 ? paraMinutosBloco(blocos[bi - 1].hora) : null;
+              const linhaAgora = ehHojeTela && minBl !== null && minBl > agoraMin && (bi === 0 || (anterior !== null && anterior <= agoraMin));
+              return (
+              <Fragment key={`${bl.hora}-${bl.itens[0].chave}`}>
+              {linhaAgora && (
+                <div className="atd-agora" role="separator" aria-label={`Agora, ${textoHora(agoraMin)}`}>
+                  <span>
+                    <Icon name="clock" size={12} /> Agora · {textoHora(agoraMin)}
+                  </span>
+                </div>
+              )}
+              <section className={`atd-bloco ${atrasado ? "is-atrasado" : ""}`}>
                 <h3 className="atd-bloco__cab">
                   <span className="atd-bloco__hora tabular">{bl.hora}</span>
+                  {dif !== null && Math.abs(dif) <= 12 * 60 && (
+                    <span className={`atd-bloco__quando ${dif < 0 ? (atrasado ? "is-atrasado" : "is-passou") : "is-futuro"}`}>{textoRelativo(dif)}</span>
+                  )}
                   <span className="atd-bloco__info">
                     {pl(bl.itens.length, "veículo", "veículos")} · {pl(bl.itens.reduce((s2, g) => s2 + g.pax, 0), "pax", "pax")}
                     {(() => {
@@ -1125,7 +1205,14 @@ const AtendimentoAeroporto = () => {
                 </h3>
                 <ul className="atd-lista">{bl.itens.map(renderCarro)}</ul>
               </section>
-            ))}
+              </Fragment>
+              );
+            })}
+            {filtro === "pendentes" && contagem.concluidos > 0 && (
+              <button type="button" className="atd-ver-concluidos" onClick={() => setFiltro("concluidos")}>
+                <Icon name="circleCheck" size={15} /> {pl(contagem.concluidos, "veículo concluído", "veículos concluídos")} · ver
+              </button>
+            )}
           </div>
         )}
       </main>

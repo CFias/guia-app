@@ -382,10 +382,10 @@ const aguardandoConfirmacao = (item) =>
 const extrairClienteReserva = (item) =>
   String(
     item?.reserve?.customer?.name ||
-    item?.customer?.name ||
-    item?.reserve?.holder_name ||
-    item?.passenger_name ||
-    "",
+      item?.customer?.name ||
+      item?.reserve?.holder_name ||
+      item?.passenger_name ||
+      "",
   ).trim();
 
 const extrairHotelReserva = (item) => {
@@ -893,7 +893,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-          apiItem.externalServiceId !== undefined
+        apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -902,11 +902,11 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-            (r) =>
-              r.date === apiItem.date &&
-              r._externalIdNormalizado !== null &&
-              r._externalIdNormalizado === externalIdApi,
-          )
+              (r) =>
+                r.date === apiItem.date &&
+                r._externalIdNormalizado !== null &&
+                r._externalIdNormalizado === externalIdApi,
+            )
           : [];
 
       if (porExternalId.length) return porExternalId;
@@ -971,13 +971,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-        (servicosAlocados.reduce(
-          (acc, item) => acc + Number(item.passengers || 0),
-          0,
-        ) /
-          paxTotalSemana) *
-        100,
-      )
+          (servicosAlocados.reduce(
+            (acc, item) => acc + Number(item.passengers || 0),
+            0,
+          ) /
+            paxTotalSemana) *
+            100,
+        )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -1041,7 +1041,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                normalizarTexto(guia.nome || ""),
+                  normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -1071,11 +1071,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-        distribuicaoGuias.reduce(
-          (acc, guia) => acc + Number(guia.percentualUso || 0),
-          0,
-        ) / distribuicaoGuias.length,
-      )
+          distribuicaoGuias.reduce(
+            (acc, guia) => acc + Number(guia.percentualUso || 0),
+            0,
+          ) / distribuicaoGuias.length,
+        )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1127,8 +1127,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-      )
+          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+        )
       : 0;
 
     const disponibilidadeMedia = (() => {
@@ -2251,7 +2251,7 @@ Operacional - Luck Receptivo
                 renderCardLoading("Carregando demanda", "grafico")
               ) : (
                 <div className="dash-chart">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 600, height: 260 }}>
                     <BarChart
                       data={dashboard.distribuicaoSemana}
                       margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
@@ -2276,7 +2276,7 @@ Operacional - Luck Receptivo
                 renderCardLoading("Carregando demanda", "grafico")
               ) : (
                 <div className="dash-chart">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 600, height: 260 }}>
                     <LineChart
                       data={dashboard.distribuicaoSemana}
                       margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
@@ -2378,7 +2378,7 @@ Operacional - Luck Receptivo
                 renderCardLoading("Carregando", "grafico")
               ) : (
                 <div className="dash-chart">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 600, height: 260 }}>
                     <BarChart
                       data={dashboard.distribuicaoComparativaSemana}
                       margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
@@ -2403,7 +2403,7 @@ Operacional - Luck Receptivo
                 renderCardLoading("Carregando", "grafico")
               ) : (
                 <div className="dash-chart">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 600, height: 260 }}>
                     <LineChart
                       data={dashboard.distribuicaoComparativaSemana}
                       margin={{ top: 8, right: 12, left: -12, bottom: 0 }}

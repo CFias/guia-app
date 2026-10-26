@@ -291,6 +291,23 @@ export const definirMotorista = (data, fornecedor, servicos = [], motorista) =>
   );
 
 // link do dia de cada motorista: links.{motoristaId} = { token, assinatura }
+// link do dia JÁ gravado para este motorista (lido direto do banco, sem
+// depender da tela): evita criar um link novo — e vazio — por engano
+export const linkGravadoDoMotorista = async (
+  data,
+  fornecedorId,
+  motoristaId,
+) => {
+  try {
+    const snap = await getDoc(
+      docBase(COL_ESCALA_MOTORISTAS, idEscalaMotoristas(data, fornecedorId)),
+    );
+    return snap.exists() ? snap.data()?.links?.[motoristaId] || null : null;
+  } catch {
+    return null;
+  }
+};
+
 export const salvarLinkMotorista = (data, fornecedor, motoristaId, link) =>
   setDoc(
     docBase(COL_ESCALA_MOTORISTAS, idEscalaMotoristas(data, fornecedor.id)),

@@ -42,6 +42,17 @@ import "./motorista.css";
 const NOME_TIPO = { IN: "Chegada", OUT: "Saída", TRF: "Transfer", PASSEIO: "Passeio" };
 const ICONE_TIPO = { IN: "planeLanding", OUT: "planeTakeoff", PASSEIO: "compass" };
 const PERTO_METROS = 400;
+// até quanto tempo depois do horário o serviço ainda é "o da vez"
+const JANELA_DA_VEZ = 90;
+// "em 25 min" · "em 2h10" · "há 15 min" · "agora"
+const quandoFalta = (hora, agora) => {
+  const [h, m] = String(hora || "").split(":").map(Number);
+  if (Number.isNaN(h)) return "";
+  const d = h * 60 + (m || 0) - agora;
+  const t = (x) => (x >= 60 ? `${Math.floor(x / 60)}h${String(x % 60).padStart(2, "0")}` : `${x} min`);
+  if (Math.abs(d) <= 2) return "agora";
+  return d > 0 ? `em ${t(d)}` : `há ${t(-d)}`;
+};
 // período do dia de um horário "HH:MM"
 const PERIODOS = [
   { id: "madrugada", nome: "Madrugada", ate: 5 * 60 },
@@ -241,8 +252,31 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
       return n;
     });
 
-  // serviço em andamento (o primeiro não concluído) e a viagem em curso
-  const atual = servicos.find((s) => !situacaoDoServico(s.tipo, eventos[s.chave]).concluido) || null;
+  /* SERVIÇO DA VEZ, pelo relógio (hoje):
+     1. o que já foi começado e não terminou (o mais recente);
+     2. senão, o de horário mais perto de agora (até 90 min atrás ou à frente);
+     3. senão, o último do dia.
+     Serviço de horário passado que ninguém marcou NÃO prende o "Agora":
+     vai para "Ficaram sem finalizar" (antes, um serviço da manhã esquecido
+     continuava como "Agora" à tarde e parecia que tudo tinha voltado). */
+  const naoConcluidos = servicos.filter((s) => !situacaoDoServico(s.tipo, eventos[s.chave]).concluido);
+  const comecado = (s) => !!situacaoDoServico(s.tipo, eventos[s.chave]).ultima;
+  const ultimoToque = (s) => {
+    const ev = eventos[s.chave] || {};
+    return Math.max(0, ...Object.values(ev).map((x) => (x?.em?.toMillis ? x.em.toMillis() : x?.em?.seconds ? x.em.seconds * 1000 : x?.em instanceof Date ? x.em.getTime() : 0)));
+  };
+  const atual = (() => {
+    if (!naoConcluidos.length) return null;
+    if (!ehHoje) return naoConcluidos[0];
+    const andamento = naoConcluidos.filter(comecado).sort((a, b) => ultimoToque(b) - ultimoToque(a))[0];
+    if (andamento) return andamento;
+    // o de horário mais perto de agora (até 90 min atrás ou qualquer um à frente)
+    const naJanela = naoConcluidos.filter((s) => (minutosDe(s.hora) ?? 24 * 60) >= minuto - JANELA_DA_VEZ);
+    if (naJanela.length) return naJanela.sort((a, b) => Math.abs((minutosDe(a.hora) ?? 9999) - minuto) - Math.abs((minutosDe(b.hora) ?? 9999) - minuto))[0];
+    return naoConcluidos[naoConcluidos.length - 1];
+  })();
+  // horário já passou, ninguém finalizou e não é o da vez
+  const ficaram = ehHoje && atual ? naoConcluidos.filter((s) => s !== atual && String(s.hora) < String(atual.hora)) : [];
   const emViagem = atual && eventos[atual.chave]?.iniciado?.em && !eventos[atual.chave]?.finalizado?.em ? atual : null;
 
   // em viagem: posição a cada minuto (para a Luck) e o destino no mapa (para o card "Chegando")
@@ -526,6 +560,9 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
       <li key={s.chave} className={`mt-serv is-${String(s.tipo).toLowerCase()} ${st.concluido ? "is-ok" : ""} ${destaque ? "is-atual" : ""}`}>
         <div className="mt-serv__cab">
           <span className="mt-serv__hora">{s.hora || "--:--"}</span>
+          {ehHoje && !st.concluido && quandoFalta(s.hora, minuto) && (
+            <span className={`mt-serv__quando ${String(quandoFalta(s.hora, minuto)).startsWith("há") ? "is-passou" : ""}`}>{quandoFalta(s.hora, minuto)}</span>
+          )}
           <span className="mt-serv__tipo">
             <Icon name={ICONE_TIPO[s.tipo] || "car"} size={13} /> {NOME_TIPO[s.tipo] || s.tipo}
           </span>
@@ -710,7 +747,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     );
   };
 
-  const proximos = servicos.filter((s) => s !== atual && !situacaoDoServico(s.tipo, eventos[s.chave]).concluido);
+  const proximos = naoConcluidos.filter((s) => s !== atual && !ficaram.includes(s));
   const concluidos = servicos.filter((s) => situacaoDoServico(s.tipo, eventos[s.chave]).concluido);
 
   const alternarExpandido = (chave) =>
@@ -747,7 +784,10 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     return (
       <li key={s.chave} className={`mt-linha is-${String(s.tipo).toLowerCase()}`}>
         <button type="button" className="mt-linha__btn" onClick={() => alternarExpandido(s.chave)} aria-expanded="false">
-          <span className="mt-linha__hora">{s.hora || "--:--"}</span>
+          <span className="mt-linha__hora">
+            {s.hora || "--:--"}
+            {ehHoje && quandoFalta(s.hora, minuto) && <small>{quandoFalta(s.hora, minuto)}</small>}
+          </span>
           <span className="mt-linha__txt">
             <span className="mt-linha__tipo">
               <Icon name={ICONE_TIPO[s.tipo] || "car"} size={12} /> {NOME_TIPO[s.tipo] || s.tipo}
@@ -857,6 +897,11 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                     {porTipo.map(([t, n]) => `${n} ${(NOME_TIPO[t] || t).toLowerCase()}${n > 1 ? "s" : ""}`).join(" · ")}
                   </small>
                 </span>
+                {ehHoje && (
+                  <span className="mt-resumo__agora" title="Hora agora">
+                    <Icon name="clock" size={13} /> {textoMin(minuto)}
+                  </span>
+                )}
                 <span className="mt-resumo__conta">
                   <b>
                     {concluidos.length} de {servicos.length}
@@ -875,7 +920,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             {atual ? (
               <section>
                 <h2 className="mt-secao">
-                  <span className="mt-secao__ponto" aria-hidden="true" /> Agora
+                  <span className="mt-secao__ponto" aria-hidden="true" /> {ehHoje ? "Agora · o serviço da vez" : "Primeiro serviço"}
                 </h2>
                 <ul className="mt-lista">{cardServico(atual, true)}</ul>
               </section>
@@ -884,6 +929,16 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                 <Icon name="circleCheck" size={26} />
                 <b>Todos os serviços finalizados. Bom descanso!</b>
               </div>
+            )}
+
+            {ficaram.length > 0 && (
+              <section className="mt-ficaram">
+                <h2 className="mt-secao">
+                  <Icon name="alert" size={13} /> Ficaram sem finalizar ({ficaram.length})
+                </h2>
+                <p className="mt-ficaram__nota">O horário já passou e a viagem não foi finalizada. Toque para abrir e marcar o que foi feito.</p>
+                <ul className="mt-linhas">{ficaram.map(linhaServico)}</ul>
+              </section>
             )}
 
             {porPeriodo.length > 0 && (

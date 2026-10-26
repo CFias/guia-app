@@ -177,6 +177,41 @@ export const servicoParaMotorista = (s) => {
   };
 };
 
+/* ESCALA REFEITA no Phoenix: o serviço ganha outro número (outra chave), mas é
+   a mesma viagem. As etapas que o motorista já marcou passam para a chave nova
+   — antes elas ficavam presas à chave antiga e a tela parecia "zerada".
+   Mesma viagem = mesmo tipo e (alguma reserva em comum OU mesmo horário e
+   mesmo veículo). Devolve { eventos: { chaveNova: etapas }, migradas: Set(chaves antigas) }. */
+export const migrarEtapas = (anteriores = [], eventos = {}, novos = []) => {
+  const resultado = { eventos: {}, migradas: new Set() };
+  const chavesNovas = new Set(novos.map((s) => s.chave));
+  const comEtapas = anteriores.filter(
+    (a) =>
+      !chavesNovas.has(a.chave) && Object.keys(eventos?.[a.chave] || {}).length,
+  );
+  if (!comEtapas.length) return resultado;
+  const codigos = (s) =>
+    new Set((s.reservas || []).map((r) => r.codigo).filter(Boolean));
+  novos.forEach((n) => {
+    if (Object.keys(eventos?.[n.chave] || {}).length) return; // já tem etapas
+    const cn = codigos(n);
+    const par = comEtapas.find(
+      (a) =>
+        !resultado.migradas.has(a.chave) &&
+        a.tipo === n.tipo &&
+        ([...codigos(a)].some((c) => cn.has(c)) ||
+          (a.hora &&
+            a.hora === n.hora &&
+            a.veiculo &&
+            a.veiculo === n.veiculo)),
+    );
+    if (!par) return;
+    resultado.eventos[n.chave] = { ...eventos[par.chave] };
+    resultado.migradas.add(par.chave);
+  });
+  return resultado;
+};
+
 // assinatura do que o motorista vê (para só regravar quando muda)
 export const assinaturaServicos = (lista = []) =>
   lista
