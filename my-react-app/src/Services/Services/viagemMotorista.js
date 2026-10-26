@@ -753,46 +753,35 @@ export const lembrarLinkDoApp = async (url) => {
   }
 };
 
-// manifest do app com o link do motorista como página inicial
-export const definirManifestDoMotorista = (url, nome = "Luck Motorista") => {
+/* App do motorista na tela inicial. O manifest precisa ser um ARQUIVO de
+   verdade (/motorista.webmanifest): com o manifest montado na hora (blob:), o
+   Chrome não consegue criar o app de verdade (WebAPK) — só um atalho, que não
+   aparece na lista de apps do Android nem tem notificação própria.
+   O app abre em /m/ e vai para o último link do motorista neste celular. */
+const CHAVE_ULTIMO_LINK = "m.ultimoLink";
+export const lembrarLinkDoMotorista = (token) => {
   try {
-    const manifest = {
-      name: `${nome} · Luck Receptivo`,
-      short_name: "Luck Motorista",
-      start_url: url,
-      scope: `${window.location.origin}/`,
-      display: "standalone",
-      background_color: "#111110",
-      theme_color: "#111110",
-      icons: [
-        {
-          src: `${window.location.origin}/icon-192.png`,
-          sizes: "192x192",
-          type: "image/png",
-        },
-        {
-          src: `${window.location.origin}/icon-512.png`,
-          sizes: "512x512",
-          type: "image/png",
-        },
-        {
-          src: `${window.location.origin}/icon-maskable-512.png`,
-          sizes: "512x512",
-          type: "image/png",
-          purpose: "maskable",
-        },
-      ],
-    };
-    const blob = new Blob([JSON.stringify(manifest)], {
-      type: "application/manifest+json",
-    });
+    if (token) localStorage.setItem(CHAVE_ULTIMO_LINK, token);
+  } catch {
+    /* sem armazenamento */
+  }
+};
+export const ultimoLinkDoMotorista = () => {
+  try {
+    return localStorage.getItem(CHAVE_ULTIMO_LINK) || "";
+  } catch {
+    return "";
+  }
+};
+export const definirManifestDoMotorista = () => {
+  try {
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
       link = document.createElement("link");
       link.rel = "manifest";
       document.head.appendChild(link);
     }
-    link.href = URL.createObjectURL(blob);
+    link.href = "/motorista.webmanifest";
   } catch {
     /* fica o manifest padrão */
   }

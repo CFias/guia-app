@@ -9,11 +9,16 @@ import { ehIphone, useInstalarApp } from "../../Services/Services/instalarApp";
    ajustar — Android ou iPhone. */
 
 const ESPERA = 10; // segundos até o aviso de teste chegar
+const ehAndroid = () => typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
 
+const SITE = typeof window !== "undefined" ? window.location.host : "o site do sistema";
 const AJUDA_ANDROID = (app) => [
-  { t: "Notificações liberadas", d: `Configurações → Apps → ${app} (ou Chrome) → Notificações → Permitir.` },
+  {
+    t: "Notificações liberadas",
+    d: `Configurações → Apps → ${app} → Notificações → Permitir. Não acha “${app}” na lista de apps? Então ele está como atalho do Chrome: abra o Chrome → ⋮ → Configurações → Configurações do site → Notificações → ${SITE} → Permitir.`,
+  },
   { t: "Aparecer por cima dos outros apps", d: "Nas notificações do app, ligue “Mostrar como pop-up” (ou “Aparecer na tela”) e deixe som e vibração ligados." },
-  { t: "Bateria sem restrição", d: `Configurações → Apps → ${app} (ou Chrome) → Bateria → “Sem restrições” (Samsung: “Não otimizar”). A economia de bateria segura os avisos.` },
+  { t: "Bateria sem restrição", d: `Configurações → Apps → ${app} (como atalho: Chrome) → Bateria → “Sem restrições” (Samsung: “Não otimizar”). A economia de bateria segura os avisos.` },
   { t: "“Não perturbe” desligado", d: "Com o “Não perturbe” ligado o aviso chega mudo. Desligue ou coloque o app como exceção." },
   { t: "Ativar de novo", d: "Abra o app pelo ícone da tela inicial e toque em “Ativar avisos”." },
 ];
@@ -36,8 +41,10 @@ const TesteAviso = ({ nome = "", app = "Luck Motorista", onFechar }) => {
   const [passo, setPasso] = useState("inicio"); // inicio | enviando | contando | pergunta | ok | ajuda
   const [falta, setFalta] = useState(ESPERA);
   const [motivo, setMotivo] = useState("");
-  const { instalado } = useInstalarApp();
+  const { instalado, temBotao, instalar } = useInstalarApp();
+  // Android aberto pelo navegador ou por um ATALHO (não aparece na lista de apps)
   const iphone = ehIphone();
+  const comoAtalho = ehAndroid() && !instalado;
 
   useEffect(() => {
     if (passo !== "contando") return undefined;
@@ -91,6 +98,22 @@ const TesteAviso = ({ nome = "", app = "Luck Motorista", onFechar }) => {
           </button>
         </div>
 
+        {passo === "inicio" && comoAtalho && (
+          <div className="mt-teste__atalho">
+            <b>
+              <Icon name="info" size={14} /> O app ainda não está instalado de verdade neste celular
+            </b>
+            <span>
+              Aberto pelo navegador ou por um atalho, ele não aparece na lista de apps do Android e o aviso fica preso nas configurações do Chrome. Instale para
+              virar o app “{app}”{temBotao ? "" : " (se já tem um atalho na tela inicial, apague e instale de novo pelo menu ⋮ do Chrome → Instalar app)"}.
+            </span>
+            {temBotao && (
+              <button type="button" className="mt-teste__btn" onClick={instalar}>
+                <Icon name="download" size={16} /> Instalar o app
+              </button>
+            )}
+          </div>
+        )}
         {passo === "inicio" && (
           <>
             <ol className="mt-teste__passos">

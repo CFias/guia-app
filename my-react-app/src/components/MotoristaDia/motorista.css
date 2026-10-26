@@ -1797,3 +1797,25 @@
 .mt-teste__ajuda span {
   color: var(--text-2);
 }
+
+.mt-teste__atalho {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.mt-teste__atalho b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.mt-teste__atalho span {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}

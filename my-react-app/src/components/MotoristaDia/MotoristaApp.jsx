@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
 import MotoristaDia from "./MotoristaDia";
-import { definirManifestDoMotorista, diaDoApp, lembrarLinkDoApp, ouvirMotoristaApp, registrarServiceWorker } from "../../Services/Services/viagemMotorista";
+import {
+  definirManifestDoMotorista,
+  diaDoApp,
+  lembrarLinkDoApp,
+  lembrarLinkDoMotorista,
+  ouvirMotoristaApp,
+  registrarServiceWorker,
+  ultimoLinkDoMotorista,
+} from "../../Services/Services/viagemMotorista";
 import "./motorista.css";
 
 /* Entrada do link /m/<token>.
@@ -21,14 +29,29 @@ const MotoristaApp = () => {
   const [app, setApp] = useState(undefined); // undefined = carregando; null = é link de um dia
   const [escolhido, setEscolhido] = useState("");
 
-  useEffect(() => ouvirMotoristaApp(token, setApp), [token]);
+  useEffect(() => (token ? ouvirMotoristaApp(token, setApp) : undefined), [token]);
 
   useEffect(() => {
+    if (!token) return;
     registrarServiceWorker();
     const url = `${window.location.origin}/m/${token}`;
     lembrarLinkDoApp(url);
-    definirManifestDoMotorista(url);
+    lembrarLinkDoMotorista(token);
+    definirManifestDoMotorista();
   }, [token]);
+
+  // aberto pelo ícone do app (/m/): vai para o último link deste celular
+  if (!token) {
+    const ultimo = ultimoLinkDoMotorista();
+    if (ultimo) return <Navigate to={`/m/${ultimo}`} replace />;
+    return (
+      <div className="mt mt--centro">
+        <Icon name="smartphone" size={26} />
+        <b>Abra o link que o seu fornecedor mandou</b>
+        <span>O link chega pelo WhatsApp. Depois de abrir uma vez, o app lembra dele e abre direto nos seus serviços.</span>
+      </div>
+    );
+  }
 
   if (app === undefined) {
     return (

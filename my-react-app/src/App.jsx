@@ -46,6 +46,8 @@ function App() {
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       {/* Link do dia do motorista do fornecedor (sem login: o token do link é a chave) */}
       <Route path="/m/:token" element={<MotoristaApp />} />
+      {/* ícone do app do motorista (start_url /m/): abre o último link do celular */}
+      <Route path="/m" element={<MotoristaApp />} />
 
       {/* ===== DASHBOARD COMO LAYOUT (menu lateral) =====
           Operacional e Comercial entram; cada um vê só o seu menu. */}
