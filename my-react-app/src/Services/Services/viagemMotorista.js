@@ -432,6 +432,8 @@ export const gravarPosicao = (token, pos) =>
 
 /* ---------------- sinal do painel do aeroporto ---------------- */
 
+// desfeito: a base desfez a recepção que o motorista já tinha recebido —
+// o app dele mostra "recepção desfeita · aguarde" (desfeitoEm)
 export const gravarStatusEscala = ({
   data,
   escalaId,
@@ -440,6 +442,7 @@ export const gravarStatusEscala = ({
   recepcionadoPor = "",
   embarcado,
   embarcadoEm,
+  desfeito = false,
 }) =>
   setDoc(
     doc(db, COL_STATUS_ESCALA, idStatusEscala(baseAtual(), data, escalaId)),
@@ -454,6 +457,11 @@ export const gravarStatusEscala = ({
         : "",
       embarcado: !!embarcado,
       embarcadoEm: embarcado ? embarcadoEm || Timestamp.now() : null,
+      ...(desfeito
+        ? { desfeitoEm: Timestamp.now() }
+        : recepcionado
+          ? { desfeitoEm: null }
+          : {}),
       atualizadoEm: Timestamp.now(),
     },
     { merge: true },

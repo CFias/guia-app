@@ -157,6 +157,8 @@ const textoRelativo = (d) => {
   if (Math.abs(d) <= 2) return "agora";
   return d > 0 ? `em ${t(d)}` : `há ${t(-d)}`;
 };
+const horaDoMs = (ms) => new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const CONFIRMAR_SEG = 10; // contagem antes de gravar Recepcionei / Embarquei
 const pl = (n, um, varios) => `${num(n, 0)} ${Math.round(n) === 1 ? um : varios}`;
 
 const AtendimentoAeroporto = () => {
@@ -173,7 +175,8 @@ const AtendimentoAeroporto = () => {
   const [docs, setDocs] = useState({ data: "", lista: [] });
   // o Operacional lança por várias pessoas: começa no dia todo
   const [filtroTurno, setFiltroTurno] = useState(() => (ehOperacional ? "todos" : "meu"));
-  const [filtro, setFiltroBruto] = useState("pendentes"); // pendentes | todos | meus
+  // abas: recepcionar (aguardando recepção) | embarcar (recebidos) | finalizados
+  const [filtro, setFiltroBruto] = useState("recepcionar");
   // cards em que a pessoa mexeu agora ficam na lista (mesmo concluídos) até
   // ela trocar o filtro — o painel não "pula" embaixo do dedo
   const [fixos, setFixos] = useState(() => new Set());
@@ -219,6 +222,7 @@ const AtendimentoAeroporto = () => {
     }
   };
   const [recarregar, setRecarregar] = useState(0);
+  const fixoRef = useRef(null); // busca + abas presas no topo
 
   useEffect(() => {
     definirTituloAba("Atendimento no aeroporto");
@@ -371,6 +375,8 @@ const AtendimentoAeroporto = () => {
     }, 30000);
     return () => clearInterval(id);
   }, []);
+  // o mesmo relógio em ms (para o "visto há X min")
+  const agoraMs0 = data === hoje() ? new Date(`${data}T00:00:00`).getTime() + agoraMin * 60000 + 59000 : 0;
   const [retornos, setRetornos] = useState({ data: "", porEscala: {} });
   useEffect(() => ouvirRetornosDoDia(data, (porEscala) => setRetornos({ data, porEscala })), [data]);
   const retornoDe = (g) => {
@@ -380,7 +386,11 @@ const AtendimentoAeroporto = () => {
     const recEm = marcasRec[0]?.em || recepcaoPelasReservas(g)?.[0]?.em || null;
     const r = retornos.porEscala[String(g.escalaId)];
     const leitura = leituraDoRetorno(r, msDoTimestamp(recEm));
-    return leitura ? { ...leitura, nome: String(r?.motoristaNome || "").split(" ")[0] } : null;
+    // "visto há X min": o app do motorista avisa a cada 3 min enquanto está aberto
+    const vistoMs = msDoTimestamp(r?.vistoEm);
+    const vistoMin = vistoMs && agoraMs0 ? Math.max(0, Math.round((agoraMs0 - vistoMs) / 60000)) : null;
+    const visto = vistoMin === null || r?.iniciadoEm || r?.finalizadoEm ? "" : vistoMin <= 4 ? "online agora" : vistoMin < 60 ? `visto há ${vistoMin} min` : `visto às ${horaDoMs(vistoMs)}`;
+    return leitura ? { ...leitura, visto, online: vistoMin !== null && vistoMin <= 4, nome: String(r?.motoristaNome || "").split(" ")[0] } : null;
   };
 
   const sinaisRef = useRef(new Map());
@@ -420,6 +430,8 @@ const AtendimentoAeroporto = () => {
       if (antes === sinal) return;
       sinaisRef.current.set(chave, sinal);
       if (antes === undefined && !e.rec && !emb) return; // nada a avisar
+      // a base DESFEZ a recepção que o motorista já tinha recebido
+      const desfeito = antes !== undefined && antes.split("|")[0] === "true" && !e.rec;
       gravarStatusEscala({
         data,
         escalaId,
@@ -428,7 +440,16 @@ const AtendimentoAeroporto = () => {
         recepcionadoPor: e.recPor,
         embarcado: emb,
         embarcadoEm: e.embEm,
+        desfeito,
       }).catch((err) => console.error("Aviso ao motorista não gravado:", err));
+      if (desfeito) {
+        enviarPushDaEscala({
+          data,
+          escalaId,
+          titulo: "Recepção desfeita pela base · aguarde",
+          corpo: `${[...e.voos].join(", ") || "Chegada"} · ${e.veiculo || "veículo"}: a recepção foi marcada por engano. Aguarde um novo aviso para posicionar.`,
+        });
+      }
       // acabou de ser recepcionado (visto nesta tela): notificação no celular do motorista
       const recebeuAgora = e.rec && (antes === undefined ? false : antes.split("|")[0] === "false" || antes.split("|")[2] !== String(msDoTimestamp(e.recEm)));
       if (recebeuAgora) {
@@ -461,15 +482,15 @@ const AtendimentoAeroporto = () => {
     if (t && !semAcento(`${g.voos.join(" ")} ${g.veiculo} ${g.motorista} ${(g.regioes || []).join(" ")} ${g.reservas.map((r) => `${r.titular} ${r.codigo} ${r.hotel}`).join(" ")}`).includes(t)) return false;
     return true;
   });
-  const meuNoVeiculo = (g) => etapas.some((e) => quem && marcasDe(g)[e.id]?.[quem.id]);
-  const porStatus = {
-    pendentes: (g) => !completo(g) || fixos.has(g.chave),
-    concluidos: (g) => completo(g),
-    todos: () => true,
-    meus: (g) => meuNoVeiculo(g),
-  };
-  const contagem = Object.fromEntries(Object.entries(porStatus).map(([k, fn]) => [k, doRecorte.filter(fn).length]));
-  const visiveis = doRecorte.filter(porStatus[filtro] || porStatus.todos);
+  const recebeu = (g) => Object.keys(marcasDe(g)[etapas[0]?.id] || {}).length > 0 || !!recepcaoPelasReservas(g);
+  // em que aba o veículo está (um card que a pessoa acabou de mexer fica na
+  // aba em que estava até ela trocar de aba — a lista não pula embaixo do dedo)
+  const abaDe = (g) => (completo(g) ? "finalizados" : recebeu(g) && etapas.length > 1 ? "embarcar" : "recepcionar");
+  const ABAS_IDS = etapas.length > 1 ? ["recepcionar", "embarcar", "finalizados"] : ["recepcionar", "finalizados"];
+  const abaAtiva = ABAS_IDS.includes(filtro) ? filtro : "recepcionar";
+  const contagem = Object.fromEntries(ABAS_IDS.map((k) => [k, doRecorte.filter((g) => abaDe(g) === k).length]));
+  // buscando: procura em todas as abas
+  const visiveis = t ? doRecorte : doRecorte.filter((g) => abaDe(g) === abaAtiva || fixos.has(g.chave));
 
   // meus números do dia
   const meus = useMemo(() => {
@@ -502,18 +523,123 @@ const AtendimentoAeroporto = () => {
       etapaId: etapaRecepcao.id,
     });
   };
+  /* ---------- confirmação: 10 s para desistir antes de gravar ----------
+     Recepcionei / Embarquei só gravam (e avisam o motorista) depois da
+     contagem. "Desfazer" desiste; "Confirmar agora" grava na hora. Se a tela
+     for fechada ou trocar de dia no meio da contagem, grava antes. */
+  const [pend, setPend] = useState({}); // chave -> { g, tipo, etapa | r,i, rotulo, ate }
+  const [agoraMs, setAgoraMs] = useState(0);
+  const pendRef = useRef(pend);
+  const acoesRef = useRef({});
+  useEffect(() => {
+    pendRef.current = pend;
+  }, [pend]);
+  useEffect(() => {
+    acoesRef.current = { alternar, confirmarReservas };
+  });
+  const adiar = (k, item) => {
+    const agora = Date.now();
+    const ate = agora + CONFIRMAR_SEG * 1000;
+    setAgoraMs(agora);
+    setPend((x) => {
+      // tudo do mesmo veículo vence junto (grava numa vez só)
+      const n = { ...x, [k]: { ...item, ate } };
+      Object.keys(n).forEach((c) => {
+        if (n[c].g.chave === item.g.chave) n[c] = { ...n[c], ate };
+      });
+      pendRef.current = n;
+      return n;
+    });
+  };
+  const cancelarPendentes = (chaves, silencioso = false) => {
+    if (!chaves.length) return;
+    setPend((x) => {
+      const n = { ...x };
+      chaves.forEach((c) => delete n[c]);
+      pendRef.current = n;
+      return n;
+    });
+    if (!silencioso) setAviso({ tipo: "desfeito", texto: "Desfeito", detalhe: "Nada foi gravado e o motorista não foi avisado.", mais: 0, ts: Date.now() });
+  };
+  const confirmarPendentes = (chaves) => {
+    const atual = pendRef.current;
+    const itens = chaves.map((c) => atual[c]).filter(Boolean);
+    if (!itens.length) return;
+    const n = { ...atual };
+    chaves.forEach((c) => delete n[c]);
+    pendRef.current = n;
+    setPend(n);
+    const { alternar: alt, confirmarReservas: confRes } = acoesRef.current;
+    const reservasPorCarro = new Map();
+    itens.forEach((p) => {
+      if (p.tipo === "etapa") alt(p.g, p.etapa, true);
+      else reservasPorCarro.set(p.g.chave, { g: p.g, itens: [...(reservasPorCarro.get(p.g.chave)?.itens || []), { r: p.r, i: p.i }] });
+    });
+    reservasPorCarro.forEach(({ g, itens: its }) => confRes(g, its));
+  };
+  const temPend = Object.keys(pend).length > 0;
+  useEffect(() => {
+    if (!temPend) return undefined;
+    const id = setInterval(() => {
+      const agora = Date.now();
+      setAgoraMs(agora);
+      const vencidas = Object.keys(pendRef.current).filter((c) => pendRef.current[c].ate <= agora);
+      if (vencidas.length) confirmarPendentes(vencidas);
+    }, 250);
+    return () => clearInterval(id);
+  }, [temPend]); // eslint-disable-line react-hooks/exhaustive-deps
+  // tela fechada / app em segundo plano / saiu do painel: grava o que estava contando
+  useEffect(() => {
+    const descarregar = () => {
+      if (document.visibilityState === "hidden") confirmarPendentes(Object.keys(pendRef.current));
+    };
+    const sair = () => confirmarPendentes(Object.keys(pendRef.current));
+    document.addEventListener("visibilitychange", descarregar);
+    window.addEventListener("pagehide", sair);
+    return () => {
+      document.removeEventListener("visibilitychange", descarregar);
+      window.removeEventListener("pagehide", sair);
+      sair();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const alternarReserva = async (g, r, i) => {
     if (!quem) return;
     const doc = docDe(g);
     const rec = doc ? recepcaoDaReserva(doc, r, i) : null;
+    const kp = `${g.chave}|rr|${i}`;
+    if (pend[kp]) return cancelarPendentes([kp]); // tocou de novo na contagem: desiste
     if (rec && rec.colaboradorId !== quem.id && !window.confirm(`${r.titular || r.codigo} foi recepcionada por ${rec.nome}. Desmarcar?`)) return;
     if (!rec && config?.atendimento?.avisarForaDoTurno && janela && !dentro(g.min, janela.inicio, janela.fim)) {
       if (!window.confirm(`Este veículo (${g.hora}) está fora do seu turno (${janela.inicio}–${janela.fim}). Marcar mesmo assim?`)) return;
+    }
+    if (!rec) {
+      // marcar: 10 s para desistir antes de gravar (e avisar o motorista)
+      fixar(g.chave);
+      adiar(kp, { g, tipo: "reserva", r, i, rotulo: r.titular || r.codigo || "reserva" });
+      return;
     }
     setSalvando(`${g.chave}|rr|${i}`);
     try {
       const completou = await gravarRecepcao(g, [{ r, i }], !rec);
       if (!rec) registrarAcao("atendimento_recepcao_reserva", "Recepção de reserva (aeroporto)", `${r.codigo || r.titular} · ${r.pax} pax${completou ? " · veículo completo" : ""}`);
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível salvar. Confira a conexão.");
+    } finally {
+      setSalvando("");
+    }
+  };
+
+  // grava, de uma vez, as reservas de um veículo que passaram pela contagem
+  const confirmarReservas = async (g, itens) => {
+    if (!quem || !itens.length) return;
+    setSalvando(`${g.chave}|rr|${itens[0].i}`);
+    try {
+      const completou = await gravarRecepcao(g, itens.map(({ r, i }) => ({ r, i })), true);
+      itens.forEach(({ r }) =>
+        registrarAcao("atendimento_recepcao_reserva", "Recepção de reserva (aeroporto)", `${r.codigo || r.titular} · ${r.pax} pax${completou ? " · veículo completo" : ""}`),
+      );
     } catch (e) {
       console.error(e);
       alert("Não foi possível salvar. Confira a conexão.");
@@ -549,14 +675,22 @@ const AtendimentoAeroporto = () => {
     }
   };
 
-  const alternar = async (g, etapa) => {
+  // confirmado = já passou pela contagem de 10 s (grava direto)
+  const alternar = async (g, etapa, confirmado = false) => {
     if (!quem) return;
     fixar(g.chave);
+    const kp = `${g.chave}|${etapa.id}`;
     if (etapa.id === etapaRecepcao?.id && porReserva(g)) {
       // botão principal: recebe todas as que faltam de uma vez (ou desfaz todas)
       const { ativas, feitas } = estadoReservas(g);
       const tudo = feitas === ativas.length && ativas.length > 0;
       if (tudo && !window.confirm("Desmarcar a recepção de todas as reservas deste veículo?")) return;
+      if (!tudo && !confirmado) {
+        // as reservas marcadas uma a uma entram junto
+        cancelarPendentes(Object.keys(pend).filter((k) => k.startsWith(`${g.chave}|rr|`)), true);
+        adiar(kp, { g, tipo: "etapa", etapa, rotulo: etapa.nome });
+        return;
+      }
       setSalvando(`${g.chave}|${etapa.id}`);
       try {
         await gravarRecepcao(g, tudo ? ativas : ativas.filter((x) => !x.rec), !tudo);
@@ -570,8 +704,12 @@ const AtendimentoAeroporto = () => {
       return;
     }
     const marcado = !!marcasDe(g)[etapa.id]?.[quem.id];
-    if (!marcado && config?.atendimento?.avisarForaDoTurno && janela && !dentro(g.min, janela.inicio, janela.fim)) {
+    if (!marcado && !confirmado && config?.atendimento?.avisarForaDoTurno && janela && !dentro(g.min, janela.inicio, janela.fim)) {
       if (!window.confirm(`Este veículo (${g.hora}) está fora do seu turno (${janela.inicio}–${janela.fim}). Marcar mesmo assim?`)) return;
+    }
+    if (!marcado && !confirmado) {
+      adiar(kp, { g, tipo: "etapa", etapa, rotulo: etapa.nome });
+      return;
     }
     setSalvando(`${g.chave}|${etapa.id}`);
     try {
@@ -636,7 +774,6 @@ const AtendimentoAeroporto = () => {
   const nomeDoDia = data === hoje() ? "Hoje" : data === somarDias(hoje(), -1) ? "Ontem" : data === somarDias(hoje(), 1) ? "Amanhã" : dataBr(data);
 
   // resumo do recorte (região + turno): concluídos, aguardando embarque, aguardando recepção
-  const recebeu = (g) => Object.keys(marcasDe(g)[etapas[0]?.id] || {}).length > 0 || !!recepcaoPelasReservas(g);
   const resumo = (() => {
     const base = (grupos || []).filter((g) => (!regiaoAtiva || (g.regioes || []).includes(regiaoAtiva)) && !(filtroTurno === "meu" && janela && !dentro(g.min, janela.inicio, janela.fim)));
     const prontos = base.filter(completo);
@@ -659,12 +796,22 @@ const AtendimentoAeroporto = () => {
     else blocos.push({ hora: g.hora || "--:--", itens: [g] });
   });
 
-  const STATUS = [
-    ["pendentes", "A fazer", contagem.pendentes - doRecorte.filter((g) => completo(g) && fixos.has(g.chave)).length],
-    ["concluidos", "Concluídos", contagem.concluidos],
-    ["todos", "Todos", contagem.todos],
-    ...(quem ? [["meus", "Os meus", contagem.meus]] : []),
-  ];
+  /* "Agora": rola até o primeiro card do horário de agora (o que chegou há
+     até 20 min ou o próximo). Sem nenhum à frente, vai para o último. */
+  const irParaAgora = () => {
+    const els = [...document.querySelectorAll(".atd-bloco[data-min]")];
+    if (!els.length) return;
+    const alvo = els.find((el) => Number(el.dataset.min) >= agoraMin - 20) || els[els.length - 1];
+    const altura = fixoRef.current?.offsetHeight || 0;
+    alvo.style.scrollMarginTop = `${altura + 12}px`;
+    alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+    alvo.classList.remove("is-destaque");
+    void alvo.offsetWidth; // reinicia o destaque
+    alvo.classList.add("is-destaque");
+  };
+  const NOME_ABA = { recepcionar: "Recepcionar", embarcar: "Embarcar", finalizados: "Finalizados" };
+  const ICONE_ABA = { recepcionar: "users", embarcar: "car", finalizados: "circleCheck" };
+  const STATUS = ABAS_IDS.map((k) => [k, NOME_ABA[k], contagem[k]]);
 
   const renderCarro = (g) => {
     const m = marcasDe(g);
@@ -707,9 +854,13 @@ const AtendimentoAeroporto = () => {
     // buscando um passageiro: as reservas do veículo abrem sozinhas
     const achadas = t ? new Set(g.reservas.filter((r) => semAcento(`${r.titular} ${r.codigo} ${r.hotel}`).includes(t)).map((r) => r.codigo || r.titular)) : null;
     const aberto = abertos.has(g.chave) || !!(achadas && achadas.size);
+    // contagem de confirmação deste veículo
+    const pendCarro = Object.keys(pend).filter((c) => pend[c].g.chave === g.chave);
+    const pendProx = prox ? !!pend[`${g.chave}|${prox.e.id}`] : false;
+    const pendReserva = (i) => !!pend[`${g.chave}|rr|${i}`];
 
     return (
-      <li key={g.chave} className={`atd-carro is-${situacao}`}>
+      <li key={g.chave} className={`atd-carro is-${situacao} ${pendCarro.length ? "is-contando" : ""}`}>
         {/* 1. situação e passageiros */}
         <div className="atd-carro__cab">
           <span className={`atd-status is-${situacao}`}>
@@ -733,6 +884,7 @@ const AtendimentoAeroporto = () => {
                 <b>{r.texto}</b>
                 {r.hora ? ` · ${r.hora}` : ""}
               </span>
+              {r.visto && <em className={`atd-mot__visto ${r.online ? "is-online" : ""}`}>{r.visto}</em>}
               <Icon name="phone" size={12} className="atd-mot__app" />
             </div>
           );
@@ -842,13 +994,21 @@ const AtendimentoAeroporto = () => {
                   {porReserva(g) && (
                     <button
                       type="button"
-                      className={`atd-reservas__marca ${rec ? "is-ok" : ""}`}
+                      className={`atd-reservas__marca ${rec ? "is-ok" : ""} ${pendReserva(i) ? "is-contando" : ""}`}
                       onClick={() => alternarReserva(g, r, i)}
-                      disabled={!quem || ocupadoR || !!ns}
-                      aria-pressed={!!rec}
-                      title={ns ? "No show" : rec ? `${rec.nome} ${horaDe(rec.em)} — tocar para desmarcar` : `Marcar só esta reserva como ${etapaRecepcao.nome.toLowerCase()}`}
+                      disabled={!quem || ocupadoR || !!ns || pendProx}
+                      aria-pressed={!!rec || pendReserva(i)}
+                      title={
+                        ns
+                          ? "No show"
+                          : pendReserva(i)
+                            ? "Contando para gravar — tocar para desistir"
+                            : rec
+                              ? `${rec.nome} ${horaDe(rec.em)} — tocar para desmarcar`
+                              : `Marcar só esta reserva como ${etapaRecepcao.nome.toLowerCase()}`
+                      }
                     >
-                      <Icon name={ocupadoR ? "loader" : rec ? "check" : ns ? "x" : "circle"} size={16} className={ocupadoR ? "ui-spin" : undefined} />
+                      <Icon name={ocupadoR ? "loader" : rec || pendReserva(i) ? "check" : ns ? "x" : "circle"} size={16} className={ocupadoR ? "ui-spin" : undefined} />
                     </button>
                   )}
                   <div className="atd-reservas__corpo">
@@ -921,8 +1081,8 @@ const AtendimentoAeroporto = () => {
                             + eu
                           </button>
                         )}
-                        <button type="button" onClick={() => desfazerEtapa(g, x.e)} disabled={!quem || !!salvando} title={`Desfazer ${aEtapa(x.k)}`} aria-label={`Desfazer ${aEtapa(x.k)}`}>
-                          {ocupadoEm(x) ? <Icon name="loader" size={12} className="ui-spin" /> : <Icon name="undo" size={12} />}
+                        <button type="button" className="is-desfazer" onClick={() => desfazerEtapa(g, x.e)} disabled={!quem || !!salvando || pendCarro.length > 0} title={`Desfazer ${aEtapa(x.k)}`} aria-label={`Desfazer ${aEtapa(x.k)}`}>
+                          {ocupadoEm(x) ? <Icon name="loader" size={12} className="ui-spin" /> : <Icon name="undo" size={12} />} Desfazer
                         </button>
                       </span>
                     )}
@@ -931,7 +1091,47 @@ const AtendimentoAeroporto = () => {
               })}
             </ol>
           )}
-          {prox ? (
+          {pendCarro.length > 0 ? (
+            (() => {
+              const ate = Math.max(...pendCarro.map((c) => pend[c].ate));
+              const seg = Math.max(0, Math.ceil((ate - agoraMs) / 1000));
+              const itens = pendCarro.map((c) => pend[c]);
+              const daEtapa = itens.find((p) => p.tipo === "etapa");
+              const kEtapa = daEtapa ? etapas.findIndex((e) => e.id === daEtapa.etapa.id) : 0;
+              const res = itens.filter((p) => p.tipo === "reserva");
+              const texto = daEtapa
+                ? `${daEtapa.etapa.nome} · ${g.pax} pax`
+                : res.length === 1
+                  ? `${etapaRecepcao?.nome || "Recepção"} · ${res[0].rotulo}`
+                  : `${etapaRecepcao?.nome || "Recepção"} · ${res.length} reservas`;
+              return (
+                <div className={`atd-confirma is-${tom(kEtapa)}`} role="status" aria-live="polite">
+                  <div className="atd-confirma__topo">
+                    <span className="atd-confirma__seg tabular" aria-hidden="true">
+                      {seg}
+                    </span>
+                    <span className="atd-confirma__txt">
+                      <b>{texto}</b>
+                      <small>
+                        grava em {seg} s{kEtapa === 0 && g.escalaId ? " e avisa o motorista" : ""}
+                      </small>
+                    </span>
+                  </div>
+                  <span className="atd-confirma__barra" aria-hidden="true">
+                    <i key={ate} style={{ animationDuration: `${CONFIRMAR_SEG}s` }} />
+                  </span>
+                  <div className="atd-confirma__acoes">
+                    <button type="button" className="is-desfazer" onClick={() => cancelarPendentes(pendCarro)}>
+                      <Icon name="undo" size={15} /> Desfazer
+                    </button>
+                    <button type="button" className="is-ok" onClick={() => confirmarPendentes(pendCarro)}>
+                      <Icon name="check" size={15} /> Confirmar agora
+                    </button>
+                  </div>
+                </div>
+              );
+            })()
+          ) : prox ? (
             <button type="button" className={`atd-botao is-${tom(prox.k)}`} onClick={() => alternar(g, prox.e)} disabled={!quem || ocupadoEm(prox)} title={prox.e.acao || prox.e.nome}>
               <span className="atd-botao__ic">{ocupadoEm(prox) ? <Icon name="loader" size={16} className="ui-spin" /> : <Icon name={icone(prox.k)} size={16} />}</span>
               <span className="atd-botao__txt">
@@ -957,7 +1157,7 @@ const AtendimentoAeroporto = () => {
     <div className="atd">
       {aviso && (
         <div className={`atd-aviso is-${aviso.tipo}`} role="status" aria-live="polite" key={aviso.ts}>
-          <Icon name={aviso.tipo === "noshow" ? "alert" : "circleCheck"} size={16} />
+          <Icon name={aviso.tipo === "noshow" ? "alert" : aviso.tipo === "desfeito" ? "undo" : "circleCheck"} size={16} />
           <span>
             <b>{aviso.texto}</b>
             <small>
@@ -1004,7 +1204,10 @@ const AtendimentoAeroporto = () => {
         </div>
         <div className="atd-dias" role="tablist" aria-label="Dia">
           {[somarDias(hoje(), -1), hoje(), somarDias(hoje(), 1)].map((d) => (
-            <button key={d} type="button" role="tab" aria-selected={d === data} className={d === data ? "is-on" : ""} onClick={() => setData(d)}>
+            <button key={d} type="button" role="tab" aria-selected={d === data} className={d === data ? "is-on" : ""} onClick={() => {
+              confirmarPendentes(Object.keys(pendRef.current));
+              setData(d);
+            }}>
               {d === hoje() ? "Hoje" : d < hoje() ? "Ontem" : "Amanhã"}
               <small>{dataBr(d).slice(0, 5)}</small>
             </button>
@@ -1036,7 +1239,9 @@ const AtendimentoAeroporto = () => {
                   <Icon name="check" size={12} />
                 </span>
                 <p>
-                  Pronto: o veículo sai de <b>A fazer</b> e vai para <b>Concluídos</b>. Errou? Toque em <Icon name="undo" size={11} /> para desfazer.
+                  Depois do toque, você tem <b>{CONFIRMAR_SEG} segundos</b> para <b>Desfazer</b> antes de gravar. Recebido, o veículo vai de <b>Recepcionar</b> para{" "}
+                  <b>Embarcar</b>; embarcado, para <b>Finalizados</b>. Errou depois? Em qualquer aba, toque em <b>Desfazer</b> — se o motorista já tinha sido avisado, ele recebe
+                  “recepção desfeita, aguarde”.
                 </p>
               </li>
             </ol>
@@ -1073,15 +1278,15 @@ const AtendimentoAeroporto = () => {
               <span className="is-andamento" style={{ width: `${pctDe(resumo.noMeio)}%` }} />
             </div>
             <div className="atd-resumo__legenda">
-              <button type="button" className="is-pendente" onClick={() => setFiltro("pendentes")}>
+              <button type="button" className="is-pendente" onClick={() => setFiltro("recepcionar")}>
                 <i /> <b className="tabular">{resumo.esperando}</b> aguardando recepção
               </button>
               {etapas.length > 1 && (
-                <button type="button" className="is-andamento" onClick={() => setFiltro("pendentes")}>
+                <button type="button" className="is-andamento" onClick={() => setFiltro("embarcar")}>
                   <i /> <b className="tabular">{resumo.noMeio}</b> aguardando embarque
                 </button>
               )}
-              <button type="button" className="is-feito" onClick={() => setFiltro("concluidos")}>
+              <button type="button" className="is-feito" onClick={() => setFiltro("finalizados")}>
                 <i /> <b className="tabular">{resumo.prontos}</b> concluído{resumo.prontos === 1 ? "" : "s"}
               </button>
             </div>
@@ -1099,18 +1304,30 @@ const AtendimentoAeroporto = () => {
           </section>
         )}
 
-        {/* ===== filtros ===== */}
+        {/* ===== filtros: busca e abas ficam presas no topo ao rolar ===== */}
         <div className="atd-filtros">
-          <label className="atd-busca">
-            <Icon name="search" size={15} />
-            <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Voo, passageiro, reserva ou veículo" />
-          </label>
-          <div className="atd-abas" role="tablist" aria-label="Situação">
+          <div className="atd-fixo" ref={fixoRef}>
+          <div className="atd-fixo__linha">
+            <label className="atd-busca">
+              <Icon name="search" size={15} />
+              <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Voo, passageiro, reserva…" />
+            </label>
+            {data === hoje() && grupos && grupos.length > 0 && (
+              <button type="button" className="atd-irAgora" onClick={irParaAgora} title="Ir para os serviços de agora" aria-label="Ir para os serviços de agora">
+                <Icon name="clock" size={15} /> <span>Agora</span>
+              </button>
+            )}
+          </div>
+          <div className={`atd-abas ${t ? "is-busca" : ""}`} role="tablist" aria-label="Etapa">
             {STATUS.map(([v, r, n]) => (
-              <button key={v} type="button" role="tab" aria-selected={filtro === v} className={filtro === v ? "is-on" : ""} onClick={() => setFiltro(v)}>
-                {r} <small className="tabular">{n}</small>
+              <button key={v} type="button" role="tab" aria-selected={!t && abaAtiva === v} className={`is-${v} ${!t && abaAtiva === v ? "is-on" : ""}`} onClick={() => setFiltro(v)}>
+                <Icon name={ICONE_ABA[v]} size={15} />
+                <span>{r}</span>
+                <small className="tabular" aria-label={`${n} veículo${n === 1 ? "" : "s"}`}>{n}</small>
               </button>
             ))}
+          </div>
+          {t && <small className="atd-busca__nota">Buscando em todas as abas</small>}
           </div>
           {(janela || regioesDoDia.length > 1) && (
             <div className="atd-chips" role="group" aria-label="Recorte">
@@ -1163,11 +1380,15 @@ const AtendimentoAeroporto = () => {
             <b>
               {grupos.length === 0
                 ? `Nenhuma chegada ${nomeDoDia === "Hoje" ? "hoje" : `em ${nomeDoDia.toLowerCase()}`}.`
-                : filtro === "pendentes" && !t
-                  ? "Tudo em dia por aqui."
-                  : "Nenhum veículo com esse filtro."}
+                : t
+                  ? "Nenhum veículo com essa busca."
+                  : abaAtiva === "recepcionar"
+                    ? "Ninguém aguardando recepção."
+                    : abaAtiva === "embarcar"
+                      ? "Ninguém aguardando embarque."
+                      : "Nenhum veículo finalizado ainda."}
             </b>
-            {grupos.length > 0 && filtro === "pendentes" && !t && <span>Os veículos atendidos estão em Concluídos.</span>}
+            {grupos.length > 0 && !t && abaAtiva !== "finalizados" && contagem.finalizados > 0 && <span>Os veículos atendidos estão em Finalizados.</span>}
           </div>
         ) : (
           <div className="atd-blocos">
@@ -1189,7 +1410,7 @@ const AtendimentoAeroporto = () => {
                   </span>
                 </div>
               )}
-              <section className={`atd-bloco ${atrasado ? "is-atrasado" : ""}`}>
+              <section className={`atd-bloco ${atrasado ? "is-atrasado" : ""}`} data-min={minBl ?? undefined}>
                 <h3 className="atd-bloco__cab">
                   <span className="atd-bloco__hora tabular">{bl.hora}</span>
                   {dif !== null && Math.abs(dif) <= 12 * 60 && (
@@ -1208,9 +1429,9 @@ const AtendimentoAeroporto = () => {
               </Fragment>
               );
             })}
-            {filtro === "pendentes" && contagem.concluidos > 0 && (
-              <button type="button" className="atd-ver-concluidos" onClick={() => setFiltro("concluidos")}>
-                <Icon name="circleCheck" size={15} /> {pl(contagem.concluidos, "veículo concluído", "veículos concluídos")} · ver
+            {!t && abaAtiva === "recepcionar" && contagem.embarcar > 0 && (
+              <button type="button" className="atd-ver-concluidos" onClick={() => setFiltro("embarcar")}>
+                <Icon name="car" size={15} /> {pl(contagem.embarcar, "veículo aguardando embarque", "veículos aguardando embarque")} · ver
               </button>
             )}
           </div>

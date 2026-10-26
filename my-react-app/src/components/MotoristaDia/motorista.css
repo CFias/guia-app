@@ -1819,3 +1819,31 @@
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* a base desfez a recepção: "aguarde um novo aviso" */
+.mt-rec.is-desfeito {
+  background: color-mix(in srgb, var(--warning, #d97706) 12%, transparent);
+  color: var(--warning, #d97706);
+}
+
+.mt-rec.is-desfeito b {
+  color: var(--text);
+}
+
+.mt-alerta.is-desfeito .mt-alerta__ic {
+  background: var(--warning, #d97706);
+  animation: none;
+}
+
+.mt-alerta.is-desfeito .mt-alerta__topo small {
+  color: var(--warning, #d97706);
+}
+
+.mt-alerta.is-desfeito .mt-alerta__btn.is-primario {
+  background: var(--text);
+  color: var(--surface, #fff);
+}
+
+.mt-alerta__caixa p.mt-alerta__txt {
+  padding-left: 0;
+}

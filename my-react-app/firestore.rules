@@ -482,7 +482,7 @@ service cloud.firestore {
       allow create, update: if retornoId.matches(request.resource.data.base + '__.*')
         && request.resource.data.keys().hasOnly([
              'base', 'data', 'escalaId', 'motoristaNome', 'conectadoEm', 'avisadoEm', 'recepcaoMs',
-             'acaminhoEm', 'posicionadoEm', 'porta', 'iniciadoEm', 'finalizadoEm', 'atualizadoEm'])
+             'acaminhoEm', 'posicionadoEm', 'porta', 'iniciadoEm', 'finalizadoEm', 'vistoEm', 'atualizadoEm'])
         && request.resource.data.motoristaNome is string
         && request.resource.data.motoristaNome.size() <= 80;
     }
@@ -511,7 +511,7 @@ service cloud.firestore {
         && statusId.matches(request.resource.data.base + '__.*')
         && request.resource.data.keys().hasOnly([
              'base', 'data', 'escalaId', 'recepcionado', 'recepcionadoEm', 'recepcionadoPor',
-             'embarcado', 'embarcadoEm', 'atualizadoEm']);
+             'embarcado', 'embarcadoEm', 'desfeitoEm', 'atualizadoEm']);
     }
 
     // ---------- Operacional (inclui coleções futuras) ----------

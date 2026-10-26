@@ -195,6 +195,25 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     (s) => s.tipo === "IN" && status[s.escalaId]?.recepcionado && !eventos[s.chave]?.iniciado?.em && !eventos[s.chave]?.finalizado?.em && !vistos.has(chaveDoAviso(s)),
   );
   const alerta = pendentesDeAviso[0] || null;
+  // a base DESFEZ a recepção (marcada por engano): "aguarde um novo aviso"
+  const chaveDoDesfeito = (s) => `${s.chave}|desfeito|${msDoTimestamp(status[s.escalaId]?.desfeitoEm)}`;
+  const desfeitoRecente = (s) => {
+    const st = status[s.escalaId];
+    const ms = msDoTimestamp(st?.desfeitoEm);
+    return !!(st && ms && !st.recepcionado && Date.now() - ms < 3 * 60 * 60 * 1000);
+  };
+  const desfeito = alerta
+    ? null
+    : servicos.find((s) => s.tipo === "IN" && desfeitoRecente(s) && !eventos[s.chave]?.iniciado?.em && !eventos[s.chave]?.finalizado?.em && !vistos.has(chaveDoDesfeito(s))) || null;
+  useEffect(() => {
+    if (!desfeito) return;
+    bip();
+    try {
+      navigator.vibrate?.([200, 120, 200]);
+    } catch {
+      /* sem vibração */
+    }
+  }, [desfeito ? chaveDoDesfeito(desfeito) : ""]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!alerta) return undefined;
     const tocar = () => {
@@ -235,6 +254,27 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
     avisosRetornados.current.add(k);
     retornar(alerta, { avisadoEm: new Date(), recepcaoMs: msDoTimestamp(status[alerta.escalaId]?.recepcionadoEm) });
   }, [alerta ? chaveDoAviso(alerta) : ""]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "visto por último": com a tela aberta, a base vê que o motorista está
+  // acompanhando (a cada 3 min e quando ele volta para o app) — só nas
+  // chegadas de hoje que ainda não começaram
+  useEffect(() => {
+    if (!dia || !ehHoje || !escalasIn) return undefined;
+    const pulsar = () => {
+      if (document.visibilityState !== "visible") return;
+      servicos.forEach((s) => {
+        if (s.tipo !== "IN" || eventos[s.chave]?.iniciado?.em || eventos[s.chave]?.finalizado?.em) return;
+        retornar(s, { vistoEm: new Date() });
+      });
+    };
+    pulsar();
+    const t = setInterval(pulsar, 3 * 60 * 1000);
+    document.addEventListener("visibilitychange", pulsar);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", pulsar);
+    };
+  }, [dia?.data, escalasIn, ehHoje]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // o navegador só deixa tocar som depois de um toque na tela: destrava no primeiro toque
   useEffect(() => {
@@ -586,13 +626,17 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
         </div>
 
         {s.tipo === "IN" && !st.concluido && (
-          <div className={`mt-rec ${rec?.recepcionado ? "is-ok" : ""}`}>
-            <Icon name={rec?.recepcionado ? "circleCheck" : "clock"} size={14} />
+          <div className={`mt-rec ${rec?.recepcionado ? "is-ok" : desfeitoRecente(s) ? "is-desfeito" : ""}`}>
+            <Icon name={rec?.recepcionado ? "circleCheck" : desfeitoRecente(s) ? "undo" : "clock"} size={14} />
             {rec?.recepcionado ? (
               <span>
                 <b>Passageiros recepcionados</b> {horaDoTimestamp(rec.recepcionadoEm)}
                 {rec.recepcionadoPor ? ` · ${rec.recepcionadoPor}` : ""}
                 {rec.embarcado ? " · embarcados" : ""}
+              </span>
+            ) : desfeitoRecente(s) ? (
+              <span>
+                <b>Recepção desfeita pela base</b> · aguarde um novo aviso antes de posicionar
               </span>
             ) : (
               <span>Aguardando a Luck recepcionar os passageiros no desembarque</span>
@@ -1044,6 +1088,42 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </div>
         );
       })()}
+
+      {/* a base desfez a recepção: segura o motorista */}
+      {desfeito && (
+        <div className="mt-alerta is-desfeito" role="alertdialog" aria-modal="true" aria-label="Recepção desfeita">
+          <div className="mt-alerta__caixa">
+            <div className="mt-alerta__topo">
+              <span className="mt-alerta__ic">
+                <Icon name="undo" size={18} />
+              </span>
+              <span>
+                <small>Ação desfeita pela base</small>
+                <b>Recepção desfeita · aguarde um novo aviso</b>
+              </span>
+            </div>
+            <p className="mt-alerta__txt">
+              A recepção dos seus passageiros foi marcada por engano. Ainda não precisa posicionar: quando a Luck receber os passageiros, o aviso chega de novo.
+            </p>
+            <div className="mt-alerta__rota">
+              <Icon name="planeLanding" size={14} />
+              <span>
+                <b>{desfeito.descricao || `${desfeito.origens?.[0] || "Aeroporto"} → ${desfeito.destinos?.[0] || "destino não informado"}`}</b>
+                <small>
+                  {desfeito.hora ? `${desfeito.hora} · ` : ""}
+                  {desfeito.voos.length ? `${desfeito.voos.join(", ")} · ` : ""}
+                  {desfeito.pax} pax · {desfeito.veiculo}
+                </small>
+              </span>
+            </div>
+            <div className="mt-alerta__acoes">
+              <button type="button" className="mt-alerta__btn is-primario" onClick={() => marcarVisto(chaveDoDesfeito(desfeito))}>
+                Ok, vou aguardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* em qual porta do desembarque o motorista está */}
       {portaPara && (

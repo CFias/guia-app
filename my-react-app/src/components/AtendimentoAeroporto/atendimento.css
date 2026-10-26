@@ -25,11 +25,8 @@
   --atd-esp: #f0b429;
 }
 
-/* ---------- topo fixo ---------- */
+/* ---------- topo (rola junto: o que fica preso é a busca e as abas) ---------- */
 .atd-topo {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1512,27 +1509,8 @@
     padding: 12px 12px 40px;
   }
 
-  .atd-abas {
-    gap: 0;
-  }
-
-  .atd-abas button {
-    gap: 4px;
-    padding: 0 2px;
-    font-size: var(--fs-xs);
-  }
-
-  .atd-abas button small {
-    min-width: 0;
-    padding: 0 5px;
-  }
-
   .atd-botao__passo {
     display: none;
-  }
-
-  .atd-passos {
-    grid-auto-flow: row;
   }
 }
 
@@ -1756,4 +1734,487 @@
 .atd-reservas li.is-achada {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* ===== abas por etapa: Recepcionar · Embarcar · Finalizados ===== */
+.atd-abas button svg {
+  flex: none;
+  opacity: 0.7;
+}
+
+.atd-abas button.is-on.is-recepcionar small {
+  background: var(--atd-rec, #17834a);
+}
+
+.atd-abas button.is-on.is-embarcar small {
+  background: var(--atd-emb, #2563eb);
+}
+
+.atd-abas.is-busca button {
+  opacity: 0.75;
+}
+
+.atd-busca__nota {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* desfazer com texto (fica claro em qualquer aba) */
+.atd-passos__acoes button.is-desfazer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px;
+}
+
+/* ===== contagem de 10 s antes de gravar ===== */
+.atd-carro.is-contando {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.atd-confirma {
+  --c: var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c) 8%, var(--surface, #fff));
+}
+
+.atd-confirma.is-rec {
+  --c: #17834a;
+}
+
+.atd-confirma.is-emb {
+  --c: #2563eb;
+}
+
+.atd-confirma__topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.atd-confirma__seg {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--c);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.atd-confirma__txt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.atd-confirma__txt b {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atd-confirma__txt small {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.atd-confirma__barra {
+  display: block;
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+}
+
+.atd-confirma__barra i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c);
+  transform-origin: left;
+  animation: atd-confirma-tempo linear forwards;
+}
+
+@keyframes atd-confirma-tempo {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.atd-confirma__acoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.atd-confirma__acoes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 10px;
+  border: 1px solid var(--atd-borda);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.atd-confirma__acoes button.is-desfazer {
+  border-color: color-mix(in srgb, var(--alert, #c4402b) 45%, transparent);
+  color: var(--alert, #c4402b);
+}
+
+.atd-confirma__acoes button.is-ok {
+  border-color: transparent;
+  background: var(--c);
+  color: #fff;
+}
+
+.atd-reservas__marca.is-contando {
+  border-style: dashed;
+  border-color: var(--atd-rec);
+  background: color-mix(in srgb, var(--atd-rec) 14%, transparent);
+  color: var(--atd-rec);
+}
+
+.atd-aviso.is-desfeito {
+  border-left-color: var(--text-2);
+}
+
+.atd-aviso.is-desfeito>svg {
+  color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atd-confirma__barra i {
+    animation: none;
+  }
+}
+
+/* "visto há X min" do app do motorista */
+.atd-mot__visto {
+  flex: none;
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.atd-mot__visto.is-online {
+  color: var(--success, #16a34a);
+  font-weight: 600;
+}
+
+.atd-mot__visto.is-online::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+
+/* ===== busca + abas presas no topo ao rolar ===== */
+.atd-fixo {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--bg, #f4f5f7) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.atd-fixo__linha {
+  display: flex;
+  gap: 8px;
+}
+
+.atd-fixo__linha .atd-busca {
+  flex: 1;
+  min-width: 0;
+}
+
+.atd-irAgora {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.atd-irAgora:active {
+  transform: translateY(1px);
+}
+
+.atd-bloco.is-destaque .atd-bloco__cab {
+  animation: atd-destaque 1.6s ease-out;
+  border-radius: 10px;
+}
+
+@keyframes atd-destaque {
+  0%, 30% {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
+
+@media (max-width: 560px) {
+  .atd-fixo {
+    margin: 0 -12px;
+    padding: 8px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atd-bloco.is-destaque .atd-bloco__cab {
+    animation: none;
+  }
+}
+
+/* o sticky precisa ser filho direto do corpo (que vai até o fim da lista) */
+.atd-filtros {
+  display: contents;
+}
+
+/* ===== abas de etapa: proporção e alinhamento (todas as larguras) ===== */
+.atd-abas {
+  gap: 3px;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.atd-abas button {
+  position: relative;
+  gap: 7px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+.atd-abas button>span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atd-abas button small {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-abas button.is-on.is-finalizados small {
+  background: var(--success, #16a34a);
+}
+
+/* celular: número em cima, nome embaixo — cabe inteiro até em 320 px */
+@media (max-width: 520px) {
+  .atd-abas button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 52px;
+    padding: 6px 4px;
+  }
+
+  .atd-abas button svg {
+    display: none;
+  }
+
+  .atd-abas button small {
+    order: -1;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none !important;
+    color: var(--text-3);
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .atd-abas button>span {
+    max-width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .atd-abas button.is-on small {
+    color: var(--accent);
+  }
+
+  .atd-abas button.is-on.is-recepcionar small {
+    color: var(--atd-rec);
+  }
+
+  .atd-abas button.is-on.is-embarcar small {
+    color: var(--atd-emb);
+  }
+
+  .atd-abas button.is-on.is-finalizados small {
+    color: var(--success, #16a34a);
+  }
+
+  /* traço da cor da etapa embaixo da aba ativa */
+  .atd-abas button.is-on::after {
+    content: "";
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    bottom: 4px;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .atd-abas button.is-on.is-recepcionar::after {
+    background: var(--atd-rec);
+  }
+
+  .atd-abas button.is-on.is-embarcar::after {
+    background: var(--atd-emb);
+  }
+
+  .atd-abas button.is-on.is-finalizados::after {
+    background: var(--success, #16a34a);
+  }
+}
+
+/* ===== passos do card: linha de progresso entre as etapas ===== */
+.atd-passos {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.atd-passos li {
+  flex: 1 1 0;
+  gap: 10px;
+}
+
+.atd-passos li:last-child {
+  flex: 0 1 auto;
+}
+
+.atd-passos__ic {
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.atd-passos__txt {
+  flex: 0 1 auto;
+}
+
+.atd-passos__acoes {
+  margin-left: 2px;
+}
+
+.atd-passos__acoes button {
+  height: 30px;
+}
+
+/* ligação até a próxima etapa (cheia quando a etapa já foi feita) */
+.atd-passos li:not(:last-child)::after {
+  content: "";
+  flex: 1 1 16px;
+  min-width: 16px;
+  height: 2px;
+  margin: 0 10px 0 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.atd-passos li.is-ok:not(:last-child)::after {
+  background: var(--c);
+}
+
+/* celular: etapas uma embaixo da outra, ligadas por uma linha vertical */
+@media (max-width: 560px) {
+  .atd-passos {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .atd-passos li, .atd-passos li:last-child {
+    flex: none;
+  }
+
+  .atd-passos__txt {
+    flex: 1 1 auto;
+  }
+
+  .atd-passos__acoes {
+    margin-left: auto;
+  }
+
+  .atd-passos li:not(:last-child)::after {
+    position: absolute;
+    top: calc(50% + 16px);
+    left: 12px;
+    bottom: calc(-50% + 6px);
+    width: 2px;
+    height: auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .atd-passos li {
+    min-height: 32px;
+  }
 }
