@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
 import CartaoInstalar from "../ui/CartaoInstalar";
+import TesteAviso from "./TesteAviso";
 import { definirTituloAba } from "../Shell/tituloAba";
 import {
   distanciaMetros,
@@ -139,6 +140,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   // serviços abertos na lista (só o "agora" fica aberto sozinho)
   const [expandidos, setExpandidos] = useState(() => new Set());
   const [verFeitos, setVerFeitos] = useState(false);
+  const [testeAberto, setTesteAberto] = useState(false);
   const [vistos, setVistos] = useState(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem(`m.vistos.${token || "proprio"}`) || "[]"));
@@ -872,6 +874,17 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
             </span>
           </button>
         )}
+
+        {/* confere se o aviso chega com o app fechado (vibra, aparece por cima) */}
+        <button type="button" className="mt-testar" onClick={() => setTesteAberto(true)}>
+          <Icon name="bell" size={15} />
+          <span>
+            <b>Testar o aviso neste celular</b>
+            <small>Veja se vibra e aparece com o app fechado</small>
+          </span>
+          <Icon name="chevronRight" size={15} />
+        </button>
+        {testeAberto && <TesteAviso nome={String(dia.motoristaNome || "").split(" ")[0]} app={embutido ? "Luck SSA" : "Luck Motorista"} onFechar={() => setTesteAberto(false)} />}
 
         {!ehHoje && (
           <p className="mt-nota">

@@ -674,6 +674,45 @@ export const gravarInscricaoNasEscalas = (
   );
 
 // painel do aeroporto: avisa os celulares inscritos nessa escala
+/* "Testar aviso": manda para ESTE celular uma notificação igual à de
+   "passageiros recepcionados", daqui a `atrasoSeg` segundos (dá tempo de
+   bloquear a tela ou abrir outro app). Devolve { ok } ou { ok: false, motivo }:
+   "sem-suporte" (navegador/iPhone sem o app instalado), "bloqueado"
+   (notificações negadas), "servidor" (não deu para falar com o servidor). */
+export const testarAviso = async ({ atrasoSeg = 10, nome = "" } = {}) => {
+  if (!pushDisponivel()) return { ok: false, motivo: "sem-suporte" };
+  if (
+    typeof Notification !== "undefined" &&
+    Notification.permission === "denied"
+  )
+    return { ok: false, motivo: "bloqueado" };
+  const sub = await inscreverPush();
+  if (!sub)
+    return {
+      ok: false,
+      motivo:
+        Notification.permission === "denied" ? "bloqueado" : "sem-suporte",
+    };
+  try {
+    const r = await fetch(`${API_PUSH}/push`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscription: sub,
+        titulo: "Teste · Passageiros recepcionados",
+        corpo: `${nome ? `${nome}, ` : ""}se este aviso apareceu com o app fechado, está tudo certo neste celular.`,
+        tag: "teste-aviso",
+        url: "/",
+        atrasoSeg,
+      }),
+    });
+    if (!r.ok) return { ok: false, motivo: "servidor" };
+    return { ok: true, atrasoSeg };
+  } catch {
+    return { ok: false, motivo: "servidor" };
+  }
+};
+
 export const enviarPushDaEscala = async ({ data, escalaId, titulo, corpo }) => {
   try {
     const snap = await getDoc(

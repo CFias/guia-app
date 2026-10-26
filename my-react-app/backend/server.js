@@ -940,7 +940,7 @@ app.post("/push", async (req, res) => {
       .json({ ok: false, erro: "Push não configurado (VAPID)." });
   if (!podeEnviar(req.ip))
     return res.status(429).json({ ok: false, erro: "Muitos envios." });
-  const { subscription, titulo, corpo, tag, url } = req.body || {};
+  const { subscription, titulo, corpo, tag, url, atrasoSeg } = req.body || {};
   if (
     !subscription?.endpoint ||
     !subscription?.keys?.p256dh ||
@@ -948,13 +948,26 @@ app.post("/push", async (req, res) => {
   ) {
     return res.status(400).json({ ok: false, erro: "Inscrição inválida." });
   }
+  const payload = JSON.stringify({
+    titulo: String(titulo || "Luck Receptivo").slice(0, 80),
+    corpo: String(corpo || "").slice(0, 240),
+    tag: String(tag || "luck").slice(0, 60),
+    url: String(url || "/").slice(0, 200),
+  });
+  // "Testar aviso" no app do motorista: envia daqui a alguns segundos, para dar
+  // tempo de bloquear a tela ou abrir outro app (máximo 30 s)
+  const atraso = Math.min(30, Math.max(0, Number(atrasoSeg) || 0));
+  if (atraso > 0) {
+    setTimeout(() => {
+      webpush
+        .sendNotification(subscription, payload, { TTL: 600, urgency: "high" })
+        .catch((e) =>
+          console.error("Teste de push:", e?.statusCode || e?.message),
+        );
+    }, atraso * 1000);
+    return res.status(202).json({ ok: true, agendado: atraso });
+  }
   try {
-    const payload = JSON.stringify({
-      titulo: String(titulo || "Luck Receptivo").slice(0, 80),
-      corpo: String(corpo || "").slice(0, 240),
-      tag: String(tag || "luck").slice(0, 60),
-      url: String(url || "/").slice(0, 200),
-    });
     // urgência alta: o Android entrega mesmo com o celular em economia de bateria
     await webpush.sendNotification(subscription, payload, {
       TTL: 3600,
