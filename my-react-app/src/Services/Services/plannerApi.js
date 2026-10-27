@@ -30,10 +30,7 @@ import {
   listarCamposParecidosComIdioma,
   listarIdiomasExigidos,
 } from "../Utils/idiomas";
-import {
-  exigeConfirmacao,
-  situacaoConfirmacao,
-} from "../Utils/confirmacaoPasseio";
+import { exigeConfirmacao, situacaoConfirmacao } from "../Utils/confirmacaoPasseio";
 import { semReservasExcluidas } from "../Utils/reservasExcluidas";
 
 const extrairListaRespostaBruta = (json) => {
@@ -59,8 +56,7 @@ const extrairListaRespostaBruta = (json) => {
 };
 
 // sem as reservas com CLD / cancelado / não escalar / dispensado na observação
-export const extrairListaResposta = (json) =>
-  semReservasExcluidas(extrairListaRespostaBruta(json));
+export const extrairListaResposta = (json) => semReservasExcluidas(extrairListaRespostaBruta(json));
 
 export const extrairNomePasseio = (item) =>
   item?.service?.name ||
@@ -72,7 +68,15 @@ export const extrairNomePasseio = (item) =>
 export const extrairServiceIdExterno = (item) =>
   Number(item?.service_id || item?.service?.id || 0) || null;
 
+/* Dia do serviço: o dia em que o Phoenix lista a reserva (a busca é por
+   execution_date). O horário de apresentação pode ficar com a data antiga
+   quando a reserva muda de dia no Phoenix — por ele, a reserva continuava
+   contando no dia antigo (Tour de Ilhas com 7 pax em vez de 4). */
+export const marcarDiaDaConsulta = (lista, date) =>
+  (Array.isArray(lista) ? lista : []).map((item) => (item && typeof item === "object" ? { ...item, _dataConsulta: date } : item));
+
 export const extrairDataServico = (item) => {
+  if (item?._dataConsulta) return item._dataConsulta;
   const dataHora =
     item?.presentation_hour ||
     item?.presentation_hour_end ||
@@ -232,13 +236,13 @@ export const encontrarServiceCatalogo = (
     typeof normalizarTextoFn === "function"
       ? normalizarTextoFn
       : (texto) =>
-          String(texto || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^\w\s-]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .toLowerCase();
+        String(texto || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^\w\s-]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
 
   const services = Array.isArray(listaServices) ? listaServices : [];
 
@@ -273,7 +277,7 @@ export const carregarSemanaApiListaPasseios = async (listaSemana) => {
         if (!response.ok) return [];
 
         const json = await response.json();
-        return extrairListaResposta(json);
+        return marcarDiaDaConsulta(extrairListaResposta(json), dia.date);
       } catch (err) {
         console.error(`Erro ao buscar API do dia ${dia.date}:`, err);
         return [];
@@ -390,7 +394,7 @@ const avisarSeNaoHouverIdioma = (lista, totalDetectados) => {
 
   console.info(
     `[Idioma] Nenhum idioma reconhecido nos ${lista.length} itens do Phoenix. ` +
-      "Campos com nome parecido no 1º item:",
+    "Campos com nome parecido no 1º item:",
     listarCamposParecidosComIdioma(lista[0]),
     "| Chaves do 1º item:",
     Object.keys(lista[0] || {}),
@@ -422,7 +426,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
       }
 
       const json = await response.json();
-      const lista = extrairListaResposta(json);
+      const lista = marcarDiaDaConsulta(extrairListaResposta(json), dia.date);
       const agregados = {};
       let totalIdiomasDetectados = 0;
 
@@ -444,11 +448,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
         if (!nomeFinal) return;
         if (deveIgnorarServico(nomeFinal)) return;
         // Praia do Forte 4h: só escala reserva confirmada (observação ou vendedor)
-        if (
-          exigeConfirmacao(nomeFinal) &&
-          !situacaoConfirmacao(item).confirmada
-        )
-          return;
+        if (exigeConfirmacao(nomeFinal) && !situacaoConfirmacao(item).confirmada) return;
 
         const chave = montarChaveImportacao({
           date: dataServico,
@@ -469,15 +469,10 @@ export const sincronizarPasseiosDaApiNaSemana = async (
             reservas: new Set(), // códigos das reservas (para achar se mudou de data)
           };
         }
-        const codigoReserva = String(
-          item?.reserve?.code || item?.reserve_code || item?.reserve?.id || "",
-        ).trim();
+        const codigoReserva = String(item?.reserve?.code || item?.reserve_code || item?.reserve?.id || "").trim();
         if (codigoReserva) {
           agregados[chave].reservas.add(codigoReserva);
-          reservasNaSemana.set(codigoReserva, {
-            date: dataServico,
-            serviceName: nomeFinal,
-          });
+          reservasNaSemana.set(codigoReserva, { date: dataServico, serviceName: nomeFinal });
         }
 
         // idioma dos passageiros desta reserva (Phoenix)
@@ -574,18 +569,9 @@ export const sincronizarPasseiosDaApiNaSemana = async (
 
         if (principal) {
           // voltou para o Phoenix: deixa de estar cancelado (e mantém o guia)
-          await setDoc(
-            doc(db, "weekly_services", principal.id),
-            {
-              ...payload,
-              ...(principal.cancelamento
-                ? { cancelamento: deleteField() }
-                : {}),
-            },
-            {
-              merge: true,
-            },
-          );
+          await setDoc(doc(db, "weekly_services", principal.id), { ...payload, ...(principal.cancelamento ? { cancelamento: deleteField() } : {}) }, {
+            merge: true,
+          });
         } else {
           await addDoc(collection(db, "weekly_services"), {
             ...payload,
@@ -627,11 +613,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
               guiaNome: antigo.guiaNome || null,
               paxAntes: Number(antigo.passengers || 0),
             };
-            await setDoc(
-              doc(db, "weekly_services", antigo.id),
-              { cancelamento },
-              { merge: true },
-            );
+            await setDoc(doc(db, "weekly_services", antigo.id), { cancelamento }, { merge: true });
             canceladosAgora.push({ ...antigo, cancelamento });
           }
           continue;
@@ -645,9 +627,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
 
   // as reservas do passeio cancelado estão em outra data da semana? → "mudou de data"
   for (const c of canceladosAgora) {
-    const destinos = (c.reservas || [])
-      .map((r) => reservasNaSemana.get(r))
-      .filter((x) => x && x.date !== c.date);
+    const destinos = (c.reservas || []).map((r) => reservasNaSemana.get(r)).filter((x) => x && x.date !== c.date);
     if (!destinos.length) continue;
     const contagem = new Map();
     destinos.forEach((x) => {
@@ -658,15 +638,7 @@ export const sincronizarPasseiosDaApiNaSemana = async (
     try {
       await setDoc(
         doc(db, "weekly_services", c.id),
-        {
-          cancelamento: {
-            ...c.cancelamento,
-            motivo: "mudou",
-            novaData: principal.date,
-            novoServico: principal.serviceName,
-            reservasMovidas: destinos.length,
-          },
-        },
+        { cancelamento: { ...c.cancelamento, motivo: "mudou", novaData: principal.date, novoServico: principal.serviceName, reservasMovidas: destinos.length } },
         { merge: true },
       );
     } catch (err) {

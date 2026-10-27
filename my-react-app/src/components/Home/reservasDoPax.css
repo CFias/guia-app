@@ -1,0 +1,22 @@
+.rdp { display: flex; flex-direction: column; gap: 12px; }
+.rdp-resumo { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--border, var(--divider)); border-radius: 12px; background: var(--surface-2, color-mix(in srgb, var(--text) 3%, transparent)); }
+.rdp-resumo span { color: var(--text-2); font-size: var(--fs-sm); }
+.rdp-resumo b { color: var(--text); font-size: 22px; font-weight: 800; }
+.rdp-resumo small { color: var(--text-3); font-size: var(--fs-xs); }
+.rdp-alerta { display: flex; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--text); font-size: var(--fs-sm); line-height: 1.4; }
+.rdp-alerta svg { flex: none; margin-top: 2px; color: var(--warning); }
+.rdp-lista { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.rdp-lista li { display: flex; flex-direction: column; gap: 4px; padding: 10px 2px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+.rdp-lista li:first-child { border-top: 0; }
+.rdp-lista li.is-repetida { margin: 0 -8px; padding: 10px; border-radius: 10px; background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.rdp-linha { display: flex; align-items: center; gap: 8px; }
+.rdp-linha b { font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.rdp-tag { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); font-size: 11px; font-style: normal; font-weight: 700; }
+.rdp-pax { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; }
+.rdp-info { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-2); font-size: var(--fs-xs); }
+.rdp-sit { color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
+.rdp-obs { overflow-wrap: anywhere; color: var(--text-3); font-size: var(--fs-xs); font-style: italic; }
+.rdp-nota { display: flex; gap: 6px; margin: 0; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.45; }
+.rdp-nota svg { flex: none; margin-top: 1px; }
+.rdp-copiar { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--border, var(--divider)); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.rdp-copiar:hover { border-color: var(--accent); color: var(--accent); }

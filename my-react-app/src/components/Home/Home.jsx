@@ -55,7 +55,8 @@ import {
   listarIdiomasExigidos,
   siglaDoIdioma,
 } from "../../Services/Utils/idiomas";
-import { observacaoExclui, semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import { observacaoExclui, observacoesDoItem, semReservasExcluidas } from "../../Services/Utils/reservasExcluidas";
+import ReservasDoPax from "./ReservasDoPax";
 import { phoenixReserveService } from "../../Services/Services/regiaoAtiva";
 import { colBase } from "../../Services/Services/dadosBase";
 import { useAuth } from "../../Context/AuthContext";
@@ -287,7 +288,12 @@ const ehServicoDispPorNomeOuTipo = (item) => {
 const extrairServiceIdExterno = (item) =>
   Number(item?.service_id || item?.service?.id || 0) || null;
 
+// marca cada reserva com o dia da consulta (o dia em que o Phoenix a lista)
+const marcarDiaDaConsulta = (lista, date) =>
+  (Array.isArray(lista) ? lista : []).map((item) => (item && typeof item === "object" ? { ...item, _dataConsulta: date } : item));
+
 const extrairDataServico = (item) => {
+  if (item?._dataConsulta) return item._dataConsulta;
   const dataHora =
     item?.presentation_hour ||
     item?.presentation_hour_end ||
@@ -497,6 +503,7 @@ const Home = () => {
   const [weeklyServices, setWeeklyServices] = useState([]);
   // passeios que saíram do Phoenix (cancelados / mudaram de data) e tinham guia
   const [canceladosComGuia, setCanceladosComGuia] = useState([]);
+  const [paxAberto, setPaxAberto] = useState(null); // serviço com a lista de reservas aberta
   const [availabilityDocs, setAvailabilityDocs] = useState([]);
   const [affinityDocs, setAffinityDocs] = useState([]);
   const [apiSemana, setApiSemana] = useState([]);
@@ -582,7 +589,9 @@ const Home = () => {
           if (!response.ok) return [];
 
           const json = await response.json();
-          return extrairListaResposta(json);
+          // o dia é o da consulta (reserva que mudou de data no Phoenix
+          // pode manter o horário de apresentação com a data antiga)
+          return marcarDiaDaConsulta(extrairListaResposta(json), dia.date);
         } catch (err) {
           console.error(`Erro ao buscar API do dia ${dia.date}:`, err);
           return [];
@@ -665,6 +674,7 @@ const Home = () => {
           modos: {}, // categoria das reservas (Regular / Privativo) → pax
           complementos: [], // reservas de Histórico que compraram o Panorâmico
           pendentesConfirmacao: [], // Praia do Forte 4h: reservas sem confirmação (não contam)
+          reservasDet: [], // cada reserva que entra na soma do pax (para conferir com o Phoenix)
         };
       }
 
@@ -694,6 +704,19 @@ const Home = () => {
       const { ids: idiomasItem } = extrairIdiomasDoItem(item, { nomeServico: nomeOriginal });
       acumularIdiomas(itensApiAgrupados[chave].idiomas, idiomasItem, pax.total);
 
+      itensApiAgrupados[chave].reservasDet.push({
+        id: item?.id ?? null,
+        codigo: r.codigo,
+        cliente: r.cliente,
+        operadora: extrairOperadora(item),
+        adultos: pax.adultos,
+        criancas: pax.criancas,
+        infants: pax.infants,
+        pax: pax.total,
+        hora: String(item?.presentation_hour || "").slice(11, 16),
+        observacao: observacoesDoItem(item),
+        situacao: String(item?.status ?? item?.reserve?.status ?? item?.situation ?? item?.reserve?.situation ?? "").trim(),
+      });
       itensApiAgrupados[chave].passengers += pax.total;
       itensApiAgrupados[chave].adultCount += pax.adultos;
       itensApiAgrupados[chave].childCount += pax.criancas;
@@ -752,6 +775,23 @@ const Home = () => {
       if (reqId === reqApiRef.current) setAtualizandoApi(false);
     }
   };
+
+  // Voltou para a aba/app depois de 3 min ou mais: puxa o Phoenix de novo
+  // (reserva que mudou de data no Phoenix já aparece no dia certo)
+  const recarregarApiRef = useRef(null);
+  useEffect(() => {
+    recarregarApiRef.current = { carregar: carregarApiSemana, ultima: ultimaAtualizacaoApi };
+  });
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState !== "visible") return;
+      const r = recarregarApiRef.current;
+      const ultima = r?.ultima ? new Date(r.ultima).getTime() : 0;
+      if (r?.carregar && Date.now() - ultima > 3 * 60 * 1000) r.carregar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, []);
 
   // Puxa os dados do Phoenix sozinho ao abrir a tela e ao trocar de semana.
   // É um efeito À PARTE do carregamento do Firestore: se algo daquele lado
@@ -1928,6 +1968,7 @@ Operacional - Luck Receptivo
 
       {/* passeios que saíram do Phoenix depois de escalados: quem era o guia */}
       <AvisoCancelados lista={canceladosComGuia} />
+      <ReservasDoPax servico={paxAberto} onClose={() => setPaxAberto(null)} />
 
       {abaAtiva === "operacao" && (
         <>
@@ -2134,6 +2175,18 @@ Operacional - Luck Receptivo
                           <span className="dash-a-confirmar" title="Nenhuma reserva confirmada ainda">
                             A confirmar
                           </span>
+                        ) : item.reservasDet?.length ? (
+                          <button
+                            type="button"
+                            className="dash-pax-btn"
+                            onClick={() => setPaxAberto(item)}
+                            title="Ver as reservas que somam este pax"
+                          >
+                            {item.passengers || 0}
+                            {item.reservasDet.some((x, i, l) => x.codigo && l.findIndex((y) => y.codigo === x.codigo) !== i) && (
+                              <Icon name="alert" size={12} className="dash-pax-alerta" />
+                            )}
+                          </button>
                         ) : (
                           item.passengers || 0
                         )}

@@ -421,3 +421,30 @@
 .dash-complemento.is-pendente svg {
     color: var(--warning);
 }
+
+/* pax do dia: toca para ver as reservas que somam */
+.dash-pax-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    text-decoration: underline dotted color-mix(in srgb, currentColor 40%, transparent);
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.dash-pax-btn:hover {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+}
+
+.dash-pax-alerta {
+    color: var(--warning);
+}
