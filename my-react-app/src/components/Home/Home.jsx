@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDocs, query, where } from "firebase/firestore";
+import { getDocs, onSnapshot, query, where } from "firebase/firestore";
 import {
   ResponsiveContainer,
   LineChart,
@@ -382,10 +382,10 @@ const aguardandoConfirmacao = (item) =>
 const extrairClienteReserva = (item) =>
   String(
     item?.reserve?.customer?.name ||
-      item?.customer?.name ||
-      item?.reserve?.holder_name ||
-      item?.passenger_name ||
-      "",
+    item?.customer?.name ||
+    item?.reserve?.holder_name ||
+    item?.passenger_name ||
+    "",
   ).trim();
 
 const extrairHotelReserva = (item) => {
@@ -785,7 +785,6 @@ const Home = () => {
           snapServices,
           snapDisponibilidade,
           snapAfinidade,
-          snapWeekly,
         ] = await Promise.all([
           fetch(`https://bible-api.com/${referencia}?translation=almeida`).catch(
             () => null,
@@ -795,13 +794,6 @@ const Home = () => {
           getDocs(colBase("services")),
           getDocs(colBase("guide_availability")),
           getDocs(colBase("guide_tour_levels")),
-          getDocs(
-            query(
-              colBase("weekly_services"),
-              where("date", ">=", inicioSemana),
-              where("date", "<=", fimSemana),
-            ),
-          ),
         ]);
 
         // O versículo é só enfeite: se falhar, não pode travar o resto da tela.
@@ -840,14 +832,6 @@ const Home = () => {
             ...docSnap.data(),
           })),
         );
-
-        const registrosSemana = snapWeekly.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-        }));
-        // passeio cancelado/mudou de data que tinha guia: fora da escala, só no aviso
-        setWeeklyServices(registrosSemana.filter((r) => !r.cancelamento));
-        setCanceladosComGuia(registrosSemana.filter((r) => r.cancelamento));
       } catch (error) {
         console.error("Erro ao carregar Home:", error);
       } finally {
@@ -856,6 +840,29 @@ const Home = () => {
     };
 
     carregarTudo();
+  }, [inicioSemana, fimSemana]);
+
+  // escala da semana em tempo real: o guia trocado na Escala aparece aqui na
+  // hora (antes era lido uma vez só, ao abrir a tela)
+  useEffect(() => {
+    if (!inicioSemana || !fimSemana) return undefined;
+    return onSnapshot(
+      query(
+        colBase("weekly_services"),
+        where("date", ">=", inicioSemana),
+        where("date", "<=", fimSemana),
+      ),
+      (snap) => {
+        const registrosSemana = snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+        // passeio cancelado/mudou de data que tinha guia: fora da escala, só no aviso
+        setWeeklyServices(registrosSemana.filter((r) => !r.cancelamento));
+        setCanceladosComGuia(registrosSemana.filter((r) => r.cancelamento));
+      },
+      (error) => console.error("Erro ao ler a escala da semana:", error),
+    );
   }, [inicioSemana, fimSemana]);
 
   useEffect(() => {
@@ -893,7 +900,7 @@ const Home = () => {
     const encontrarRelacionadosNoBanco = (apiItem) => {
       const externalIdApi =
         apiItem.externalServiceId !== null &&
-        apiItem.externalServiceId !== undefined
+          apiItem.externalServiceId !== undefined
           ? Number(apiItem.externalServiceId)
           : null;
 
@@ -902,21 +909,36 @@ const Home = () => {
       const porExternalId =
         externalIdApi !== null
           ? weeklyNormalizados.filter(
-              (r) =>
-                r.date === apiItem.date &&
-                r._externalIdNormalizado !== null &&
-                r._externalIdNormalizado === externalIdApi,
-            )
+            (r) =>
+              r.date === apiItem.date &&
+              r._externalIdNormalizado !== null &&
+              r._externalIdNormalizado === externalIdApi,
+          )
           : [];
 
-      if (porExternalId.length) return porExternalId;
+      // O mesmo id do Phoenix pode ser de serviços diferentes no dia (ex.:
+      // "SSA - DISP 8H - THAIS" e "SSA - DISP 8H - BRENDA"). Com id + nome
+      // iguais, é ele; só pelo id, apenas quando não há outro serviço com o
+      // mesmo id no dia (senão um pegava o guia do outro).
+      const porIdENome = porExternalId.filter(
+        (r) => r._nomeNormalizado === nomeApiNormalizado,
+      );
+      if (porIdENome.length) return porIdENome;
 
       const porNome = weeklyNormalizados.filter(
         (r) =>
           r.date === apiItem.date && r._nomeNormalizado === nomeApiNormalizado,
       );
+      if (porNome.length) return porNome;
 
-      return porNome;
+      const idCompartilhado =
+        externalIdApi !== null &&
+        apiSemana.filter(
+          (a) =>
+            a.date === apiItem.date &&
+            Number(a.externalServiceId) === externalIdApi,
+        ).length > 1;
+      return idCompartilhado ? [] : porExternalId;
     };
 
     const servicosExecutivos = apiSemana.map((apiItem) => {
@@ -971,13 +993,13 @@ const Home = () => {
 
     const percentualPassageirosComGuia = paxTotalSemana
       ? Math.round(
-          (servicosAlocados.reduce(
-            (acc, item) => acc + Number(item.passengers || 0),
-            0,
-          ) /
-            paxTotalSemana) *
-            100,
-        )
+        (servicosAlocados.reduce(
+          (acc, item) => acc + Number(item.passengers || 0),
+          0,
+        ) /
+          paxTotalSemana) *
+        100,
+      )
       : 0;
 
     const mapaDisponibilidade = {};
@@ -1041,7 +1063,7 @@ const Home = () => {
               (servico) =>
                 servico.guiaId === guia.id ||
                 normalizarTexto(servico.guiaNome || "") ===
-                  normalizarTexto(guia.nome || ""),
+                normalizarTexto(guia.nome || ""),
             )
             .map((servico) => servico.date),
         );
@@ -1071,11 +1093,11 @@ const Home = () => {
 
     const mediaUsoDistribuicao = distribuicaoGuias.length
       ? Math.round(
-          distribuicaoGuias.reduce(
-            (acc, guia) => acc + Number(guia.percentualUso || 0),
-            0,
-          ) / distribuicaoGuias.length,
-        )
+        distribuicaoGuias.reduce(
+          (acc, guia) => acc + Number(guia.percentualUso || 0),
+          0,
+        ) / distribuicaoGuias.length,
+      )
       : 0;
 
     let statusGeralDistribuicao = "Ociosa";
@@ -1127,8 +1149,8 @@ const Home = () => {
 
     const coberturaAfinidade = affinityDocs.length
       ? Math.round(
-          (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
-        )
+        (affinityDocs.length / Math.max(guiasAtivos.length, 1)) * 100,
+      )
       : 0;
 
     const disponibilidadeMedia = (() => {
