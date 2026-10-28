@@ -55,6 +55,7 @@ import {
 import { carregarConfigTurnos } from "../../Services/Services/relatorioTurnos";
 import { formatarTelefone, ouvirMotoristasDoDia } from "../../Services/Services/fornecedorPainel";
 import { horaDoTimestamp, idDaParada, linkPosicao, ouvirViagensDoDia, situacaoDoServico } from "../../Services/Services/viagemMotorista";
+import { CartaoAoVivo, FaixaAoVivo, SinalAoVivo, emViagemComPosicao } from "./ViagemAoVivo";
 
 // ícone de cada etapa do atendimento: ✓ = recebido (1ª), carro = embarcado (última)
 const iconeEtapaAtd = (i, n) => (i === 0 ? "check" : i === n - 1 ? "car" : "circleCheck");
@@ -481,21 +482,21 @@ const extrairDataIsoDeValor = (valor = "") => {
 const extrairDataRealServico = (item) =>
   extrairDataIsoDeValor(
     item?.presentation_hour ||
-      item?.presentation_hour_end ||
-      item?.schedule?.presentation_hour ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.presentation_hour_end ||
+    item?.schedule?.presentation_hour ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const extrairDataReserva = (item) =>
   extrairDataIsoDeValor(
     item?.reserve?.date ||
-      item?.reserve?.created_at ||
-      item?.reserve?.updated_at ||
-      item?.date ||
-      item?.execution_date ||
-      "",
+    item?.reserve?.created_at ||
+    item?.reserve?.updated_at ||
+    item?.date ||
+    item?.execution_date ||
+    "",
   ) || "";
 
 const compararDataHora = (dataA, horaA, dataB, horaB) => {
@@ -690,9 +691,9 @@ const extrairPresentationHour = (item) =>
 const extrairCodigoEscala = (item) =>
   String(
     item?.roadmapService?.roadmap?.code ||
-      item?.auxRoadmapService?.roadmap?.code ||
-      item?.roadmap?.code ||
-      "",
+    item?.auxRoadmapService?.roadmap?.code ||
+    item?.roadmap?.code ||
+    "",
   ).trim();
 
 const extrairEscalaId = (item) =>
@@ -778,11 +779,11 @@ const semMeiaNoite = (valor) => (formatarHora(valor) === "00:00" ? "" : valor ||
 const extrairHorarioPrevistoVoo = (item) =>
   semMeiaNoite(
     item?.fly_hour ||
-      item?.reserve?.flight_time ||
-      item?.reserve?.flight?.scheduled_time ||
-      item?.reserve?.arrival_flight_time ||
-      item?.flight_time ||
-      item?.flight?.scheduled_time,
+    item?.reserve?.flight_time ||
+    item?.reserve?.flight?.scheduled_time ||
+    item?.reserve?.arrival_flight_time ||
+    item?.flight_time ||
+    item?.flight?.scheduled_time,
   ) ||
   extrairHorarioServico(item) ||
   "";
@@ -1076,12 +1077,12 @@ const extrairVooRetornoTexto = (item) => {
   const horario =
     formatarHora(
       item?.reserve?.flight?.departure_time ||
-        item?.reserve?.flight?.scheduled_departure ||
-        item?.reserve?.departure_flight_time ||
-        item?.flight?.departure_time ||
-        item?.flight?.scheduled_departure ||
-        item?.fly_hour ||
-        "",
+      item?.reserve?.flight?.scheduled_departure ||
+      item?.reserve?.departure_flight_time ||
+      item?.flight?.departure_time ||
+      item?.flight?.scheduled_departure ||
+      item?.fly_hour ||
+      "",
     ) || "--:--";
 
   if (codigo === "-" && horario === "--:--") return "-";
@@ -1117,10 +1118,10 @@ const abrirBuscaVooPratica = (item) => {
 const extrairHorarioApresentacao = (item) =>
   formatarHora(
     item?.presentation_hour ||
-      item?.schedule?.presentation_hour ||
-      item?.our_schedule ||
-      item?.fly_hour ||
-      "",
+    item?.schedule?.presentation_hour ||
+    item?.our_schedule ||
+    item?.fly_hour ||
+    "",
   );
 
 const obterPontoDeApoio = (nomePasseio = "") => {
@@ -1165,7 +1166,7 @@ const textoDaEtapa = (etapa) => {
 };
 const iconeDaEtapa = (etapa, concluido) => (concluido ? "circleCheck" : etapa.id === "iniciado" ? "navigation" : "mapPin");
 
-const MotoristaForn = ({ m, v, texto, completo = false }) => {
+const MotoristaForn = ({ m, v, texto, completo = false, onAbrirAoVivo = null }) => {
   // sem motorista escolhido: o próprio fornecedor dirige — mostra só a etapa dele
   if (!m && !texto && !v) return null;
   const st = v ? situacaoDoServico(v.tipo, v.eventos) : null;
@@ -1173,6 +1174,8 @@ const MotoristaForn = ({ m, v, texto, completo = false }) => {
   const hora = etapa ? horaDoTimestamp(etapa.em) : "";
   const nome = m?.motoristaNome || v?.motoristaNome || "";
   const posicao = etapa && etapa.lat !== undefined ? linkPosicao(etapa.id === "iniciado" && v.ultimaPosicao ? v.ultimaPosicao : etapa) : "";
+  // em viagem com localização: o selo ao vivo (velocidade, aeroporto) no lugar do link do mapa
+  const aoVivo = emViagemComPosicao(v);
 
   const status = etapa && (
     <span className={`painel-op-mot__status ${st.concluido ? "is-ok" : ""}`} title="Marcado pelo motorista no link do dia">
@@ -1187,7 +1190,7 @@ const MotoristaForn = ({ m, v, texto, completo = false }) => {
         {hora ? <small> · {hora}</small> : null}
         {v.paradas && !st.concluido ? <small> · {v.paradas.feitas} de {v.paradas.total} hotéis</small> : null}
       </span>
-      {posicao && (
+      {posicao && !aoVivo && (
         <a className="painel-op-mot__acao" href={posicao} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Ver no mapa" aria-label="Ver no mapa">
           <Icon name="map" size={13} />
         </a>
@@ -1206,6 +1209,7 @@ const MotoristaForn = ({ m, v, texto, completo = false }) => {
           </span>
         )}
         {status}
+        {aoVivo && <SinalAoVivo v={v} onAbrir={onAbrirAoVivo} />}
       </span>
     );
   }
@@ -1233,6 +1237,7 @@ const MotoristaForn = ({ m, v, texto, completo = false }) => {
         </span>
       )}
       {status}
+      {aoVivo && <SinalAoVivo v={v} onAbrir={onAbrirAoVivo} />}
     </span>
   );
 };
@@ -1429,10 +1434,10 @@ export default function PainelOperacionalUnificado() {
     const q = ehSede()
       ? query(collection(db, "painel_out_monitoramento"), where("data", "==", dataSelecionada))
       : query(
-          collection(db, "painel_out_monitoramento"),
-          where("data", "==", dataSelecionada),
-          where("regiao", "==", regiaoAtual().id),
-        );
+        collection(db, "painel_out_monitoramento"),
+        where("data", "==", dataSelecionada),
+        where("regiao", "==", regiaoAtual().id),
+      );
 
     const unsubscribe = onSnapshot(
       q,
@@ -1601,12 +1606,12 @@ export default function PainelOperacionalUnificado() {
       const situacao = situacaoAeroporto(noAeroporto?.status);
       const voo = noAeroporto
         ? {
-            ...vooPhoenix,
-            horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
-            cancelado: vooPhoenix.cancelado || situacao.cancelado,
-            pousado: vooPhoenix.pousado || situacao.pousado,
-            aeroporto: noAeroporto,
-          }
+          ...vooPhoenix,
+          horarioAtualizado: vooPhoenix.horarioAtualizado || noAeroporto.operacao,
+          cancelado: vooPhoenix.cancelado || situacao.cancelado,
+          pousado: vooPhoenix.pousado || situacao.pousado,
+          aeroporto: noAeroporto,
+        }
         : vooPhoenix;
 
       const calculoStatus = calcularStatusVooPorHorario({
@@ -1896,7 +1901,7 @@ export default function PainelOperacionalUnificado() {
             grupo.tipoServico === "TRANSFER"
               ? `${hoteisOrdenados[0]?.hotelOrigemAbreviado || "Origem"} → ${hoteisOrdenados[0]?.hotelDestinoAbreviado || "Destino"}`
               : hoteisOrdenados[0]?.hotelOrigemAbreviado ||
-                "Hotel não informado",
+              "Hotel não informado",
           primeiroHorario,
           dataServicoReal: dataServicoRealPrincipal,
           totalReservas: reservasOrdenadas.length,
@@ -2282,8 +2287,8 @@ export default function PainelOperacionalUnificado() {
         const veiculoApoio =
           veiculosOrdenados.length > 1
             ? formatarNomeVeiculo(
-                veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
-              )
+              veiculosOrdenados[veiculosOrdenados.length - 1]?.veiculo,
+            )
             : "";
 
         const pontoDeApoio = formatarTextoApoio(passeio.pontoDeApoio);
@@ -2362,6 +2367,16 @@ export default function PainelOperacionalUnificado() {
     setVoosExpandidos((prev) => ({ ...prev, [codigoVoo]: !prev[codigoVoo] }));
   };
 
+  // abre o grupo (sem fechar se já estiver aberto) e rola até ele — usado pelo "ao vivo"
+  const abrirGrupoOut = (grupoId) => {
+    setGruposExpandidosOut((prev) => ({ ...prev, [grupoId]: true }));
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-grupo-out="${String(grupoId).replace(/["\\]/g, "\\$&")}"]`);
+      if (!el) return;
+      el.style.scrollMarginTop = "96px"; // abaixo do topo fixo
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
   const toggleExpandirGrupoOut = (grupoId) => {
     setGruposExpandidosOut((prev) => ({ ...prev, [grupoId]: !prev[grupoId] }));
   };
@@ -2890,10 +2905,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos) , icon: "planeLanding" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas) , icon: "ticket" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos) , icon: "truck" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax) , icon: "users" },
+              { key: "voos", label: "Voos", value: valorKpi(resumoChegadas.voos), icon: "planeLanding" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoChegadas.reservas), icon: "ticket" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoChegadas.veiculos), icon: "truck" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoChegadas.pax), icon: "users" },
               {
                 key: "alterados",
                 label: "Voos alterados",
@@ -2981,9 +2996,8 @@ export default function PainelOperacionalUnificado() {
                           return (
                             <>
                               <span
-                                className={`ui-cell-sub tabular painel-op-fonte ${
-                                  voo.horariosPhoenixDivergentes ? "is-alerta" : ""
-                                }`}
+                                className={`ui-cell-sub tabular painel-op-fonte ${voo.horariosPhoenixDivergentes ? "is-alerta" : ""
+                                  }`}
                                 title={
                                   voo.horariosPhoenixDivergentes
                                     ? "As reservas deste voo têm horários diferentes no Phoenix"
@@ -3227,9 +3241,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -3293,9 +3306,8 @@ export default function PainelOperacionalUnificado() {
                                     {reserva.codigoReserva}
                                     {voo.horariosPhoenixDivergentes && reserva.horarioVoo && (
                                       <span
-                                        className={`ui-cell-sub painel-op-fonte ${
-                                          reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
-                                        }`}
+                                        className={`ui-cell-sub painel-op-fonte ${reserva.horarioVoo !== voo.horarioVooPhoenix ? "is-alerta" : ""
+                                          }`}
                                         title="Horário do voo desta reserva no Phoenix"
                                       >
                                         voo {reserva.horarioVoo}
@@ -3337,12 +3349,12 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length) , icon: "grid" },
-              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs) , icon: "planeTakeoff" },
-              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers) , icon: "navigation" },
-              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax) , icon: "users" },
-              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis) , icon: "building" },
+              { key: "grupos", label: "Grupos", value: valorKpi(gruposOutBase.length), icon: "grid" },
+              { key: "outs", label: "OUTs", value: valorKpi(totaisOut.outs), icon: "planeTakeoff" },
+              { key: "transfers", label: "Transfers", value: valorKpi(totaisOut.transfers), icon: "navigation" },
+              { key: "reservas", label: "Reservas", value: valorKpi(totaisOut.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(totaisOut.pax), icon: "users" },
+              { key: "hoteis", label: "Hotéis", value: valorKpi(totaisOut.hoteis), icon: "building" },
               {
                 key: "monitorados",
                 label: "Monitorados",
@@ -3350,6 +3362,11 @@ export default function PainelOperacionalUnificado() {
                 value: valorKpi(`${totaisOut.monitorados} / ${gruposOutBase.length}`),
               },
             ]}
+          />
+
+          <FaixaAoVivo
+            itens={gruposOutBase.map((g) => ({ id: g.id, v: viagemDe(g.roadmapId), rotulo: `${g.hotelPrincipal}${g.primeiroHorario ? ` · ${g.primeiroHorario}` : ""}` }))}
+            onAbrir={abrirGrupoOut}
           />
 
           {carregando ? (
@@ -3385,7 +3402,8 @@ export default function PainelOperacionalUnificado() {
                       expandable
                       expanded={expandido}
                       onToggle={() => toggleExpandirGrupoOut(grupo.id)}
-                      className={monitorado ? "painel-op-monitorado" : ""}
+                      className={`${monitorado ? "painel-op-monitorado" : ""} ${emViagemComPosicao(viagemDe(grupo.roadmapId)) ? "painel-op-emviagem" : ""}`}
+                      data-grupo-out={grupo.id}
                     >
                       <span>
                         <span className="painel-op-servico">
@@ -3425,7 +3443,7 @@ export default function PainelOperacionalUnificado() {
                           <span className="painel-op-fornecedor-cel__texto">
                             <strong>{grupo.fornecedor}</strong>
                             <span>{grupo.veiculo}</span>
-                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} />
+                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} onAbrirAoVivo={() => abrirGrupoOut(grupo.id)} />
                           </span>
                         </span>
                       ) : (
@@ -3436,7 +3454,7 @@ export default function PainelOperacionalUnificado() {
                           <span className="painel-op-fornecedor-cel__texto">
                             <strong>{grupo.fornecedor}</strong>
                             <span>{grupo.veiculo}</span>
-                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} />
+                            <MotoristaForn m={motoristaForn(grupo.roadmapId)} v={viagemDe(grupo.roadmapId)} onAbrirAoVivo={() => abrirGrupoOut(grupo.id)} />
                           </span>
                         </span>
                       )}
@@ -3494,6 +3512,7 @@ export default function PainelOperacionalUnificado() {
 
                     {expandido && (
                       <TableExpansion>
+                        <CartaoAoVivo v={viagemDe(grupo.roadmapId)} titulo={`${grupo.veiculo || ""}${grupo.primeiroHorario ? ` · OUT ${grupo.primeiroHorario}` : ""}`} />
                         {grupo.hoteisOrdenados.map((hotel, hotelIndex) => (
                           <section key={hotel.id} className="painel-op-bloco">
                             <header className="painel-op-bloco__head">
@@ -3596,10 +3615,10 @@ export default function PainelOperacionalUnificado() {
         <>
           <KpiTiles
             items={[
-              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias) , icon: "idCard" },
-              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos) , icon: "truck" },
-              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas) , icon: "ticket" },
-              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax) , icon: "users" },
+              { key: "guias", label: "Guias", value: valorKpi(resumoGuias.guias), icon: "idCard" },
+              { key: "veiculos", label: "Veículos", value: valorKpi(resumoGuias.veiculos), icon: "truck" },
+              { key: "reservas", label: "Reservas", value: valorKpi(resumoGuias.reservas), icon: "ticket" },
+              { key: "pax", label: "Pax", value: valorKpi(resumoGuias.pax), icon: "users" },
             ]}
           />
 

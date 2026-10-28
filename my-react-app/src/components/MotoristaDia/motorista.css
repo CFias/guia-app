@@ -326,7 +326,8 @@
   line-height: 1.25;
 }
 
-.mt-passos li.is-ok small, .mt-passos li.is-prox small {
+.mt-passos li.is-ok small,
+.mt-passos li.is-prox small {
   color: var(--text);
 }
 
@@ -633,7 +634,9 @@
 }
 
 @keyframes mt-pulsa {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
   }
@@ -667,7 +670,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mt-alerta__ic, .mt-chegando, .mt-alerta {
+
+  .mt-alerta__ic,
+  .mt-chegando,
+  .mt-alerta {
     animation: none;
   }
 }
@@ -1846,4 +1852,75 @@
 
 .mt-alerta__caixa p.mt-alerta__txt {
   padding-left: 0;
+}
+
+/* localização ao vivo durante a viagem */
+.mt-aovivo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mt-suave, rgba(15, 23, 42, 0.04));
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mt-aovivo>span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mt-aovivo b {
+  color: var(--text);
+}
+
+.mt-aovivo small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.mt-aovivo__ponto {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+.mt-aovivo.is-on .mt-aovivo__ponto {
+  background: #16a34a;
+  animation: mt-aovivo 1.6s ease-out infinite;
+}
+
+.mt-aovivo.is-on b {
+  color: #15803d;
+}
+
+.mt-aovivo.is-erro {
+  background: color-mix(in srgb, #d97706 12%, transparent);
+}
+
+.mt-aovivo.is-erro .mt-aovivo__ponto {
+  background: #d97706;
+}
+
+@keyframes mt-aovivo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5);
+  }
+
+  100% {
+    box-shadow: 0 0 0 8px rgba(22, 163, 74, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-aovivo__ponto {
+    animation: none !important;
+  }
 }

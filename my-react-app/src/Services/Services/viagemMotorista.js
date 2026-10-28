@@ -25,17 +25,7 @@
 //     { base, data, escalaId, recepcionado, recepcionadoEm, recepcionadoPor,
 //       embarcado, embarcadoEm, atualizadoEm }
 
-import {
-  deleteField,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-  setDoc,
-  Timestamp,
-  where,
-  collection,
-} from "firebase/firestore";
+import { deleteField, doc, getDoc, onSnapshot, query, setDoc, Timestamp, where, collection } from "firebase/firestore";
 import { db } from "./firebase";
 import { ID_SEDE, regiaoAtual } from "./regiaoAtiva";
 
@@ -43,92 +33,40 @@ export const COL_MOTORISTA_DIA = "motorista_dia";
 export const COL_STATUS_ESCALA = "status_escala";
 
 export const baseAtual = () => regiaoAtual()?.id || ID_SEDE;
-export const idStatusEscala = (base, data, escalaId) =>
-  `${base}__${data}__${escalaId}`;
+export const idStatusEscala = (base, data, escalaId) => `${base}__${data}__${escalaId}`;
 
 // token do link: 24 caracteres aleatórios (impossível de adivinhar)
 export const novoToken = () => {
   const bytes = new Uint8Array(18);
   (globalThis.crypto || window.crypto).getRandomValues(bytes);
-  return (
-    Array.from(bytes, (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join(
-      "",
-    ) + Date.now().toString(36).slice(-6)
-  );
+  return Array.from(bytes, (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("") + Date.now().toString(36).slice(-6);
 };
 
-export const linkDoMotorista = (token) =>
-  `${window.location.origin}/m/${token}`;
+export const linkDoMotorista = (token) => `${window.location.origin}/m/${token}`;
 
 /* ---------------- etapas ---------------- */
 
 export const ETAPAS_POR_TIPO = {
   IN: [
-    {
-      id: "posicionado",
-      acao: "Cheguei no desembarque",
-      feito: "No desembarque",
-      dica: "toque e escolha a porta em que você está",
-    },
-    {
-      id: "iniciado",
-      acao: "Iniciar viagem",
-      feito: "Em viagem",
-      dica: "toque quando sair com os passageiros",
-    },
-    {
-      id: "finalizado",
-      acao: "Finalizar viagem",
-      feito: "Finalizado",
-      dica: "toque ao deixar os passageiros no hotel",
-    },
+    { id: "posicionado", acao: "Cheguei no desembarque", feito: "No desembarque", dica: "toque e escolha a porta em que você está" },
+    { id: "iniciado", acao: "Iniciar viagem", feito: "Em viagem", dica: "toque quando sair com os passageiros" },
+    { id: "finalizado", acao: "Finalizar viagem", feito: "Finalizado", dica: "toque ao deixar os passageiros no hotel" },
   ],
   OUT: [
-    {
-      id: "posicionado",
-      acao: "Cheguei no hotel",
-      feito: "No hotel",
-      dica: "toque quando chegar para buscar os passageiros",
-    },
-    {
-      id: "iniciado",
-      acao: "Iniciar viagem",
-      feito: "Em viagem",
-      dica: "toque quando sair com os passageiros",
-    },
-    {
-      id: "finalizado",
-      acao: "Cheguei ao aeroporto",
-      feito: "Finalizado",
-      dica: "toque ao deixar os passageiros no aeroporto",
-    },
+    { id: "posicionado", acao: "Cheguei no hotel", feito: "No hotel", dica: "toque quando chegar para buscar os passageiros" },
+    { id: "iniciado", acao: "Iniciar viagem", feito: "Em viagem", dica: "toque quando sair com os passageiros" },
+    { id: "finalizado", acao: "Cheguei ao aeroporto", feito: "Finalizado", dica: "toque ao deixar os passageiros no aeroporto" },
   ],
   OUTRO: [
-    {
-      id: "posicionado",
-      acao: "Cheguei",
-      feito: "No local",
-      dica: "toque quando chegar para buscar os passageiros",
-    },
-    {
-      id: "iniciado",
-      acao: "Iniciar viagem",
-      feito: "Em viagem",
-      dica: "toque quando sair com os passageiros",
-    },
-    {
-      id: "finalizado",
-      acao: "Finalizar",
-      feito: "Finalizado",
-      dica: "toque ao terminar o serviço",
-    },
+    { id: "posicionado", acao: "Cheguei", feito: "No local", dica: "toque quando chegar para buscar os passageiros" },
+    { id: "iniciado", acao: "Iniciar viagem", feito: "Em viagem", dica: "toque quando sair com os passageiros" },
+    { id: "finalizado", acao: "Finalizar", feito: "Finalizado", dica: "toque ao terminar o serviço" },
   ],
 };
 // portas do desembarque do aeroporto (o motorista escolhe ao chegar)
 export const PORTAS_DESEMBARQUE = ["A", "B", "C", "D"];
 
-export const etapasDoTipo = (tipo) =>
-  ETAPAS_POR_TIPO[tipo] || ETAPAS_POR_TIPO.OUTRO;
+export const etapasDoTipo = (tipo) => ETAPAS_POR_TIPO[tipo] || ETAPAS_POR_TIPO.OUTRO;
 
 // em que pé está o serviço: a última etapa feita e a próxima
 export const situacaoDoServico = (tipo, ev = {}) => {
@@ -155,11 +93,7 @@ export const servicoParaMotorista = (s) => {
     placa: s.placa || "",
     descricao: s.descricao || "",
     pax: s.pax || 0,
-    voos: unicos(
-      res.map((r) =>
-        r.voo ? `${r.voo}${r.horaVoo ? ` ${r.horaVoo}` : ""}` : "",
-      ),
-    ),
+    voos: unicos(res.map((r) => (r.voo ? `${r.voo}${r.horaVoo ? ` ${r.horaVoo}` : ""}` : ""))),
     origens: unicos(res.map((r) => r.origem)),
     destinos: unicos(res.map((r) => r.destino)),
     reservas: res.slice(0, 40).map((r) => ({
@@ -185,13 +119,9 @@ export const servicoParaMotorista = (s) => {
 export const migrarEtapas = (anteriores = [], eventos = {}, novos = []) => {
   const resultado = { eventos: {}, migradas: new Set() };
   const chavesNovas = new Set(novos.map((s) => s.chave));
-  const comEtapas = anteriores.filter(
-    (a) =>
-      !chavesNovas.has(a.chave) && Object.keys(eventos?.[a.chave] || {}).length,
-  );
+  const comEtapas = anteriores.filter((a) => !chavesNovas.has(a.chave) && Object.keys(eventos?.[a.chave] || {}).length);
   if (!comEtapas.length) return resultado;
-  const codigos = (s) =>
-    new Set((s.reservas || []).map((r) => r.codigo).filter(Boolean));
+  const codigos = (s) => new Set((s.reservas || []).map((r) => r.codigo).filter(Boolean));
   novos.forEach((n) => {
     if (Object.keys(eventos?.[n.chave] || {}).length) return; // já tem etapas
     const cn = codigos(n);
@@ -199,11 +129,7 @@ export const migrarEtapas = (anteriores = [], eventos = {}, novos = []) => {
       (a) =>
         !resultado.migradas.has(a.chave) &&
         a.tipo === n.tipo &&
-        ([...codigos(a)].some((c) => cn.has(c)) ||
-          (a.hora &&
-            a.hora === n.hora &&
-            a.veiculo &&
-            a.veiculo === n.veiculo)),
+        ([...codigos(a)].some((c) => cn.has(c)) || (a.hora && a.hora === n.hora && a.veiculo && a.veiculo === n.veiculo)),
     );
     if (!par) return;
     resultado.eventos[n.chave] = { ...eventos[par.chave] };
@@ -215,10 +141,7 @@ export const migrarEtapas = (anteriores = [], eventos = {}, novos = []) => {
 // assinatura do que o motorista vê (para só regravar quando muda)
 export const assinaturaServicos = (lista = []) =>
   lista
-    .map(
-      (s) =>
-        `${s.chave}|${s.hora}|${s.pax}|${s.destinos.join(",")}|${s.origens.join(",")}|${s.reservas.map((r) => `${r.codigo}:${r.titular}:${r.adt}/${r.chd}/${r.inf}:${r.obs?.length || 0}`).join(",")}`,
-    )
+    .map((s) => `${s.chave}|${s.hora}|${s.pax}|${s.destinos.join(",")}|${s.origens.join(",")}|${s.reservas.map((r) => `${r.codigo}:${r.titular}:${r.adt}/${r.chd}/${r.inf}:${r.obs?.length || 0}`).join(",")}`)
     .join(";");
 
 /* ---------------- paradas (mais de um hotel na mesma escala) ----------------
@@ -238,26 +161,20 @@ const slug = (t = "") =>
 // id da parada de um hotel no evento do motorista (o mesmo nome do Phoenix)
 export const idDaParada = (nome = "") => `parada_${slug(nome)}`;
 export const paradasDoServico = (s) => {
-  const lista =
-    s?.tipo === "IN" ? s.destinos : s?.tipo === "OUT" ? s.origens : [];
+  const lista = s?.tipo === "IN" ? s.destinos : s?.tipo === "OUT" ? s.origens : [];
   if (!Array.isArray(lista) || lista.length < 2) return [];
   return lista.map((nome) => ({
     id: idDaParada(nome),
     nome,
     // passageiros de cada hotel (para o motorista saber quem desce/sobe ali)
-    passageiros: (s.reservas || []).filter(
-      (r) => (s.tipo === "IN" ? r.destino : r.origem) === nome,
-    ),
+    passageiros: (s.reservas || []).filter((r) => (s.tipo === "IN" ? r.destino : r.origem) === nome),
   }));
 };
 // "2/0/1" (adultos/crianças/bebês); sem o detalhe, o total de pax
 export const paxDetalhado = (r = {}) =>
-  r.adt === null || r.adt === undefined
-    ? `${r.pax || 0} pax`
-    : `${r.adt || 0}/${r.chd || 0}/${r.inf || 0}`;
+  r.adt === null || r.adt === undefined ? `${r.pax || 0} pax` : `${r.adt || 0}/${r.chd || 0}/${r.inf || 0}`;
 
-export const paradasFeitas = (s, ev = {}) =>
-  paradasDoServico(s).filter((p) => ev?.[p.id]?.em);
+export const paradasFeitas = (s, ev = {}) => paradasDoServico(s).filter((p) => ev?.[p.id]?.em);
 
 /* Próxima ação do motorista, contando as paradas (viagem tipo Uber com
    paradas adicionais). Devolve { tipo: "etapa", etapa } ou
@@ -265,76 +182,35 @@ export const paradasFeitas = (s, ev = {}) =>
 export const proximaAcao = (s, ev = {}) => {
   const st = situacaoDoServico(s.tipo, ev);
   const paradas = paradasDoServico(s);
-  if (!paradas.length || st.concluido)
-    return st.proxima ? { tipo: "etapa", etapa: st.proxima } : null;
+  if (!paradas.length || st.concluido) return st.proxima ? { tipo: "etapa", etapa: st.proxima } : null;
   const faltam = paradas.filter((p) => !ev?.[p.id]?.em);
   const indice = paradas.length - faltam.length; // 0 = primeira parada
   if (s.tipo === "IN") {
     // desembarque e saída como sempre; depois, hotel a hotel — o último finaliza
-    if (st.proxima?.id !== "finalizado")
-      return { tipo: "etapa", etapa: st.proxima };
+    if (st.proxima?.id !== "finalizado") return { tipo: "etapa", etapa: st.proxima };
     if (!faltam.length) return { tipo: "etapa", etapa: st.proxima };
-    return {
-      tipo: "parada",
-      parada: faltam[0],
-      indice,
-      total: paradas.length,
-      final: faltam.length === 1,
-      primeira: indice === 0,
-    };
+    return { tipo: "parada", parada: faltam[0], indice, total: paradas.length, final: faltam.length === 1, primeira: indice === 0 };
   }
   // OUT: busca hotel a hotel (o primeiro vale como "Cheguei no hotel"), depois sai para o aeroporto
   if (!ev?.iniciado?.em && faltam.length) {
-    return {
-      tipo: "parada",
-      parada: faltam[0],
-      indice,
-      total: paradas.length,
-      final: false,
-      primeira: indice === 0,
-    };
+    return { tipo: "parada", parada: faltam[0], indice, total: paradas.length, final: false, primeira: indice === 0 };
   }
   return st.proxima ? { tipo: "etapa", etapa: st.proxima } : null;
 };
 
 // o que foi marcado por último (etapa ou parada), para o "Desfazer"
 export const ultimaMarcacao = (s, ev = {}) => {
-  const etapas = etapasDoTipo(s.tipo).map((e) => ({
-    tipo: "etapa",
-    id: e.id,
-    nome: e.feito,
-    etapa: e,
-  }));
-  const paradas = paradasDoServico(s).map((p) => ({
-    tipo: "parada",
-    id: p.id,
-    nome: `No ${p.nome}`,
-    parada: p,
-  }));
-  const ms = (v) =>
-    v?.toMillis
-      ? v.toMillis()
-      : v?.seconds
-        ? v.seconds * 1000
-        : v instanceof Date
-          ? v.getTime()
-          : 0;
+  const etapas = etapasDoTipo(s.tipo).map((e) => ({ tipo: "etapa", id: e.id, nome: e.feito, etapa: e }));
+  const paradas = paradasDoServico(s).map((p) => ({ tipo: "parada", id: p.id, nome: `No ${p.nome}`, parada: p }));
+  const ms = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : v instanceof Date ? v.getTime() : 0);
   const feitas = [...etapas, ...paradas].filter((x) => ev?.[x.id]?.em);
   if (!feitas.length) return null;
   // finalizado ganha da parada final (mesmo horário): desfaz os dois juntos
-  return feitas.sort(
-    (a, b) =>
-      ms(ev[b.id].em) - ms(ev[a.id].em) ||
-      (a.id === "finalizado" ? -1 : b.id === "finalizado" ? 1 : 0),
-  )[0];
+  return feitas.sort((a, b) => ms(ev[b.id].em) - ms(ev[a.id].em) || (a.id === "finalizado" ? -1 : b.id === "finalizado" ? 1 : 0))[0];
 };
 
 export const gravarMotoristaDia = (token, dados) =>
-  setDoc(
-    doc(db, COL_MOTORISTA_DIA, token),
-    { ...dados, atualizadoEm: Timestamp.now() },
-    { merge: true },
-  );
+  setDoc(doc(db, COL_MOTORISTA_DIA, token), { ...dados, atualizadoEm: Timestamp.now() }, { merge: true });
 
 export const ouvirMotoristaDia = (token, aoMudar, aoErro) =>
   onSnapshot(
@@ -349,11 +225,7 @@ export const ouvirMotoristaDia = (token, aoMudar, aoErro) =>
 // Painel do dia / fornecedor: todos os links do dia (da base)
 export const ouvirViagensDoDia = (data, aoMudar) =>
   onSnapshot(
-    query(
-      collection(db, COL_MOTORISTA_DIA),
-      where("data", "==", data),
-      where("base", "==", baseAtual()),
-    ),
+    query(collection(db, COL_MOTORISTA_DIA), where("data", "==", data), where("base", "==", baseAtual())),
     (snap) => {
       const base = baseAtual();
       const porEscala = {};
@@ -365,17 +237,14 @@ export const ouvirViagensDoDia = (data, aoMudar) =>
           const paradas = paradasDoServico(s);
           porEscala[String(s.escalaId)] = {
             tipo: s.tipo,
+            chave: s.chave,
+            hora: s.hora || "",
+            veiculo: s.veiculo || "",
+            motoristaTelefone: v.motoristaTelefone || "",
             eventos: v.eventos?.[s.chave] || {},
             motoristaNome: v.motoristaNome,
             ultimaPosicao: v.ultimaPosicao || null,
-            paradas: paradas.length
-              ? {
-                  total: paradas.length,
-                  feitas: paradas.filter(
-                    (p) => v.eventos?.[s.chave]?.[p.id]?.em,
-                  ).length,
-                }
-              : null,
+            paradas: paradas.length ? { total: paradas.length, feitas: paradas.filter((p) => v.eventos?.[s.chave]?.[p.id]?.em).length } : null,
           };
         });
       });
@@ -393,28 +262,14 @@ export const marcarEtapaMotorista = (token, chave, etapaId, registro) =>
   setDoc(
     doc(db, COL_MOTORISTA_DIA, token),
     {
-      eventos: {
-        [chave]: {
-          [etapaId]: registro
-            ? { ...registro, em: Timestamp.now() }
-            : deleteField(),
-        },
-      },
-      ...(registro?.lat !== undefined
-        ? {
-            ultimaPosicao: {
-              lat: registro.lat,
-              lng: registro.lng,
-              precisao: registro.precisao ?? null,
-              em: Timestamp.now(),
-            },
-          }
-        : {}),
+      eventos: { [chave]: { [etapaId]: registro ? { ...registro, em: Timestamp.now() } : deleteField() } },
+      ...(registro?.lat !== undefined ? { ultimaPosicao: { lat: registro.lat, lng: registro.lng, precisao: registro.precisao ?? null, em: Timestamp.now() } } : {}),
       atualizadoEm: Timestamp.now(),
     },
     { merge: true },
   );
 
+// localização ao vivo (em viagem): posição, velocidade, rumo e o serviço
 export const gravarPosicao = (token, pos) =>
   setDoc(
     doc(db, COL_MOTORISTA_DIA, token),
@@ -423,27 +278,55 @@ export const gravarPosicao = (token, pos) =>
         lat: pos.lat,
         lng: pos.lng,
         precisao: pos.precisao ?? null,
+        velKmh: pos.velKmh ?? null,
+        rumo: pos.rumo ?? null,
+        chave: pos.chave || null,
         em: Timestamp.now(),
       },
       atualizadoEm: Timestamp.now(),
     },
-    { merge: true },
+    { merge: true }, // todos os campos da posição são gravados sempre (nada antigo fica)
   );
+
+/* ---------------- localização ao vivo: leitura no painel ---------------- */
+
+// aeroporto de cada base (destino do OUT) — para "a X km · ~Y min do aeroporto"
+export const AEROPORTO_DA_BASE = {
+  ssa: { lat: -12.9086, lng: -38.3225, nome: "Aeroporto de Salvador" },
+};
+
+/* Situação da localização de quem está em viagem:
+   ao vivo (até 45 s) · atrasada (até 5 min) · sem sinal (mais que isso).
+   Para OUT na base com aeroporto conhecido: distância e chegada estimada
+   (rua ≈ 1,3 × a linha reta, a 35 km/h de média — é estimativa). */
+export const leituraAoVivo = (v, agoraMs, base = "ssa") => {
+  const p = v?.ultimaPosicao;
+  const ms = msDoTimestamp(p?.em);
+  if (!p || !ms || p.lat === undefined) return null;
+  const idadeS = Math.max(0, Math.round((agoraMs - ms) / 1000));
+  const estado = idadeS <= 45 ? "aovivo" : idadeS <= 300 ? "atrasada" : "semsinal";
+  const idadeTxt = idadeS < 60 ? `há ${Math.max(1, idadeS)} s` : idadeS < 3600 ? `há ${Math.round(idadeS / 60)} min` : `às ${horaDoTimestamp(p.em)}`;
+  const vel = Number.isFinite(p.velKmh) ? p.velKmh : null;
+  const aero = v?.tipo === "OUT" ? AEROPORTO_DA_BASE[base] : null;
+  let distKm = null;
+  let etaMin = null;
+  let chegada = "";
+  if (aero) {
+    distKm = (distanciaMetros(p, aero) * 1.3) / 1000;
+    etaMin = distKm < 0.8 ? 0 : Math.max(1, Math.round((distKm / 35) * 60));
+    chegada = new Date(ms + etaMin * 60000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+  return { estado, idadeS, idadeTxt, vel, distKm, etaMin, chegada, aeroporto: aero?.nome || "", pos: p };
+};
+
+// mapa embutido do Google (sem chave) na posição
+export const mapaEmbutido = (p, zoom = 15) => (p ? `https://maps.google.com/maps?q=${p.lat},${p.lng}&z=${zoom}&output=embed` : "");
 
 /* ---------------- sinal do painel do aeroporto ---------------- */
 
 // desfeito: a base desfez a recepção que o motorista já tinha recebido —
 // o app dele mostra "recepção desfeita · aguarde" (desfeitoEm)
-export const gravarStatusEscala = ({
-  data,
-  escalaId,
-  recepcionado,
-  recepcionadoEm,
-  recepcionadoPor = "",
-  embarcado,
-  embarcadoEm,
-  desfeito = false,
-}) =>
+export const gravarStatusEscala = ({ data, escalaId, recepcionado, recepcionadoEm, recepcionadoPor = "", embarcado, embarcadoEm, desfeito = false }) =>
   setDoc(
     doc(db, COL_STATUS_ESCALA, idStatusEscala(baseAtual(), data, escalaId)),
     {
@@ -452,16 +335,10 @@ export const gravarStatusEscala = ({
       escalaId: String(escalaId),
       recepcionado: !!recepcionado,
       recepcionadoEm: recepcionado ? recepcionadoEm || Timestamp.now() : null,
-      recepcionadoPor: recepcionado
-        ? String(recepcionadoPor || "").split(" ")[0]
-        : "",
+      recepcionadoPor: recepcionado ? String(recepcionadoPor || "").split(" ")[0] : "",
       embarcado: !!embarcado,
       embarcadoEm: embarcado ? embarcadoEm || Timestamp.now() : null,
-      ...(desfeito
-        ? { desfeitoEm: Timestamp.now() }
-        : recepcionado
-          ? { desfeitoEm: null }
-          : {}),
+      ...(desfeito ? { desfeitoEm: Timestamp.now() } : recepcionado ? { desfeitoEm: null } : {}),
       atualizadoEm: Timestamp.now(),
     },
     { merge: true },
@@ -481,12 +358,7 @@ export const pegarPosicao = () =>
   new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
-      (p) =>
-        resolve({
-          lat: p.coords.latitude,
-          lng: p.coords.longitude,
-          precisao: Math.round(p.coords.accuracy || 0),
-        }),
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, precisao: Math.round(p.coords.accuracy || 0) }),
       () => resolve(null),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
     );
@@ -498,9 +370,7 @@ export const distanciaMetros = (a, b) => {
   const rad = (x) => (x * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
   const dLng = rad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
@@ -510,14 +380,9 @@ export const localizarEndereco = async (nome, cidade = "Bahia, Brasil") => {
   const q = `${nome}, ${cidade}`;
   if (cacheGeo.has(q)) return cacheGeo.get(q);
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
-      { headers: { Accept: "application/json" } },
-    );
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`, { headers: { Accept: "application/json" } });
     const j = await r.json();
-    const ponto = j?.[0]
-      ? { lat: Number(j[0].lat), lng: Number(j[0].lon) }
-      : null;
+    const ponto = j?.[0] ? { lat: Number(j[0].lat), lng: Number(j[0].lon) } : null;
     cacheGeo.set(q, ponto);
     return ponto;
   } catch {
@@ -525,29 +390,17 @@ export const localizarEndereco = async (nome, cidade = "Bahia, Brasil") => {
   }
 };
 
-export const linkGoogleMaps = (destino) =>
-  `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(destino)}`;
-export const linkWaze = (destino) =>
-  `https://waze.com/ul?navigate=yes&q=${encodeURIComponent(destino)}`;
-export const linkPosicao = (p) =>
-  p ? `https://www.google.com/maps?q=${p.lat},${p.lng}` : "";
+export const linkGoogleMaps = (destino) => `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(destino)}`;
+export const linkWaze = (destino) => `https://waze.com/ul?navigate=yes&q=${encodeURIComponent(destino)}`;
+export const linkPosicao = (p) => (p ? `https://www.google.com/maps?q=${p.lat},${p.lng}` : "");
 
 export const horaDoTimestamp = (v) => {
   const d = v?.toDate ? v.toDate() : v instanceof Date ? v : null;
-  return d
-    ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    : "";
+  return d ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
 };
 
 // milissegundos de um Timestamp do Firestore (ou de uma data)
-export const msDoTimestamp = (v) =>
-  v?.toMillis
-    ? v.toMillis()
-    : v?.seconds
-      ? v.seconds * 1000
-      : v instanceof Date
-        ? v.getTime()
-        : 0;
+export const msDoTimestamp = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : v instanceof Date ? v.getTime() : 0);
 
 /* =====================================================================
    APP DO MOTORISTA — link FIXO por motorista (instala uma vez no celular)
@@ -561,11 +414,7 @@ export const COL_MOTORISTA_APP = "motorista_app";
 export const gravarMotoristaApp = (tokenApp, dados, data, tokenDia) =>
   setDoc(
     doc(db, COL_MOTORISTA_APP, tokenApp),
-    {
-      ...dados,
-      ...(data && tokenDia ? { dias: { [data]: tokenDia } } : {}),
-      atualizadoEm: Timestamp.now(),
-    },
+    { ...dados, ...(data && tokenDia ? { dias: { [data]: tokenDia } } : {}), atualizadoEm: Timestamp.now() },
     { merge: true },
   );
 
@@ -594,14 +443,9 @@ export const diaDoApp = (dias = {}, hoje) => {
    ===================================================================== */
 export const COL_PUSH_ESCALA = "push_escala";
 export const VAPID_PUBLICA = import.meta.env?.VITE_VAPID_PUBLIC_KEY || "";
-export const API_PUSH =
-  import.meta.env?.VITE_API_URL || "https://guia-app.onrender.com";
+export const API_PUSH = import.meta.env?.VITE_API_URL || "https://guia-app.onrender.com";
 export const pushDisponivel = () =>
-  !!VAPID_PUBLICA &&
-  typeof window !== "undefined" &&
-  "serviceWorker" in navigator &&
-  "PushManager" in window &&
-  "Notification" in window;
+  !!VAPID_PUBLICA && typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
 const base64ParaBytes = (b64) => {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -610,8 +454,7 @@ const base64ParaBytes = (b64) => {
 };
 
 export const registrarServiceWorker = async () => {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
-    return null;
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
   try {
     return await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   } catch (e) {
@@ -637,20 +480,11 @@ const idDoAparelho = () => {
 export const inscreverPush = async () => {
   if (!pushDisponivel()) return null;
   try {
-    const permissao =
-      Notification.permission === "default"
-        ? await Notification.requestPermission()
-        : Notification.permission;
+    const permissao = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
     if (permissao !== "granted") return null;
-    const reg =
-      (await registrarServiceWorker()) || (await navigator.serviceWorker.ready);
+    const reg = (await registrarServiceWorker()) || (await navigator.serviceWorker.ready);
     const atual = await reg.pushManager.getSubscription();
-    const sub =
-      atual ||
-      (await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64ParaBytes(VAPID_PUBLICA),
-      }));
+    const sub = atual || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ParaBytes(VAPID_PUBLICA) }));
     return JSON.parse(JSON.stringify(sub));
   } catch (e) {
     console.error("Não foi possível ativar as notificações:", e);
@@ -659,23 +493,12 @@ export const inscreverPush = async () => {
 };
 
 // guarda a inscrição nas chegadas do motorista (uma por escala)
-export const gravarInscricaoNasEscalas = (
-  inscricao,
-  base,
-  data,
-  escalaIds = [],
-) =>
+export const gravarInscricaoNasEscalas = (inscricao, base, data, escalaIds = []) =>
   Promise.all(
     escalaIds.map((escalaId) =>
       setDoc(
         doc(db, COL_PUSH_ESCALA, idStatusEscala(base, data, escalaId)),
-        {
-          base,
-          data,
-          escalaId: String(escalaId),
-          inscricoes: { [idDoAparelho()]: inscricao },
-          atualizadoEm: Timestamp.now(),
-        },
+        { base, data, escalaId: String(escalaId), inscricoes: { [idDoAparelho()]: inscricao }, atualizadoEm: Timestamp.now() },
         { merge: true },
       ).catch((e) => console.error("Inscrição de push não gravada:", e)),
     ),
@@ -689,18 +512,9 @@ export const gravarInscricaoNasEscalas = (
    (notificações negadas), "servidor" (não deu para falar com o servidor). */
 export const testarAviso = async ({ atrasoSeg = 10, nome = "" } = {}) => {
   if (!pushDisponivel()) return { ok: false, motivo: "sem-suporte" };
-  if (
-    typeof Notification !== "undefined" &&
-    Notification.permission === "denied"
-  )
-    return { ok: false, motivo: "bloqueado" };
+  if (typeof Notification !== "undefined" && Notification.permission === "denied") return { ok: false, motivo: "bloqueado" };
   const sub = await inscreverPush();
-  if (!sub)
-    return {
-      ok: false,
-      motivo:
-        Notification.permission === "denied" ? "bloqueado" : "sem-suporte",
-    };
+  if (!sub) return { ok: false, motivo: Notification.permission === "denied" ? "bloqueado" : "sem-suporte" };
   try {
     const r = await fetch(`${API_PUSH}/push`, {
       method: "POST",
@@ -723,24 +537,14 @@ export const testarAviso = async ({ atrasoSeg = 10, nome = "" } = {}) => {
 
 export const enviarPushDaEscala = async ({ data, escalaId, titulo, corpo }) => {
   try {
-    const snap = await getDoc(
-      doc(db, COL_PUSH_ESCALA, idStatusEscala(baseAtual(), data, escalaId)),
-    );
-    const inscricoes = Object.values(
-      snap.exists() ? snap.data()?.inscricoes || {} : {},
-    );
+    const snap = await getDoc(doc(db, COL_PUSH_ESCALA, idStatusEscala(baseAtual(), data, escalaId)));
+    const inscricoes = Object.values(snap.exists() ? snap.data()?.inscricoes || {} : {});
     await Promise.all(
       inscricoes.map((subscription) =>
         fetch(`${API_PUSH}/push`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subscription,
-            titulo,
-            corpo,
-            tag: `rec-${escalaId}`,
-            url: "/",
-          }),
+          body: JSON.stringify({ subscription, titulo, corpo, tag: `rec-${escalaId}`, url: "/" }),
         }).catch(() => null),
       ),
     );
@@ -807,23 +611,13 @@ export const COL_RETORNO_ESCALA = "retorno_escala";
 export const gravarRetorno = (base, data, escalaId, campos) =>
   setDoc(
     doc(db, COL_RETORNO_ESCALA, idStatusEscala(base, data, escalaId)),
-    {
-      base,
-      data,
-      escalaId: String(escalaId),
-      ...campos,
-      atualizadoEm: Timestamp.now(),
-    },
+    { base, data, escalaId: String(escalaId), ...campos, atualizadoEm: Timestamp.now() },
     { merge: true },
   ).catch((e) => console.error("Retorno do motorista não gravado:", e));
 
 export const ouvirRetornosDoDia = (data, aoMudar) =>
   onSnapshot(
-    query(
-      collection(db, COL_RETORNO_ESCALA),
-      where("data", "==", data),
-      where("base", "==", baseAtual()),
-    ),
+    query(collection(db, COL_RETORNO_ESCALA), where("data", "==", data), where("base", "==", baseAtual())),
     (snap) => {
       const porEscala = {};
       snap.docs.forEach((d) => {
@@ -842,63 +636,16 @@ export const ouvirRetornosDoDia = (data, aoMudar) =>
 // (frase com o nome do motorista: "Clóvis chegou na porta B")
 export const leituraDoRetorno = (r, recepcaoMs = 0) => {
   if (!r) return null;
-  const nome =
-    String(r.motoristaNome || "")
-      .trim()
-      .split(" ")[0] || "Motorista";
+  const nome = String(r.motoristaNome || "").trim().split(" ")[0] || "Motorista";
   const hora = (v) => horaDoTimestamp(v);
-  if (r.finalizadoEm)
-    return {
-      id: "finalizado",
-      icone: "circleCheck",
-      texto: `${nome} finalizou a viagem`,
-      hora: hora(r.finalizadoEm),
-    };
-  if (r.iniciadoEm)
-    return {
-      id: "iniciado",
-      icone: "navigation",
-      texto: `${nome} em viagem`,
-      hora: hora(r.iniciadoEm),
-    };
+  if (r.finalizadoEm) return { id: "finalizado", icone: "circleCheck", texto: `${nome} finalizou a viagem`, hora: hora(r.finalizadoEm) };
+  if (r.iniciadoEm) return { id: "iniciado", icone: "navigation", texto: `${nome} em viagem`, hora: hora(r.iniciadoEm) };
   if (r.posicionadoEm)
-    return {
-      id: "posicionado",
-      icone: "mapPin",
-      texto: r.porta
-        ? `${nome} chegou na porta ${r.porta}`
-        : `${nome} chegou no desembarque`,
-      hora: hora(r.posicionadoEm),
-    };
-  const daRecepcao = (campo) =>
-    r[campo] && (!recepcaoMs || Number(r.recepcaoMs || 0) >= recepcaoMs);
-  if (daRecepcao("acaminhoEm"))
-    return {
-      id: "acaminho",
-      icone: "car",
-      texto: `${nome} está a caminho`,
-      hora: hora(r.acaminhoEm),
-    };
-  if (daRecepcao("avisadoEm"))
-    return {
-      id: "viu",
-      icone: "eye",
-      texto: `${nome} viu o aviso`,
-      hora: hora(r.avisadoEm),
-    };
-  if (recepcaoMs)
-    return {
-      id: "avisando",
-      icone: "bell",
-      texto: `Avisando ${nome}…`,
-      hora: "",
-    };
-  if (r.conectadoEm)
-    return {
-      id: "conectado",
-      icone: "phone",
-      texto: `${nome} está com o app`,
-      hora: "",
-    };
+    return { id: "posicionado", icone: "mapPin", texto: r.porta ? `${nome} chegou na porta ${r.porta}` : `${nome} chegou no desembarque`, hora: hora(r.posicionadoEm) };
+  const daRecepcao = (campo) => r[campo] && (!recepcaoMs || Number(r.recepcaoMs || 0) >= recepcaoMs);
+  if (daRecepcao("acaminhoEm")) return { id: "acaminho", icone: "car", texto: `${nome} está a caminho`, hora: hora(r.acaminhoEm) };
+  if (daRecepcao("avisadoEm")) return { id: "viu", icone: "eye", texto: `${nome} viu o aviso`, hora: hora(r.avisadoEm) };
+  if (recepcaoMs) return { id: "avisando", icone: "bell", texto: `Avisando ${nome}…`, hora: "" };
+  if (r.conectadoEm) return { id: "conectado", icone: "phone", texto: `${nome} está com o app`, hora: "" };
   return null;
 };

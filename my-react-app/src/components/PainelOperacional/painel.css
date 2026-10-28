@@ -693,3 +693,8 @@ body:is(.dark, .dark-pro) {
 :is(body.dark, body.dark-pro) .painel-op-paxst__item.is-ok {
   color: #3ccf7f;
 }
+
+/* OUT em viagem com localização ao vivo: faixa verde à esquerda da linha */
+.painel-op-emviagem {
+  box-shadow: inset 3px 0 0 #16a34a;
+}

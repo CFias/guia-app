@@ -67,7 +67,9 @@ const periodoDe = (hora) => {
   const min = h * 60 + (m || 0);
   return PERIODOS.find((p) => min < p.ate) || PERIODOS[3];
 };
-const POSICAO_A_CADA = 60 * 1000;
+// localização ao vivo durante a viagem: andando, a cada 15 s; parado, a cada 60 s
+const POSICAO_ANDANDO = 15 * 1000;
+const POSICAO_PARADO = 60 * 1000;
 
 const minutosDe = (hhmm) => {
   const [h, m] = String(hhmm || "").split(":").map(Number);
@@ -321,24 +323,73 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   const ficaram = ehHoje && atual ? naoConcluidos.filter((s) => s !== atual && String(s.hora) < String(atual.hora)) : [];
   const emViagem = atual && eventos[atual.chave]?.iniciado?.em && !eventos[atual.chave]?.finalizado?.em ? atual : null;
 
-  // em viagem: posição a cada minuto (para a Luck) e o destino no mapa (para o card "Chegando")
+  /* em viagem: LOCALIZAÇÃO AO VIVO para a Luck (painel de OUT/IN) e o
+     destino no mapa (card "Chegando"). Andando, envia a cada 15 s; parado,
+     a cada 60 s. Com o app em segundo plano o celular pausa o GPS do
+     navegador: ao voltar para o app, envia na hora. */
+  const [aoVivo, setAoVivo] = useState({ em: 0, erro: "" });
   useEffect(() => {
     if (!emViagem || !navigator.geolocation) return undefined;
-    let ultimoEnvio = 0;
+    let ultimo = null; // { t, lat, lng }
+    let ultimaLeitura = null;
+    const enviar = (pos, forcar = false) => {
+      const agora = Date.now();
+      // velocidade: a do GPS (m/s) ou a calculada desde o último envio
+      let vel = Number.isFinite(pos.velMs) && pos.velMs >= 0 ? pos.velMs : null;
+      if (vel === null && ultimo) {
+        const dt = (agora - ultimo.t) / 1000;
+        if (dt > 3) vel = distanciaMetros(ultimo, pos) / dt;
+      }
+      if (vel !== null && vel > 55) vel = null; // salto do GPS (mais de ~200 km/h): não vale
+      const andando = vel !== null ? vel > 1.5 : true;
+      const intervalo = andando ? POSICAO_ANDANDO : POSICAO_PARADO;
+      if (!forcar && ultimo && agora - ultimo.t < intervalo) return;
+      ultimo = { t: agora, lat: pos.lat, lng: pos.lng };
+      if (!token) return;
+      gravarPosicao(token, {
+        lat: pos.lat,
+        lng: pos.lng,
+        precisao: pos.precisao,
+        velKmh: vel === null ? null : Math.round(vel * 3.6),
+        rumo: Number.isFinite(pos.rumo) ? Math.round(pos.rumo) : null,
+        chave: emViagem.chave,
+      })
+        .then(() => setAoVivo({ em: Date.now(), erro: "" }))
+        .catch(() => setAoVivo((x) => ({ ...x, erro: "sem-internet" })));
+    };
     const id = navigator.geolocation.watchPosition(
       (p) => {
-        const pos = { lat: p.coords.latitude, lng: p.coords.longitude, precisao: Math.round(p.coords.accuracy || 0) };
+        const pos = {
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          precisao: Math.round(p.coords.accuracy || 0),
+          velMs: p.coords.speed,
+          rumo: p.coords.heading,
+        };
+        ultimaLeitura = pos;
         setPosicao(pos);
-        if (Date.now() - ultimoEnvio > POSICAO_A_CADA) {
-          ultimoEnvio = Date.now();
-          if (token) gravarPosicao(token, pos).catch(() => {});
-        }
+        // o GPS respondeu: some o "procurando o GPS / bloqueada"
+        setAoVivo((x) => (x.erro === "sem-gps" || x.erro === "negado" ? { ...x, erro: "" } : x));
+        enviar(pos);
       },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 20000, timeout: 30000 },
+      (e) => setAoVivo((x) => ({ ...x, erro: e?.code === 1 ? "negado" : "sem-gps" })),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 },
     );
-    return () => navigator.geolocation.clearWatch(id);
+    // voltou para o app: envia na hora (o GPS ficou pausado)
+    const voltar = () => document.visibilityState === "visible" && ultimaLeitura && enviar(ultimaLeitura, true);
+    document.addEventListener("visibilitychange", voltar);
+    return () => {
+      navigator.geolocation.clearWatch(id);
+      document.removeEventListener("visibilitychange", voltar);
+    };
   }, [emViagem?.chave, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  // relógio para "enviada há X s"
+  const [agoraMs, setAgoraMs] = useState(0);
+  useEffect(() => {
+    if (!emViagem) return undefined;
+    const t = setInterval(() => setAgoraMs(Date.now()), 5000);
+    return () => clearInterval(t);
+  }, [emViagem?.chave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const destinoViagem = emViagem ? destinoAgora(emViagem, eventos[emViagem.chave]) : "";
   useEffect(() => {
@@ -551,21 +602,21 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
       ? null
       : acao.tipo === "parada"
         ? {
-            acao: `Cheguei no ${acao.parada.nome}`,
-            dica: acao.final
-              ? `último hotel · finaliza a viagem`
-              : s.tipo === "IN"
-                ? `parada ${acao.indice + 1} de ${acao.total} · desembarque de ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`
-                : `busca ${acao.indice + 1} de ${acao.total} · ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`,
-            icone: acao.final ? "flag" : "mapPin",
-            classe: acao.final ? "is-finalizado" : "is-posicionado",
-          }
+          acao: `Cheguei no ${acao.parada.nome}`,
+          dica: acao.final
+            ? `último hotel · finaliza a viagem`
+            : s.tipo === "IN"
+              ? `parada ${acao.indice + 1} de ${acao.total} · desembarque de ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`
+              : `busca ${acao.indice + 1} de ${acao.total} · ${acao.parada.passageiros.reduce((a, r) => a + (r.pax || 0), 0)} pax`,
+          icone: acao.final ? "flag" : "mapPin",
+          classe: acao.final ? "is-finalizado" : "is-posicionado",
+        }
         : {
-            acao: acao.etapa.acao,
-            dica: acao.etapa.dica,
-            icone: acao.etapa.id === "iniciado" ? "navigation" : acao.etapa.id === "finalizado" ? "flag" : "mapPin",
-            classe: `is-${acao.etapa.id}`,
-          };
+          acao: acao.etapa.acao,
+          dica: acao.etapa.dica,
+          icone: acao.etapa.id === "iniciado" ? "navigation" : acao.etapa.id === "finalizado" ? "flag" : "mapPin",
+          classe: `is-${acao.etapa.id}`,
+        };
 
     // rota com as paradas (chegada: desembarque → saída → hotéis; saída: hotéis → saída → aeroporto)
     const noEtapa = (id, nome) => ({ chave: id, nome, feito: ev[id]?.em, hora: horaDoTimestamp(ev[id]?.em), porta: ev[id]?.porta, atual: acao?.tipo === "etapa" && acao.etapa.id === id });
@@ -644,69 +695,102 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
           </div>
         )}
 
+        {emViagem?.chave === s.chave && (
+          <div className={`mt-aovivo ${aoVivo.erro ? "is-erro" : aoVivo.em ? "is-on" : ""}`} role="status">
+            <span className="mt-aovivo__ponto" aria-hidden="true" />
+            <span>
+              <span>
+                {aoVivo.erro === "negado" ? (
+                  <>
+                    <b>Localização bloqueada</b> · libere a localização para este app nas configurações do celular
+                  </>
+                ) : aoVivo.erro === "sem-gps" ? (
+                  <>
+                    <b>Procurando o GPS…</b> · deixe a localização ligada
+                  </>
+                ) : aoVivo.erro === "sem-internet" ? (
+                  <>
+                    <b>Sem internet</b> · a localização volta a ser enviada quando o sinal voltar
+                  </>
+                ) : aoVivo.em ? (
+                  <>
+                    <b>Localização ao vivo</b> · a Luck acompanha a viagem
+                    {agoraMs && agoraMs > aoVivo.em ? ` · enviada há ${Math.max(1, Math.round((agoraMs - aoVivo.em) / 1000))} s` : " · enviada agora"}
+                  </>
+                ) : (
+                  <>
+                    <b>Ligando a localização ao vivo…</b>
+                  </>
+                )}
+              </span>
+              <small>Deixe esta tela aberta durante a viagem.</small>
+            </span>
+          </div>
+        )}
+
         {paradas.length ? (
           <>
-          <ol className="mt-rota" aria-label="Rota com paradas">
-            {rota.map((n) => (
-              <li key={n.chave} className={`${n.feito ? "is-ok" : ""} ${n.atual ? "is-atual" : ""} ${n.parada ? "is-hotel" : ""}`}>
-                <span className="mt-rota__ponto" aria-hidden="true">
-                  {n.feito ? <Icon name="check" size={11} /> : n.parada ? <Icon name="building" size={11} /> : null}
-                </span>
-                <div className="mt-rota__txt">
-                  {n.rotulo && <small className="mt-rota__rot">{n.rotulo}</small>}
-                  <b>{n.nome}</b>
-                  {n.parada && !n.feito && s.kmHoteis?.[n.nome] !== undefined && <small className="mt-rota__km">{s.kmHoteis[n.nome]} km do aeroporto</small>}
-                  {n.feito && (
-                    <em>
-                      {n.porta ? `Porta ${n.porta} · ` : ""}
-                      {n.parada ? (s.tipo === "IN" ? "deixou às " : "buscou às ") : "às "}
-                      {n.hora}
-                    </em>
-                  )}
-                  {n.parada && (
-                    <ul className="mt-rota__pax">
-                      {n.parada.passageiros.map((r, i) => (
-                        <li key={`${r.codigo}-${i}`}>
-                          {r.titular || "Sem nome no sistema"} <span>{paxDetalhado(r)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {/* cada hotel que falta tem o próprio "Cheguei" (qualquer ordem) */}
-                  {n.parada && !n.feito && emParadas && (
-                    <div className="mt-rota__acoes">
-                      <button
-                        type="button"
-                        className={`mt-rota__cheguei ${n.final ? "is-final" : ""}`}
-                        onClick={() => marcarParada(s, { parada: n.parada, final: n.final, primeira: s.tipo === "OUT" && !ev.posicionado?.em })}
-                        disabled={!!salvando || travado}
-                      >
-                        {salvando === `${s.chave}|${n.parada.id}` ? (
-                          <Icon name="loader" size={15} className="ui-spin" />
-                        ) : (
-                          <Icon name={travado ? "lock" : n.final ? "flag" : "mapPin"} size={15} />
-                        )}
-                        {travado ? `Libera às ${textoMin(liberaEm)}` : n.final ? "Cheguei · finalizar" : "Cheguei aqui"}
-                      </button>
-                      <a href={linkGoogleMaps(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Google Maps`}>
-                        Maps
-                      </a>
-                      <a href={linkWaze(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Waze`}>
-                        Waze
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-          {!st.concluido && (
-            <p className="mt-rota__nota">
-              <Icon name="info" size={12} />
-              {s.ordemHoteis === "auto" || s.ordemHoteis === "parcial" ? "Ordem sugerida pelo mapa, a partir do aeroporto. " : ""}
-              Marque cada hotel quando chegar, na ordem que for{s.tipo === "IN" ? " — o último finaliza a viagem" : ""}.
-            </p>
-          )}
+            <ol className="mt-rota" aria-label="Rota com paradas">
+              {rota.map((n) => (
+                <li key={n.chave} className={`${n.feito ? "is-ok" : ""} ${n.atual ? "is-atual" : ""} ${n.parada ? "is-hotel" : ""}`}>
+                  <span className="mt-rota__ponto" aria-hidden="true">
+                    {n.feito ? <Icon name="check" size={11} /> : n.parada ? <Icon name="building" size={11} /> : null}
+                  </span>
+                  <div className="mt-rota__txt">
+                    {n.rotulo && <small className="mt-rota__rot">{n.rotulo}</small>}
+                    <b>{n.nome}</b>
+                    {n.parada && !n.feito && s.kmHoteis?.[n.nome] !== undefined && <small className="mt-rota__km">{s.kmHoteis[n.nome]} km do aeroporto</small>}
+                    {n.feito && (
+                      <em>
+                        {n.porta ? `Porta ${n.porta} · ` : ""}
+                        {n.parada ? (s.tipo === "IN" ? "deixou às " : "buscou às ") : "às "}
+                        {n.hora}
+                      </em>
+                    )}
+                    {n.parada && (
+                      <ul className="mt-rota__pax">
+                        {n.parada.passageiros.map((r, i) => (
+                          <li key={`${r.codigo}-${i}`}>
+                            {r.titular || "Sem nome no sistema"} <span>{paxDetalhado(r)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {/* cada hotel que falta tem o próprio "Cheguei" (qualquer ordem) */}
+                    {n.parada && !n.feito && emParadas && (
+                      <div className="mt-rota__acoes">
+                        <button
+                          type="button"
+                          className={`mt-rota__cheguei ${n.final ? "is-final" : ""}`}
+                          onClick={() => marcarParada(s, { parada: n.parada, final: n.final, primeira: s.tipo === "OUT" && !ev.posicionado?.em })}
+                          disabled={!!salvando || travado}
+                        >
+                          {salvando === `${s.chave}|${n.parada.id}` ? (
+                            <Icon name="loader" size={15} className="ui-spin" />
+                          ) : (
+                            <Icon name={travado ? "lock" : n.final ? "flag" : "mapPin"} size={15} />
+                          )}
+                          {travado ? `Libera às ${textoMin(liberaEm)}` : n.final ? "Cheguei · finalizar" : "Cheguei aqui"}
+                        </button>
+                        <a href={linkGoogleMaps(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Google Maps`}>
+                          Maps
+                        </a>
+                        <a href={linkWaze(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Waze`}>
+                          Waze
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            {!st.concluido && (
+              <p className="mt-rota__nota">
+                <Icon name="info" size={12} />
+                {s.ordemHoteis === "auto" || s.ordemHoteis === "parcial" ? "Ordem sugerida pelo mapa, a partir do aeroporto. " : ""}
+                Marque cada hotel quando chegar, na ordem que for{s.tipo === "IN" ? " — o último finaliza a viagem" : ""}.
+              </p>
+            )}
           </>
         ) : (
           <ol className="mt-passos">
@@ -871,22 +955,22 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   return (
     <div className={`mt ${embutido ? "mt--embutido" : ""}`}>
       {!embutido && (
-      <header className="mt-topo">
-        <span className="mt-topo__ic">
-          <Icon name="car" size={18} />
-        </span>
-        <span className="mt-topo__txt">
-          <b>Olá, {String(dia.motoristaNome || "motorista").split(" ")[0]}</b>
-          <small>
-            {new Date(`${dia.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })} · {dia.fornecedorNome} · Luck Receptivo
-          </small>
-        </span>
-        {toggleTheme && (
-          <button type="button" className="mt-topo__tema" onClick={toggleTheme} aria-label={theme === "light" ? "Usar tema escuro" : "Usar tema claro"} title={theme === "light" ? "Tema escuro" : "Tema claro"}>
-            <Icon name={theme === "light" ? "moon" : "sun"} size={16} />
-          </button>
-        )}
-      </header>
+        <header className="mt-topo">
+          <span className="mt-topo__ic">
+            <Icon name="car" size={18} />
+          </span>
+          <span className="mt-topo__txt">
+            <b>Olá, {String(dia.motoristaNome || "motorista").split(" ")[0]}</b>
+            <small>
+              {new Date(`${dia.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })} · {dia.fornecedorNome} · Luck Receptivo
+            </small>
+          </span>
+          {toggleTheme && (
+            <button type="button" className="mt-topo__tema" onClick={toggleTheme} aria-label={theme === "light" ? "Usar tema escuro" : "Usar tema claro"} title={theme === "light" ? "Tema escuro" : "Tema claro"}>
+              <Icon name={theme === "light" ? "moon" : "sun"} size={16} />
+            </button>
+          )}
+        </header>
       )}
 
       <main className="mt-corpo">
