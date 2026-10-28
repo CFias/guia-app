@@ -2367,6 +2367,16 @@ export default function PainelOperacionalUnificado() {
     setVoosExpandidos((prev) => ({ ...prev, [codigoVoo]: !prev[codigoVoo] }));
   };
 
+  // Chegadas: abre o voo e rola até ele (selo/faixa "ao vivo")
+  const abrirVooIn = (vooKey) => {
+    setVoosExpandidos((prev) => ({ ...prev, [vooKey]: true }));
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-voo-in="${String(vooKey).replace(/["\\]/g, "\\$&")}"]`);
+      if (!el) return;
+      el.style.scrollMarginTop = "96px";
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
   // abre o grupo (sem fechar se já estiver aberto) e rola até ele — usado pelo "ao vivo"
   const abrirGrupoOut = (grupoId) => {
     setGruposExpandidosOut((prev) => ({ ...prev, [grupoId]: true }));
@@ -2920,6 +2930,18 @@ export default function PainelOperacionalUnificado() {
             ]}
           />
 
+          <FaixaAoVivo
+            itens={voosFiltrados.flatMap((voo) =>
+              voo.gruposPorVeiculo.map((g) => ({
+                id: voo.vooKey,
+                chave: `${voo.vooKey}|${g.veiculo}`,
+                v: viagemDe(g.reservas?.[0]?.escalaId),
+                rotulo: `${voo.voo} · ${g.veiculo}`,
+              })),
+            )}
+            onAbrir={abrirVooIn}
+          />
+
           {carregando ? (
             <Card>{renderCarregando()}</Card>
           ) : !voosFiltrados.length ? (
@@ -2964,6 +2986,8 @@ export default function PainelOperacionalUnificado() {
                       expandable
                       expanded={expandido}
                       onToggle={() => toggleExpandirVoo(voo.vooKey)}
+                      className={fornecedores.some((f) => emViagemComPosicao(viagemDe(f.reservas?.[0]?.escalaId))) ? "painel-op-emviagem" : ""}
+                      data-voo-in={voo.vooKey}
                     >
                       <span>
                         <span className="ui-cell-main painel-op-com-icone">
@@ -3065,6 +3089,27 @@ export default function PainelOperacionalUnificado() {
                                 const n = fornecedores.filter((f) => motoristaForn(f.reservas?.[0]?.escalaId)).length;
                                 return n ? <MotoristaForn texto={`${n} de ${fornecedores.length} com motorista`} /> : null;
                               })()}
+                              {(() => {
+                                // vários veículos: quantos estão em viagem com localização ao vivo
+                                const k = fornecedores.filter((f) => emViagemComPosicao(viagemDe(f.reservas?.[0]?.escalaId))).length;
+                                return k ? (
+                                  <button
+                                    type="button"
+                                    className="vav-sinal is-aovivo"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      abrirVooIn(voo.vooKey);
+                                    }}
+                                    title="Ver a localização ao vivo dos veículos"
+                                  >
+                                    <span className="vav-sinal__l1">
+                                      <i className="vav-ponto" aria-hidden="true" />
+                                      <b>{k} em viagem</b>
+                                      <small>· ver ao vivo</small>
+                                    </span>
+                                  </button>
+                                ) : null;
+                              })()}
                               <span>
                                 {fornecedores
                                   .slice(0, 2)
@@ -3080,7 +3125,7 @@ export default function PainelOperacionalUnificado() {
                             >
                               <strong>{fornecedores[0].motorista}</strong>
                               <span>{fornecedores[0].veiculo}</span>
-                              <MotoristaForn m={motoristaForn(fornecedores[0].reservas?.[0]?.escalaId)} v={viagemDe(fornecedores[0].reservas?.[0]?.escalaId)} />
+                              <MotoristaForn m={motoristaForn(fornecedores[0].reservas?.[0]?.escalaId)} v={viagemDe(fornecedores[0].reservas?.[0]?.escalaId)} onAbrirAoVivo={() => abrirVooIn(voo.vooKey)} />
                             </span>
                           )}
                         </span>
@@ -3178,6 +3223,7 @@ export default function PainelOperacionalUnificado() {
                                 </span>
                               )}
                             </header>
+                            <CartaoAoVivo v={viagemDe(grupo.reservas[0]?.escalaId)} titulo={`${grupo.veiculo || ""} · ${voo.voo}`} />
 
                             <Table
                               columns="minmax(140px,1.3fr) 100px 80px minmax(100px,1fr) 96px 124px minmax(120px,1fr) minmax(90px,1fr) 116px"

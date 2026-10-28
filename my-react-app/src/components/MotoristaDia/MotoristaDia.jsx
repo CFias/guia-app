@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import Icon from "../ui/Icon";
 import CartaoInstalar from "../ui/CartaoInstalar";
 import TesteAviso from "./TesteAviso";
+import Navegacao from "./Navegacao";
+import { buscarRota, metros, pontoDoLugar, progressoNaRota } from "../../Services/Services/rotaNavegacao";
 import { definirTituloAba } from "../Shell/tituloAba";
 import {
   distanciaMetros,
@@ -18,7 +20,6 @@ import {
   horaDoTimestamp,
   linkGoogleMaps,
   linkWaze,
-  localizarEndereco,
   marcarEtapaMotorista,
   paradasDoServico,
   paxDetalhado,
@@ -88,6 +89,12 @@ const textoMin = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String
 // destino da etapa atual: OUT antes de sair = hotel; em viagem = destino final
 const destinoAgora = (s, ev) => {
   const emViagem = !!ev?.iniciado?.em;
+  // com vários hotéis: o próximo que falta (IN em viagem; OUT antes de sair)
+  const paradas = paradasDoServico(s);
+  if (paradas.length && ((s.tipo === "IN" && emViagem) || (s.tipo === "OUT" && !emViagem))) {
+    const prox = paradas.find((p) => !ev?.[p.id]?.em);
+    if (prox) return prox.nome;
+  }
   if (s.tipo === "OUT") return emViagem ? s.destinos[0] || "Aeroporto de Salvador" : s.origens[0] || "";
   if (s.tipo === "IN") return emViagem ? s.destinos[0] || "" : s.origens[0] || "Aeroporto de Salvador";
   return emViagem ? s.destinos[0] || "" : s.origens[0] || "";
@@ -153,6 +160,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   const [minuto, setMinuto] = useState(agoraEmMinutos);
   const [posicao, setPosicao] = useState(null);
   const [alvo, setAlvo] = useState(null); // { chave, ponto, nome }
+  const [navegando, setNavegando] = useState(null); // { chave, destino } — mapa com a rota dentro do app
   const [aviso, setAviso] = useState("");
   const wakeRef = useRef(null);
 
@@ -328,6 +336,34 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
      a cada 60 s. Com o app em segundo plano o celular pausa o GPS do
      navegador: ao voltar para o app, envia na hora. */
   const [aoVivo, setAoVivo] = useState({ em: 0, erro: "" });
+  // rota até o destino atual (para a base ver "X km até o hotel · ~Y min")
+  const alvoRef = useRef(null);
+  const rotaRef = useRef({ rota: null, para: "", em: 0 });
+  useEffect(() => {
+    alvoRef.current = alvo;
+  }, [alvo]);
+  const destinoParaBase = (pos) => {
+    const a = alvoRef.current;
+    if (!a?.ponto || !emViagem || a.chave !== emViagem.chave) return null;
+    const r = rotaRef.current;
+    const chaveRota = `${a.nome}|${a.ponto.lat},${a.ponto.lng}`;
+    const prog = r.rota && r.para === chaveRota ? progressoNaRota(r.rota, pos) : null;
+    const naRota = prog && prog.foraDaRota < 150;
+    // sem rota (ou saiu dela): pede outra, no máximo a cada 90 s
+    if (!naRota && Date.now() - r.em > 90000) {
+      rotaRef.current = { ...r, em: Date.now() };
+      buscarRota(pos, a.ponto, { google: false }).then((nova) => nova && (rotaRef.current = { rota: nova, para: chaveRota, em: Date.now() }));
+    }
+    const distM = naRota ? prog.faltaM : metros(pos, a.ponto) * 1.3;
+    return {
+      nome: a.nome,
+      lat: a.ponto.lat,
+      lng: a.ponto.lng,
+      distM: Math.round(distM),
+      duracaoS: Math.round(naRota ? prog.faltaS : (distM / 1000 / 35) * 3600),
+      pelaRota: !!naRota,
+    };
+  };
   useEffect(() => {
     if (!emViagem || !navigator.geolocation) return undefined;
     let ultimo = null; // { t, lat, lng }
@@ -353,6 +389,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
         velKmh: vel === null ? null : Math.round(vel * 3.6),
         rumo: Number.isFinite(pos.rumo) ? Math.round(pos.rumo) : null,
         chave: emViagem.chave,
+        destino: destinoParaBase(pos),
       })
         .then(() => setAoVivo({ em: Date.now(), erro: "" }))
         .catch(() => setAoVivo((x) => ({ ...x, erro: "sem-internet" })));
@@ -383,6 +420,22 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
       document.removeEventListener("visibilitychange", voltar);
     };
   }, [emViagem?.chave, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* foi para o Maps/Waze: o celular pausa este app (e o GPS daqui). Antes de
+     sair, manda a última posição dizendo para onde foi — a base vê
+     "Navegando pelo Waze" em vez de "Sem sinal". Na volta, envia na hora. */
+  const saiuPara = (app) => {
+    if (!emViagem || !token || !posicao) return;
+    gravarPosicao(token, {
+      lat: posicao.lat,
+      lng: posicao.lng,
+      precisao: posicao.precisao,
+      velKmh: null,
+      rumo: null,
+      chave: emViagem.chave,
+      destino: destinoParaBase(posicao),
+      externo: { app },
+    }).catch(() => { });
+  };
   // relógio para "enviada há X s"
   const [agoraMs, setAgoraMs] = useState(0);
   useEffect(() => {
@@ -395,7 +448,7 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
   useEffect(() => {
     if (!emViagem || !destinoViagem) return undefined;
     let vivo = true;
-    localizarEndereco(destinoViagem).then((ponto) => vivo && setAlvo(ponto ? { chave: emViagem.chave, ponto, nome: destinoViagem } : null));
+    pontoDoLugar(destinoViagem, dia?.base || "ssa").then((ponto) => vivo && setAlvo(ponto ? { chave: emViagem.chave, ponto, nome: destinoViagem } : null));
     return () => {
       vivo = false;
     };
@@ -772,13 +825,35 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                           )}
                           {travado ? `Libera às ${textoMin(liberaEm)}` : n.final ? "Cheguei · finalizar" : "Cheguei aqui"}
                         </button>
-                        <a href={linkGoogleMaps(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Google Maps`}>
+                        <button type="button" className="mt-rota__aqui" onClick={() => setNavegando({ chave: s.chave, destino: n.nome })}>
+                          <Icon name="navigation" size={13} /> Rota
+                        </button>
+                        <a href={linkGoogleMaps(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Google Maps`} onClick={() => saiuPara("Google Maps")}>
                           Maps
                         </a>
-                        <a href={linkWaze(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Waze`}>
+                        <a href={linkWaze(n.nome)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${n.nome} no Waze`} onClick={() => saiuPara("Waze")}>
                           Waze
                         </a>
                       </div>
+                    )}
+                    {/* mapa dentro do app até este hotel, com o "Cheguei" dele */}
+                    {n.parada && !n.feito && emParadas && navegando?.chave === s.chave && navegando.destino === n.nome && (
+                      <Navegacao
+                        destinoNome={n.nome}
+                        base={dia?.base || "ssa"}
+                        titulo={`${s.hora} · ${s.veiculo}`}
+                        onFechar={() => setNavegando(null)}
+                        onSairPara={saiuPara}
+                        acao={{
+                          rotulo: travado ? `Libera às ${textoMin(liberaEm)}` : n.final ? "Cheguei · finalizar" : "Cheguei aqui",
+                          icone: n.final ? "flag" : "mapPin",
+                          disabled: !!salvando || travado,
+                          onClick: () => {
+                            setNavegando(null);
+                            marcarParada(s, { parada: n.parada, final: n.final, primeira: s.tipo === "OUT" && !ev.posicionado?.em });
+                          },
+                        }}
+                      />
                     )}
                   </div>
                 </li>
@@ -824,14 +899,43 @@ const MotoristaDia = ({ token: tokenProp, embutido = false, diaLocal = null, gar
                   <Icon name="mapPin" size={13} /> {acao.tipo === "parada" ? (s.tipo === "IN" ? "Próximo hotel" : "Buscar em") : ev.iniciado?.em ? "Destino" : s.tipo === "IN" ? "Embarque" : "Buscar em"}: <b>{dest}</b>
                 </span>
                 <span className="mt-nav__btns">
-                  <a href={linkGoogleMaps(dest)} target="_blank" rel="noopener noreferrer">
+                  <button type="button" className="mt-nav__aqui" onClick={() => setNavegando({ chave: s.chave, destino: dest })}>
+                    <Icon name="navigation" size={14} /> Ver rota aqui
+                  </button>
+                  <a href={linkGoogleMaps(dest)} target="_blank" rel="noopener noreferrer" onClick={() => saiuPara("Google Maps")}>
                     Maps
                   </a>
-                  <a href={linkWaze(dest)} target="_blank" rel="noopener noreferrer">
+                  <a href={linkWaze(dest)} target="_blank" rel="noopener noreferrer" onClick={() => saiuPara("Waze")}>
                     Waze
                   </a>
                 </span>
+                {emViagem?.chave === s.chave && (
+                  <small className="mt-nav__dica">
+                    <Icon name="info" size={12} /> No Maps/Waze a Luck só vê onde você estava ao sair. Para continuar ao vivo, use o mapa daqui — ou, no Android, a tela dividida
+                    (Waze + este app).
+                  </small>
+                )}
               </div>
+            )}
+            {/* mapa com a rota dentro do app, com o botão da etapa */}
+            {dest && navegando?.chave === s.chave && navegando.destino === dest && (
+              <Navegacao
+                destinoNome={dest}
+                base={dia?.base || "ssa"}
+                titulo={`${s.hora} · ${s.veiculo}`}
+                onFechar={() => setNavegando(null)}
+                onSairPara={saiuPara}
+                acao={{
+                  rotulo: travado ? `Libera às ${textoMin(liberaEm)}` : botao.acao,
+                  icone: botao.icone,
+                  disabled: !!salvando || travado,
+                  onClick: () => {
+                    setNavegando(null);
+                    if (acao.tipo === "parada") marcarParada(s, acao);
+                    else marcar(s, acao.etapa);
+                  },
+                }}
+              />
             )}
             <button
               type="button"

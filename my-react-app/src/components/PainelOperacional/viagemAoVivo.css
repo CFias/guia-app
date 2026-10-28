@@ -1,65 +1,418 @@
 /* ===== localização ao vivo (motorista em viagem) ===== */
-.vav-sinal, .vav-cartao, .vav-faixa { --vav-ok: #15803d; --vav-meio: #b45309; --vav-off: var(--text-3); }
-:is(body.dark, body.dark-pro) :is(.vav-sinal, .vav-cartao, .vav-faixa) { --vav-ok: #3ccf7f; --vav-meio: #f0b429; }
+.vav-sinal,
+.vav-cartao,
+.vav-faixa {
+    --vav-ok: #15803d;
+    --vav-meio: #b45309;
+    --vav-off: var(--text-3);
+}
 
-.vav-ponto { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.is-aovivo > .vav-ponto, .is-aovivo .vav-ponto { animation: vav-pulsa 1.6s ease-out infinite; }
-@keyframes vav-pulsa { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
-@media (prefers-reduced-motion: reduce) { .vav-ponto { animation: none !important; } }
+:is(body.dark, body.dark-pro) :is(.vav-sinal, .vav-cartao, .vav-faixa) {
+    --vav-ok: #3ccf7f;
+    --vav-meio: #f0b429;
+}
+
+.vav-ponto {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.is-aovivo>.vav-ponto,
+.is-aovivo .vav-ponto {
+    animation: vav-pulsa 1.6s ease-out infinite;
+}
+
+@keyframes vav-pulsa {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent);
+    }
+
+    100% {
+        box-shadow: 0 0 0 7px transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vav-ponto {
+        animation: none !important;
+    }
+}
 
 /* selo na linha */
-.vav-sinal { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; max-width: 100%; padding: 4px 10px; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); border-radius: 10px; background: color-mix(in srgb, currentColor 9%, transparent); font: inherit; font-size: var(--fs-xs); line-height: 1.3; text-align: left; white-space: normal; }
-button.vav-sinal { cursor: pointer; }
-button.vav-sinal:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
-.vav-sinal b { font-weight: 700; }
-.vav-sinal small { color: var(--text-2); font-size: inherit; font-weight: 500; }
-.vav-sinal.is-aovivo { color: var(--vav-ok); }
-.vav-sinal.is-atrasada { color: var(--vav-meio); }
-.vav-sinal.is-semsinal { color: var(--vav-off); }
+.vav-sinal {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    max-width: 100%;
+    padding: 4px 10px;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    font: inherit;
+    font-size: var(--fs-xs);
+    line-height: 1.3;
+    text-align: left;
+    white-space: normal;
+}
+
+button.vav-sinal {
+    cursor: pointer;
+}
+
+button.vav-sinal:hover {
+    background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.vav-sinal b {
+    font-weight: 700;
+}
+
+.vav-sinal small {
+    color: var(--text-2);
+    font-size: inherit;
+    font-weight: 500;
+}
+
+.vav-sinal.is-aovivo {
+    color: var(--vav-ok);
+}
+
+.vav-sinal.is-atrasada {
+    color: var(--vav-meio);
+}
+
+.vav-sinal.is-semsinal {
+    color: var(--vav-off);
+}
 
 /* cartão com mapa (grupo aberto) */
-.vav-cartao { display: grid; grid-template-columns: minmax(260px, 1.25fr) minmax(240px, 1fr); overflow: hidden; margin-bottom: 12px; border: 1px solid var(--border, var(--divider)); border-radius: 14px; background: var(--surface); }
-.vav-cartao.is-aovivo { border-color: color-mix(in srgb, var(--vav-ok) 40%, var(--border, var(--divider))); }
-.vav-cartao__mapa { position: relative; min-height: 230px; background: color-mix(in srgb, var(--text) 5%, transparent); }
-.vav-cartao__mapa iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.vav-cartao__selo { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); font-size: var(--fs-xs); font-weight: 700; }
-.vav-cartao__selo.is-aovivo { color: var(--vav-ok); }
-.vav-cartao__selo.is-atrasada { color: var(--vav-meio); }
-.vav-cartao__selo.is-semsinal { color: var(--vav-off); }
-.vav-cartao__info { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; }
-.vav-cartao__topo { display: flex; align-items: center; gap: 10px; }
-.vav-cartao__ic { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--vav-ok) 14%, transparent); color: var(--vav-ok); }
-.vav-cartao__tit { display: flex; flex-direction: column; min-width: 0; }
-.vav-cartao__tit b { font-size: var(--fs-md, 15px); }
-.vav-cartao__tit small { color: var(--text-3); font-size: var(--fs-xs); }
-.vav-cartao__dados { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; }
-.vav-cartao__dados div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.vav-cartao__dados dt { color: var(--text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
-.vav-cartao__dados dd { margin: 0; color: var(--text); font-size: var(--fs-md, 15px); font-weight: 700; }
-.vav-cartao__aviso { display: flex; gap: 6px; margin: 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--vav-meio) 12%, transparent); color: var(--text); font-size: var(--fs-xs); line-height: 1.4; }
-.vav-cartao__aviso svg { flex: none; margin-top: 1px; color: var(--vav-meio); }
-.vav-cartao__acoes { display: flex; flex-wrap: wrap; gap: 6px; }
-.vav-cartao__acoes a { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 1px solid var(--border, var(--divider)); border-radius: 9px; color: var(--text); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
-.vav-cartao__acoes a:hover { border-color: var(--accent); color: var(--accent); }
-.vav-cartao__nota { color: var(--text-3); font-size: 11px; }
-@media (max-width: 760px) { .vav-cartao { grid-template-columns: 1fr; } }
+.vav-cartao {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.25fr) minmax(240px, 1fr);
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid var(--border, var(--divider));
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.vav-cartao.is-aovivo {
+    border-color: color-mix(in srgb, var(--vav-ok) 40%, var(--border, var(--divider)));
+}
+
+.vav-cartao__mapa {
+    position: relative;
+    min-height: 230px;
+    background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.vav-cartao__mapa iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.vav-cartao__selo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+}
+
+.vav-cartao__selo.is-aovivo {
+    color: var(--vav-ok);
+}
+
+.vav-cartao__selo.is-atrasada {
+    color: var(--vav-meio);
+}
+
+.vav-cartao__selo.is-semsinal {
+    color: var(--vav-off);
+}
+
+.vav-cartao__info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.vav-cartao__topo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vav-cartao__ic {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--vav-ok) 14%, transparent);
+    color: var(--vav-ok);
+}
+
+.vav-cartao__tit {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.vav-cartao__tit b {
+    font-size: var(--fs-md, 15px);
+}
+
+.vav-cartao__tit small {
+    color: var(--text-3);
+    font-size: var(--fs-xs);
+}
+
+.vav-cartao__dados {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    margin: 0;
+}
+
+.vav-cartao__dados div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.vav-cartao__dados dt {
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.vav-cartao__dados dd {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--fs-md, 15px);
+    font-weight: 700;
+}
+
+.vav-cartao__aviso {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--vav-meio) 12%, transparent);
+    color: var(--text);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+}
+
+.vav-cartao__aviso svg {
+    flex: none;
+    margin-top: 1px;
+    color: var(--vav-meio);
+}
+
+.vav-cartao__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.vav-cartao__acoes a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--border, var(--divider));
+    border-radius: 9px;
+    color: var(--text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.vav-cartao__acoes a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.vav-cartao__nota {
+    color: var(--text-3);
+    font-size: 11px;
+}
+
+@media (max-width: 760px) {
+    .vav-cartao {
+        grid-template-columns: 1fr;
+    }
+}
 
 /* faixa "Em viagem agora" no topo da aba OUT */
-.vav-faixa { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--vav-ok) 30%, var(--border, var(--divider))); border-radius: 14px; background: color-mix(in srgb, var(--vav-ok) 5%, var(--surface)); }
-.vav-faixa__tit { display: inline-flex; align-items: center; gap: 6px; color: var(--vav-ok); font-size: var(--fs-sm); font-weight: 700; }
-.vav-faixa__tit b { padding: 0 7px; border-radius: 999px; background: var(--vav-ok); color: #fff; font-size: 11px; line-height: 18px; }
-.vav-faixa__lista { display: flex; flex-wrap: wrap; gap: 8px; }
-.vav-faixa__item { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; padding: 8px 12px; border: 1px solid var(--border, var(--divider)); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
-.vav-faixa__item:hover { border-color: var(--accent); }
-.vav-faixa__item > span { display: flex; flex-direction: column; min-width: 0; }
-.vav-faixa__item small { color: var(--text-2); font-size: var(--fs-xs); }
-.vav-faixa__item.is-aovivo .vav-ponto { color: var(--vav-ok); }
-.vav-faixa__item.is-atrasada .vav-ponto { color: var(--vav-meio); }
-.vav-faixa__item.is-semsinal .vav-ponto { color: var(--vav-off); }
+.vav-faixa {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--vav-ok) 30%, var(--border, var(--divider)));
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--vav-ok) 5%, var(--surface));
+}
 
-.vav-sinal__l1 { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 5px; }
-.vav-sinal__l2 { padding-left: 13px; color: var(--text-2); font-weight: 500; }
+.vav-faixa__tit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--vav-ok);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+}
+
+.vav-faixa__tit b {
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--vav-ok);
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.vav-faixa__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vav-faixa__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border, var(--divider));
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--fs-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.vav-faixa__item:hover {
+    border-color: var(--accent);
+}
+
+.vav-faixa__item>span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.vav-faixa__item small {
+    color: var(--text-2);
+    font-size: var(--fs-xs);
+}
+
+.vav-faixa__item.is-aovivo .vav-ponto {
+    color: var(--vav-ok);
+}
+
+.vav-faixa__item.is-atrasada .vav-ponto {
+    color: var(--vav-meio);
+}
+
+.vav-faixa__item.is-semsinal .vav-ponto {
+    color: var(--vav-off);
+}
+
+.vav-sinal__l1 {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 5px;
+}
+
+.vav-sinal__l2 {
+    padding-left: 13px;
+    color: var(--text-2);
+    font-weight: 500;
+}
+
 /* dentro da tabela que rola para o lado: o cartão fica na área visível */
-.vav-cartao { position: sticky; left: 12px; max-width: min(100%, calc(100vw - 48px)); box-sizing: border-box; }
-@media (max-width: 760px) { .vav-cartao { left: 0; max-width: calc(100vw - 60px); } .vav-cartao__mapa { min-height: 200px; } }
-.vav-faixa__l1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vav-cartao {
+    position: sticky;
+    left: 12px;
+    max-width: min(100%, 960px, calc(100vw - 48px));
+    box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+    .vav-cartao {
+        left: 0;
+        max-width: calc(100vw - 60px);
+    }
+
+    .vav-cartao__mapa {
+        min-height: 200px;
+    }
+}
+
+.vav-faixa__l1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vav-cartao__alvo {
+    grid-column: 1 / -1;
+}
+
+.vav-cartao__alvo dd {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+}
+
+/* motorista navegando pelo Waze/Maps (app pausado) */
+.vav-sinal.is-externo,
+.vav-cartao__selo.is-externo {
+    color: #2563eb;
+}
+
+:is(body.dark, body.dark-pro) :is(.vav-sinal.is-externo, .vav-cartao__selo.is-externo) {
+    color: #79a8ff;
+}
+
+.vav-faixa__item.is-externo .vav-ponto {
+    color: #2563eb;
+}
+
+.vav-cartao__aviso.is-externo {
+    background: color-mix(in srgb, #2563eb 10%, transparent);
+}
+
+.vav-cartao__aviso.is-externo svg {
+    color: #2563eb;
+}

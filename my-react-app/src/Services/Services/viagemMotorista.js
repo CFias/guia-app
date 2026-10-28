@@ -281,6 +281,10 @@ export const gravarPosicao = (token, pos) =>
         velKmh: pos.velKmh ?? null,
         rumo: pos.rumo ?? null,
         chave: pos.chave || null,
+        // destino atual e quanto falta (pela rota do app; sem rota, estimativa)
+        destino: pos.destino || null,
+        // foi para outro app (Waze/Maps): a posição para de chegar até ele voltar
+        externo: pos.externo ? { app: pos.externo.app || "", em: Timestamp.now() } : null,
         em: Timestamp.now(),
       },
       atualizadoEm: Timestamp.now(),
@@ -304,19 +308,29 @@ export const leituraAoVivo = (v, agoraMs, base = "ssa") => {
   const ms = msDoTimestamp(p?.em);
   if (!p || !ms || p.lat === undefined) return null;
   const idadeS = Math.max(0, Math.round((agoraMs - ms) / 1000));
-  const estado = idadeS <= 45 ? "aovivo" : idadeS <= 300 ? "atrasada" : "semsinal";
+  // o motorista abriu o Waze/Maps: não é "sem sinal", é navegação no outro app
+  const externo = p.externo?.app ? p.externo.app : "";
+  const estado = externo ? "externo" : idadeS <= 45 ? "aovivo" : idadeS <= 300 ? "atrasada" : "semsinal";
   const idadeTxt = idadeS < 60 ? `há ${Math.max(1, idadeS)} s` : idadeS < 3600 ? `há ${Math.round(idadeS / 60)} min` : `às ${horaDoTimestamp(p.em)}`;
   const vel = Number.isFinite(p.velKmh) ? p.velKmh : null;
-  const aero = v?.tipo === "OUT" ? AEROPORTO_DA_BASE[base] : null;
   let distKm = null;
   let etaMin = null;
   let chegada = "";
+  // o app do motorista manda o destino atual e quanto falta pela rota
+  const d = p.destino;
+  if (d && Number.isFinite(d.distM)) {
+    distKm = d.distM / 1000;
+    etaMin = distKm < 0.15 ? 0 : Math.max(1, Math.round((d.duracaoS || 0) / 60));
+    chegada = new Date(ms + etaMin * 60000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return { estado, externo, idadeS, idadeTxt, vel, distKm, etaMin, chegada, alvo: d.nome || "destino", pelaRota: !!d.pelaRota, pos: p };
+  }
+  const aero = v?.tipo === "OUT" ? AEROPORTO_DA_BASE[base] : null;
   if (aero) {
     distKm = (distanciaMetros(p, aero) * 1.3) / 1000;
     etaMin = distKm < 0.8 ? 0 : Math.max(1, Math.round((distKm / 35) * 60));
     chegada = new Date(ms + etaMin * 60000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   }
-  return { estado, idadeS, idadeTxt, vel, distKm, etaMin, chegada, aeroporto: aero?.nome || "", pos: p };
+  return { estado, externo, idadeS, idadeTxt, vel, distKm, etaMin, chegada, alvo: aero ? "aeroporto" : "", pelaRota: false, pos: p };
 };
 
 // mapa embutido do Google (sem chave) na posição

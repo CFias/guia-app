@@ -189,6 +189,12 @@ const ICONES = {
   arrowUp: ["M12 19V5M5 12l7-7 7 7"],
   arrowDown: ["M12 5v14M19 12l-7 7-7-7"],
   arrowRight: ["M5 12h14M12 5l7 7-7 7"],
+  // manobras da rota (app do motorista)
+  cornerUpLeft: ["M9 14L4 9l5-5", "M20 20v-7a4 4 0 0 0-4-4H4"],
+  cornerUpRight: ["M15 14l5-5-5-5", "M4 20v-7a4 4 0 0 1 4-4h12"],
+  crosshair: ["M12 2v4M12 18v4M2 12h4M18 12h4", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"],
+  volume: ["M11 5L6 9H2v6h4l5 4V5z", "M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"],
+  volumeOff: ["M11 5L6 9H2v6h4l5 4V5z", "M22 9l-6 6M16 9l6 6"],
 };
 
 const Icon = ({
